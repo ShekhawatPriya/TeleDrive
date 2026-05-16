@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/app_theme.dart';
 import 'auth_controller.dart';
 import 'country_data.dart';
 import 'country_picker.dart';
@@ -36,11 +37,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 350),
     );
     _fadeAnim = CurvedAnimation(
       parent: _animController,
-      curve: Curves.easeInOut,
+      curve: Curves.easeOutCubic,
     );
     _animController.forward();
   }
@@ -145,37 +146,62 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     }
   }
 
+  // ─── Design System Colors ──────────────────────────────────────────────────
+  static const _parchment = AppColors.parchment;
+  static const _ivory = AppColors.ivory;
+  static const _nearBlack = AppColors.nearBlack;
+  static const _terracotta = AppColors.terracotta;
+  static const _oliveGray = AppColors.oliveGray;
+  static const _stone = AppColors.stone;
+  static const _borderCream = AppColors.border;
+  static const _borderWarm = AppColors.warmSand;
+
+  static const _focusBlue = Color(0xff3898ec);
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     return Scaffold(
+      backgroundColor: _parchment,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Logo
-                _buildLogo(theme, isDark),
-                const SizedBox(height: 40),
-                // Title & subtitle
-                _buildHeader(theme),
-                const SizedBox(height: 32),
-                // Form card
-                FadeTransition(
-                  opacity: _fadeAnim,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, 0.04),
-                      end: Offset.zero,
-                    ).animate(_fadeAnim),
-                    child: _buildFormCard(theme, isDark),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo mark
+                  _buildLogo(),
+                  const SizedBox(height: 36),
+                  // Title & subtitle
+                  _buildHeader(),
+                  const SizedBox(height: 32),
+                  // Form card
+                  FadeTransition(
+                    opacity: _fadeAnim,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.03),
+                        end: Offset.zero,
+                      ).animate(_fadeAnim),
+                      child: _buildFormCard(),
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 32),
+                  // Footer text
+                  Text(
+                    'Your data is stored securely on Telegram servers.',
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontSize: 13,
+                      color: _stone,
+                      height: 1.6,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -183,37 +209,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildLogo(ThemeData theme, bool isDark) {
+  Widget _buildLogo() {
     return Container(
-      width: 88,
-      height: 88,
+      width: 80,
+      height: 80,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            theme.colorScheme.primary,
-            theme.colorScheme.primary.withValues(alpha: 0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(24),
+        color: _terracotta,
+        borderRadius: BorderRadius.circular(22),
         boxShadow: [
+          // Ring shadow per design system
           BoxShadow(
-            color: theme.colorScheme.primary.withValues(alpha: 0.3),
-            blurRadius: 24,
+            color: _terracotta.withValues(alpha: 0.18),
+            blurRadius: 0,
+            spreadRadius: 1,
+          ),
+          BoxShadow(
+            color: _terracotta.withValues(alpha: 0.10),
+            blurRadius: 20,
             offset: const Offset(0, 8),
           ),
         ],
       ),
       child: const Icon(
         Icons.send_rounded,
-        color: Colors.white,
-        size: 40,
+        color: Color(0xfffaf9f5), // Ivory
+        size: 36,
       ),
     );
   }
 
-  Widget _buildHeader(ThemeData theme) {
+  Widget _buildHeader() {
     final (title, subtitle) = switch (_step) {
       _Step.phone => (
           'Sign in to TeleDrive',
@@ -232,27 +257,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     return Column(
       children: [
         AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
+          duration: const Duration(milliseconds: 280),
           child: Text(
             title,
             key: ValueKey('title_$_step'),
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontSize: 24,
-              letterSpacing: -0.3,
+            style: const TextStyle(
+              fontFamily: 'Georgia',
+              fontSize: 26,
+              fontWeight: FontWeight.w500,
+              color: _nearBlack,
+              height: 1.16,
             ),
             textAlign: TextAlign.center,
           ),
         ),
         const SizedBox(height: 10),
         AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
+          duration: const Duration(milliseconds: 280),
           child: Text(
             subtitle,
             key: ValueKey('sub_$_step'),
-            style: theme.textTheme.bodyMedium?.copyWith(
+            style: const TextStyle(
+              fontFamily: 'Roboto',
               fontSize: 15,
-              height: 1.5,
+              fontWeight: FontWeight.w400,
+              color: _oliveGray,
+              height: 1.6,
             ),
             textAlign: TextAlign.center,
           ),
@@ -261,23 +291,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildFormCard(ThemeData theme, bool isDark) {
+  Widget _buildFormCard() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xff262624) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.06)
-              : Colors.black.withValues(alpha: 0.06),
-        ),
-        boxShadow: [
+        color: _ivory,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _borderCream),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+            color: Color(0x0D000000), // rgba(0,0,0,0.05)
+            blurRadius: 24,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -285,7 +311,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Step indicator
-          _StepDots(currentStep: _step),
+          _StepIndicator(currentStep: _step),
           const SizedBox(height: 24),
           // Error banner
           if (_error != null) ...[
@@ -293,160 +319,162 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             const SizedBox(height: 16),
           ],
           // Form fields
-          if (_step == _Step.phone) _buildPhoneStep(theme, isDark),
-          if (_step == _Step.code) _buildCodeStep(theme, isDark),
-          if (_step == _Step.password) _buildPasswordStep(theme, isDark),
+          if (_step == _Step.phone) _buildPhoneStep(),
+          if (_step == _Step.code) _buildCodeStep(),
+          if (_step == _Step.password) _buildPasswordStep(),
         ],
       ),
     );
   }
 
-  Widget _buildPhoneStep(ThemeData theme, bool isDark) {
+  // ─── Phone Step ─────────────────────────────────────────────────────────────
+
+  Widget _buildPhoneStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Country picker button
-        GestureDetector(
-          onTap: _pickCountry,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.04)
-                  : Colors.black.withValues(alpha: 0.03),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.08),
-              ),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  _selectedCountry.flag,
-                  style: const TextStyle(fontSize: 24),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    _selectedCountry.name,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 15,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
-                  size: 22,
-                ),
-              ],
+        // "Phone number" label
+        const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Text(
+            'Phone number',
+            style: TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: _nearBlack,
+              height: 1.43,
+              letterSpacing: 0.12,
             ),
           ),
         ),
-        const SizedBox(height: 14),
-        // Phone number input row
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Dial code chip
-            GestureDetector(
-              onTap: _pickCountry,
-              child: Container(
-                height: 52,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.04)
-                      : Colors.black.withValues(alpha: 0.03),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : Colors.black.withValues(alpha: 0.08),
+        // Combined phone input row — flag/code selector + number field
+        Container(
+          height: 52,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _borderWarm),
+            color: Colors.white,
+          ),
+          child: Row(
+            children: [
+              // Country selector button (flag + dropdown arrow + dial code)
+              GestureDetector(
+                onTap: _pickCountry,
+                child: Container(
+                  height: 52,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      right: BorderSide(color: _borderWarm),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _selectedCountry.flag,
+                        style: const TextStyle(fontSize: 22),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_drop_down_rounded,
+                        color: _stone,
+                        size: 20,
+                      ),
+                    ],
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _selectedCountry.flag,
-                      style: const TextStyle(fontSize: 18),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _selectedCountry.dialCode,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ],
+              ),
+              // Dial code display
+              Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: Text(
+                  _selectedCountry.dialCode,
+                  style: const TextStyle(
+                    fontFamily: 'Roboto',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: _nearBlack,
+                    letterSpacing: 0.3,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            // Phone field
-            Expanded(
-              child: SizedBox(
-                height: 52,
+              // Vertical separator
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 10),
+                width: 1,
+                height: 24,
+                color: _borderCream,
+              ),
+              // Phone number input
+              Expanded(
                 child: TextField(
                   controller: _phone,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.send,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w500,
+                  style: const TextStyle(
+                    fontFamily: 'Roboto',
                     fontSize: 16,
-                    letterSpacing: 0.5,
+                    fontWeight: FontWeight.w400,
+                    color: _nearBlack,
+                    letterSpacing: 0.8,
                   ),
                   decoration: InputDecoration(
                     hintText: 'Phone number',
                     hintStyle: TextStyle(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
+                      fontFamily: 'Roboto',
+                      fontSize: 15,
                       fontWeight: FontWeight.w400,
+                      color: _stone.withValues(alpha: 0.6),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    filled: true,
-                    fillColor: isDark
-                        ? Colors.white.withValues(alpha: 0.04)
-                        : Colors.black.withValues(alpha: 0.03),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : Colors.black.withValues(alpha: 0.08),
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : Colors.black.withValues(alpha: 0.08),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.6),
-                        width: 1.5,
-                      ),
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    filled: false,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    isDense: true,
                   ),
                   onSubmitted: (_) => _sendCode(),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+            ],
+          ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 8),
+        // Country name hint
+        GestureDetector(
+          onTap: _pickCountry,
+          child: Row(
+            children: [
+              Icon(
+                Icons.public_rounded,
+                size: 14,
+                color: _stone,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  _selectedCountry.name,
+                  style: const TextStyle(
+                    fontFamily: 'Roboto',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: _stone,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 16,
+                color: _stone.withValues(alpha: 0.5),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
         // Continue button
         _PrimaryButton(
           label: 'Continue',
@@ -457,82 +485,106 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildCodeStep(ThemeData theme, bool isDark) {
+  // ─── Code Step ──────────────────────────────────────────────────────────────
+
+  Widget _buildCodeStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Code input
-        TextField(
-          controller: _code,
-          keyboardType: TextInputType.number,
-          textAlign: TextAlign.center,
-          maxLength: 6,
-          autofocus: true,
-          style: theme.textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            letterSpacing: 8,
-            fontSize: 28,
-          ),
-          decoration: InputDecoration(
-            hintText: '• • • • • •',
-            hintStyle: TextStyle(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
-              letterSpacing: 6,
-              fontSize: 24,
-            ),
-            counterText: '',
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 18,
-            ),
-            filled: true,
-            fillColor: isDark
-                ? Colors.white.withValues(alpha: 0.04)
-                : Colors.black.withValues(alpha: 0.03),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.08),
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.08),
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: theme.colorScheme.primary.withValues(alpha: 0.6),
-                width: 1.5,
-              ),
+        const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Text(
+            'Verification code',
+            style: TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: _nearBlack,
+              height: 1.43,
+              letterSpacing: 0.12,
             ),
           ),
-          onSubmitted: (_) => _verifyCode(),
         ),
-        const SizedBox(height: 20),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.white,
+          ),
+          child: TextField(
+            controller: _code,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            maxLength: 6,
+            autofocus: true,
+            style: const TextStyle(
+              fontFamily: 'Georgia',
+              fontWeight: FontWeight.w500,
+              fontSize: 28,
+              letterSpacing: 10,
+              color: _nearBlack,
+            ),
+            decoration: InputDecoration(
+              hintText: '• • • • • •',
+              hintStyle: TextStyle(
+                color: _stone.withValues(alpha: 0.4),
+                letterSpacing: 8,
+                fontSize: 22,
+              ),
+              counterText: '',
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 18,
+              ),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: _borderWarm),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: _borderWarm),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: _focusBlue,
+                  width: 1.4,
+                ),
+              ),
+            ),
+            onSubmitted: (_) => _verifyCode(),
+          ),
+        ),
+        const SizedBox(height: 24),
         _PrimaryButton(
           label: 'Verify',
           loading: _loading,
           onPressed: _verifyCode,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         Center(
-          child: TextButton.icon(
-            onPressed: () => _setStep(_Step.phone),
-            icon: const Icon(Icons.arrow_back_rounded, size: 18),
-            label: const Text('Wrong number?'),
-            style: TextButton.styleFrom(
-              foregroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              textStyle: const TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-              ),
+          child: GestureDetector(
+            onTap: () => _setStep(_Step.phone),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.arrow_back_rounded,
+                  size: 16,
+                  color: _oliveGray,
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  'Wrong number?',
+                  style: TextStyle(
+                    fontFamily: 'Roboto',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: _oliveGray,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -540,92 +592,122 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildPasswordStep(ThemeData theme, bool isDark) {
+  // ─── Password Step ──────────────────────────────────────────────────────────
+
+  Widget _buildPasswordStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextField(
-          controller: _password,
-          obscureText: _obscurePassword,
-          autofocus: true,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.w500,
-            fontSize: 16,
+        const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Text(
+            'Cloud password',
+            style: TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: _nearBlack,
+              height: 1.43,
+              letterSpacing: 0.12,
+            ),
           ),
-          decoration: InputDecoration(
-            hintText: 'Cloud password',
-            hintStyle: TextStyle(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.white,
+          ),
+          child: TextField(
+            controller: _password,
+            obscureText: _obscurePassword,
+            autofocus: true,
+            style: const TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 16,
               fontWeight: FontWeight.w400,
+              color: _nearBlack,
             ),
-            prefixIcon: Icon(
-              Icons.lock_outline_rounded,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
-              size: 20,
-            ),
-            suffixIcon: IconButton(
-              onPressed: () =>
-                  setState(() => _obscurePassword = !_obscurePassword),
-              icon: Icon(
-                _obscurePassword
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+            decoration: InputDecoration(
+              hintText: 'Enter your password',
+              hintStyle: TextStyle(
+                fontFamily: 'Roboto',
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+                color: _stone.withValues(alpha: 0.6),
+              ),
+              prefixIcon: Icon(
+                Icons.lock_outline_rounded,
+                color: _stone,
                 size: 20,
               ),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
-            filled: true,
-            fillColor: isDark
-                ? Colors.white.withValues(alpha: 0.04)
-                : Colors.black.withValues(alpha: 0.03),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.08),
+              suffixIcon: GestureDetector(
+                onTap: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    color: _stone,
+                    size: 20,
+                  ),
+                ),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: _borderWarm),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: _borderWarm),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: _focusBlue,
+                  width: 1.4,
+                ),
               ),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.08),
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: theme.colorScheme.primary.withValues(alpha: 0.6),
-                width: 1.5,
-              ),
-            ),
+            onSubmitted: (_) => _verifyPassword(),
           ),
-          onSubmitted: (_) => _verifyPassword(),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         _PrimaryButton(
           label: 'Sign in',
           loading: _loading,
           onPressed: _verifyPassword,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         Center(
-          child: TextButton.icon(
-            onPressed: () => _setStep(_Step.phone),
-            icon: const Icon(Icons.arrow_back_rounded, size: 18),
-            label: const Text('Start over'),
-            style: TextButton.styleFrom(
-              foregroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              textStyle: const TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-              ),
+          child: GestureDetector(
+            onTap: () => _setStep(_Step.phone),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.arrow_back_rounded,
+                  size: 16,
+                  color: _oliveGray,
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  'Start over',
+                  style: TextStyle(
+                    fontFamily: 'Roboto',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: _oliveGray,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -636,31 +718,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
 // ─── Supporting Widgets ─────────────────────────────────────────────────────
 
-class _StepDots extends StatelessWidget {
-  const _StepDots({required this.currentStep});
+class _StepIndicator extends StatelessWidget {
+  const _StepIndicator({required this.currentStep});
   final _Step currentStep;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final current = _Step.values.indexOf(currentStep);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(3, (i) {
-        final isActive = i <= current;
+        final isCompleted = i < current;
         final isCurrent = i == current;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: isCurrent ? 24 : 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: isActive
-                ? theme.colorScheme.primary
-                : theme.colorScheme.onSurface.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(4),
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 3),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+            width: isCurrent ? 28 : 8,
+            height: 6,
+            decoration: BoxDecoration(
+              color: isCompleted || isCurrent
+                  ? AppColors.terracotta
+                  : AppColors.warmSand,
+              borderRadius: BorderRadius.circular(3),
+            ),
           ),
         );
       }),
@@ -668,7 +751,7 @@ class _StepDots extends StatelessWidget {
   }
 }
 
-class _PrimaryButton extends StatelessWidget {
+class _PrimaryButton extends StatefulWidget {
   const _PrimaryButton({
     required this.label,
     required this.loading,
@@ -680,34 +763,67 @@ class _PrimaryButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
+  State<_PrimaryButton> createState() => _PrimaryButtonState();
+}
+
+class _PrimaryButtonState extends State<_PrimaryButton> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return SizedBox(
-      height: 52,
-      child: FilledButton(
-        onPressed: loading ? null : onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: theme.colorScheme.primary,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: theme.colorScheme.primary.withValues(alpha: 0.6),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          textStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 16,
-          ),
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        if (!widget.loading) widget.onPressed();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+        height: 52,
+        decoration: BoxDecoration(
+          color: widget.loading
+              ? AppColors.terracotta.withValues(alpha: 0.7)
+              : _pressed
+                  ? const Color(0xffb5573a) // Slightly darker terracotta
+                  : AppColors.terracotta,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            // Ring shadow per design system
+            BoxShadow(
+              color: AppColors.terracotta.withValues(alpha: 0.0),
+              blurRadius: 0,
+              spreadRadius: 0,
+            ),
+            const BoxShadow(
+              color: Color(0xffc96442), // terracotta
+              blurRadius: 0,
+              spreadRadius: 1,
+              offset: Offset(0, 0),
+            ),
+          ],
         ),
-        child: loading
+        alignment: Alignment.center,
+        child: widget.loading
             ? const SizedBox(
                 width: 22,
                 height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  color: Colors.white,
+                  color: Color(0xfffaf9f5), // Ivory
                 ),
               )
-            : Text(label),
+            : Text(
+                widget.label,
+                style: const TextStyle(
+                  fontFamily: 'Roboto',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xfffaf9f5), // Ivory
+                  letterSpacing: 0.3,
+                ),
+              ),
       ),
     );
   }
@@ -719,31 +835,32 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.error.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.error.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: theme.colorScheme.error.withValues(alpha: 0.2),
+          color: AppColors.error.withValues(alpha: 0.15),
         ),
       ),
       child: Row(
         children: [
           Icon(
             Icons.error_outline_rounded,
-            color: theme.colorScheme.error,
-            size: 20,
+            color: AppColors.error,
+            size: 18,
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
-              style: TextStyle(
-                color: theme.colorScheme.error,
+              style: const TextStyle(
+                fontFamily: 'Roboto',
+                color: AppColors.error,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
+                height: 1.4,
               ),
             ),
           ),
