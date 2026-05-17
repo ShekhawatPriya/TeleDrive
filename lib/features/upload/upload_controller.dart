@@ -115,15 +115,25 @@ class UploadController extends ChangeNotifier {
   static const maxFiles = 50;
   static const maxConcurrentClientUploads = 2;
   static const pollInterval = Duration(milliseconds: 450);
+  static const postUploadRefreshDelays = [
+    Duration(seconds: 2),
+    Duration(seconds: 6),
+    Duration(seconds: 15),
+    Duration(seconds: 30),
+  ];
 
   final ApiClient _api;
   final DriveController _drive;
   final _uuid = const Uuid();
   final Map<String, CancelToken> _cancelTokensByLocalId = {};
   final Map<String, Timer> _pollTimersByLocalId = {};
+  final Map<int, Timer> _pollTimersByBatchId = {};
+  final List<Timer> _postUploadRefreshTimers = [];
   final Set<String> _pollingLocalIds = {};
+  final Set<int> _pollingBatchIds = {};
   final Set<String> _runningLocalIds = {};
   Timer? _autoDismissTimer;
+  String? _postUploadRefreshSessionId;
   bool _disposed = false;
 
   String? uploadSessionId;
@@ -264,16 +274,112 @@ class UploadController extends ChangeNotifier {
   }
 
   void _pumpQueue() {
-    while (_runningLocalIds.length < maxConcurrentClientUploads) {
-      final next = items
-          .where((i) => i.status == UploadStatus.queued)
-          .firstOrNull;
-      if (next == null) break;
-      _runningLocalIds.add(next.localId);
-      unawaited(_uploadOne(next));
+    if (_runningLocalIds.isNotEmpty) return;
+    final next = items
+        .where((i) => i.status == UploadStatus.queued)
+        .take(maxFiles)
+        .toList();
+    if (next.isEmpty) {
+      _updateUploadingFlag();
+      _notifyListeners();
+      return;
     }
+    for (final item in next) {
+      _runningLocalIds.add(item.localId);
+    }
+    unawaited(_uploadMany(next));
     _updateUploadingFlag();
     _notifyListeners();
+  }
+
+  Future<void> _uploadMany(List<UploadItem> batchItems) async {
+    if (batchItems.length == 1) {
+      await _uploadOne(batchItems.single);
+      return;
+    }
+    final token = CancelToken();
+    for (final item in batchItems) {
+      _cancelTokensByLocalId[item.localId] = token;
+      _setItem(
+        item.localId,
+        status: UploadStatus.stagingToBackend,
+        httpProgress: 0,
+        serverProgress: 0,
+        clearError: true,
+      );
+    }
+
+    try {
+      final form = FormData();
+      for (final item in batchItems) {
+        form.files.add(
+          MapEntry(
+            'files',
+            await MultipartFile.fromFile(
+              item.path,
+              filename: item.name,
+              contentType: MediaType.parse(item.mimeType),
+            ),
+          ),
+        );
+      }
+      if (activeFolderId != null) {
+        form.fields.add(MapEntry('folder_id', activeFolderId!));
+      }
+      form.fields.add(
+        MapEntry('upload_client_id', uploadSessionId ?? _uuid.v4()),
+      );
+
+      final res = await _api.dio.post(
+        '/files/upload',
+        data: form,
+        cancelToken: token,
+        onSendProgress: (sent, total) {
+          final progress = total <= 0 ? 0.05 : (sent / total).clamp(0.0, 1.0);
+          for (final item in batchItems) {
+            _setItemProgress(item.localId, httpProgress: progress);
+          }
+        },
+      );
+      final data = Map<String, dynamic>.from(res.data as Map);
+      final batchId = (data['batch_id'] as num).toInt();
+      final files = (data['files'] as List? ?? [])
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      for (var index = 0; index < batchItems.length; index++) {
+        final item = batchItems[index];
+        final file = index < files.length ? files[index] : <String, dynamic>{};
+        final current = _findItem(item.localId);
+        if (current == null || current.cancelRequested) continue;
+        _setItem(
+          item.localId,
+          status: UploadStatus.waitingForServer,
+          httpProgress: 1,
+          batchId: batchId,
+          fileId: (file['file_id'] as num?)?.toInt(),
+          uploadJobId: (file['upload_job_id'] as num?)?.toInt(),
+        );
+      }
+      _startPollingBatch(batchId);
+      await _pollBatch(batchId);
+    } catch (err) {
+      final cancelled = err is DioException && CancelToken.isCancel(err);
+      for (final item in batchItems) {
+        _setItem(
+          item.localId,
+          status: cancelled ? UploadStatus.cancelled : UploadStatus.failed,
+          error: cancelled ? null : _api.errorMessage(err, 'Upload failed.'),
+        );
+      }
+    } finally {
+      for (final item in batchItems) {
+        _cancelTokensByLocalId.remove(item.localId);
+        _runningLocalIds.remove(item.localId);
+      }
+      _syncOptimistic();
+      await _refreshIfSettled();
+      _pumpQueue();
+    }
   }
 
   Future<void> _uploadOne(UploadItem item) async {
@@ -359,6 +465,68 @@ class UploadController extends ChangeNotifier {
     );
   }
 
+  void _startPollingBatch(int batchId) {
+    _stopPollingBatch(batchId);
+    _pollTimersByBatchId[batchId] = Timer.periodic(
+      pollInterval,
+      (_) => _pollBatch(batchId),
+    );
+  }
+
+  Future<void> _pollBatch(int batchId) async {
+    final batchItems = items.where((i) => i.batchId == batchId).toList();
+    if (batchItems.isEmpty || !_pollingBatchIds.add(batchId)) return;
+    try {
+      final res = await _api.dio.get('/upload-batches/$batchId');
+      final data = Map<String, dynamic>.from(res.data as Map);
+      final files = (data['files'] as List? ?? [])
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      for (final current in batchItems) {
+        if (current.cancelRequested) continue;
+        final matched = files
+            .where((f) => f['upload_job_id'] == current.uploadJobId)
+            .firstOrNull;
+        if (matched == null) continue;
+        final status = _toUploadStatus('${matched['status']}');
+        final total =
+            (matched['total_bytes'] as num?)?.toDouble() ??
+            current.size.toDouble();
+        final done = (matched['progress_bytes'] as num?)?.toDouble() ?? 0;
+        final serverProgress = status == UploadStatus.uploaded
+            ? 1.0
+            : total > 0
+            ? (done / total).clamp(0.0, 1.0)
+            : current.serverProgress;
+        _setItem(
+          current.localId,
+          status: status,
+          serverProgress: serverProgress,
+          fileId: (matched['file_id'] as num?)?.toInt(),
+          error: matched['error'] as String?,
+        );
+      }
+      final updated = items.where((i) => i.batchId == batchId).toList();
+      if (updated.isNotEmpty &&
+          updated.every((i) => _isTerminalStatus(i.status))) {
+        _stopPollingBatch(batchId);
+        await _refreshIfSettled();
+      }
+    } catch (err) {
+      _stopPollingBatch(batchId);
+      for (final item in batchItems) {
+        _setItem(
+          item.localId,
+          status: UploadStatus.failed,
+          error: _api.errorMessage(err, 'Upload polling failed.'),
+        );
+      }
+      await _refreshIfSettled();
+    } finally {
+      _pollingBatchIds.remove(batchId);
+    }
+  }
+
   Future<void> _pollItem(String localId, int batchId) async {
     final item = _findItem(localId);
     if (item == null || item.cancelRequested) return;
@@ -416,8 +584,11 @@ class UploadController extends ChangeNotifier {
     _cancelTokensByLocalId[localId]?.cancel('Upload cancelled.');
 
     if (item.batchId != null) {
+      final endpoint = item.uploadJobId == null
+          ? '/upload-batches/${item.batchId}/cancel'
+          : '/upload-jobs/${item.uploadJobId}/cancel';
       await _api.dio
-          .post('/upload-batches/${item.batchId}/cancel')
+          .post(endpoint)
           .catchError((_) => Response(requestOptions: RequestOptions()));
     } else {
       await _api.dio
@@ -429,6 +600,7 @@ class UploadController extends ChangeNotifier {
     }
 
     _stopPollingItem(localId);
+    if (item.batchId != null) _stopPollingBatch(item.batchId!);
     _runningLocalIds.remove(localId);
     _setItem(localId, status: UploadStatus.cancelled);
     _syncOptimistic();
@@ -474,6 +646,10 @@ class UploadController extends ChangeNotifier {
       timer.cancel();
     }
     _pollTimersByLocalId.clear();
+    for (final timer in _pollTimersByBatchId.values) {
+      timer.cancel();
+    }
+    _pollTimersByBatchId.clear();
     items = [];
     sheetVisible = false;
     uploadSessionId = null;
@@ -558,6 +734,11 @@ class UploadController extends ChangeNotifier {
     _pollingLocalIds.remove(localId);
   }
 
+  void _stopPollingBatch(int batchId) {
+    _pollTimersByBatchId.remove(batchId)?.cancel();
+    _pollingBatchIds.remove(batchId);
+  }
+
   void _updateUploadingFlag() {
     uploading = items.any(_isActive) || _runningLocalIds.isNotEmpty;
   }
@@ -569,12 +750,31 @@ class UploadController extends ChangeNotifier {
     }
     await _refreshDrive();
     if (_allItemsUploaded) {
+      _schedulePostUploadRefreshes();
       _scheduleAutoDismiss();
     }
   }
 
   bool get _allItemsUploaded =>
       items.isNotEmpty && items.every((i) => i.status == UploadStatus.uploaded);
+
+  void _schedulePostUploadRefreshes() {
+    final sessionId = uploadSessionId;
+    if (sessionId == null || _postUploadRefreshSessionId == sessionId) return;
+    _postUploadRefreshSessionId = sessionId;
+    for (final delay in postUploadRefreshDelays) {
+      _postUploadRefreshTimers.add(
+        Timer(delay, () async {
+          if (_disposed ||
+              _postUploadRefreshSessionId != sessionId ||
+              uploading) {
+            return;
+          }
+          await _refreshDrive();
+        }),
+      );
+    }
+  }
 
   void _scheduleAutoDismiss() {
     final sessionId = uploadSessionId;
@@ -594,6 +794,11 @@ class UploadController extends ChangeNotifier {
   void _cancelCompletionTimers() {
     _autoDismissTimer?.cancel();
     _autoDismissTimer = null;
+    for (final timer in _postUploadRefreshTimers) {
+      timer.cancel();
+    }
+    _postUploadRefreshTimers.clear();
+    _postUploadRefreshSessionId = null;
   }
 
   Future<void> _refreshDrive() async {
@@ -643,8 +848,12 @@ class UploadController extends ChangeNotifier {
     for (final timer in _pollTimersByLocalId.values) {
       timer.cancel();
     }
+    for (final timer in _pollTimersByBatchId.values) {
+      timer.cancel();
+    }
     _cancelCompletionTimers();
     _pollingLocalIds.clear();
+    _pollingBatchIds.clear();
     for (final token in _cancelTokensByLocalId.values) {
       token.cancel();
     }
