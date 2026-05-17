@@ -11,6 +11,7 @@ import '../../widgets/tab_header.dart';
 import '../auth/auth_controller.dart';
 import '../upload/upload_controller.dart';
 import 'drive_controller.dart';
+import 'move_destination_sheet.dart';
 
 enum SortField { name, kind, size, date }
 
@@ -67,8 +68,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                     children: [
                       TabHeader(
                         title: 'TeleDrive',
-                        subtitle:
-                            'Hi ${auth.user?.firstName ?? 'there'}',
+                        subtitle: 'Hi ${auth.user?.firstName ?? 'there'}',
                       ),
                       const SizedBox(height: 14),
                       TextField(
@@ -220,15 +220,20 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                       final file = files[i];
                       return FileListTile(
                         name: file.name,
-                        subtitle:
-                            '${formatLabel(file)} • ${formatFileSize(file.size)} • ${formatDate(file.modifiedAt)}',
+                        subtitle: file.isOptimistic
+                            ? '${formatUploadStatus(file)} • ${formatFileSize(file.size)}'
+                            : '${formatLabel(file)} • ${formatFileSize(file.size)} • ${formatDate(file.modifiedAt)}',
                         file: file,
                         starred: file.starred,
                         onTap: () => _openFile(file),
-                        onStar: () => ref
-                            .read(driveControllerProvider)
-                            .toggleStar(file.id),
-                        onMore: () => _fileActions(file),
+                        onStar: file.isOptimistic
+                            ? null
+                            : () => ref
+                                  .read(driveControllerProvider)
+                                  .toggleStar(file.id),
+                        onMore: file.isOptimistic
+                            ? null
+                            : () => _fileActions(file),
                       );
                     },
                   ),
@@ -261,6 +266,12 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
   }
 
   void _openFile(DriveFile file) {
+    if (file.isOptimistic) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(formatUploadStatus(file))));
+      return;
+    }
     ref.read(driveControllerProvider).markAccessed(file.id);
     context.push('/file/${file.id}');
   }
@@ -272,11 +283,30 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
         title: file.name,
         actions: const {
           'download': Icons.download,
+          'move': Icons.drive_file_move_outline,
           'star': Icons.star_border,
           'delete': Icons.delete_outline,
         },
       ),
     );
+    if (action == 'move' && mounted) {
+      final targetId = await showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => MoveDestinationSheet(
+          title: 'Move "${file.name}"',
+          currentParentId: file.parentId,
+        ),
+      );
+      if (mounted && targetId != null) {
+        await ref
+            .read(driveControllerProvider)
+            .moveFile(
+              file.id,
+              targetId == rootMoveDestination ? null : targetId,
+            );
+      }
+    }
     if (action == 'delete')
       await ref.read(driveControllerProvider).deleteItems(fileIds: [file.id]);
     if (action == 'star') ref.read(driveControllerProvider).toggleStar(file.id);
@@ -289,11 +319,31 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
         title: folder.name,
         actions: const {
           'rename': Icons.edit_outlined,
+          'move': Icons.drive_file_move_outline,
           'star': Icons.star_border,
           'delete': Icons.delete_outline,
         },
       ),
     );
+    if (action == 'move' && mounted) {
+      final targetId = await showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => MoveDestinationSheet(
+          title: 'Move "${folder.name}"',
+          movingFolderId: folder.id,
+          currentParentId: folder.parentId,
+        ),
+      );
+      if (mounted && targetId != null) {
+        await ref
+            .read(driveControllerProvider)
+            .moveFolder(
+              folder.id,
+              targetId == rootMoveDestination ? null : targetId,
+            );
+      }
+    }
     if (action == 'delete')
       await ref
           .read(driveControllerProvider)

@@ -12,11 +12,13 @@ class DriveRepository {
     String type = 'all',
     int limit = 60,
     String? cursor,
+    bool allFolders = false,
   }) async {
     final res = await api.dio.get(
       '/files',
       queryParameters: {
-        if (folderId != null) 'folder_id': folderId,
+        if (!allFolders && folderId != null) 'folder_id': folderId,
+        if (allFolders) 'scope': 'all',
         if (type != 'all') 'type': type,
         'limit': limit,
         if (cursor != null) 'cursor': cursor,
@@ -33,7 +35,11 @@ class DriveRepository {
     final all = <DriveFile>[];
     String? cursor;
     do {
-      final page = await listFiles(limit: 100, cursor: cursor);
+      final page = await listFiles(
+        limit: 100,
+        cursor: cursor,
+        allFolders: true,
+      );
       all.addAll(page.files);
       cursor = page.nextCursor;
     } while (cursor != null);
@@ -65,6 +71,22 @@ class DriveRepository {
 
   Future<void> renameFolder(String id, String name) async {
     await api.dio.patch('/folders/$id', data: {'name': name});
+  }
+
+  Future<DriveFile> moveFile(String id, String? folderId) async {
+    final res = await api.dio.patch(
+      '/files/$id',
+      data: {'folder_id': folderId == null ? null : int.parse(folderId)},
+    );
+    return _mapFile(Map<String, dynamic>.from(res.data as Map));
+  }
+
+  Future<DriveFolder> moveFolder(String id, String? parentId) async {
+    final res = await api.dio.patch(
+      '/folders/$id',
+      data: {'parent_id': parentId == null ? null : int.parse(parentId)},
+    );
+    return _mapFolder(Map<String, dynamic>.from(res.data as Map));
   }
 
   Future<void> deleteFile(String id) async =>
@@ -129,5 +151,10 @@ class DriveRepository {
     parentId: json['parentId'] == null ? null : '${json['parentId']}',
     modifiedAt: '${json['updatedAt'] ?? DateTime.now().toIso8601String()}',
     createdAt: '${json['createdAt'] ?? DateTime.now().toIso8601String()}',
+    recursiveFileCount: (json['recursiveFileCount'] as num?)?.toInt() ?? 0,
+    recursiveSize:
+        (json['recursiveSizeBytes'] as num?)?.toInt() ??
+        (json['recursiveSize'] as num?)?.toInt() ??
+        0,
   );
 }

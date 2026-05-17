@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/utils/file_type_detector.dart';
+import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/file_tiles.dart';
 import '../upload/upload_controller.dart';
+import '../upload/upload_sheet.dart';
 import 'drive_controller.dart';
+import 'move_destination_sheet.dart';
 
 class FolderScreen extends ConsumerWidget {
   const FolderScreen({required this.folderId, super.key});
@@ -30,66 +33,88 @@ class FolderScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: ref.read(driveControllerProvider).refresh,
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: 120),
-          children: [
-            SizedBox(
-              height: 42,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                scrollDirection: Axis.horizontal,
-                itemCount: path.length,
-                separatorBuilder: (_, __) =>
-                    const Icon(Icons.chevron_right, size: 18),
-                itemBuilder: (_, i) => ActionChip(
-                  label: Text(path[i].name),
-                  onPressed: i == path.length - 1
-                      ? null
-                      : () => context.push('/folder/${path[i].id}'),
+      body: Stack(
+        children: [
+          RefreshIndicator(
+            onRefresh: ref.read(driveControllerProvider).refresh,
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: 150),
+              children: [
+                SizedBox(
+                  height: 42,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    scrollDirection: Axis.horizontal,
+                    itemCount: path.length,
+                    separatorBuilder: (_, __) =>
+                        const Icon(Icons.chevron_right, size: 18),
+                    itemBuilder: (_, i) => ActionChip(
+                      label: Text(path[i].name),
+                      onPressed: i == path.length - 1
+                          ? null
+                          : () => context.push('/folder/${path[i].id}'),
+                    ),
+                  ),
                 ),
-              ),
+                if (folders.isEmpty && files.isEmpty)
+                  const SizedBox(
+                    height: 520,
+                    child: EmptyState(
+                      icon: Icons.folder_open,
+                      title: 'Nothing here yet',
+                      body: 'Upload files or create a nested folder.',
+                    ),
+                  ),
+                for (final item in folders)
+                  FileListTile(
+                    name: item.name,
+                    subtitle:
+                        '${item.recursiveFileCount} files • ${formatFileSize(item.recursiveSize)}',
+                    isFolder: true,
+                    starred: item.starred,
+                    onTap: () => context.push('/folder/${item.id}'),
+                    onStar: () => ref
+                        .read(driveControllerProvider)
+                        .toggleStar(item.id, folder: true),
+                    onMore: () => _folderActions(context, ref, item.id),
+                  ),
+                for (final file in files)
+                  FileListTile(
+                    name: file.name,
+                    subtitle: file.isOptimistic
+                        ? '${formatUploadStatus(file)} • ${formatFileSize(file.size)}'
+                        : '${formatLabel(file)} • ${formatFileSize(file.size)} • ${formatDate(file.modifiedAt)}',
+                    file: file,
+                    starred: file.starred,
+                    onTap: () {
+                      if (file.isOptimistic) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(formatUploadStatus(file))),
+                        );
+                        return;
+                      }
+                      ref.read(driveControllerProvider).markAccessed(file.id);
+                      context.push('/file/${file.id}');
+                    },
+                    onStar: file.isOptimistic
+                        ? null
+                        : () => ref
+                              .read(driveControllerProvider)
+                              .toggleStar(file.id),
+                    onMore: file.isOptimistic
+                        ? null
+                        : () => _fileActions(context, ref, file),
+                  ),
+              ],
             ),
-            if (folders.isEmpty && files.isEmpty)
-              const SizedBox(
-                height: 520,
-                child: EmptyState(
-                  icon: Icons.folder_open,
-                  title: 'Nothing here yet',
-                  body: 'Upload files or create a nested folder.',
-                ),
-              ),
-            for (final item in folders)
-              FileListTile(
-                name: item.name,
-                subtitle:
-                    '${item.recursiveFileCount} files • ${formatFileSize(item.recursiveSize)}',
-                isFolder: true,
-                starred: item.starred,
-                onTap: () => context.push('/folder/${item.id}'),
-                onStar: () => ref
-                    .read(driveControllerProvider)
-                    .toggleStar(item.id, folder: true),
-                onMore: () => _folderActions(context, ref, item.id),
-              ),
-            for (final file in files)
-              FileListTile(
-                name: file.name,
-                subtitle:
-                    '${formatLabel(file)} • ${formatFileSize(file.size)} • ${formatDate(file.modifiedAt)}',
-                file: file,
-                starred: file.starred,
-                onTap: () {
-                  ref.read(driveControllerProvider).markAccessed(file.id);
-                  context.push('/file/${file.id}');
-                },
-                onStar: () =>
-                    ref.read(driveControllerProvider).toggleStar(file.id),
-                onMore: () => _fileActions(context, ref, file.id),
-              ),
-          ],
-        ),
+          ),
+          const Positioned(
+            left: 12,
+            right: 12,
+            bottom: 86,
+            child: UploadMiniOverlay(),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _add(context, ref),
@@ -172,20 +197,54 @@ class FolderScreen extends ConsumerWidget {
   Future<void> _fileActions(
     BuildContext context,
     WidgetRef ref,
-    String id,
+    DriveFile file,
   ) async {
     final action = await showModalBottomSheet<String>(
       context: context,
       builder: (_) => SafeArea(
-        child: ListTile(
-          leading: const Icon(Icons.delete_outline),
-          title: const Text('Move to trash'),
-          onTap: () => Navigator.pop(context, 'delete'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.drive_file_move_outline),
+              title: const Text('Move'),
+              onTap: () => Navigator.pop(context, 'move'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.star_border),
+              title: const Text('Star'),
+              onTap: () => Navigator.pop(context, 'star'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('Move to trash'),
+              onTap: () => Navigator.pop(context, 'delete'),
+            ),
+          ],
         ),
       ),
     );
+    if (action == 'move' && context.mounted) {
+      final targetId = await showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => MoveDestinationSheet(
+          title: 'Move "${file.name}"',
+          currentParentId: file.parentId,
+        ),
+      );
+      if (targetId != null) {
+        await ref
+            .read(driveControllerProvider)
+            .moveFile(
+              file.id,
+              targetId == rootMoveDestination ? null : targetId,
+            );
+      }
+    }
+    if (action == 'star') ref.read(driveControllerProvider).toggleStar(file.id);
     if (action == 'delete')
-      await ref.read(driveControllerProvider).deleteItems(fileIds: [id]);
+      await ref.read(driveControllerProvider).deleteItems(fileIds: [file.id]);
   }
 
   Future<void> _folderActions(
@@ -196,13 +255,50 @@ class FolderScreen extends ConsumerWidget {
     final action = await showModalBottomSheet<String>(
       context: context,
       builder: (_) => SafeArea(
-        child: ListTile(
-          leading: const Icon(Icons.delete_outline),
-          title: const Text('Delete folder'),
-          onTap: () => Navigator.pop(context, 'delete'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.drive_file_move_outline),
+              title: const Text('Move'),
+              onTap: () => Navigator.pop(context, 'move'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.star_border),
+              title: const Text('Star'),
+              onTap: () => Navigator.pop(context, 'star'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('Delete folder'),
+              onTap: () => Navigator.pop(context, 'delete'),
+            ),
+          ],
         ),
       ),
     );
+    final folder = ref.read(driveControllerProvider).folder(id);
+    if (action == 'move' && context.mounted && folder != null) {
+      final targetId = await showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => MoveDestinationSheet(
+          title: 'Move "${folder.name}"',
+          movingFolderId: folder.id,
+          currentParentId: folder.parentId,
+        ),
+      );
+      if (targetId != null) {
+        await ref
+            .read(driveControllerProvider)
+            .moveFolder(
+              folder.id,
+              targetId == rootMoveDestination ? null : targetId,
+            );
+      }
+    }
+    if (action == 'star')
+      ref.read(driveControllerProvider).toggleStar(id, folder: true);
     if (action == 'delete')
       await ref.read(driveControllerProvider).deleteItems(folderIds: [id]);
   }

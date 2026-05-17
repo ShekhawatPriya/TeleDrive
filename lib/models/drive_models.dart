@@ -13,6 +13,8 @@ enum FileKind {
   other,
 }
 
+const _unset = Object();
+
 class DriveFile {
   const DriveFile({
     required this.id,
@@ -73,6 +75,7 @@ class DriveFile {
   DriveFile copyWith({
     bool? starred,
     String? name,
+    Object? parentId = _unset,
     String? uploadStatus,
     String? uploadError,
     String? lastAccessedAt,
@@ -84,7 +87,7 @@ class DriveFile {
       size: size,
       modifiedAt: modifiedAt,
       createdAt: createdAt,
-      parentId: parentId,
+      parentId: parentId == _unset ? this.parentId : parentId as String?,
       starred: starred ?? this.starred,
       shared: shared,
       mimeType: mimeType,
@@ -133,13 +136,14 @@ class DriveFolder {
 
   DriveFolder copyWith({
     String? name,
+    Object? parentId = _unset,
     bool? starred,
     int? recursiveFileCount,
     int? recursiveSize,
   }) => DriveFolder(
     id: id,
     name: name ?? this.name,
-    parentId: parentId,
+    parentId: parentId == _unset ? this.parentId : parentId as String?,
     modifiedAt: modifiedAt,
     createdAt: createdAt,
     starred: starred ?? this.starred,

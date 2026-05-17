@@ -38,7 +38,7 @@ class DriveController extends ChangeNotifier {
   List<DriveFile> get mediaFiles => state.mediaFiles
       .map((f) => f.copyWith(lastAccessedAt: _recent[f.id]))
       .toList();
-  List<DriveFolder> get folders => _withStats(state.folders, files);
+  List<DriveFolder> get folders => state.folders;
 
   Future<void> _loadRecent() async {
     _recent = await _prefs.recentAccess();
@@ -52,7 +52,11 @@ class DriveController extends ChangeNotifier {
     }
     try {
       final all = await _repo.listAllFiles();
-      final media = await _repo.listFiles(type: 'media', limit: 60);
+      final media = await _repo.listFiles(
+        type: 'media',
+        limit: 60,
+        allFolders: true,
+      );
       final folders = await _repo.listFolders();
       state = state.copyWith(
         files: all.where((f) => f.uploadStatus == 'available').toList(),
@@ -82,6 +86,7 @@ class DriveController extends ChangeNotifier {
         type: 'media',
         cursor: state.mediaCursor,
         limit: 60,
+        allFolders: true,
       );
       final ids = state.mediaFiles.map((f) => f.id).toSet();
       state = state.copyWith(
@@ -154,6 +159,75 @@ class DriveController extends ChangeNotifier {
           .map((f) => f.id == id ? f.copyWith(name: name) : f)
           .toList(),
     );
+    notifyListeners();
+  }
+
+  Future<void> moveFile(String fileId, String? targetFolderId) async {
+    final previousFiles = state.files;
+    final previousMedia = state.mediaFiles;
+    state = state.copyWith(
+      files: state.files
+          .map((f) => f.id == fileId ? f.copyWith(parentId: targetFolderId) : f)
+          .toList(),
+      mediaFiles: state.mediaFiles
+          .map((f) => f.id == fileId ? f.copyWith(parentId: targetFolderId) : f)
+          .toList(),
+      clearError: true,
+    );
+    notifyListeners();
+    try {
+      final updated = await _repo.moveFile(fileId, targetFolderId);
+      state = state.copyWith(
+        files: state.files.map((f) => f.id == fileId ? updated : f).toList(),
+        mediaFiles: state.mediaFiles
+            .map((f) => f.id == fileId ? updated : f)
+            .toList(),
+      );
+    } catch (err) {
+      state = state.copyWith(
+        files: previousFiles,
+        mediaFiles: previousMedia,
+        error: _repo.api.errorMessage(err, 'Move failed.'),
+      );
+    }
+    notifyListeners();
+  }
+
+  Future<void> moveFolder(String folderId, String? targetParentId) async {
+    if (folderId == targetParentId) return;
+    final folder = this.folder(folderId);
+    if (folder == null) return;
+    final descendants = _descendantFolderIds(folderId);
+    if (targetParentId != null && descendants.contains(targetParentId)) {
+      state = state.copyWith(error: 'Cannot move a folder into itself.');
+      notifyListeners();
+      return;
+    }
+
+    final previous = state.folders;
+    state = state.copyWith(
+      folders: state.folders
+          .map(
+            (f) => f.id == folderId ? f.copyWith(parentId: targetParentId) : f,
+          )
+          .toList(),
+      clearError: true,
+    );
+    notifyListeners();
+
+    try {
+      final updated = await _repo.moveFolder(folderId, targetParentId);
+      state = state.copyWith(
+        folders: state.folders
+            .map((f) => f.id == folderId ? updated : f)
+            .toList(),
+      );
+    } catch (err) {
+      state = state.copyWith(
+        folders: previous,
+        error: _repo.api.errorMessage(err, 'Move failed.'),
+      );
+    }
     notifyListeners();
   }
 
@@ -254,35 +328,15 @@ class DriveController extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<DriveFolder> _withStats(
-    List<DriveFolder> rawFolders,
-    List<DriveFile> rawFiles,
-  ) {
-    int countFiles(String folderId) {
-      final direct = rawFiles.where((f) => f.parentId == folderId).length;
-      final nested = rawFolders
-          .where((f) => f.parentId == folderId)
-          .fold(0, (sum, f) => sum + countFiles(f.id));
-      return direct + nested;
+  Set<String> _descendantFolderIds(String folderId) {
+    final found = <String>{};
+    void visit(String id) {
+      for (final child in state.folders.where((f) => f.parentId == id)) {
+        if (found.add(child.id)) visit(child.id);
+      }
     }
 
-    int sizeFiles(String folderId) {
-      final direct = rawFiles
-          .where((f) => f.parentId == folderId)
-          .fold(0, (sum, f) => sum + f.size);
-      final nested = rawFolders
-          .where((f) => f.parentId == folderId)
-          .fold(0, (sum, f) => sum + sizeFiles(f.id));
-      return direct + nested;
-    }
-
-    return rawFolders
-        .map(
-          (f) => f.copyWith(
-            recursiveFileCount: countFiles(f.id),
-            recursiveSize: sizeFiles(f.id),
-          ),
-        )
-        .toList();
+    visit(folderId);
+    return found;
   }
 }
