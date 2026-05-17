@@ -27,9 +27,34 @@ class ProfileScreen extends ConsumerWidget {
       Theme.of(context).colorScheme,
     );
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Account')),
-      body: ListView(
+    return PopScope(
+      canPop: GoRouter.of(context).canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        context.go('/drive');
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: Center(
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, size: 20),
+                tooltip: 'Back to Drive',
+                onPressed: () {
+                  if (GoRouter.of(context).canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/drive');
+                  }
+                },
+              ),
+            ),
+          ),
+          leadingWidth: 60,
+          title: const Text('Account'),
+        ),
+        body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 112),
         children: [
           _ProfileHeader(user: user),
@@ -110,6 +135,7 @@ class ProfileScreen extends ConsumerWidget {
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
+      ),
       ),
     );
   }

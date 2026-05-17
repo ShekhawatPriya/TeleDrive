@@ -41,7 +41,7 @@ class TabHeader extends ConsumerWidget {
           ),
         ),
         GestureDetector(
-          onTap: () => context.go('/profile'),
+          onTap: () => context.push('/profile'),
           child: ProfileAvatar(user: auth.user, size: 42),
         ),
       ],

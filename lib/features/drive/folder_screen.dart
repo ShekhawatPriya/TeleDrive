@@ -24,15 +24,7 @@ class FolderScreen extends ConsumerWidget {
     final path = drive.folderPath(folderId);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(folder?.name ?? 'Folder'),
-        actions: [
-          IconButton(
-            onPressed: () => ref.read(driveControllerProvider).refresh(),
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(folder?.name ?? 'Folder')),
       body: Stack(
         children: [
           RefreshIndicator(

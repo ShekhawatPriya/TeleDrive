@@ -46,11 +46,11 @@ class TeleDriveApp extends ConsumerWidget {
               builder: (_, __) => const StarredScreen(),
             ),
             GoRoute(path: '/shared', builder: (_, __) => const SharedScreen()),
-            GoRoute(
-              path: '/profile',
-              builder: (_, __) => const ProfileScreen(),
-            ),
           ],
+        ),
+        GoRoute(
+          path: '/profile',
+          builder: (_, __) => const ProfileScreen(),
         ),
         GoRoute(
           path: '/folder/:id',
