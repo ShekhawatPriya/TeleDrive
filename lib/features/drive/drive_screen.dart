@@ -2,18 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/utils/file_type_detector.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
-import '../../widgets/file_tiles.dart';
+import '../../widgets/ios_more_menu.dart';
 import '../../widgets/skeletons.dart';
 import '../../widgets/tab_header.dart';
 import '../auth/auth_controller.dart';
-import '../upload/upload_controller.dart';
+import 'components/drive_fab.dart';
+import 'components/drive_header_widgets.dart';
+import 'components/drive_item_actions.dart';
+import 'components/drive_list_slivers.dart';
+import 'components/drive_menu_builder.dart';
+import 'components/drive_selection_bar.dart';
+import 'components/selection_mode_mixin.dart';
 import 'drive_controller.dart';
-import 'move_destination_sheet.dart';
-
-enum SortField { name, kind, size, date }
+import 'view_preferences_controller.dart';
 
 class DriveScreen extends ConsumerStatefulWidget {
   const DriveScreen({super.key});
@@ -22,11 +25,9 @@ class DriveScreen extends ConsumerStatefulWidget {
   ConsumerState<DriveScreen> createState() => _DriveScreenState();
 }
 
-class _DriveScreenState extends ConsumerState<DriveScreen> {
+class _DriveScreenState extends ConsumerState<DriveScreen>
+    with SelectionModeMixin<DriveScreen> {
   final search = TextEditingController();
-  bool grid = false;
-  SortField sort = SortField.name;
-  bool ascending = true;
 
   @override
   void dispose() {
@@ -38,8 +39,10 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
     final drive = ref.watch(driveControllerProvider);
+    final prefs = ref.watch(viewPreferencesProvider);
     final state = drive.state;
     final query = search.text.trim().toLowerCase();
+
     var folders = drive.foldersInFolder(null);
     var files = drive.filesInFolder(null);
     if (query.isNotEmpty) {
@@ -50,496 +53,235 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
           .where((f) => f.name.toLowerCase().contains(query))
           .toList();
     }
-    folders = _sortFolders(folders);
-    files = _sortFiles(files);
+    folders = sortDriveFolders(folders, ascending: prefs.ascending);
+    files = sortDriveFiles(
+      files,
+      sort: prefs.sort,
+      ascending: prefs.ascending,
+    );
     final recent = drive.recentFiles();
+    final grid = prefs.layout == LayoutMode.grid;
 
     return Scaffold(
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: drive.refresh,
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TabHeader(
-                        title: 'TeleDrive',
-                        subtitle: 'Hi ${auth.user?.firstName ?? 'there'}',
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: search,
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          hintText: 'Search files and folders',
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          _StoragePill(used: state.usedStorage),
-                          const Spacer(),
-                          IconButton(
-                            onPressed: () => setState(() => grid = !grid),
-                            icon: Icon(
-                              grid ? Icons.view_list : Icons.grid_view,
+        child: Column(
+          children: [
+            if (selectMode)
+              DriveSelectionBar(
+                selectedCount: selectedCount,
+                onCancel: exitSelect,
+                onStar: () => _bulkStar(),
+                onMove: () => _bulkMove(),
+                onDelete: () => _bulkDelete(),
+              ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: drive.refresh,
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: _Header(
+                        userName: auth.user?.firstName ?? 'there',
+                        searchController: search,
+                        used: state.usedStorage,
+                        grid: grid,
+                        onLayoutToggle: () => ref
+                            .read(viewPreferencesProvider)
+                            .setLayout(
+                              grid ? LayoutMode.list : LayoutMode.grid,
                             ),
-                            tooltip: 'Toggle view',
+                        onSearchChanged: () => setState(() {}),
+                        menuButton: IosMoreButton(
+                          sectionsBuilder: (ctx) => buildDriveMenuSections(
+                            ctx,
+                            ref,
+                            folderId: null,
+                            includeLayoutSection: false,
+                            onSelect: () =>
+                                setState(() => selectMode = true),
                           ),
-                          PopupMenuButton<SortField>(
-                            icon: const Icon(Icons.sort),
-                            onSelected: (value) => setState(() {
-                              if (sort == value) {
-                                ascending = !ascending;
-                              } else {
-                                sort = value;
-                                ascending = true;
-                              }
-                            }),
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(
-                                value: SortField.name,
-                                child: Text('Name'),
-                              ),
-                              PopupMenuItem(
-                                value: SortField.kind,
-                                child: Text('Kind'),
-                              ),
-                              PopupMenuItem(
-                                value: SortField.size,
-                                child: Text('Size'),
-                              ),
-                              PopupMenuItem(
-                                value: SortField.date,
-                                child: Text('Date'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (state.loading && files.isEmpty && folders.isEmpty)
-                const SliverFillRemaining(child: SkeletonList()),
-              if (state.error != null)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(state.error!),
-                      ),
-                    ),
-                  ),
-                ),
-              if (recent.isNotEmpty && query.isEmpty)
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 156,
-                    child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      scrollDirection: Axis.horizontal,
-                      itemBuilder: (_, i) => SizedBox(
-                        width: 160,
-                        child: FileCardTile(
-                          file: recent[i],
-                          onTap: () => _openFile(recent[i]),
                         ),
                       ),
-                      separatorBuilder: (_, __) => const SizedBox(width: 10),
-                      itemCount: recent.length,
                     ),
-                  ),
-                ),
-              if (!state.loading && folders.isEmpty && files.isEmpty)
-                SliverFillRemaining(
-                  child: EmptyState(
-                    icon: query.isEmpty ? Icons.folder_open : Icons.search,
-                    title: query.isEmpty ? 'Your Drive is empty' : 'No results',
-                    body: query.isEmpty
-                        ? 'Upload files or create a folder to get started.'
-                        : 'Try a different file or folder name.',
-                  ),
-                ),
-              if (folders.isNotEmpty) _SectionHeader('Folders'),
-              SliverList.builder(
-                itemCount: folders.length,
-                itemBuilder: (_, i) {
-                  final folder = folders[i];
-                  return FileListTile(
-                    name: folder.name,
-                    subtitle:
-                        '${folder.recursiveFileCount} files • ${formatFileSize(folder.recursiveSize)}',
-                    isFolder: true,
-                    starred: folder.starred,
-                    onTap: () => context.push('/folder/${folder.id}'),
-                    onStar: () => ref
-                        .read(driveControllerProvider)
-                        .toggleStar(folder.id, folder: true),
-                    onMore: () => _folderActions(folder),
-                  );
-                },
-              ),
-              if (files.isNotEmpty) _SectionHeader('Files'),
-              if (grid)
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
-                  sliver: SliverGrid.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: .82,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
+                    if (state.loading && files.isEmpty && folders.isEmpty)
+                      const SliverFillRemaining(child: SkeletonList()),
+                    if (state.error != null) _ErrorBanner(state.error!),
+                    if (recent.isNotEmpty && query.isEmpty && !selectMode)
+                      SliverToBoxAdapter(
+                        child: DriveRecentsStrip(
+                          files: recent,
+                          onFileTap: (f) => openDriveFile(context, ref, f),
                         ),
-                    itemCount: files.length,
-                    itemBuilder: (_, i) => FileCardTile(
-                      file: files[i],
-                      onTap: () => _openFile(files[i]),
-                      onMore: () => _fileActions(files[i]),
+                      ),
+                    if (!state.loading && folders.isEmpty && files.isEmpty)
+                      SliverFillRemaining(
+                        child: EmptyState(
+                          icon: query.isEmpty
+                              ? Icons.folder_open
+                              : Icons.search,
+                          title: query.isEmpty
+                              ? 'Your Drive is empty'
+                              : 'No results',
+                          body: query.isEmpty
+                              ? 'Upload files or create a folder to get started.'
+                              : 'Try a different file or folder name.',
+                        ),
+                      ),
+                    if (folders.isNotEmpty)
+                      const DriveSectionHeader('Folders'),
+                    DriveFolderSliver(
+                      folders: folders,
+                      selectMode: selectMode,
+                      selectedFolderIds: selectedFolderIds,
+                      onFolderTap: _onFolderTap,
+                      onFolderLongPress: (id) =>
+                          enterSelect(folderId: id),
+                      onFolderMore: (folder) => DriveItemActions.openFolder(
+                        context,
+                        ref,
+                        folder,
+                      ),
                     ),
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.only(bottom: 120),
-                  sliver: SliverList.builder(
-                    itemCount: files.length,
-                    itemBuilder: (_, i) {
-                      final file = files[i];
-                      return FileListTile(
-                        name: file.name,
-                        subtitle: file.isOptimistic
-                            ? '${formatUploadStatus(file)} • ${formatFileSize(file.size)}'
-                            : '${formatLabel(file)} • ${formatFileSize(file.size)} • ${formatDate(file.modifiedAt)}',
-                        file: file,
-                        starred: file.starred,
-                        onTap: () => _openFile(file),
-                        onStar: file.isOptimistic
-                            ? null
-                            : () => ref
-                                  .read(driveControllerProvider)
-                                  .toggleStar(file.id),
-                        onMore: file.isOptimistic
-                            ? null
-                            : () => _fileActions(file),
-                      );
-                    },
-                  ),
+                    if (files.isNotEmpty) const DriveSectionHeader('Files'),
+                    DriveFilesSliver(
+                      files: files,
+                      grid: grid,
+                      selectMode: selectMode,
+                      selectedFileIds: selectedFileIds,
+                      onFileTap: _onFileTap,
+                      onFileLongPress: (id) => enterSelect(fileId: id),
+                      onFileMore: (file) =>
+                          DriveItemActions.openFile(context, ref, file),
+                    ),
+                  ],
                 ),
-            ],
-          ),
+              ),
+            ),
+          ],
         ),
       ),
-      floatingActionButton: _DriveFab(parentId: null),
+      floatingActionButton: selectMode ? null : const DriveFab(),
     );
   }
 
-  List<DriveFile> _sortFiles(List<DriveFile> input) {
-    final list = [...input];
-    list.sort((a, b) {
-      final cmp = switch (sort) {
-        SortField.name => a.name.compareTo(b.name),
-        SortField.kind => a.kind.name.compareTo(b.kind.name),
-        SortField.size => a.size.compareTo(b.size),
-        SortField.date => a.modifiedAt.compareTo(b.modifiedAt),
-      };
-      return ascending ? cmp : -cmp;
-    });
-    return list;
-  }
-
-  List<DriveFolder> _sortFolders(List<DriveFolder> input) {
-    final list = [...input]..sort((a, b) => a.name.compareTo(b.name));
-    return ascending ? list : list.reversed.toList();
-  }
-
-  void _openFile(DriveFile file) {
-    if (file.isOptimistic) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(formatUploadStatus(file))));
+  void _onFileTap(DriveFile file) {
+    if (selectMode) {
+      toggleFileSelection(file.id);
       return;
     }
-    ref.read(driveControllerProvider).markAccessed(file.id);
-    context.push('/file/${file.id}');
+    openDriveFile(context, ref, file);
   }
 
-  Future<void> _fileActions(DriveFile file) async {
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      builder: (_) => _ActionSheet(
-        title: file.name,
-        actions: const {
-          'download': Icons.download,
-          'move': Icons.drive_file_move_outline,
-          'star': Icons.star_border,
-          'delete': Icons.delete_outline,
-        },
-      ),
-    );
-    if (action == 'move' && mounted) {
-      final targetId = await showModalBottomSheet<String>(
-        context: context,
-        isScrollControlled: true,
-        builder: (_) => MoveDestinationSheet(
-          title: 'Move "${file.name}"',
-          currentParentId: file.parentId,
-        ),
-      );
-      if (mounted && targetId != null) {
-        await ref
-            .read(driveControllerProvider)
-            .moveFile(
-              file.id,
-              targetId == rootMoveDestination ? null : targetId,
-            );
-      }
+  void _onFolderTap(DriveFolder folder) {
+    if (selectMode) {
+      toggleFolderSelection(folder.id);
+      return;
     }
-    if (action == 'delete')
-      await ref.read(driveControllerProvider).deleteItems(fileIds: [file.id]);
-    if (action == 'star') ref.read(driveControllerProvider).toggleStar(file.id);
+    context.push('/folder/${folder.id}');
   }
 
-  Future<void> _folderActions(DriveFolder folder) async {
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      builder: (_) => _ActionSheet(
-        title: folder.name,
-        actions: const {
-          'rename': Icons.edit_outlined,
-          'move': Icons.drive_file_move_outline,
-          'star': Icons.star_border,
-          'delete': Icons.delete_outline,
-        },
-      ),
+  Future<void> _bulkStar() async {
+    await DriveBulkActions.star(
+      ref,
+      fileIds: selectedFileIds,
+      folderIds: selectedFolderIds,
     );
-    if (action == 'move' && mounted) {
-      final targetId = await showModalBottomSheet<String>(
-        context: context,
-        isScrollControlled: true,
-        builder: (_) => MoveDestinationSheet(
-          title: 'Move "${folder.name}"',
-          movingFolderId: folder.id,
-          currentParentId: folder.parentId,
-        ),
-      );
-      if (mounted && targetId != null) {
-        await ref
-            .read(driveControllerProvider)
-            .moveFolder(
-              folder.id,
-              targetId == rootMoveDestination ? null : targetId,
-            );
-      }
-    }
-    if (action == 'delete')
-      await ref
-          .read(driveControllerProvider)
-          .deleteItems(folderIds: [folder.id]);
-    if (action == 'star')
-      ref.read(driveControllerProvider).toggleStar(folder.id, folder: true);
-    if (action == 'rename' && mounted) await _renameFolder(folder);
+    exitSelect();
   }
 
-  Future<void> _renameFolder(DriveFolder folder) async {
-    final controller = TextEditingController(text: folder.name);
-    final name = await showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Rename folder'),
-        content: TextField(controller: controller, autofocus: true),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+  Future<void> _bulkMove() async {
+    await DriveBulkActions.move(
+      context,
+      ref,
+      fileIds: selectedFileIds,
+      folderIds: selectedFolderIds,
+    );
+    if (mounted) exitSelect();
+  }
+
+  Future<void> _bulkDelete() async {
+    final ok = await DriveBulkActions.delete(
+      context,
+      ref,
+      fileIds: selectedFileIds,
+      folderIds: selectedFolderIds,
+    );
+    if (ok && mounted) exitSelect();
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.userName,
+    required this.searchController,
+    required this.used,
+    required this.grid,
+    required this.onLayoutToggle,
+    required this.onSearchChanged,
+    required this.menuButton,
+  });
+
+  final String userName;
+  final TextEditingController searchController;
+  final int used;
+  final bool grid;
+  final VoidCallback onLayoutToggle;
+  final VoidCallback onSearchChanged;
+  final Widget menuButton;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TabHeader(
+            title: 'TeleDrive',
+            subtitle: 'Hi $userName',
+            trailing: menuButton,
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Save'),
+          const SizedBox(height: 14),
+          TextField(
+            controller: searchController,
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.search),
+              hintText: 'Search files and folders',
+            ),
+            onChanged: (_) => onSearchChanged(),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              DriveStoragePill(used: used),
+              const Spacer(),
+              IconButton(
+                onPressed: onLayoutToggle,
+                icon: Icon(grid ? Icons.view_list : Icons.grid_view),
+                tooltip: 'Toggle view',
+              ),
+            ],
           ),
         ],
       ),
     );
-    if (name != null && name.isNotEmpty)
-      await ref.read(driveControllerProvider).renameFolder(folder.id, name);
   }
 }
 
-class _StoragePill extends StatelessWidget {
-  const _StoragePill({required this.used});
-  final int used;
+class _ErrorBanner extends StatelessWidget {
+  const _ErrorBanner(this.message);
+  final String message;
 
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${formatFileSize(used)} used',
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              LinearProgressIndicator(
-                value: used > 0 ? 1 : 0,
-                minHeight: 6,
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title);
-  final String title;
   @override
   Widget build(BuildContext context) => SliverToBoxAdapter(
     child: Padding(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 6),
-      child: Text(title, style: Theme.of(context).textTheme.titleLarge),
-    ),
-  );
-}
-
-class _DriveFab extends ConsumerWidget {
-  const _DriveFab({this.parentId});
-  final String? parentId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return FloatingActionButton.extended(
-      onPressed: () async {
-        final action = await showModalBottomSheet<String>(
-          context: context,
-          builder: (_) => SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-                    child: Text(
-                      'Add to Drive',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  const Divider(height: 16),
-                  ListTile(
-                    leading: const Icon(Icons.upload_file),
-                    title: const Text('Upload File'),
-                    onTap: () => Navigator.pop(context, 'upload'),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.camera_alt_outlined),
-                    title: const Text('Take Photo'),
-                    onTap: () => Navigator.pop(context, 'photo'),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.create_new_folder_outlined),
-                    title: const Text('Create Folder'),
-                    onTap: () => Navigator.pop(context, 'folder'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-        if (action == 'upload')
-          await ref
-              .read(uploadControllerProvider)
-              .pickFiles(folderId: parentId);
-        if (action == 'photo')
-          await ref
-              .read(uploadControllerProvider)
-              .pickPhoto(folderId: parentId);
-        if (action == 'folder' && context.mounted) {
-          final c = TextEditingController();
-          final name = await showDialog<String>(
-            context: context,
-            builder: (_) => AlertDialog(
-              title: const Text('New folder'),
-              content: TextField(
-                controller: c,
-                autofocus: true,
-                decoration: const InputDecoration(labelText: 'Folder name'),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context, c.text.trim()),
-                  child: const Text('Create'),
-                ),
-              ],
-            ),
-          );
-          if (name != null && name.isNotEmpty)
-            await ref
-                .read(driveControllerProvider)
-                .createFolder(name, parentId);
-        }
-      },
-      icon: const Icon(Icons.add),
-      label: const Text('Add'),
-    );
-  }
-}
-
-class _ActionSheet extends StatelessWidget {
-  const _ActionSheet({required this.title, required this.actions});
-  final String title;
-  final Map<String, IconData> actions;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 10),
-            for (final entry in actions.entries)
-              ListTile(
-                leading: Icon(entry.value),
-                title: Text(
-                  entry.key[0].toUpperCase() + entry.key.substring(1),
-                ),
-                onTap: () => Navigator.pop(context, entry.key),
-              ),
-          ],
+      padding: const EdgeInsets.all(16),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(message),
         ),
       ),
-    );
-  }
+    ),
+  );
 }
