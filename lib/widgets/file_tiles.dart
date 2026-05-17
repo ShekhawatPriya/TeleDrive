@@ -68,7 +68,7 @@ class FileListTile extends StatelessWidget {
                           color: scheme.primary,
                         ),
                       )
-                    : MediaThumb(file: file!, fit: BoxFit.contain),
+                    : MediaThumb(file: file!, fit: BoxFit.cover),
               ),
             ],
           ),
@@ -137,7 +137,7 @@ class FileCardTile extends StatelessWidget {
                 child: Stack(
                   children: [
                     SizedBox.expand(
-                      child: MediaThumb(file: file, fit: BoxFit.contain),
+                      child: MediaThumb(file: file, fit: BoxFit.cover),
                     ),
                     if (inSelectMode)
                       Positioned(
