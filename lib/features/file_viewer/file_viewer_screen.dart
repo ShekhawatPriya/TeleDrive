@@ -47,22 +47,7 @@ class FileViewerScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
-          AspectRatio(
-            aspectRatio:
-                file.widthPx != null &&
-                    file.heightPx != null &&
-                    file.heightPx! > 0
-                ? file.widthPx! / file.heightPx!
-                : 1,
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: isVideoFile(file) && file.streamUrl != null
-                    ? _VideoPlayer(url: file.streamUrl!)
-                    : MediaThumb(file: file, fit: BoxFit.contain, radius: 14),
-              ),
-            ),
-          ),
+          _PreviewFrame(file: file),
           const SizedBox(height: 18),
           Text(file.name, style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 8),
@@ -123,6 +108,50 @@ class FileViewerScreen extends ConsumerWidget {
         ),
       );
     }
+  }
+}
+
+class _PreviewFrame extends StatelessWidget {
+  const _PreviewFrame({required this.file});
+  final DriveFile file;
+
+  @override
+  Widget build(BuildContext context) {
+    final isVideo = isVideoFile(file) && file.streamUrl != null;
+    final w = file.widthPx?.toDouble();
+    final h = file.heightPx?.toDouble();
+    final hasSize = w != null && h != null && w > 0 && h > 0;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxH = MediaQuery.of(context).size.height * 0.62;
+        final ar = hasSize ? w / h : (isVideo ? 16 / 9 : 1.0);
+        final widthBased = constraints.maxWidth;
+        final heightFromWidth = widthBased / ar;
+        final double width;
+        final double height;
+        if (heightFromWidth <= maxH) {
+          width = widthBased;
+          height = heightFromWidth;
+        } else {
+          height = maxH;
+          width = maxH * ar;
+        }
+
+        return Center(
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: isVideo
+                  ? _VideoPlayer(url: file.streamUrl!)
+                  : MediaThumb(file: file, fit: BoxFit.contain, radius: 0),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
