@@ -12,8 +12,18 @@ class AuthRepository {
   final SecureStorageService storage;
 
   Future<String?> storedToken() => storage.readToken();
+  Future<AuthUser?> storedUser() => storage.readUser();
 
+  bool isExpired(String token) => isJwtExpired(token);
   AuthUser? decode(String token) => decodeJwtUser(token);
+
+  AuthUser? userFromAuthPayload(Map<String, dynamic> data) {
+    try {
+      return _withLoadablePhotoUrl(AuthUser.fromMeJson(data));
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<Map<String, dynamic>> start(String phone) async {
     final res = await api.dio.post(
@@ -54,9 +64,25 @@ class AuthRepository {
     }
   }
 
-  Future<AuthUser?> fetchProfile(AuthUser current) async {
+  Future<AuthUser> fetchProfile({AuthUser? current}) async {
     final res = await api.dio.get('/me');
-    return AuthUser.fromMe(Map<String, dynamic>.from(res.data as Map), current);
+    final data = Map<String, dynamic>.from(res.data as Map);
+    final parsed = current == null
+        ? AuthUser.fromMeJson(data)
+        : AuthUser.fromMe(data, current);
+    final user = _withLoadablePhotoUrl(parsed);
+    await storage.saveUser(user);
+    return user;
+  }
+
+  AuthUser _withLoadablePhotoUrl(AuthUser user) {
+    final photoUrl = user.photoUrl?.trim();
+    if (photoUrl == null || photoUrl.isEmpty || photoUrl.startsWith('data:')) {
+      return user;
+    }
+    final uri = Uri.tryParse(photoUrl);
+    if (uri != null && uri.hasScheme) return user;
+    return user.copyWith(photoUrl: api.mediaUrl(photoUrl));
   }
 
   Future<void> saveToken(String token) async {

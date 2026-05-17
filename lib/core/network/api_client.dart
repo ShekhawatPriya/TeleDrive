@@ -30,9 +30,19 @@ class ApiClient {
   String? get token => _token;
 
   String mediaUrl(String path, {Map<String, dynamic> params = const {}}) {
+    final uri = Uri.tryParse(path);
+    if (uri != null && uri.hasScheme) return path;
+    final basePath = Uri.parse(AppConfig.apiBaseUrl).path;
+    final normalizedPath = basePath.isNotEmpty && path.startsWith('$basePath/')
+        ? path.substring(basePath.length)
+        : path;
     final token = _token;
-    if (token == null) return AppConfig.apiUri(path, params).toString();
-    return AppConfig.apiUri(path, {'token': token, ...params}).toString();
+    if (token == null)
+      return AppConfig.apiUri(normalizedPath, params).toString();
+    return AppConfig.apiUri(normalizedPath, {
+      'token': token,
+      ...params,
+    }).toString();
   }
 
   String errorMessage(Object err, [String fallback = 'Request failed.']) {

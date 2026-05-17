@@ -38,19 +38,24 @@ class AuthController extends ChangeNotifier {
     loading = true;
     notifyListeners();
     try {
+      error = null;
       final stored = await _repo.storedToken();
       if (stored == null) return;
-      final decoded = _repo.decode(stored);
-      if (decoded == null) {
+      if (_repo.isExpired(stored)) {
         await _repo.logout();
         return;
       }
       token = stored;
-      user = decoded;
       await _repo.saveToken(stored);
-      await refreshTelegramStatus();
-      await refreshProfile();
+      user = await _repo.storedUser() ?? _repo.decode(stored);
+      notifyListeners();
+      user = await _repo.fetchProfile(current: user);
+      telegramConnected = await _repo.telegramStatus();
     } catch (err) {
+      await _repo.logout();
+      token = null;
+      user = null;
+      telegramConnected = null;
       error = _repo.api.errorMessage(err, 'Auth bootstrap failed.');
     } finally {
       loading = false;
@@ -58,14 +63,19 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  Future<void> login(String nextToken) async {
-    final decoded = _repo.decode(nextToken);
-    if (decoded == null) throw Exception('Invalid token received.');
+  Future<void> login(
+    String nextToken, {
+    Map<String, dynamic>? authPayload,
+  }) async {
+    error = null;
+    if (_repo.isExpired(nextToken)) throw Exception('Invalid token received.');
     token = nextToken;
-    user = decoded;
+    user =
+        (authPayload == null ? null : _repo.userFromAuthPayload(authPayload)) ??
+        _repo.decode(nextToken);
     await _repo.saveToken(nextToken);
-    await refreshTelegramStatus();
-    await refreshProfile();
+    user = await _repo.fetchProfile(current: user);
+    telegramConnected = await _repo.telegramStatus();
     notifyListeners();
   }
 
@@ -80,10 +90,8 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> refreshProfile() async {
-    final current = user;
-    if (current == null) return;
     try {
-      user = await _repo.fetchProfile(current) ?? current;
+      user = await _repo.fetchProfile(current: user);
       notifyListeners();
     } catch (_) {}
   }
@@ -93,6 +101,7 @@ class AuthController extends ChangeNotifier {
     token = null;
     user = null;
     telegramConnected = null;
+    error = null;
     notifyListeners();
   }
 

@@ -85,6 +85,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Future<void> _sendCode() async {
+    if (_loading) return;
     final local = _phone.text.replaceAll(RegExp(r'\s+'), '');
     if (local.isEmpty) {
       setState(() => _error = 'Please enter your phone number');
@@ -102,6 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Future<void> _verifyCode() async {
+    if (_loading) return;
     if (_attemptId == null || _code.text.trim().isEmpty) {
       setState(() => _error = 'Please enter the verification code');
       return;
@@ -115,13 +117,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       if (data['status'] == 'requires_2fa') {
         _setStep(_Step.password);
       } else if (data['token'] != null) {
-        await ref.read(authControllerProvider).login('${data['token']}');
-        if (mounted) context.go('/drive');
+        await _completeLogin('${data['token']}', data);
       }
     } catch (_) {}
   }
 
   Future<void> _verifyPassword() async {
+    if (_loading) return;
     if (_attemptId == null || _password.text.trim().isEmpty) {
       setState(() => _error = 'Please enter your password');
       return;
@@ -133,10 +135,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             .verifyPassword(_attemptId!, _password.text.trim()),
       );
       if (data['token'] != null) {
-        await ref.read(authControllerProvider).login('${data['token']}');
-        if (mounted) context.go('/drive');
+        await _completeLogin('${data['token']}', data);
       }
     } catch (_) {}
+  }
+
+  Future<void> _completeLogin(
+    String token,
+    Map<String, dynamic> authPayload,
+  ) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(authControllerProvider)
+          .login(token, authPayload: authPayload);
+      if (mounted) context.go('/drive');
+    } catch (err) {
+      final repo = ref.read(authRepositoryProvider);
+      if (mounted) setState(() => _error = repo.api.errorMessage(err));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<void> _pickCountry() async {
@@ -241,17 +263,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Widget _buildHeader() {
     final (title, subtitle) = switch (_step) {
       _Step.phone => (
-          'Sign in to TeleDrive',
-          'Enter your phone number to connect\nyour Telegram account.',
-        ),
+        'Sign in to TeleDrive',
+        'Enter your phone number to connect\nyour Telegram account.',
+      ),
       _Step.code => (
-          'Verification code',
-          'We sent a code to your Telegram app.\nPlease enter it below.',
-        ),
+        'Verification code',
+        'We sent a code to your Telegram app.\nPlease enter it below.',
+      ),
       _Step.password => (
-          'Two-factor authentication',
-          'Your account has 2FA enabled.\nEnter your cloud password.',
-        ),
+        'Two-factor authentication',
+        'Your account has 2FA enabled.\nEnter your cloud password.',
+      ),
     };
 
     return Column(
@@ -365,9 +387,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   height: 52,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    border: Border(
-                      right: BorderSide(color: _borderWarm),
-                    ),
+                    border: Border(right: BorderSide(color: _borderWarm)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -410,6 +430,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               // Phone number input
               Expanded(
                 child: TextField(
+                  key: const ValueKey('phone_input'),
                   controller: _phone,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.send,
@@ -448,11 +469,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           onTap: _pickCountry,
           child: Row(
             children: [
-              Icon(
-                Icons.public_rounded,
-                size: 14,
-                color: _stone,
-              ),
+              Icon(Icons.public_rounded, size: 14, color: _stone),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -511,6 +528,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             color: Colors.white,
           ),
           child: TextField(
+            key: const ValueKey('code_input'),
             controller: _code,
             keyboardType: TextInputType.number,
             textAlign: TextAlign.center,
@@ -547,10 +565,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: _focusBlue,
-                  width: 1.4,
-                ),
+                borderSide: const BorderSide(color: _focusBlue, width: 1.4),
               ),
             ),
             onSubmitted: (_) => _verifyCode(),
@@ -569,11 +584,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.arrow_back_rounded,
-                  size: 16,
-                  color: _oliveGray,
-                ),
+                Icon(Icons.arrow_back_rounded, size: 16, color: _oliveGray),
                 const SizedBox(width: 6),
                 const Text(
                   'Wrong number?',
@@ -618,7 +629,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             color: Colors.white,
           ),
           child: TextField(
+            key: const ValueKey('password_input'),
             controller: _password,
+            keyboardType: TextInputType.visiblePassword,
+            textInputAction: TextInputAction.done,
+            enableSuggestions: false,
+            autocorrect: false,
             obscureText: _obscurePassword,
             autofocus: true,
             style: const TextStyle(
@@ -670,10 +686,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: _focusBlue,
-                  width: 1.4,
-                ),
+                borderSide: const BorderSide(color: _focusBlue, width: 1.4),
               ),
             ),
             onSubmitted: (_) => _verifyPassword(),
@@ -692,11 +705,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.arrow_back_rounded,
-                  size: 16,
-                  color: _oliveGray,
-                ),
+                Icon(Icons.arrow_back_rounded, size: 16, color: _oliveGray),
                 const SizedBox(width: 6),
                 const Text(
                   'Start over',
@@ -786,8 +795,8 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
           color: widget.loading
               ? AppColors.terracotta.withValues(alpha: 0.7)
               : _pressed
-                  ? const Color(0xffb5573a) // Slightly darker terracotta
-                  : AppColors.terracotta,
+              ? const Color(0xffb5573a) // Slightly darker terracotta
+              : AppColors.terracotta,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             // Ring shadow per design system
@@ -840,17 +849,11 @@ class _ErrorBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.error.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: AppColors.error.withValues(alpha: 0.15),
-        ),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.error_outline_rounded,
-            color: AppColors.error,
-            size: 18,
-          ),
+          Icon(Icons.error_outline_rounded, color: AppColors.error, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
