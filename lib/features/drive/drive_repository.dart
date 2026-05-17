@@ -46,6 +46,29 @@ class DriveRepository {
     return all;
   }
 
+  Future<DriveSnapshot> getDriveState() async {
+    final res = await api.dio.get('/frontend/drive-state');
+    return parseDriveState(Map<String, dynamic>.from(res.data as Map));
+  }
+
+  DriveSnapshot parseDriveState(Map<String, dynamic> data) {
+    final files = (data['files'] as List? ?? [])
+        .map((e) => _mapFile(Map<String, dynamic>.from(e as Map)))
+        .toList();
+    final mediaFiles = (data['mediaFiles'] as List? ?? [])
+        .map((e) => _mapFile(Map<String, dynamic>.from(e as Map)))
+        .toList();
+    final folders = (data['folders'] as List? ?? [])
+        .map((e) => _mapFolder(Map<String, dynamic>.from(e as Map)))
+        .toList();
+    return DriveSnapshot(
+      files: files,
+      mediaFiles: mediaFiles,
+      folders: folders,
+      mediaCursor: data['mediaNextCursor'] as String?,
+    );
+  }
+
   Future<DriveFile> getFile(String id) async {
     final res = await api.dio.get('/files/$id');
     return _mapFile(Map<String, dynamic>.from(res.data as Map));

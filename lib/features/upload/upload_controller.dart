@@ -113,14 +113,7 @@ class UploadController extends ChangeNotifier {
   UploadController(this._api, this._drive);
 
   static const maxFiles = 50;
-  static const maxConcurrentClientUploads = 2;
-  static const pollInterval = Duration(milliseconds: 450);
-  static const postUploadRefreshDelays = [
-    Duration(seconds: 2),
-    Duration(seconds: 6),
-    Duration(seconds: 15),
-    Duration(seconds: 30),
-  ];
+  static const pollInterval = Duration(milliseconds: 1200);
 
   final ApiClient _api;
   final DriveController _drive;
@@ -128,12 +121,11 @@ class UploadController extends ChangeNotifier {
   final Map<String, CancelToken> _cancelTokensByLocalId = {};
   final Map<String, Timer> _pollTimersByLocalId = {};
   final Map<int, Timer> _pollTimersByBatchId = {};
-  final List<Timer> _postUploadRefreshTimers = [];
   final Set<String> _pollingLocalIds = {};
   final Set<int> _pollingBatchIds = {};
   final Set<String> _runningLocalIds = {};
   Timer? _autoDismissTimer;
-  String? _postUploadRefreshSessionId;
+  String? _refreshedUploadSessionId;
   bool _disposed = false;
 
   String? uploadSessionId;
@@ -748,33 +740,18 @@ class UploadController extends ChangeNotifier {
     if (uploading || !items.any((i) => i.status == UploadStatus.uploaded)) {
       return;
     }
-    await _refreshDrive();
+    final sessionId = uploadSessionId;
+    if (sessionId != null && _refreshedUploadSessionId != sessionId) {
+      _refreshedUploadSessionId = sessionId;
+      await _refreshDrive();
+    }
     if (_allItemsUploaded) {
-      _schedulePostUploadRefreshes();
       _scheduleAutoDismiss();
     }
   }
 
   bool get _allItemsUploaded =>
       items.isNotEmpty && items.every((i) => i.status == UploadStatus.uploaded);
-
-  void _schedulePostUploadRefreshes() {
-    final sessionId = uploadSessionId;
-    if (sessionId == null || _postUploadRefreshSessionId == sessionId) return;
-    _postUploadRefreshSessionId = sessionId;
-    for (final delay in postUploadRefreshDelays) {
-      _postUploadRefreshTimers.add(
-        Timer(delay, () async {
-          if (_disposed ||
-              _postUploadRefreshSessionId != sessionId ||
-              uploading) {
-            return;
-          }
-          await _refreshDrive();
-        }),
-      );
-    }
-  }
 
   void _scheduleAutoDismiss() {
     final sessionId = uploadSessionId;
@@ -794,16 +771,12 @@ class UploadController extends ChangeNotifier {
   void _cancelCompletionTimers() {
     _autoDismissTimer?.cancel();
     _autoDismissTimer = null;
-    for (final timer in _postUploadRefreshTimers) {
-      timer.cancel();
-    }
-    _postUploadRefreshTimers.clear();
-    _postUploadRefreshSessionId = null;
+    _refreshedUploadSessionId = null;
   }
 
   Future<void> _refreshDrive() async {
     try {
-      await _drive.refresh(silent: true);
+      await _drive.refresh(silent: true, force: true);
     } catch (_) {
       // Drive refresh already owns its user-facing error state.
     }

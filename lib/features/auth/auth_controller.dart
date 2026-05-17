@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../models/auth_user.dart';
+import '../../models/drive_models.dart';
 import 'auth_repository.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
@@ -31,6 +32,7 @@ class AuthController extends ChangeNotifier {
   bool loading = true;
   bool? telegramConnected;
   String? error;
+  DriveSnapshot? pendingDriveBootstrap;
 
   bool get isAuthenticated => user != null && token != null;
 
@@ -49,13 +51,16 @@ class AuthController extends ChangeNotifier {
       await _repo.saveToken(stored);
       user = await _repo.storedUser() ?? _repo.decode(stored);
       notifyListeners();
-      user = await _repo.fetchProfile(current: user);
-      telegramConnected = await _repo.telegramStatus();
+      final bootstrap = await _repo.bootstrap(includeDrive: true);
+      user = bootstrap.user;
+      telegramConnected = bootstrap.telegramConnected;
+      pendingDriveBootstrap = bootstrap.drive;
     } catch (err) {
       await _repo.logout();
       token = null;
       user = null;
       telegramConnected = null;
+      pendingDriveBootstrap = null;
       error = _repo.api.errorMessage(err, 'Auth bootstrap failed.');
     } finally {
       loading = false;
@@ -74,9 +79,17 @@ class AuthController extends ChangeNotifier {
         (authPayload == null ? null : _repo.userFromAuthPayload(authPayload)) ??
         _repo.decode(nextToken);
     await _repo.saveToken(nextToken);
-    user = await _repo.fetchProfile(current: user);
-    telegramConnected = await _repo.telegramStatus();
+    final bootstrap = await _repo.bootstrap(includeDrive: true);
+    user = bootstrap.user;
+    telegramConnected = bootstrap.telegramConnected;
+    pendingDriveBootstrap = bootstrap.drive;
     notifyListeners();
+  }
+
+  DriveSnapshot? takePendingDriveBootstrap() {
+    final snapshot = pendingDriveBootstrap;
+    pendingDriveBootstrap = null;
+    return snapshot;
   }
 
   Future<void> refreshTelegramStatus() async {
@@ -101,6 +114,7 @@ class AuthController extends ChangeNotifier {
     token = null;
     user = null;
     telegramConnected = null;
+    pendingDriveBootstrap = null;
     error = null;
     notifyListeners();
   }

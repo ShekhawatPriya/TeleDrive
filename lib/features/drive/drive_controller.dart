@@ -32,6 +32,7 @@ class DriveController extends ChangeNotifier {
   DriveState state = const DriveState();
   Map<String, String> _recent = {};
   Future<void>? _refreshing;
+  DateTime? _lastRefreshCompletedAt;
 
   List<DriveFile> get files => state.files
       .map((f) => f.copyWith(lastAccessedAt: _recent[f.id]))
@@ -46,9 +47,13 @@ class DriveController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> refresh({bool silent = false}) async {
+  Future<void> refresh({bool silent = false, bool force = false}) async {
     final inFlight = _refreshing;
     if (inFlight != null) return inFlight;
+    if (!force && silent && _lastRefreshCompletedAt != null) {
+      final elapsed = DateTime.now().difference(_lastRefreshCompletedAt!);
+      if (elapsed < const Duration(seconds: 1)) return;
+    }
     final refresh = _refresh(silent: silent);
     _refreshing = refresh;
     try {
@@ -66,24 +71,9 @@ class DriveController extends ChangeNotifier {
       notifyListeners();
     }
     try {
-      final results = await Future.wait<dynamic>([
-        _repo.listAllFiles(),
-        _repo.listFiles(type: 'media', limit: 60, allFolders: true),
-        _repo.listFolders(),
-      ]);
-      final all = results[0] as List<DriveFile>;
-      final media = results[1] as ({List<DriveFile> files, String? nextCursor});
-      final folders = results[2] as List<DriveFolder>;
-      state = state.copyWith(
-        files: all.where((f) => f.uploadStatus == 'available').toList(),
-        mediaFiles: media.files
-            .where((f) => f.uploadStatus == 'available')
-            .toList(),
-        folders: folders,
-        mediaCursor: media.nextCursor,
-        loading: false,
-        clearError: true,
-      );
+      applyDriveState(await _repo.getDriveState(), notify: false);
+      state = state.copyWith(loading: false, clearError: true);
+      _lastRefreshCompletedAt = DateTime.now();
     } catch (err) {
       state = state.copyWith(
         loading: false,
@@ -91,6 +81,23 @@ class DriveController extends ChangeNotifier {
       );
     }
     notifyListeners();
+  }
+
+  void applyDriveState(DriveSnapshot snapshot, {bool notify = true}) {
+    state = state.copyWith(
+      files: snapshot.files
+          .where((f) => f.uploadStatus == 'available')
+          .toList(),
+      mediaFiles: snapshot.mediaFiles
+          .where((f) => f.uploadStatus == 'available')
+          .toList(),
+      folders: snapshot.folders,
+      mediaCursor: snapshot.mediaCursor,
+      loading: false,
+      clearError: true,
+    );
+    _lastRefreshCompletedAt = DateTime.now();
+    if (notify) notifyListeners();
   }
 
   Future<void> loadMoreMedia() async {

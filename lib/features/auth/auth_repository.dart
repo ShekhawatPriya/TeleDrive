@@ -3,6 +3,20 @@ import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../core/utils/jwt.dart';
 import '../../models/auth_user.dart';
+import '../../models/drive_models.dart';
+import '../drive/drive_repository.dart';
+
+class AuthBootstrapResult {
+  const AuthBootstrapResult({
+    required this.user,
+    required this.telegramConnected,
+    this.drive,
+  });
+
+  final AuthUser user;
+  final bool? telegramConnected;
+  final DriveSnapshot? drive;
+}
 
 class AuthRepository {
   AuthRepository(this.api, this.storage);
@@ -61,6 +75,34 @@ class AuthRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<AuthBootstrapResult> bootstrap({bool includeDrive = true}) async {
+    final res = await api.dio.get(
+      '/frontend/bootstrap',
+      queryParameters: {
+        'include_drive': includeDrive,
+        'validate_telegram': false,
+      },
+    );
+    final data = Map<String, dynamic>.from(res.data as Map);
+    final user = _withLoadablePhotoUrl(
+      AuthUser.fromMeJson(Map<String, dynamic>.from(data['currentUser'] as Map)),
+    );
+    await storage.saveUser(user);
+    final telegram = data['telegram'] is Map
+        ? Map<String, dynamic>.from(data['telegram'] as Map)
+        : <String, dynamic>{};
+    final drive = data['drive'] is Map
+        ? DriveRepository(api).parseDriveState(
+            Map<String, dynamic>.from(data['drive'] as Map),
+          )
+        : null;
+    return AuthBootstrapResult(
+      user: user,
+      telegramConnected: telegram['connected'] as bool?,
+      drive: drive,
+    );
   }
 
   Future<AuthUser> fetchProfile({AuthUser? current}) async {

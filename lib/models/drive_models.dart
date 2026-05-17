@@ -184,7 +184,7 @@ class DriveState {
     List<DriveFolder>? folders,
     bool? loading,
     String? error,
-    String? mediaCursor,
+    Object? mediaCursor = _unset,
     bool? loadingMoreMedia,
     ({int completed, int failed, int total})? deleteProgress,
     bool clearError = false,
@@ -196,11 +196,27 @@ class DriveState {
       folders: folders ?? this.folders,
       loading: loading ?? this.loading,
       error: clearError ? null : error ?? this.error,
-      mediaCursor: mediaCursor ?? this.mediaCursor,
+      mediaCursor: mediaCursor == _unset
+          ? this.mediaCursor
+          : mediaCursor as String?,
       loadingMoreMedia: loadingMoreMedia ?? this.loadingMoreMedia,
       deleteProgress: clearDeleteProgress
           ? null
           : deleteProgress ?? this.deleteProgress,
     );
   }
+}
+
+class DriveSnapshot {
+  const DriveSnapshot({
+    required this.files,
+    required this.mediaFiles,
+    required this.folders,
+    this.mediaCursor,
+  });
+
+  final List<DriveFile> files;
+  final List<DriveFile> mediaFiles;
+  final List<DriveFolder> folders;
+  final String? mediaCursor;
 }

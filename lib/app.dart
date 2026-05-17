@@ -111,7 +111,13 @@ class _MainShellState extends ConsumerState<MainShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = ref.read(authControllerProvider);
       if (auth.isAuthenticated && auth.telegramConnected == true) {
-        ref.read(driveControllerProvider).refresh();
+        final drive = ref.read(driveControllerProvider);
+        final bootstrap = auth.takePendingDriveBootstrap();
+        if (bootstrap != null) {
+          drive.applyDriveState(bootstrap);
+        } else {
+          drive.refresh(force: true);
+        }
       }
     });
   }
