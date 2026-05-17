@@ -25,6 +25,7 @@ class AuthUser {
     String? lastName,
     String? username,
     String? photoUrl,
+    bool clearPhotoUrl = false,
   }) {
     return AuthUser(
       userId: userId,
@@ -32,7 +33,7 @@ class AuthUser {
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
       username: username ?? this.username,
-      photoUrl: photoUrl ?? this.photoUrl,
+      photoUrl: clearPhotoUrl ? null : (photoUrl ?? this.photoUrl),
     );
   }
 
@@ -91,11 +92,13 @@ class AuthUser {
 
   factory AuthUser.fromMe(Map<String, dynamic> json, AuthUser previous) {
     final payload = _profilePayload(json);
+    final nextPhotoUrl = _photoUrl(payload);
     return previous.copyWith(
       firstName: _stringValue(payload, const ['firstName', 'first_name']),
       lastName: _stringValue(payload, const ['lastName', 'last_name']),
       username: _stringValue(payload, const ['username']),
-      photoUrl: _photoUrl(payload),
+      photoUrl: nextPhotoUrl,
+      clearPhotoUrl: nextPhotoUrl == null && _hasAnyKey(payload, _photoKeys),
     );
   }
 
@@ -107,6 +110,23 @@ class AuthUser {
     return json;
   }
 
+  static const _photoKeys = [
+    'photoUrl',
+    'photo_url',
+    'profilePhotoUrl',
+    'profile_photo_url',
+    'avatarUrl',
+    'avatar_url',
+    'avatar',
+    'photo',
+    'profilePhoto',
+    'profile_photo',
+  ];
+
+  static bool _hasAnyKey(Map<String, dynamic> json, List<String> keys) {
+    return keys.any(json.containsKey);
+  }
+
   static String? _stringValue(Map<String, dynamic> json, List<String> keys) {
     for (final key in keys) {
       final value = json[key];
@@ -116,15 +136,7 @@ class AuthUser {
   }
 
   static String? _photoUrl(Map<String, dynamic> json) {
-    final direct = _stringValue(json, const [
-      'photoUrl',
-      'photo_url',
-      'profilePhotoUrl',
-      'profile_photo_url',
-      'avatarUrl',
-      'avatar_url',
-      'avatar',
-    ]);
+    final direct = _stringValue(json, _photoKeys);
     if (direct != null) return direct;
 
     final photo =
