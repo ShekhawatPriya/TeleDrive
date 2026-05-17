@@ -7,6 +7,7 @@ import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/file_tiles.dart';
 import '../../widgets/skeletons.dart';
+import '../../widgets/tab_header.dart';
 import '../auth/auth_controller.dart';
 import '../upload/upload_controller.dart';
 import 'drive_controller.dart';
@@ -64,36 +65,10 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'TeleDrive',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineMedium
-                                      ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
-                                      ),
-                                ),
-                                Text(
-                                  'Hi ${auth.user?.firstName ?? 'there'}',
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => context.go('/profile'),
-                            icon: const Icon(Icons.person_outline),
-                            tooltip: 'Profile',
-                          ),
-                        ],
+                      TabHeader(
+                        title: 'TeleDrive',
+                        subtitle:
+                            'Hi ${auth.user?.firstName ?? 'there'}',
                       ),
                       const SizedBox(height: 14),
                       TextField(
@@ -107,10 +82,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                       const SizedBox(height: 12),
                       Row(
                         children: [
-                          _StoragePill(
-                            used: state.usedStorage,
-                            total: state.totalStorage,
-                          ),
+                          _StoragePill(used: state.usedStorage),
                           const Spacer(),
                           IconButton(
                             onPressed: () => setState(() => grid = !grid),
@@ -356,13 +328,11 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
 }
 
 class _StoragePill extends StatelessWidget {
-  const _StoragePill({required this.used, required this.total});
+  const _StoragePill({required this.used});
   final int used;
-  final int total;
 
   @override
   Widget build(BuildContext context) {
-    final pct = total == 0 ? 0.0 : used / total;
     return Expanded(
       child: Card(
         child: Padding(
@@ -376,7 +346,7 @@ class _StoragePill extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               LinearProgressIndicator(
-                value: pct.clamp(0, 1),
+                value: used > 0 ? 1 : 0,
                 minHeight: 6,
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -410,18 +380,49 @@ class _DriveFab extends ConsumerWidget {
       onPressed: () async {
         final action = await showModalBottomSheet<String>(
           context: context,
-          builder: (_) => _ActionSheet(
-            title: 'Add to Drive',
-            actions: const {
-              'upload': Icons.upload_file,
-              'folder': Icons.create_new_folder_outlined,
-            },
+          builder: (_) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                    child: Text(
+                      'Add to Drive',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  const Divider(height: 16),
+                  ListTile(
+                    leading: const Icon(Icons.upload_file),
+                    title: const Text('Upload File'),
+                    onTap: () => Navigator.pop(context, 'upload'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.camera_alt_outlined),
+                    title: const Text('Take Photo'),
+                    onTap: () => Navigator.pop(context, 'photo'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.create_new_folder_outlined),
+                    title: const Text('Create Folder'),
+                    onTap: () => Navigator.pop(context, 'folder'),
+                  ),
+                ],
+              ),
+            ),
           ),
         );
         if (action == 'upload')
           await ref
               .read(uploadControllerProvider)
               .pickFiles(folderId: parentId);
+        if (action == 'photo')
+          await ref
+              .read(uploadControllerProvider)
+              .pickPhoto(folderId: parentId);
         if (action == 'folder' && context.mounted) {
           final c = TextEditingController();
           final name = await showDialog<String>(

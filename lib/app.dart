@@ -93,6 +93,18 @@ class MainShell extends ConsumerStatefulWidget {
 }
 
 class _MainShellState extends ConsumerState<MainShell> {
+  static const _tabPaths = ['/drive', '/photos', '/starred', '/shared'];
+  static const _tabPages = [
+    _KeepAliveTab(child: DriveScreen()),
+    _KeepAliveTab(child: PhotosScreen()),
+    _KeepAliveTab(child: StarredScreen()),
+    _KeepAliveTab(child: SharedScreen()),
+  ];
+
+  PageController? _pageController;
+  int _selectedIndex = 0;
+  bool _isTapAnimating = false;
+
   @override
   void initState() {
     super.initState();
@@ -105,60 +117,134 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final index = _tabIndexFor(GoRouterState.of(context).matchedLocation);
+    if (index < 0) return;
+    _selectedIndex = index;
+    _pageController ??= PageController(initialPage: index);
+  }
+
+  @override
+  void dispose() {
+    _pageController?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    final index = [
-      '/drive',
-      '/photos',
-      '/starred',
-      '/shared',
-      '/profile',
-    ].indexWhere(location.startsWith);
+    final routeIndex = _tabIndexFor(location);
+    final showingTab = routeIndex >= 0;
+
+    if (showingTab && routeIndex != _selectedIndex && !_isTapAnimating) {
+      _selectedIndex = routeIndex;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _pageController?.animateToPage(
+          routeIndex,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+        );
+      });
+    }
+
     return Scaffold(
       body: Stack(
         children: [
-          widget.child,
-          const Positioned(
-            left: 12,
-            right: 12,
-            bottom: 86,
-            child: UploadMiniOverlay(),
-          ),
+          if (showingTab)
+            PageView(
+              controller: _pageController,
+              physics: const PageScrollPhysics(),
+              onPageChanged: _handlePageChanged,
+              children: _tabPages,
+            )
+          else
+            widget.child,
+          if (showingTab)
+            const Positioned(
+              left: 12,
+              right: 12,
+              bottom: 86,
+              child: UploadMiniOverlay(),
+            ),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index < 0 ? 0 : index,
-        onDestinationSelected: (i) => context.go(
-          ['/drive', '/photos', '/starred', '/shared', '/profile'][i],
-        ),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.folder_outlined),
-            selectedIcon: Icon(Icons.folder),
-            label: 'Drive',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.photo_library_outlined),
-            selectedIcon: Icon(Icons.photo_library),
-            label: 'Photos',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.star_border),
-            selectedIcon: Icon(Icons.star),
-            label: 'Starred',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.group_outlined),
-            selectedIcon: Icon(Icons.group),
-            label: 'Shared',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-      ),
+      bottomNavigationBar: showingTab
+          ? NavigationBar(
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: _handleDestinationSelected,
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.folder_outlined),
+                  selectedIcon: Icon(Icons.folder),
+                  label: 'Drive',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.photo_library_outlined),
+                  selectedIcon: Icon(Icons.photo_library),
+                  label: 'Photos',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.star_border),
+                  selectedIcon: Icon(Icons.star),
+                  label: 'Starred',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.group_outlined),
+                  selectedIcon: Icon(Icons.group),
+                  label: 'Shared',
+                ),
+              ],
+            )
+          : null,
     );
+  }
+
+  int _tabIndexFor(String location) {
+    return _tabPaths.indexWhere(location.startsWith);
+  }
+
+  Future<void> _handleDestinationSelected(int index) async {
+    if (index == _selectedIndex) return;
+    setState(() => _selectedIndex = index);
+    _isTapAnimating = true;
+    await _pageController?.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+    );
+    _isTapAnimating = false;
+    if (!mounted) return;
+    context.go(_tabPaths[index]);
+  }
+
+  void _handlePageChanged(int index) {
+    if (_selectedIndex != index) {
+      setState(() => _selectedIndex = index);
+    }
+    if (!_isTapAnimating) {
+      context.go(_tabPaths[index]);
+    }
+  }
+}
+
+class _KeepAliveTab extends StatefulWidget {
+  const _KeepAliveTab({required this.child});
+  final Widget child;
+
+  @override
+  State<_KeepAliveTab> createState() => _KeepAliveTabState();
+}
+
+class _KeepAliveTabState extends State<_KeepAliveTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }

@@ -1,13 +1,13 @@
-import 'dart:convert';
-
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../models/auth_user.dart';
+import '../../models/drive_models.dart';
+import '../../widgets/profile_avatar.dart';
 import '../auth/auth_controller.dart';
 import '../drive/drive_controller.dart';
 import 'theme_controller.dart';
@@ -21,10 +21,11 @@ class ProfileScreen extends ConsumerWidget {
     final drive = ref.watch(driveControllerProvider);
     final user = auth.user;
     final files = drive.files;
-    final folders = drive.folders;
     final used = drive.state.usedStorage;
-    final total = drive.state.totalStorage;
-    final storageRatio = total == 0 ? 0.0 : (used / total).clamp(0.0, 1.0);
+    final storageCategories = _storageCategories(
+      files,
+      Theme.of(context).colorScheme,
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Account')),
@@ -39,15 +40,7 @@ class ProfileScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
           _SectionLabel('STORAGE'),
-          _StorageCard(
-            used: used,
-            total: total,
-            ratio: storageRatio,
-            fileCount: files.length,
-            folderCount: folders.length,
-            mediaCount: drive.mediaFiles.length,
-            starredCount: files.where((f) => f.starred).length,
-          ),
+          _StorageCard(used: used, categories: storageCategories),
           const SizedBox(height: 24),
           _SectionLabel('PROFILE'),
           _InfoCard(
@@ -63,11 +56,6 @@ class ProfileScreen extends ConsumerWidget {
                 icon: Icons.badge_outlined,
                 label: 'Telegram ID',
                 value: user?.telegramId == null ? '-' : '${user!.telegramId}',
-              ),
-              _InfoRow(
-                icon: Icons.person_outline,
-                label: 'User ID',
-                value: user?.userId == null ? '-' : '${user!.userId}',
               ),
             ],
           ),
@@ -85,6 +73,12 @@ class ProfileScreen extends ConsumerWidget {
                 icon: Icons.info_outline,
                 label: 'Version',
                 value: '1.0.0',
+              ),
+              _ActionRow(
+                icon: Icons.code,
+                label: 'Open Source',
+                value: 'GitHub',
+                onTap: () => AppConfig.openRepository(),
               ),
               _ActionRow(
                 icon: Icons.privacy_tip_outlined,
@@ -141,7 +135,7 @@ class _ProfileHeader extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            _ProfilePhoto(user: user),
+            ProfileAvatar(user: user),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -176,67 +170,6 @@ class _ProfileHeader extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _ProfilePhoto extends StatelessWidget {
-  const _ProfilePhoto({required this.user});
-
-  final AuthUser? user;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final initial =
-        (user?.firstName.isNotEmpty == true ? user!.firstName[0] : '?')
-            .toUpperCase();
-    final photoUrl = user?.photoUrl?.trim();
-
-    Widget fallback() => Container(
-      width: 62,
-      height: 62,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(color: colors.primary, shape: BoxShape.circle),
-      child: Text(
-        initial,
-        style: TextStyle(
-          color: colors.onPrimary,
-          fontSize: 24,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-
-    if (photoUrl == null || photoUrl.isEmpty) return fallback();
-
-    Widget image;
-    if (photoUrl.startsWith('data:image')) {
-      final comma = photoUrl.indexOf(',');
-      final payload = comma == -1 ? '' : photoUrl.substring(comma + 1);
-      try {
-        image = Image.memory(
-          base64Decode(payload),
-          width: 62,
-          height: 62,
-          fit: BoxFit.cover,
-          gaplessPlayback: true,
-          errorBuilder: (_, __, ___) => fallback(),
-        );
-      } catch (_) {
-        return fallback();
-      }
-    } else {
-      image = CachedNetworkImage(
-        imageUrl: photoUrl,
-        width: 62,
-        height: 62,
-        fit: BoxFit.cover,
-        placeholder: (_, __) => fallback(),
-        errorWidget: (_, __, ___) => fallback(),
-      );
-    }
-
-    return ClipOval(child: image);
   }
 }
 
@@ -307,27 +240,17 @@ class _TelegramStatusCard extends StatelessWidget {
 }
 
 class _StorageCard extends StatelessWidget {
-  const _StorageCard({
-    required this.used,
-    required this.total,
-    required this.ratio,
-    required this.fileCount,
-    required this.folderCount,
-    required this.mediaCount,
-    required this.starredCount,
-  });
+  const _StorageCard({required this.used, required this.categories});
 
   final int used;
-  final int total;
-  final double ratio;
-  final int fileCount;
-  final int folderCount;
-  final int mediaCount;
-  final int starredCount;
+  final List<_StorageCategory> categories;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final nonEmpty = categories
+        .where((category) => category.bytes > 0)
+        .toList();
 
     return Card(
       child: Padding(
@@ -344,7 +267,7 @@ class _StorageCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${(ratio * 100).toStringAsFixed(ratio < .01 && ratio > 0 ? 2 : 1)}%',
+                  formatFileSize(used),
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.primary,
                   ),
@@ -354,43 +277,39 @@ class _StorageCard extends StatelessWidget {
             const SizedBox(height: 10),
             ClipRRect(
               borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: ratio,
-                minHeight: 10,
-                backgroundColor: theme.colorScheme.secondary,
+              child: SizedBox(
+                height: 12,
+                child: used == 0
+                    ? ColoredBox(color: theme.colorScheme.secondary)
+                    : Row(
+                        children: [
+                          for (final category in nonEmpty)
+                            Expanded(
+                              flex: ((category.bytes / used) * 1000)
+                                  .round()
+                                  .clamp(1, 1000)
+                                  .toInt(),
+                              child: ColoredBox(color: category.color),
+                            ),
+                        ],
+                      ),
               ),
             ),
             const SizedBox(height: 10),
             Text(
-              '${formatFileSize(used)} of ${formatFileSize(total)} used',
+              used == 0
+                  ? 'No storage used yet'
+                  : '${formatFileSize(used)} stored in Telegram',
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 18),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                _StoragePill(
-                  icon: Icons.insert_drive_file_outlined,
-                  label: 'Files',
-                  value: '$fileCount',
-                ),
-                _StoragePill(
-                  icon: Icons.folder_outlined,
-                  label: 'Folders',
-                  value: '$folderCount',
-                ),
-                _StoragePill(
-                  icon: Icons.photo_library_outlined,
-                  label: 'Media',
-                  value: '$mediaCount',
-                ),
-                _StoragePill(
-                  icon: Icons.star_border,
-                  label: 'Starred',
-                  value: '$starredCount',
-                ),
-              ],
+            Column(
+              children: categories
+                  .map(
+                    (category) =>
+                        _StorageCategoryRow(category: category, total: used),
+                  )
+                  .toList(),
             ),
           ],
         ),
@@ -399,39 +318,106 @@ class _StorageCard extends StatelessWidget {
   }
 }
 
-class _StoragePill extends StatelessWidget {
-  const _StoragePill({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+class _StorageCategoryRow extends StatelessWidget {
+  const _StorageCategoryRow({required this.category, required this.total});
 
-  final IconData icon;
-  final String label;
-  final String value;
+  final _StorageCategory category;
+  final int total;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.secondary.withValues(alpha: .65),
-        borderRadius: BorderRadius.circular(14),
-      ),
+    final pct = total == 0 ? 0.0 : category.bytes / total;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 17, color: theme.colorScheme.primary),
-          const SizedBox(width: 7),
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: category.color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(category.label, style: theme.textTheme.bodyMedium),
+          ),
           Text(
-            '$value $label',
-            style: theme.textTheme.labelLarge?.copyWith(fontSize: 13),
+            '${formatFileSize(category.bytes)} (${(pct * 100).toStringAsFixed(pct == 0 ? 0 : 1)}%)',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
     );
   }
+}
+
+class _StorageCategory {
+  const _StorageCategory({
+    required this.label,
+    required this.bytes,
+    required this.color,
+  });
+
+  final String label;
+  final int bytes;
+  final Color color;
+}
+
+List<_StorageCategory> _storageCategories(
+  List<DriveFile> files,
+  ColorScheme colors,
+) {
+  var photos = 0;
+  var videos = 0;
+  var documents = 0;
+  var other = 0;
+
+  for (final file in files) {
+    if (file.kind == FileKind.image) {
+      photos += file.size;
+    } else if (file.kind == FileKind.video) {
+      videos += file.size;
+    } else if ({
+      FileKind.pdf,
+      FileKind.doc,
+      FileKind.sheet,
+      FileKind.slides,
+      FileKind.code,
+      FileKind.text,
+    }.contains(file.kind)) {
+      documents += file.size;
+    } else {
+      other += file.size;
+    }
+  }
+
+  return [
+    _StorageCategory(
+      label: 'Photos',
+      bytes: photos,
+      color: const Color(0xFFDB6B57),
+    ),
+    _StorageCategory(
+      label: 'Videos',
+      bytes: videos,
+      color: const Color(0xFFEA9C3D),
+    ),
+    _StorageCategory(
+      label: 'Documents',
+      bytes: documents,
+      color: const Color(0xFF6D7F5F),
+    ),
+    _StorageCategory(
+      label: 'Other',
+      bytes: other,
+      color: colors.onSurfaceVariant.withValues(alpha: .55),
+    ),
+  ];
 }
 
 class _ThemeSelector extends StatelessWidget {

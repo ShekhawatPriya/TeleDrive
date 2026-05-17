@@ -173,7 +173,6 @@ class DriveState {
   int get usedStorage => files
       .where((f) => f.uploadStatus == null || f.uploadStatus == 'available')
       .fold(0, (sum, f) => sum + f.size);
-  int get totalStorage => 50000000000;
 
   DriveState copyWith({
     List<DriveFile>? files,

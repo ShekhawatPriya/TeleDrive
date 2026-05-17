@@ -33,7 +33,7 @@ class DriveRepository {
     final all = <DriveFile>[];
     String? cursor;
     do {
-      final page = await listFiles(limit: 200, cursor: cursor);
+      final page = await listFiles(limit: 100, cursor: cursor);
       all.addAll(page.files);
       cursor = page.nextCursor;
     } while (cursor != null);
