@@ -115,13 +115,22 @@ class UploadController extends ChangeNotifier {
   static const maxFiles = 50;
   static const maxConcurrentClientUploads = 2;
   static const pollInterval = Duration(milliseconds: 1200);
+  static const postUploadRefreshDelays = [
+    Duration(milliseconds: 800),
+    Duration(seconds: 2),
+    Duration(seconds: 5),
+  ];
 
   final ApiClient _api;
   final DriveController _drive;
   final _uuid = const Uuid();
   final Map<String, CancelToken> _cancelTokensByLocalId = {};
   final Map<String, Timer> _pollTimersByLocalId = {};
+  final List<Timer> _postUploadRefreshTimers = [];
+  final Set<String> _pollingLocalIds = {};
   final Set<String> _runningLocalIds = {};
+  Timer? _autoDismissTimer;
+  String? _postUploadRefreshSessionId;
   bool _disposed = false;
 
   String? uploadSessionId;
@@ -236,6 +245,7 @@ class UploadController extends ChangeNotifier {
       UploadStatus.cancelled,
     };
     if (!items.any((i) => retryable.contains(i.status))) return;
+    _cancelCompletionTimers();
     uploadSessionId ??= _uuid.v4();
     uploading = true;
     error = null;
@@ -359,6 +369,7 @@ class UploadController extends ChangeNotifier {
   Future<void> _pollItem(String localId, int batchId) async {
     final item = _findItem(localId);
     if (item == null || item.cancelRequested) return;
+    if (!_pollingLocalIds.add(localId)) return;
     try {
       final res = await _api.dio.get('/upload-batches/$batchId');
       final data = Map<String, dynamic>.from(res.data as Map);
@@ -400,6 +411,8 @@ class UploadController extends ChangeNotifier {
         error: _api.errorMessage(err, 'Upload polling failed.'),
       );
       await _refreshIfSettled();
+    } finally {
+      _pollingLocalIds.remove(localId);
     }
   }
 
@@ -437,7 +450,7 @@ class UploadController extends ChangeNotifier {
     for (final id in activeIds) {
       await cancelItem(id);
     }
-    await _drive.refresh(silent: true);
+    await _refreshDrive();
   }
 
   Future<void> retryFailed() async {
@@ -549,6 +562,7 @@ class UploadController extends ChangeNotifier {
 
   void _stopPollingItem(String localId) {
     _pollTimersByLocalId.remove(localId)?.cancel();
+    _pollingLocalIds.remove(localId);
   }
 
   void _updateUploadingFlag() {
@@ -557,8 +571,67 @@ class UploadController extends ChangeNotifier {
 
   Future<void> _refreshIfSettled() async {
     _updateUploadingFlag();
-    if (!uploading && items.any((i) => i.status == UploadStatus.uploaded)) {
+    if (uploading || !items.any((i) => i.status == UploadStatus.uploaded)) {
+      return;
+    }
+    await _refreshDrive();
+    if (_allItemsUploaded) {
+      _schedulePostUploadRefreshes();
+      _scheduleAutoDismiss();
+    }
+  }
+
+  bool get _allItemsUploaded =>
+      items.isNotEmpty && items.every((i) => i.status == UploadStatus.uploaded);
+
+  void _schedulePostUploadRefreshes() {
+    final sessionId = uploadSessionId;
+    if (sessionId == null || _postUploadRefreshSessionId == sessionId) return;
+    _postUploadRefreshSessionId = sessionId;
+    for (final delay in postUploadRefreshDelays) {
+      _postUploadRefreshTimers.add(
+        Timer(delay, () async {
+          if (_disposed ||
+              _postUploadRefreshSessionId != sessionId ||
+              uploading) {
+            return;
+          }
+          await _refreshDrive();
+        }),
+      );
+    }
+  }
+
+  void _scheduleAutoDismiss() {
+    final sessionId = uploadSessionId;
+    if (sessionId == null || _autoDismissTimer?.isActive == true) return;
+    _autoDismissTimer = Timer(const Duration(milliseconds: 1400), () {
+      if (_disposed || uploadSessionId != sessionId || uploading) return;
+      if (!_allItemsUploaded) return;
+      items = [];
+      sheetVisible = false;
+      uploadSessionId = null;
+      error = null;
+      _syncOptimistic();
+      _notifyListeners();
+    });
+  }
+
+  void _cancelCompletionTimers() {
+    _autoDismissTimer?.cancel();
+    _autoDismissTimer = null;
+    for (final timer in _postUploadRefreshTimers) {
+      timer.cancel();
+    }
+    _postUploadRefreshTimers.clear();
+    _postUploadRefreshSessionId = null;
+  }
+
+  Future<void> _refreshDrive() async {
+    try {
       await _drive.refresh(silent: true);
+    } catch (_) {
+      // Drive refresh already owns its user-facing error state.
     }
   }
 
@@ -601,6 +674,8 @@ class UploadController extends ChangeNotifier {
     for (final timer in _pollTimersByLocalId.values) {
       timer.cancel();
     }
+    _cancelCompletionTimers();
+    _pollingLocalIds.clear();
     for (final token in _cancelTokensByLocalId.values) {
       token.cancel();
     }
