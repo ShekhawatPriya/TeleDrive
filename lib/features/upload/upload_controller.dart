@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:http_parser/http_parser.dart';
@@ -143,6 +144,38 @@ class UploadController extends ChangeNotifier {
       _syncOptimistic();
     } catch (err) {
       error = _api.errorMessage(err, 'Document picking failed.');
+    } finally {
+      picking = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> pickPhoto({String? folderId}) async {
+    if (picking || uploading) return;
+    picking = true;
+    error = null;
+    activeFolderId = folderId;
+    notifyListeners();
+    try {
+      final picker = ImagePicker();
+      final photo = await picker.pickImage(source: ImageSource.camera);
+      if (photo == null) return;
+      final mime = lookupMimeType(photo.path) ?? 'image/jpeg';
+      items = [
+        UploadItem(
+          localId: _uuid.v4(),
+          name: photo.name,
+          size: await photo.length(),
+          mimeType: mime,
+          path: photo.path,
+          status: UploadStatus.selected,
+          progress: 0,
+        ),
+      ];
+      sheetVisible = items.isNotEmpty;
+      _syncOptimistic();
+    } catch (err) {
+      error = _api.errorMessage(err, 'Camera capture failed.');
     } finally {
       picking = false;
       notifyListeners();

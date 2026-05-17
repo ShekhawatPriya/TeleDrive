@@ -103,25 +103,44 @@ class FolderScreen extends ConsumerWidget {
     final action = await showModalBottomSheet<String>(
       context: context,
       builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.upload_file),
-              title: const Text('Upload files'),
-              onTap: () => Navigator.pop(context, 'upload'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.create_new_folder_outlined),
-              title: const Text('Create folder'),
-              onTap: () => Navigator.pop(context, 'folder'),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                child: Text(
+                  'Add to Drive',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              const Divider(height: 16),
+              ListTile(
+                leading: const Icon(Icons.upload_file),
+                title: const Text('Upload File'),
+                onTap: () => Navigator.pop(context, 'upload'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined),
+                title: const Text('Take Photo'),
+                onTap: () => Navigator.pop(context, 'photo'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.create_new_folder_outlined),
+                title: const Text('Create Folder'),
+                onTap: () => Navigator.pop(context, 'folder'),
+              ),
+            ],
+          ),
         ),
       ),
     );
     if (action == 'upload')
       await ref.read(uploadControllerProvider).pickFiles(folderId: folderId);
+    if (action == 'photo')
+      await ref.read(uploadControllerProvider).pickPhoto(folderId: folderId);
     if (action == 'folder' && context.mounted) {
       final c = TextEditingController();
       final name = await showDialog<String>(
