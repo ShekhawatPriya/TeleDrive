@@ -1,7 +1,7 @@
 class AppConfig {
   static const apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.1.3:3000/api',
+    defaultValue: 'http://192.168.1.3:8000/api',
   );
 
   static Uri apiUri(String path, [Map<String, dynamic>? query]) {
