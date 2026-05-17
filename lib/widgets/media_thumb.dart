@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../core/storage/thumbnail_cache_manager.dart';
 import '../models/drive_models.dart';
 
 class MediaThumb extends StatelessWidget {
@@ -31,11 +32,16 @@ class MediaThumb extends StatelessWidget {
             ? Image.file(
                 File(url),
                 fit: fit,
+                cacheWidth: 320,
+                cacheHeight: 320,
                 errorBuilder: (_, __, ___) => _fallback(context),
               )
             : CachedNetworkImage(
+                cacheManager: TeleDriveThumbnailCacheManager.instance,
                 imageUrl: url,
                 fit: fit,
+                memCacheWidth: 320,
+                memCacheHeight: 320,
                 placeholder: (_, __) => const Center(
                   child: SizedBox(
                     width: 18,
