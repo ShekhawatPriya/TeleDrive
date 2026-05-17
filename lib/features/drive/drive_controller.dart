@@ -31,6 +31,7 @@ class DriveController extends ChangeNotifier {
   final LocalPreferences _prefs;
   DriveState state = const DriveState();
   Map<String, String> _recent = {};
+  Future<void>? _refreshing;
 
   List<DriveFile> get files => state.files
       .map((f) => f.copyWith(lastAccessedAt: _recent[f.id]))
@@ -46,18 +47,33 @@ class DriveController extends ChangeNotifier {
   }
 
   Future<void> refresh({bool silent = false}) async {
+    final inFlight = _refreshing;
+    if (inFlight != null) return inFlight;
+    final refresh = _refresh(silent: silent);
+    _refreshing = refresh;
+    try {
+      await refresh;
+    } finally {
+      if (identical(_refreshing, refresh)) {
+        _refreshing = null;
+      }
+    }
+  }
+
+  Future<void> _refresh({bool silent = false}) async {
     if (!silent) {
       state = state.copyWith(loading: true, clearError: true);
       notifyListeners();
     }
     try {
-      final all = await _repo.listAllFiles();
-      final media = await _repo.listFiles(
-        type: 'media',
-        limit: 60,
-        allFolders: true,
-      );
-      final folders = await _repo.listFolders();
+      final results = await Future.wait<dynamic>([
+        _repo.listAllFiles(),
+        _repo.listFiles(type: 'media', limit: 60, allFolders: true),
+        _repo.listFolders(),
+      ]);
+      final all = results[0] as List<DriveFile>;
+      final media = results[1] as ({List<DriveFile> files, String? nextCursor});
+      final folders = results[2] as List<DriveFolder>;
       state = state.copyWith(
         files: all.where((f) => f.uploadStatus == 'available').toList(),
         mediaFiles: media.files

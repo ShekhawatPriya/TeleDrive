@@ -114,23 +114,16 @@ class UploadController extends ChangeNotifier {
 
   static const maxFiles = 50;
   static const maxConcurrentClientUploads = 2;
-  static const pollInterval = Duration(milliseconds: 1200);
-  static const postUploadRefreshDelays = [
-    Duration(milliseconds: 800),
-    Duration(seconds: 2),
-    Duration(seconds: 5),
-  ];
+  static const pollInterval = Duration(milliseconds: 450);
 
   final ApiClient _api;
   final DriveController _drive;
   final _uuid = const Uuid();
   final Map<String, CancelToken> _cancelTokensByLocalId = {};
   final Map<String, Timer> _pollTimersByLocalId = {};
-  final List<Timer> _postUploadRefreshTimers = [];
   final Set<String> _pollingLocalIds = {};
   final Set<String> _runningLocalIds = {};
   Timer? _autoDismissTimer;
-  String? _postUploadRefreshSessionId;
   bool _disposed = false;
 
   String? uploadSessionId;
@@ -576,31 +569,12 @@ class UploadController extends ChangeNotifier {
     }
     await _refreshDrive();
     if (_allItemsUploaded) {
-      _schedulePostUploadRefreshes();
       _scheduleAutoDismiss();
     }
   }
 
   bool get _allItemsUploaded =>
       items.isNotEmpty && items.every((i) => i.status == UploadStatus.uploaded);
-
-  void _schedulePostUploadRefreshes() {
-    final sessionId = uploadSessionId;
-    if (sessionId == null || _postUploadRefreshSessionId == sessionId) return;
-    _postUploadRefreshSessionId = sessionId;
-    for (final delay in postUploadRefreshDelays) {
-      _postUploadRefreshTimers.add(
-        Timer(delay, () async {
-          if (_disposed ||
-              _postUploadRefreshSessionId != sessionId ||
-              uploading) {
-            return;
-          }
-          await _refreshDrive();
-        }),
-      );
-    }
-  }
 
   void _scheduleAutoDismiss() {
     final sessionId = uploadSessionId;
@@ -620,11 +594,6 @@ class UploadController extends ChangeNotifier {
   void _cancelCompletionTimers() {
     _autoDismissTimer?.cancel();
     _autoDismissTimer = null;
-    for (final timer in _postUploadRefreshTimers) {
-      timer.cancel();
-    }
-    _postUploadRefreshTimers.clear();
-    _postUploadRefreshSessionId = null;
   }
 
   Future<void> _refreshDrive() async {
