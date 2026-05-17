@@ -128,7 +128,9 @@ class FileCardTile extends StatelessWidget {
                 ],
               ),
               Text(
-                '${formatLabel(file)} • ${formatFileSize(file.size)}',
+                file.isOptimistic
+                    ? '${formatUploadStatus(file)} • ${formatFileSize(file.size)}'
+                    : '${formatLabel(file)} • ${formatFileSize(file.size)}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],

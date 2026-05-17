@@ -10,7 +10,7 @@ class UploadMiniOverlay extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final upload = ref.watch(uploadControllerProvider);
-    if (!upload.sheetVisible || upload.items.isEmpty)
+    if (!upload.sheetVisible || (upload.items.isEmpty && upload.error == null))
       return const SizedBox.shrink();
     final progress = upload.items.isEmpty
         ? 0.0
@@ -36,15 +36,27 @@ class UploadMiniOverlay extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      upload.uploading
+                      upload.items.isEmpty
+                          ? 'Upload needs attention'
+                          : upload.uploading
                           ? 'Uploading ${upload.items.length} files'
                           : '${upload.items.length} files selected',
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 6),
-                    LinearProgressIndicator(
-                      value: upload.uploading ? progress.clamp(0, 1) : null,
-                    ),
+                    if (upload.error != null && upload.items.isEmpty)
+                      Text(
+                        upload.error!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      )
+                    else
+                      LinearProgressIndicator(
+                        value: upload.uploading ? progress.clamp(0, 1) : null,
+                      ),
                   ],
                 ),
               ),
@@ -114,6 +126,15 @@ class UploadBatchSheet extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    trailing: _canCancel(item)
+                        ? IconButton(
+                            icon: const Icon(Icons.close),
+                            tooltip: 'Cancel this upload',
+                            onPressed: () => ref
+                                .read(uploadControllerProvider)
+                                .cancelItem(item.localId),
+                          )
+                        : null,
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -141,7 +162,7 @@ class UploadBatchSheet extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  if (!upload.uploading)
+                  if (!upload.uploading && upload.items.isNotEmpty)
                     Expanded(
                       child: FilledButton(
                         onPressed: upload.confirmUpload,
@@ -166,3 +187,11 @@ class UploadBatchSheet extends ConsumerWidget {
     );
   }
 }
+
+bool _canCancel(UploadItem item) => {
+  UploadStatus.queued,
+  UploadStatus.stagingToBackend,
+  UploadStatus.waitingForServer,
+  UploadStatus.uploadingToTelegram,
+  UploadStatus.processing,
+}.contains(item.status);

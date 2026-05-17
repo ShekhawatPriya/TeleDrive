@@ -128,3 +128,17 @@ String formatLabel(DriveFile file) {
   if (ext.isNotEmpty) return ext.toUpperCase();
   return file.mimeType?.split('/').last.toUpperCase() ?? 'FILE';
 }
+
+String formatUploadStatus(DriveFile file) {
+  return switch (file.uploadStatus) {
+    'queued' => 'Queued',
+    'stagingToBackend' => 'Sending to server',
+    'waitingForServer' => 'Waiting for server',
+    'uploadingToTelegram' => 'Uploading to Telegram',
+    'processing' => 'Processing',
+    'uploaded' => 'Uploaded',
+    'failed' => 'Upload failed',
+    'cancelled' => 'Cancelled',
+    _ => 'Uploading',
+  };
+}
