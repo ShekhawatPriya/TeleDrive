@@ -9,7 +9,9 @@ import 'features/drive/drive_controller.dart';
 import 'features/drive/drive_screen.dart';
 import 'features/drive/folder_screen.dart';
 import 'features/file_viewer/file_viewer_screen.dart';
+import 'features/photos/photos_filter.dart';
 import 'features/photos/photos_screen.dart';
+import 'features/photos/photos_viewer/photo_viewer_screen.dart';
 import 'features/profile/legal_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/theme_controller.dart';
@@ -61,6 +63,15 @@ class TeleDriveApp extends ConsumerWidget {
           path: '/file/:id',
           builder: (_, state) =>
               FileViewerScreen(fileId: state.pathParameters['id']!),
+        ),
+        GoRoute(
+          path: '/photos/view/:id',
+          builder: (_, state) => PhotoViewerScreen(
+            startId: state.pathParameters['id']!,
+            filter: PhotosFilterX.fromQuery(
+              state.uri.queryParameters['filter'],
+            ),
+          ),
         ),
         GoRoute(
           path: '/privacy',
