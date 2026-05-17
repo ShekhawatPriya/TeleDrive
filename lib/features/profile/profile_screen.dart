@@ -275,25 +275,28 @@ class _StorageCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: SizedBox(
-                height: 12,
-                child: used == 0
-                    ? ColoredBox(color: theme.colorScheme.secondary)
-                    : Row(
-                        children: [
-                          for (final category in nonEmpty)
-                            Expanded(
-                              flex: ((category.bytes / used) * 1000)
-                                  .round()
-                                  .clamp(1, 1000)
-                                  .toInt(),
-                              child: ColoredBox(color: category.color),
-                            ),
-                        ],
-                      ),
+            Container(
+              height: 12,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurface.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(6),
               ),
+              clipBehavior: Clip.antiAlias,
+              child: nonEmpty.isEmpty
+                  ? null
+                  : Row(
+                      children: [
+                        for (final category in nonEmpty)
+                          Expanded(
+                            flex: ((category.bytes / used) * 1000)
+                                .round()
+                                .clamp(1, 1000)
+                                .toInt(),
+                            child: Container(color: category.color),
+                          ),
+                      ],
+                    ),
             ),
             const SizedBox(height: 10),
             Text(
