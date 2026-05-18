@@ -12,6 +12,7 @@ class FileListTile extends StatelessWidget {
     this.file,
     this.isFolder = false,
     this.starred = false,
+    this.shared = false,
     this.onMore,
     this.onStar,
     this.selected,
@@ -24,6 +25,7 @@ class FileListTile extends StatelessWidget {
   final DriveFile? file;
   final bool isFolder;
   final bool starred;
+  final bool shared;
   final VoidCallback onTap;
   final VoidCallback? onMore;
   final VoidCallback? onStar;
@@ -34,6 +36,7 @@ class FileListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final inSelectMode = selected != null;
+    final isShared = shared || (file?.shared ?? false);
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: ListTile(
@@ -57,18 +60,30 @@ class FileListTile extends StatelessWidget {
               SizedBox(
                 width: 52,
                 height: 52,
-                child: isFolder
-                    ? DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: scheme.primary.withValues(alpha: .12),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(
-                          Icons.folder_rounded,
-                          color: scheme.primary,
-                        ),
-                      )
-                    : MediaThumb(file: file!, fit: BoxFit.cover),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: isFolder
+                          ? DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: scheme.primary.withValues(alpha: .12),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(
+                                Icons.folder_rounded,
+                                color: scheme.primary,
+                              ),
+                            )
+                          : MediaThumb(file: file!, fit: BoxFit.cover),
+                    ),
+                    if (isShared)
+                      const Positioned(
+                        right: 2,
+                        bottom: 2,
+                        child: SharedBadge(),
+                      ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -100,6 +115,26 @@ class FileListTile extends StatelessWidget {
         onTap: onTap,
         onLongPress: onLongPress,
       ),
+    );
+  }
+}
+
+class SharedBadge extends StatelessWidget {
+  const SharedBadge({this.size = 16, super.key});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: scheme.primary,
+        shape: BoxShape.circle,
+        border: Border.all(color: scheme.surface, width: 1.5),
+      ),
+      child: Icon(Icons.link, size: size * 0.65, color: scheme.onPrimary),
     );
   }
 }
@@ -151,6 +186,12 @@ class FileCardTile extends StatelessWidget {
                               ? scheme.primary
                               : scheme.onSurface.withValues(alpha: .55),
                         ),
+                      ),
+                    if (file.shared)
+                      const Positioned(
+                        right: 6,
+                        bottom: 6,
+                        child: SharedBadge(size: 20),
                       ),
                   ],
                 ),

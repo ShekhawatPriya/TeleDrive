@@ -13,22 +13,49 @@ class MySharesScreen extends ConsumerStatefulWidget {
   ConsumerState<MySharesScreen> createState() => _MySharesScreenState();
 }
 
-class _MySharesScreenState extends ConsumerState<MySharesScreen> {
-  bool _initialized = false;
+class _MySharesScreenState extends ConsumerState<MySharesScreen>
+    with WidgetsBindingObserver {
+  DateTime? _lastRefreshAt;
+  static const _refreshTtl = Duration(seconds: 15);
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_initialized) return;
-    _initialized = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      ref.read(shareControllerProvider).refresh();
-    });
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRefresh());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _maybeRefresh();
+    }
+  }
+
+  void _maybeRefresh({bool force = false}) {
+    if (!mounted) return;
+    final now = DateTime.now();
+    if (!force &&
+        _lastRefreshAt != null &&
+        now.difference(_lastRefreshAt!) < _refreshTtl) {
+      return;
+    }
+    _lastRefreshAt = now;
+    ref.read(shareControllerProvider).refresh(silent: true);
   }
 
   @override
   Widget build(BuildContext context) {
+    // PageView with AutomaticKeepAlive rebuilds visible page when the tab is
+    // shown again — so the build method is the right place to schedule a
+    // debounced silent refresh.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRefresh());
     final controller = ref.watch(shareControllerProvider);
     return Scaffold(
       body: SafeArea(
@@ -44,7 +71,10 @@ class _MySharesScreenState extends ConsumerState<MySharesScreen> {
             ),
             Expanded(
               child: RefreshIndicator(
-                onRefresh: () => controller.refresh(silent: true),
+                onRefresh: () async {
+                  _lastRefreshAt = DateTime.now();
+                  await controller.refresh(silent: true);
+                },
                 child: _buildBody(controller),
               ),
             ),

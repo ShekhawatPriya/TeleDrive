@@ -45,6 +45,7 @@ class DriveFolderSliver extends ConsumerWidget {
               '${folder.recursiveFileCount} files • ${formatFileSize(folder.recursiveSize)}',
           isFolder: true,
           starred: folder.starred,
+          shared: folder.shared,
           selected: selectMode ? selectedFolderIds.contains(folder.id) : null,
           onTap: () => onFolderTap(folder),
           onLongPress: () => onFolderLongPress(folder.id),

@@ -155,6 +155,25 @@ class DriveController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void markUnshared({
+    Set<String> fileIds = const {},
+    Set<String> folderIds = const {},
+  }) {
+    if (fileIds.isEmpty && folderIds.isEmpty) return;
+    state = state.copyWith(
+      files: state.files
+          .map((f) => fileIds.contains(f.id) ? f.copyWith(shared: false) : f)
+          .toList(),
+      mediaFiles: state.mediaFiles
+          .map((f) => fileIds.contains(f.id) ? f.copyWith(shared: false) : f)
+          .toList(),
+      folders: state.folders
+          .map((f) => folderIds.contains(f.id) ? f.copyWith(shared: false) : f)
+          .toList(),
+    );
+    notifyListeners();
+  }
+
   List<DriveFolder> folderPath(String id) {
     final path = <DriveFolder>[];
     DriveFolder? current = folder(id);

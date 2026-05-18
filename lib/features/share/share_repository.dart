@@ -8,15 +8,11 @@ class ShareRepository {
 
   Future<Share> createShare({
     required List<ShareItemRequest> items,
-    required SharePermission permission,
-    DateTime? expiresAt,
   }) async {
     final res = await api.dio.post(
       '/shares',
       data: {
         'items': items.map((i) => i.toJson()).toList(),
-        'permission': permission.apiValue,
-        if (expiresAt != null) 'expiresAt': expiresAt.toUtc().toIso8601String(),
       },
     );
     return Share.fromJson(Map<String, dynamic>.from(res.data as Map));
@@ -36,26 +32,24 @@ class ShareRepository {
     return Share.fromJson(Map<String, dynamic>.from(res.data as Map));
   }
 
-  Future<Share> updateShare(
-    String id, {
-    SharePermission? permission,
-    DateTime? expiresAt,
-    bool clearExpiresAt = false,
-  }) async {
-    final res = await api.dio.patch(
-      '/shares/$id',
-      data: {
-        if (permission != null) 'permission': permission.apiValue,
-        if (expiresAt != null && !clearExpiresAt)
-          'expiresAt': expiresAt.toUtc().toIso8601String(),
-        if (clearExpiresAt) 'clearExpiresAt': true,
-      },
-    );
-    return Share.fromJson(Map<String, dynamic>.from(res.data as Map));
-  }
-
   Future<void> revokeShare(String id) async {
     await api.dio.delete('/shares/$id');
+  }
+
+  Future<int> revokeForFile(String fileId) async {
+    final res = await api.dio.post(
+      '/shares/revoke-for-file',
+      data: {'file_id': int.parse(fileId)},
+    );
+    return ((res.data as Map?)?['revoked'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<int> revokeForFolder(String folderId) async {
+    final res = await api.dio.post(
+      '/shares/revoke-for-folder',
+      data: {'folder_id': int.parse(folderId)},
+    );
+    return ((res.data as Map?)?['revoked'] as num?)?.toInt() ?? 0;
   }
 
   Future<({List<ShareAccess> accesses, String? nextCursor})> listAccesses(

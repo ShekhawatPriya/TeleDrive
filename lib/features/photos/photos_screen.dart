@@ -245,6 +245,7 @@ class StarredScreen extends ConsumerWidget {
                         '${folder.recursiveFileCount} files • ${formatFileSize(folder.recursiveSize)}',
                     isFolder: true,
                     starred: true,
+                    shared: folder.shared,
                     onTap: () => context.push('/folder/${folder.id}'),
                     onStar: () => ref
                         .read(driveControllerProvider)

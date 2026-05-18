@@ -8,6 +8,7 @@ import '../drive_controller.dart';
 import '../move_destination_sheet.dart';
 import 'drive_action_sheet.dart';
 import 'drive_dialogs.dart';
+import 'share_helpers.dart';
 
 /// Shared single-item action bottom sheets and bulk action helpers used by
 /// both the home and folder screens.  Keeps the screens free of routine
@@ -20,23 +21,26 @@ class DriveItemActions {
     WidgetRef ref,
     DriveFile file,
   ) async {
+    final actions = <String, IconData>{
+      if (file.shared)
+        'revoke_share': Icons.link_off
+      else
+        'share': Icons.ios_share,
+      'download': Icons.download,
+      'move': Icons.drive_file_move_outline,
+      'star': Icons.star_border,
+      'delete': Icons.delete_outline,
+    };
     final action = await showModalBottomSheet<String>(
       context: context,
-      builder: (_) => DriveActionSheet(
-        title: file.name,
-        actions: const {
-          'share': Icons.ios_share,
-          'download': Icons.download,
-          'move': Icons.drive_file_move_outline,
-          'star': Icons.star_border,
-          'delete': Icons.delete_outline,
-        },
-      ),
+      builder: (_) => DriveActionSheet(title: file.name, actions: actions),
     );
     if (!context.mounted) return;
     final controller = ref.read(driveControllerProvider);
     if (action == 'share') {
-      await _shareFile(context, file.id);
+      await openShareFile(context, file.id);
+    } else if (action == 'revoke_share') {
+      await revokeFileShares(context, ref, file);
     } else if (action == 'move') {
       final targetId = await showModalBottomSheet<String>(
         context: context,
@@ -66,7 +70,10 @@ class DriveItemActions {
     bool allowRename = true,
   }) async {
     final actions = <String, IconData>{
-      'share': Icons.ios_share,
+      if (folder.shared)
+        'revoke_share': Icons.link_off
+      else
+        'share': Icons.ios_share,
       if (allowRename) 'rename': Icons.edit_outlined,
       'move': Icons.drive_file_move_outline,
       'star': Icons.star_border,
@@ -79,7 +86,9 @@ class DriveItemActions {
     if (!context.mounted) return;
     final controller = ref.read(driveControllerProvider);
     if (action == 'share') {
-      await _shareFolder(context, folder.id);
+      await openShareFolder(context, folder.id);
+    } else if (action == 'revoke_share') {
+      await revokeFolderShares(context, ref, folder);
     } else if (action == 'move') {
       final targetId = await showModalBottomSheet<String>(
         context: context,
@@ -112,32 +121,6 @@ class DriveItemActions {
       }
     }
   }
-}
-
-Future<void> _shareFile(BuildContext context, String fileId) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    builder: (_) => CreateShareSheet(
-      items: [ShareItemRequest(type: ShareItemType.file, id: fileId)],
-    ),
-  );
-}
-
-Future<void> _shareFolder(BuildContext context, String folderId) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    builder: (_) => CreateShareSheet(
-      items: [
-        ShareItemRequest(
-          type: ShareItemType.folder,
-          id: folderId,
-          mode: FolderShareMode.snapshot,
-        ),
-      ],
-    ),
-  );
 }
 
 /// Bulk-action helpers shared between Drive and Folder screens.  Operating

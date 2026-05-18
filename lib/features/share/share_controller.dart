@@ -64,14 +64,8 @@ class ShareController extends ChangeNotifier {
 
   Future<Share> createShare({
     required List<ShareItemRequest> items,
-    required SharePermission permission,
-    DateTime? expiresAt,
   }) async {
-    final created = await _repo.createShare(
-      items: items,
-      permission: permission,
-      expiresAt: expiresAt,
-    );
+    final created = await _repo.createShare(items: items);
     _shares = [created, ..._shares];
     final fileIds = items
         .where((i) => i.type == ShareItemType.file)
@@ -83,27 +77,28 @@ class ShareController extends ChangeNotifier {
         .toSet();
     _drive.markShared(fileIds: fileIds, folderIds: folderIds);
     notifyListeners();
+    refresh(silent: true);
     return created;
   }
 
-  Future<Share> updateShare(
-    String id, {
-    SharePermission? permission,
-    DateTime? expiresAt,
-    bool clearExpiresAt = false,
-  }) async {
-    final updated = await _repo.updateShare(
-      id,
-      permission: permission,
-      expiresAt: expiresAt,
-      clearExpiresAt: clearExpiresAt,
-    );
-    _shares = [
-      for (final s in _shares)
-        if (s.id == id) updated else s,
-    ];
+  Future<int> revokeForFile(String fileId) async {
+    final count = await _repo.revokeForFile(fileId);
+    _shares = _shares
+        .where((s) => !s.items.any((it) => it.fileId == fileId))
+        .toList();
+    _drive.markUnshared(fileIds: {fileId});
     notifyListeners();
-    return updated;
+    return count;
+  }
+
+  Future<int> revokeForFolder(String folderId) async {
+    final count = await _repo.revokeForFolder(folderId);
+    _shares = _shares
+        .where((s) => !s.items.any((it) => it.folderId == folderId))
+        .toList();
+    _drive.markUnshared(folderIds: {folderId});
+    notifyListeners();
+    return count;
   }
 
   Future<void> revokeShare(String id) async {

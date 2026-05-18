@@ -151,6 +151,7 @@ class DriveRepository {
       createdAt: '${json['createdAt'] ?? DateTime.now().toIso8601String()}',
       parentId: json['folderId'] == null ? null : '${json['folderId']}',
       starred: json['isStarred'] == true,
+      shared: json['isShared'] == true,
       mimeType: mime,
       uploadStatus: uploadStatus,
       uploadError: json['uploadError'] as String?,
@@ -174,6 +175,7 @@ class DriveRepository {
     parentId: json['parentId'] == null ? null : '${json['parentId']}',
     modifiedAt: '${json['updatedAt'] ?? DateTime.now().toIso8601String()}',
     createdAt: '${json['createdAt'] ?? DateTime.now().toIso8601String()}',
+    shared: json['isShared'] == true,
     recursiveFileCount: (json['recursiveFileCount'] as num?)?.toInt() ?? 0,
     recursiveSize:
         (json['recursiveSizeBytes'] as num?)?.toInt() ??

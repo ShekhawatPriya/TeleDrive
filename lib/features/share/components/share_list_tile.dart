@@ -63,21 +63,9 @@ class ShareListTile extends StatelessWidget {
   }
 
   String _subtitle(Share share) {
-    final permissionLabel = share.permission.label;
     final count = share.itemCount ?? share.items.length;
     final countLabel = count == 1 ? '1 item' : '$count items';
-    final expiry = share.expiresAt == null
-        ? 'No expiry'
-        : 'Expires ${_relative(share.expiresAt!)}';
-    return '$countLabel · $permissionLabel · $expiry';
-  }
-
-  String _relative(DateTime when) {
-    final delta = when.difference(DateTime.now());
-    if (delta.isNegative) return 'expired';
-    if (delta.inMinutes < 60) return 'in ${delta.inMinutes}m';
-    if (delta.inHours < 48) return 'in ${delta.inHours}h';
-    return 'in ${delta.inDays}d';
+    return '$countLabel · Anyone with link can download';
   }
 }
 

@@ -5,30 +5,57 @@ import 'package:share_plus/share_plus.dart' as share_plus;
 
 import '../../../models/share_models.dart';
 import '../share_controller.dart';
-import 'share_expiry_picker.dart';
-import 'share_permission_picker.dart';
 import 'share_result_view.dart';
 
 class CreateShareSheet extends ConsumerStatefulWidget {
-  const CreateShareSheet({required this.items, this.title, super.key});
+  const CreateShareSheet({required this.items, super.key});
 
   final List<ShareItemRequest> items;
-  final String? title;
 
   @override
   ConsumerState<CreateShareSheet> createState() => _CreateShareSheetState();
 }
 
 class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
-  SharePermission _permission = SharePermission.preview;
-  ShareExpiryOption _expiry = ShareExpiryOption.day1;
-  bool _busy = false;
+  bool _busy = true;
   String? _error;
   Share? _result;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _create());
+  }
+
+  Future<void> _create() async {
+    try {
+      final share = await ref
+          .read(shareControllerProvider)
+          .createShare(items: widget.items);
+      if (!mounted) return;
+      setState(() {
+        _result = share;
+        _busy = false;
+      });
+    } catch (err) {
+      if (!mounted) return;
+      setState(() {
+        _error = _readableError(err);
+        _busy = false;
+      });
+    }
+  }
+
+  String _readableError(Object err) {
+    final s = err.toString();
+    if (s.contains('file_not_shareable')) {
+      return 'One of these files is not ready to share yet.';
+    }
+    return 'Could not create share. Try again.';
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final result = _result;
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -37,92 +64,53 @@ class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
           top: 16,
           bottom: MediaQuery.of(context).viewInsets.bottom + 16,
         ),
-        child: result != null
-            ? ShareResultView(
-                share: result,
-                onCopy: _copyLink,
-                onShare: _shareSheet,
-                onDone: () => Navigator.pop(context),
-              )
-            : _buildForm(),
+        child: _buildBody(),
       ),
     );
   }
 
-  Widget _buildForm() {
+  Widget _buildBody() {
+    final result = _result;
+    if (result != null) {
+      return ShareResultView(
+        share: result,
+        onCopy: _copyLink,
+        onShare: _shareSheet,
+        onDone: () => Navigator.pop(context),
+      );
+    }
+    if (_busy) {
+      return const SizedBox(
+        height: 160,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          widget.title ?? _defaultTitle(),
-          style: Theme.of(context).textTheme.titleLarge,
+          'Share failed',
+          style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
         Text(
-          '${widget.items.length} item${widget.items.length == 1 ? '' : 's'}',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          _error ?? 'Unknown error.',
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
         ),
-        const SizedBox(height: 20),
-        SharePermissionPicker(
-          value: _permission,
-          onChanged: (v) => setState(() => _permission = v),
-        ),
-        const SizedBox(height: 20),
-        ShareExpiryPicker(
-          value: _expiry,
-          onChanged: (v) => setState(() => _expiry = v),
-        ),
-        if (_error != null) ...[
-          const SizedBox(height: 12),
-          Text(
-            _error!,
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
-          ),
-        ],
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         FilledButton(
-          onPressed: _busy ? null : _create,
-          child: _busy
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Create link'),
+          onPressed: () {
+            setState(() {
+              _busy = true;
+              _error = null;
+            });
+            _create();
+          },
+          child: const Text('Try again'),
         ),
       ],
     );
-  }
-
-  String _defaultTitle() {
-    final hasFolder = widget.items.any((i) => i.type == ShareItemType.folder);
-    return hasFolder ? 'Share folder' : 'Share';
-  }
-
-  Future<void> _create() async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      final share = await ref
-          .read(shareControllerProvider)
-          .createShare(
-            items: widget.items,
-            permission: _permission,
-            expiresAt: _expiry.toExpiry(),
-          );
-      if (!mounted) return;
-      setState(() => _result = share);
-    } catch (err) {
-      if (!mounted) return;
-      setState(() => _error = err.toString());
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
   }
 
   Future<void> _copyLink() async {
