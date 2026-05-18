@@ -131,8 +131,29 @@ class DriveController extends ChangeNotifier {
   List<DriveFolder> foldersInFolder(String? folderId) =>
       folders.where((f) => f.parentId == folderId).toList();
   DriveFile? file(String id) => files.where((f) => f.id == id).firstOrNull;
+  DriveFile? anyFile(String id) =>
+      file(id) ?? mediaFiles.where((f) => f.id == id).firstOrNull;
   DriveFolder? folder(String id) =>
       folders.where((f) => f.id == id).firstOrNull;
+
+  void markShared({
+    Set<String> fileIds = const {},
+    Set<String> folderIds = const {},
+  }) {
+    if (fileIds.isEmpty && folderIds.isEmpty) return;
+    state = state.copyWith(
+      files: state.files
+          .map((f) => fileIds.contains(f.id) ? f.copyWith(shared: true) : f)
+          .toList(),
+      mediaFiles: state.mediaFiles
+          .map((f) => fileIds.contains(f.id) ? f.copyWith(shared: true) : f)
+          .toList(),
+      folders: state.folders
+          .map((f) => folderIds.contains(f.id) ? f.copyWith(shared: true) : f)
+          .toList(),
+    );
+    notifyListeners();
+  }
 
   List<DriveFolder> folderPath(String id) {
     final path = <DriveFolder>[];

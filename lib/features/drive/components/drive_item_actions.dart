@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/drive_models.dart';
+import '../../../models/share_models.dart';
+import '../../share/components/create_share_sheet.dart';
 import '../drive_controller.dart';
 import '../move_destination_sheet.dart';
 import 'drive_action_sheet.dart';
@@ -23,6 +25,7 @@ class DriveItemActions {
       builder: (_) => DriveActionSheet(
         title: file.name,
         actions: const {
+          'share': Icons.ios_share,
           'download': Icons.download,
           'move': Icons.drive_file_move_outline,
           'star': Icons.star_border,
@@ -32,7 +35,9 @@ class DriveItemActions {
     );
     if (!context.mounted) return;
     final controller = ref.read(driveControllerProvider);
-    if (action == 'move') {
+    if (action == 'share') {
+      await _shareFile(context, file.id);
+    } else if (action == 'move') {
       final targetId = await showModalBottomSheet<String>(
         context: context,
         isScrollControlled: true,
@@ -61,6 +66,7 @@ class DriveItemActions {
     bool allowRename = true,
   }) async {
     final actions = <String, IconData>{
+      'share': Icons.ios_share,
       if (allowRename) 'rename': Icons.edit_outlined,
       'move': Icons.drive_file_move_outline,
       'star': Icons.star_border,
@@ -72,7 +78,9 @@ class DriveItemActions {
     );
     if (!context.mounted) return;
     final controller = ref.read(driveControllerProvider);
-    if (action == 'move') {
+    if (action == 'share') {
+      await _shareFolder(context, folder.id);
+    } else if (action == 'move') {
       final targetId = await showModalBottomSheet<String>(
         context: context,
         isScrollControlled: true,
@@ -106,6 +114,32 @@ class DriveItemActions {
   }
 }
 
+Future<void> _shareFile(BuildContext context, String fileId) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => CreateShareSheet(
+      items: [ShareItemRequest(type: ShareItemType.file, id: fileId)],
+    ),
+  );
+}
+
+Future<void> _shareFolder(BuildContext context, String folderId) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => CreateShareSheet(
+      items: [
+        ShareItemRequest(
+          type: ShareItemType.folder,
+          id: folderId,
+          mode: FolderShareMode.snapshot,
+        ),
+      ],
+    ),
+  );
+}
+
 /// Bulk-action helpers shared between Drive and Folder screens.  Operating
 /// on the in-memory selection sets and the [driveControllerProvider].
 class DriveBulkActions {
@@ -123,6 +157,30 @@ class DriveBulkActions {
     for (final id in folderIds) {
       controller.toggleStar(id, folder: true);
     }
+  }
+
+  static Future<void> share(
+    BuildContext context,
+    WidgetRef ref, {
+    required Set<String> fileIds,
+    required Set<String> folderIds,
+  }) async {
+    if (fileIds.isEmpty && folderIds.isEmpty) return;
+    final items = <ShareItemRequest>[
+      for (final id in fileIds)
+        ShareItemRequest(type: ShareItemType.file, id: id),
+      for (final id in folderIds)
+        ShareItemRequest(
+          type: ShareItemType.folder,
+          id: id,
+          mode: FolderShareMode.snapshot,
+        ),
+    ];
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => CreateShareSheet(items: items),
+    );
   }
 
   static Future<void> move(

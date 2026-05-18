@@ -70,6 +70,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
               DriveSelectionBar(
                 selectedCount: selectedCount,
                 onCancel: exitSelect,
+                onShare: _bulkShare,
                 onStar: () => _bulkStar(),
                 onMove: () => _bulkMove(),
                 onDelete: () => _bulkDelete(),
@@ -178,6 +179,15 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
       return;
     }
     context.push('/folder/${folder.id}');
+  }
+
+  Future<void> _bulkShare() async {
+    await DriveBulkActions.share(
+      context,
+      ref,
+      fileIds: selectedFileIds,
+      folderIds: selectedFolderIds,
+    );
   }
 
   Future<void> _bulkStar() async {

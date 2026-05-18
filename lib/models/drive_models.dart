@@ -74,6 +74,7 @@ class DriveFile {
 
   DriveFile copyWith({
     bool? starred,
+    bool? shared,
     String? name,
     Object? parentId = _unset,
     String? uploadStatus,
@@ -89,7 +90,7 @@ class DriveFile {
       createdAt: createdAt,
       parentId: parentId == _unset ? this.parentId : parentId as String?,
       starred: starred ?? this.starred,
-      shared: shared,
+      shared: shared ?? this.shared,
       mimeType: mimeType,
       uploadStatus: uploadStatus ?? this.uploadStatus,
       uploadError: uploadError ?? this.uploadError,
@@ -138,6 +139,7 @@ class DriveFolder {
     String? name,
     Object? parentId = _unset,
     bool? starred,
+    bool? shared,
     int? recursiveFileCount,
     int? recursiveSize,
   }) => DriveFolder(
@@ -147,7 +149,7 @@ class DriveFolder {
     modifiedAt: modifiedAt,
     createdAt: createdAt,
     starred: starred ?? this.starred,
-    shared: shared,
+    shared: shared ?? this.shared,
     recursiveFileCount: recursiveFileCount ?? this.recursiveFileCount,
     recursiveSize: recursiveSize ?? this.recursiveSize,
   );

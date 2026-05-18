@@ -15,6 +15,7 @@ import 'features/photos/photos_viewer/photo_viewer_screen.dart';
 import 'features/profile/legal_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/theme_controller.dart';
+import 'features/share/share_detail_screen.dart';
 import 'features/upload/upload_sheet.dart';
 import 'shared/splash_screen.dart';
 
@@ -58,6 +59,11 @@ class TeleDriveApp extends ConsumerWidget {
           path: '/folder/:id',
           builder: (_, state) =>
               FolderScreen(folderId: state.pathParameters['id']!),
+        ),
+        GoRoute(
+          path: '/shared/:id',
+          builder: (_, state) =>
+              ShareDetailScreen(shareId: state.pathParameters['id']!),
         ),
         GoRoute(
           path: '/file/:id',

@@ -4,6 +4,7 @@ class DriveSelectionBar extends StatelessWidget {
   const DriveSelectionBar({
     required this.selectedCount,
     required this.onCancel,
+    required this.onShare,
     required this.onStar,
     required this.onMove,
     required this.onDelete,
@@ -12,6 +13,7 @@ class DriveSelectionBar extends StatelessWidget {
 
   final int selectedCount;
   final VoidCallback onCancel;
+  final VoidCallback onShare;
   final VoidCallback onStar;
   final VoidCallback onMove;
   final VoidCallback onDelete;
@@ -38,6 +40,11 @@ class DriveSelectionBar extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               const Spacer(),
+              IconButton(
+                tooltip: 'Share',
+                onPressed: hasSelection ? onShare : null,
+                icon: const Icon(Icons.ios_share),
+              ),
               IconButton(
                 tooltip: 'Star',
                 onPressed: hasSelection ? onStar : null,

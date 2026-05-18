@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart';
 
-import '../../models/drive_models.dart';
+import '../../models/share_models.dart';
 import '../drive/components/drive_item_actions.dart';
 import '../drive/drive_controller.dart';
+import '../share/components/create_share_sheet.dart';
 
 /// Shared bulk-action helpers for the Photos screen.  Move and Delete delegate
-/// to [DriveBulkActions] so the implementation stays in one place; Share is
-/// Photos-specific because it ships the public stream/download URL of each
-/// item to the system share sheet.
+/// to [DriveBulkActions] so the implementation stays in one place; Share opens
+/// the create-share sheet which mints a public link via the backend.
 class PhotosActions {
   PhotosActions._();
 
@@ -20,36 +19,19 @@ class PhotosActions {
   }) async {
     if (fileIds.isEmpty) return;
     final controller = ref.read(driveControllerProvider);
-    final files = <DriveFile>[
+    final resolved = <String>[
       for (final id in fileIds)
-        if (controller.file(id) != null) controller.file(id)!,
+        if (controller.anyFile(id) != null) id,
     ];
-    if (files.isEmpty) return;
-
-    final urls = <String>[
-      for (final f in files)
-        if (_shareTarget(f) != null) _shareTarget(f)!,
+    if (resolved.isEmpty) return;
+    final items = [
+      for (final id in resolved)
+        ShareItemRequest(type: ShareItemType.file, id: id),
     ];
-    if (urls.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nothing to share — links not yet available.'),
-        ),
-      );
-      return;
-    }
-
-    final box = context.findRenderObject() as RenderBox?;
-    final origin = box == null
-        ? Rect.zero
-        : box.localToGlobal(Offset.zero) & box.size;
-    final subject = files.length == 1
-        ? files.first.name
-        : '${files.length} items from TeleDrive';
-    await Share.share(
-      urls.join('\n'),
-      subject: subject,
-      sharePositionOrigin: origin,
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => CreateShareSheet(items: items),
     );
   }
 
@@ -79,9 +61,5 @@ class PhotosActions {
       fileIds: fileIds,
       folderIds: const {},
     );
-  }
-
-  static String? _shareTarget(DriveFile file) {
-    return file.streamUrl ?? file.downloadUrl ?? file.previewUrl ?? file.localUri;
   }
 }

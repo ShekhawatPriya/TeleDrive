@@ -9,6 +9,7 @@ import '../../widgets/file_tiles.dart';
 import '../../widgets/tab_header.dart';
 import '../drive/components/selection_mode_mixin.dart';
 import '../drive/drive_controller.dart';
+import '../share/my_shares_screen.dart';
 import 'components/photo_context_menu.dart';
 import 'components/photo_preview_overlay.dart';
 import 'components/photos_selection_bar.dart';
@@ -292,30 +293,5 @@ class SharedScreen extends StatelessWidget {
   const SharedScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: TabHeader(
-                title: 'Shared',
-                subtitle: 'Files shared with you',
-              ),
-            ),
-            const Expanded(
-              child: EmptyState(
-                icon: Icons.group_outlined,
-                title: 'Sharing is not enabled yet',
-                body:
-                    'The backend contract currently keeps this area as a placeholder.',
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const MySharesScreen();
 }
