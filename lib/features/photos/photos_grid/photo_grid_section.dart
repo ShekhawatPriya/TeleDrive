@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../photos_filter.dart';
 import 'photo_date_grouping.dart';
 import 'photo_tile.dart';
 
@@ -8,13 +7,21 @@ class PhotoGridSection extends StatelessWidget {
   const PhotoGridSection({
     required this.section,
     required this.columns,
-    required this.filter,
+    required this.selectMode,
+    required this.selectedIds,
+    required this.tileKeys,
+    required this.onTileTap,
+    required this.onTileLongPress,
     super.key,
   });
 
   final PhotoDateSection section;
   final int columns;
-  final PhotosFilter filter;
+  final bool selectMode;
+  final Set<String> selectedIds;
+  final Map<String, GlobalKey> tileKeys;
+  final void Function(String fileId) onTileTap;
+  final void Function(String fileId, GlobalKey key) onTileLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -48,8 +55,18 @@ class PhotoGridSection extends StatelessWidget {
               crossAxisSpacing: spacing,
             ),
             itemCount: section.files.length,
-            itemBuilder: (_, i) =>
-                PhotoTile(file: section.files[i], filter: filter),
+            itemBuilder: (_, i) {
+              final file = section.files[i];
+              final key = tileKeys.putIfAbsent(file.id, () => GlobalKey());
+              return PhotoTile(
+                key: key,
+                file: file,
+                selectMode: selectMode,
+                selected: selectedIds.contains(file.id),
+                onTap: () => onTileTap(file.id),
+                onLongPress: () => onTileLongPress(file.id, key),
+              );
+            },
           ),
         ],
       ),

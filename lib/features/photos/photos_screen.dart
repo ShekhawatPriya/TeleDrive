@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,8 +7,12 @@ import '../../core/utils/file_type_detector.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/file_tiles.dart';
 import '../../widgets/tab_header.dart';
+import '../drive/components/selection_mode_mixin.dart';
 import '../drive/drive_controller.dart';
-import 'photos_filter.dart';
+import 'components/photo_context_menu.dart';
+import 'components/photo_preview_overlay.dart';
+import 'components/photos_selection_bar.dart';
+import 'photos_actions.dart';
 import 'photos_grid/photo_grid_density.dart';
 import 'photos_grid/photos_grid_view.dart';
 
@@ -19,20 +24,11 @@ class PhotosScreen extends ConsumerStatefulWidget {
 }
 
 class _PhotosScreenState extends ConsumerState<PhotosScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabs;
+    with SelectionModeMixin<PhotosScreen> {
   final PhotoGridDensity _density = PhotoGridDensity();
 
   @override
-  void initState() {
-    super.initState();
-    _tabs = TabController(length: 2, vsync: this);
-    _tabs.addListener(() => setState(() {}));
-  }
-
-  @override
   void dispose() {
-    _tabs.dispose();
     _density.dispose();
     super.dispose();
   }
@@ -40,77 +36,124 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
   @override
   Widget build(BuildContext context) {
     final drive = ref.watch(driveControllerProvider);
-    final filter = _tabs.index == 0 ? PhotosFilter.photos : PhotosFilter.videos;
-    final files = drive
-        .photoFiles('all')
-        .where(filter.accepts)
-        .toList();
-    final allCount = drive.photoFiles('all').length;
+    final files = drive.photoFiles('all');
+    final allCount = files.length;
 
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: TabHeader(
-                title: 'Photos',
-                subtitle: allCount == 0
-                    ? 'Your media library'
-                    : '$allCount item${allCount == 1 ? '' : 's'}',
+    return PopScope(
+      canPop: !selectMode,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && selectMode) exitSelect();
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              if (selectMode)
+                PhotosSelectionBar(
+                  selectedCount: selectedCount,
+                  onCancel: exitSelect,
+                  onShare: _onBulkShare,
+                  onMove: _onBulkMove,
+                  onDelete: _onBulkDelete,
+                )
+              else ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: TabHeader(
+                    title: 'Photos',
+                    subtitle: allCount == 0
+                        ? 'Your media library'
+                        : '$allCount item${allCount == 1 ? '' : 's'}',
+                  ),
+                ),
+                _PhotosToolbar(count: allCount, density: _density),
+              ],
+              Expanded(
+                child: files.isEmpty
+                    ? const EmptyState(
+                        icon: Icons.photo_library_outlined,
+                        title: 'No photos yet',
+                        body: 'Photos and videos appear here after upload.',
+                      )
+                    : PhotosGridView(
+                        files: files,
+                        density: _density,
+                        loadingMore: drive.state.loadingMoreMedia,
+                        selectMode: selectMode,
+                        selectedIds: selectedFileIds,
+                        onTileTap: _onTileTap,
+                        onTileLongPress: _onTileLongPress,
+                        onTilePanSelect: _onTilePanSelect,
+                        onLoadMore: () => ref
+                            .read(driveControllerProvider)
+                            .loadMoreMedia(),
+                      ),
               ),
-            ),
-            _PhotosTabBar(controller: _tabs),
-            _PhotosToolbar(
-              count: files.length,
-              density: _density,
-            ),
-            Expanded(
-              child: files.isEmpty
-                  ? EmptyState(
-                      icon: filter == PhotosFilter.videos
-                          ? Icons.videocam_outlined
-                          : Icons.photo_library_outlined,
-                      title: filter == PhotosFilter.videos
-                          ? 'No videos yet'
-                          : 'No photos yet',
-                      body: filter == PhotosFilter.videos
-                          ? 'Videos appear here after upload.'
-                          : 'Images appear here after upload.',
-                    )
-                  : PhotosGridView(
-                      files: files,
-                      density: _density,
-                      filter: filter,
-                      loadingMore: drive.state.loadingMoreMedia,
-                      onLoadMore: () => ref
-                          .read(driveControllerProvider)
-                          .loadMoreMedia(),
-                    ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
-}
 
-class _PhotosTabBar extends StatelessWidget {
-  const _PhotosTabBar({required this.controller});
-  final TabController controller;
+  void _onTileTap(String fileId) {
+    if (selectMode) {
+      toggleFileSelection(fileId);
+      return;
+    }
+    context.push('/photos/view/$fileId?filter=all');
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return TabBar(
-      controller: controller,
-      labelColor: scheme.primary,
-      unselectedLabelColor: scheme.onSurface.withValues(alpha: .55),
-      indicatorColor: scheme.primary,
-      indicatorWeight: 2.5,
-      labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-      tabs: const [Tab(text: 'Photos'), Tab(text: 'Videos')],
+  void _onTileLongPress(String fileId, GlobalKey key) {
+    if (selectMode) {
+      toggleFileSelection(fileId);
+      return;
+    }
+    final anchor = resolveTileAnchor(key, context);
+    if (anchor == null) return;
+    final drive = ref.read(driveControllerProvider);
+    final file = drive.file(fileId);
+    if (file == null) return;
+    HapticFeedback.mediumImpact();
+    showPhotoPreviewOverlay(
+      context: context,
+      sourceRect: anchor,
+      file: file,
+      onShare: () => PhotosActions.share(
+        context,
+        ref,
+        fileIds: {fileId},
+      ),
+      onMove: () => PhotosActions.move(
+        context,
+        ref,
+        fileIds: {fileId},
+      ),
+      onSelect: () => enterSelect(fileId: fileId),
     );
+  }
+
+  void _onTilePanSelect(String fileId) {
+    if (!selectedFileIds.contains(fileId)) {
+      setState(() => selectedFileIds.add(fileId));
+    }
+  }
+
+  Future<void> _onBulkShare() async {
+    final ids = Set<String>.from(selectedFileIds);
+    await PhotosActions.share(context, ref, fileIds: ids);
+  }
+
+  Future<void> _onBulkMove() async {
+    final ids = Set<String>.from(selectedFileIds);
+    await PhotosActions.move(context, ref, fileIds: ids);
+    if (mounted) exitSelect();
+  }
+
+  Future<void> _onBulkDelete() async {
+    final ids = Set<String>.from(selectedFileIds);
+    final ok = await PhotosActions.delete(context, ref, fileIds: ids);
+    if (mounted && ok) exitSelect();
   }
 }
 
