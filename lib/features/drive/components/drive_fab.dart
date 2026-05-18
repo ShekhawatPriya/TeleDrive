@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../upload/ui/folder_creation/folder_toast_controller.dart';
 import '../../upload/upload_controller.dart';
 import '../drive_controller.dart';
 import 'drive_dialogs.dart';
@@ -33,7 +34,18 @@ class DriveFab extends ConsumerWidget {
     } else if (action == 'folder') {
       final name = await promptFolderName(context);
       if (name != null && context.mounted) {
-        await ref.read(driveControllerProvider).createFolder(name, parentId);
+        final toast = ref.read(folderToastControllerProvider);
+        try {
+          await runWithFolderToast(
+            toast,
+            () => ref
+                .read(driveControllerProvider)
+                .createFolder(name, parentId),
+          );
+        } catch (_) {
+          // Toast surfaces the failure.  Drive controller already owns
+          // any deeper recovery; nothing more to do here.
+        }
       }
     }
   }

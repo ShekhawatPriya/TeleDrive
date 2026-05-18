@@ -143,7 +143,16 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
   }
 }
 
-Future<bool> confirmDelete(BuildContext context, int count) async {
+/// Premium confirmation popup styled to match the Create Folder dialog.
+/// Returns `true` only when the user taps the confirm button.
+Future<bool> confirmAction(
+  BuildContext context, {
+  required String title,
+  required String message,
+  String cancelLabel = 'Cancel',
+  String confirmLabel = 'Confirm',
+  bool destructive = false,
+}) async {
   final result = await showDialog<bool>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.45),
@@ -167,16 +176,14 @@ Future<bool> confirmDelete(BuildContext context, int count) async {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Move to trash?',
+                  title,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  count == 1
-                      ? '1 item will be moved to trash. You can restore it later.'
-                      : '$count items will be moved to trash. You can restore them later.',
+                  message,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: scheme.onSurfaceVariant,
                     height: 1.4,
@@ -193,21 +200,21 @@ Future<bool> confirmDelete(BuildContext context, int count) async {
                         minimumSize: const Size(64, 40),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                       ),
-                      child: const Text('Cancel'),
+                      child: Text(cancelLabel),
                     ),
                     const SizedBox(width: 6),
                     FilledButton(
                       onPressed: () => Navigator.pop(ctx, true),
                       style: FilledButton.styleFrom(
-                        backgroundColor: scheme.error,
-                        foregroundColor: scheme.onError,
+                        backgroundColor: destructive ? scheme.error : null,
+                        foregroundColor: destructive ? scheme.onError : null,
                         minimumSize: const Size(96, 40),
                         padding: const EdgeInsets.symmetric(horizontal: 18),
                         shape: const RoundedRectangleBorder(
                           borderRadius: BorderRadius.all(Radius.circular(12)),
                         ),
                       ),
-                      child: const Text('Delete'),
+                      child: Text(confirmLabel),
                     ),
                   ],
                 ),
@@ -219,4 +226,16 @@ Future<bool> confirmDelete(BuildContext context, int count) async {
     },
   );
   return result == true;
+}
+
+Future<bool> confirmDelete(BuildContext context, int count) {
+  return confirmAction(
+    context,
+    title: 'Move to trash?',
+    message: count == 1
+        ? '1 item will be moved to trash. You can restore it later.'
+        : '$count items will be moved to trash. You can restore them later.',
+    confirmLabel: 'Delete',
+    destructive: true,
+  );
 }

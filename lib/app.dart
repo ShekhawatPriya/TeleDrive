@@ -16,7 +16,8 @@ import 'features/profile/legal_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/theme_controller.dart';
 import 'features/share/share_detail_screen.dart';
-import 'features/upload/upload_sheet.dart';
+import 'features/upload/ui/folder_creation/folder_toast_overlay.dart';
+import 'features/upload/ui/upload_overlay.dart';
 import 'shared/splash_screen.dart';
 
 class TeleDriveApp extends ConsumerWidget {
@@ -189,7 +190,14 @@ class _MainShellState extends ConsumerState<MainShell> {
               left: 12,
               right: 12,
               bottom: 86,
-              child: UploadMiniOverlay(),
+              child: UploadOverlay(),
+            ),
+          if (showingTab)
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 24,
+              child: Center(child: FolderToastOverlay()),
             ),
         ],
       ),

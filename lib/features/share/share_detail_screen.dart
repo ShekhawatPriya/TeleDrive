@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
 
 import '../../models/share_models.dart';
+import '../drive/components/drive_dialogs.dart';
 import 'components/share_detail_body.dart';
 import 'share_controller.dart';
 
@@ -98,26 +99,14 @@ class _ShareDetailScreenState extends ConsumerState<ShareDetailScreen> {
   Future<void> _revoke() async {
     final share = _share;
     if (share == null) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Revoke share?'),
-        content: const Text(
+    final ok = await confirmAction(
+      context,
+      title: 'Revoke share?',
+      message:
           'The link will stop working immediately and cannot be restored.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Revoke'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Revoke',
     );
-    if (ok != true || !mounted) return;
+    if (!ok || !mounted) return;
     setState(() => _busy = true);
     try {
       await ref.read(shareControllerProvider).revokeShare(share.id);

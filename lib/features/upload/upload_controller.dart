@@ -39,7 +39,7 @@ enum UploadStatus {
 }
 
 class UploadItem {
-  const UploadItem({
+  UploadItem({
     required this.localId,
     required this.uploadClientId,
     required this.name,
@@ -49,13 +49,14 @@ class UploadItem {
     required this.status,
     this.httpProgress = 0,
     this.serverProgress = 0,
-    double? progress,
     this.batchId,
     this.fileId,
     this.uploadJobId,
     this.error,
     this.cancelRequested = false,
-  }) : progress = progress ?? ((httpProgress * 0.35) + (serverProgress * 0.65));
+    this.thumbnailReady = false,
+    this.thumbnailUrl,
+  }) : progress = _computeProgress(status, httpProgress, serverProgress);
 
   final String localId;
   final String uploadClientId;
@@ -72,13 +73,38 @@ class UploadItem {
   final int? uploadJobId;
   final String? error;
   final bool cancelRequested;
+  final bool thumbnailReady;
+  final String? thumbnailUrl;
+
+  static double _computeProgress(
+    UploadStatus status,
+    double http,
+    double server,
+  ) {
+    switch (status) {
+      case UploadStatus.uploaded:
+        return 1.0;
+      case UploadStatus.selected:
+      case UploadStatus.queued:
+        return 0.0;
+      case UploadStatus.stagingToBackend:
+        return (http * 0.4).clamp(0.0, 0.4);
+      case UploadStatus.waitingForServer:
+      case UploadStatus.uploadingToTelegram:
+      case UploadStatus.processing:
+        return (0.4 + server * 0.6).clamp(0.0, 1.0);
+      case UploadStatus.cancelling:
+      case UploadStatus.cancelled:
+      case UploadStatus.failed:
+        return ((http * 0.4) + (server * 0.6)).clamp(0.0, 1.0);
+    }
+  }
 
   UploadItem copyWith({
     String? uploadClientId,
     UploadStatus? status,
     double? httpProgress,
     double? serverProgress,
-    double? progress,
     int? batchId,
     int? fileId,
     int? uploadJobId,
@@ -86,9 +112,10 @@ class UploadItem {
     bool clearError = false,
     bool? cancelRequested,
     bool resetServerIds = false,
+    bool? thumbnailReady,
+    String? thumbnailUrl,
+    bool clearThumbnail = false,
   }) {
-    final nextHttp = httpProgress ?? this.httpProgress;
-    final nextServer = serverProgress ?? this.serverProgress;
     return UploadItem(
       localId: localId,
       uploadClientId: uploadClientId ?? this.uploadClientId,
@@ -97,14 +124,19 @@ class UploadItem {
       mimeType: mimeType,
       path: path,
       status: status ?? this.status,
-      httpProgress: nextHttp,
-      serverProgress: nextServer,
-      progress: progress ?? ((nextHttp * 0.35) + (nextServer * 0.65)),
+      httpProgress: httpProgress ?? this.httpProgress,
+      serverProgress: serverProgress ?? this.serverProgress,
       batchId: resetServerIds ? null : batchId ?? this.batchId,
       fileId: resetServerIds ? null : fileId ?? this.fileId,
       uploadJobId: resetServerIds ? null : uploadJobId ?? this.uploadJobId,
       error: clearError ? null : error ?? this.error,
       cancelRequested: cancelRequested ?? this.cancelRequested,
+      thumbnailReady: clearThumbnail
+          ? false
+          : thumbnailReady ?? this.thumbnailReady,
+      thumbnailUrl: clearThumbnail
+          ? null
+          : thumbnailUrl ?? this.thumbnailUrl,
     );
   }
 }
@@ -252,10 +284,10 @@ class UploadController extends ChangeNotifier {
                   status: UploadStatus.queued,
                   httpProgress: 0,
                   serverProgress: 0,
-                  progress: 0,
                   clearError: true,
                   cancelRequested: false,
                   resetServerIds: true,
+                  clearThumbnail: true,
                 )
               : i,
         )
@@ -490,12 +522,15 @@ class UploadController extends ChangeNotifier {
             : total > 0
             ? (done / total).clamp(0.0, 1.0)
             : current.serverProgress;
+        final thumbReady =
+            '${matched['thumbnail_status'] ?? ''}' == 'available';
         _setItem(
           current.localId,
           status: status,
           serverProgress: serverProgress,
           fileId: (matched['file_id'] as num?)?.toInt(),
           error: matched['error'] as String?,
+          thumbnailReady: thumbReady,
         );
       }
       final updated = items.where((i) => i.batchId == batchId).toList();
@@ -545,12 +580,15 @@ class UploadController extends ChangeNotifier {
           : total > 0
           ? (done / total).clamp(0.0, 1.0)
           : current.serverProgress;
+      final thumbReady =
+          '${matched['thumbnail_status'] ?? ''}' == 'available';
       _setItem(
         localId,
         status: status,
         serverProgress: serverProgress,
         fileId: (matched['file_id'] as num?)?.toInt(),
         error: matched['error'] as String?,
+        thumbnailReady: thumbReady,
       );
       if (_isTerminalStatus(status)) {
         _stopPollingItem(localId);
@@ -620,10 +658,10 @@ class UploadController extends ChangeNotifier {
                   status: UploadStatus.selected,
                   httpProgress: 0,
                   serverProgress: 0,
-                  progress: 0,
                   clearError: true,
                   cancelRequested: false,
                   resetServerIds: true,
+                  clearThumbnail: true,
                 )
               : i,
         )
@@ -694,6 +732,8 @@ class UploadController extends ChangeNotifier {
     String? error,
     bool clearError = false,
     bool? cancelRequested,
+    bool? thumbnailReady,
+    String? thumbnailUrl,
   }) {
     items = items
         .map(
@@ -708,6 +748,8 @@ class UploadController extends ChangeNotifier {
                   error: error,
                   clearError: clearError,
                   cancelRequested: cancelRequested,
+                  thumbnailReady: thumbnailReady,
+                  thumbnailUrl: thumbnailUrl,
                 )
               : i,
         )

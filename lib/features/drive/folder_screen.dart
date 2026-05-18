@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/ios_more_menu.dart';
-import '../upload/upload_sheet.dart';
+import '../upload/ui/upload_overlay.dart';
 import 'components/drive_fab.dart';
 import 'components/drive_item_actions.dart';
 import 'components/drive_list_slivers.dart';
@@ -123,7 +123,7 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
             left: 12,
             right: 12,
             bottom: 86,
-            child: UploadMiniOverlay(),
+            child: UploadOverlay(),
           ),
         ],
       ),
