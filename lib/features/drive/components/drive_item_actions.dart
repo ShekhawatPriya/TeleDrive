@@ -59,7 +59,7 @@ class DriveItemActions {
     } else if (action == 'delete') {
       await controller.deleteItems(fileIds: [file.id]);
     } else if (action == 'star') {
-      controller.toggleStar(file.id);
+      await controller.toggleStar(file.id);
     }
   }
 
@@ -108,7 +108,7 @@ class DriveItemActions {
     } else if (action == 'delete') {
       await controller.deleteItems(folderIds: [folder.id]);
     } else if (action == 'star') {
-      controller.toggleStar(folder.id, folder: true);
+      await controller.toggleStar(folder.id, folder: true);
     } else if (action == 'rename' && context.mounted) {
       final name = await promptFolderName(
         context,
@@ -134,12 +134,10 @@ class DriveBulkActions {
     required Set<String> folderIds,
   }) async {
     final controller = ref.read(driveControllerProvider);
-    for (final id in fileIds) {
-      controller.toggleStar(id);
-    }
-    for (final id in folderIds) {
-      controller.toggleStar(id, folder: true);
-    }
+    await Future.wait([
+      for (final id in fileIds) controller.toggleStar(id),
+      for (final id in folderIds) controller.toggleStar(id, folder: true),
+    ]);
   }
 
   static Future<void> share(

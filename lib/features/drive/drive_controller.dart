@@ -352,24 +352,68 @@ class DriveController extends ChangeNotifier {
     });
   }
 
-  void toggleStar(String id, {bool folder = false}) {
+  Future<void> toggleStar(String id, {bool folder = false}) async {
     if (folder) {
+      final current = state.folders.where((f) => f.id == id).firstOrNull;
+      if (current == null) return;
+      final next = !current.starred;
+      final previous = state.folders;
       state = state.copyWith(
         folders: state.folders
-            .map((f) => f.id == id ? f.copyWith(starred: !f.starred) : f)
+            .map((f) => f.id == id ? f.copyWith(starred: next) : f)
             .toList(),
+        clearError: true,
       );
+      notifyListeners();
+      try {
+        final updated = await _repo.setFolderStarred(id, next);
+        state = state.copyWith(
+          folders: state.folders
+              .map((f) => f.id == id ? updated : f)
+              .toList(),
+        );
+      } catch (err) {
+        state = state.copyWith(
+          folders: previous,
+          error: _repo.api.errorMessage(err, 'Could not update star.'),
+        );
+      }
+      notifyListeners();
     } else {
+      final current =
+          state.files.where((f) => f.id == id).firstOrNull ??
+          state.mediaFiles.where((f) => f.id == id).firstOrNull;
+      if (current == null) return;
+      final next = !current.starred;
+      final previousFiles = state.files;
+      final previousMedia = state.mediaFiles;
       state = state.copyWith(
         files: state.files
-            .map((f) => f.id == id ? f.copyWith(starred: !f.starred) : f)
+            .map((f) => f.id == id ? f.copyWith(starred: next) : f)
             .toList(),
         mediaFiles: state.mediaFiles
-            .map((f) => f.id == id ? f.copyWith(starred: !f.starred) : f)
+            .map((f) => f.id == id ? f.copyWith(starred: next) : f)
             .toList(),
+        clearError: true,
       );
+      notifyListeners();
+      try {
+        final updated = await _repo.setFileStarred(id, next);
+        state = state.copyWith(
+          files: state.files.map((f) => f.id == id ? updated : f).toList(),
+          mediaFiles: state.mediaFiles
+              .map((f) => f.id == id ? updated : f)
+              .toList(),
+        );
+      } catch (err) {
+        state = state.copyWith(
+          files: previousFiles,
+          mediaFiles: previousMedia,
+          error: _repo.api.errorMessage(err, 'Could not update star.'),
+        );
+      }
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   Future<void> markAccessed(String id) async {

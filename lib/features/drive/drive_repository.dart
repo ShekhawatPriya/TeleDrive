@@ -117,6 +117,22 @@ class DriveRepository {
   Future<void> deleteFolder(String id) async =>
       api.dio.delete('/folders/$id').then((_) {});
 
+  Future<DriveFile> setFileStarred(String id, bool starred) async {
+    final res = await api.dio.patch(
+      '/files/$id',
+      data: {'is_starred': starred},
+    );
+    return _mapFile(Map<String, dynamic>.from(res.data as Map));
+  }
+
+  Future<DriveFolder> setFolderStarred(String id, bool starred) async {
+    final res = await api.dio.patch(
+      '/folders/$id',
+      data: {'is_starred': starred},
+    );
+    return _mapFolder(Map<String, dynamic>.from(res.data as Map));
+  }
+
   DriveFile _mapFile(Map<String, dynamic> json) {
     final id = '${json['id']}';
     final name = '${json['originalFilename'] ?? json['name'] ?? 'Untitled'}';
@@ -175,6 +191,7 @@ class DriveRepository {
     parentId: json['parentId'] == null ? null : '${json['parentId']}',
     modifiedAt: '${json['updatedAt'] ?? DateTime.now().toIso8601String()}',
     createdAt: '${json['createdAt'] ?? DateTime.now().toIso8601String()}',
+    starred: json['isStarred'] == true,
     shared: json['isShared'] == true,
     recursiveFileCount: (json['recursiveFileCount'] as num?)?.toInt() ?? 0,
     recursiveSize:
