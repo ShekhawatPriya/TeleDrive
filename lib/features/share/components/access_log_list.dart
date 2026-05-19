@@ -19,29 +19,67 @@ class ShareAccessLogList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     if (accesses.isEmpty && !loading) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
         child: Center(
-          child: Text(
-            'No activity yet',
-            style: TextStyle(color: scheme.onSurfaceVariant),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.history_toggle_off_rounded,
+                  size: 28,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'No activity yet',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       );
     }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final entry in accesses) _Row(entry: entry),
+        for (int i = 0; i < accesses.length; i++)
+          _Row(
+            entry: accesses[i],
+            isFirst: i == 0,
+            isLast: i == accesses.length - 1,
+          ),
         if (hasMore)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
             child: Center(
-              child: TextButton(
+              child: TextButton.icon(
                 onPressed: loading ? null : onLoadMore,
-                child: Text(loading ? 'Loading…' : 'Load more'),
+                icon: loading
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Icon(Icons.arrow_downward_rounded, size: 16),
+                label: Text(loading ? 'Loading…' : 'Load more'),
               ),
             ),
           ),
@@ -51,34 +89,134 @@ class ShareAccessLogList extends StatelessWidget {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.entry});
+  const _Row({
+    required this.entry,
+    required this.isFirst,
+    required this.isLast,
+  });
+
   final ShareAccess entry;
+  final bool isFirst;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    return ListTile(
-      dense: true,
-      leading: Icon(_iconFor(entry.action), color: scheme.onSurfaceVariant),
-      title: Text(_label(entry)),
-      subtitle: Text(_timeAgo(entry.accessedAt)),
-      trailing: entry.country != null
-          ? Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.xs, vertical: 2),
-              decoration: BoxDecoration(
-                color: scheme.secondaryContainer,
-                borderRadius: AppRadii.smR,
-              ),
-              child: Text(
-                entry.country!,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: scheme.onSecondaryContainer,
+    final isDownload = entry.action == 'download';
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Left timeline column
+          SizedBox(
+            width: 32,
+            child: Column(
+              children: [
+                // Top line spacer
+                Container(
+                  width: 2,
+                  height: 10,
+                  color: isFirst
+                      ? Colors.transparent
+                      : scheme.outlineVariant.withValues(alpha: 0.6),
                 ),
+                // Circular node container with icon
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: isDownload
+                        ? Colors.teal.withValues(alpha: 0.08)
+                        : scheme.primary.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isDownload
+                          ? Colors.teal.withValues(alpha: 0.3)
+                          : scheme.primary.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      _iconFor(entry.action),
+                      size: 14,
+                      color: isDownload ? Colors.teal.shade700 : scheme.primary,
+                    ),
+                  ),
+                ),
+                // Bottom line segment
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: isLast
+                        ? Colors.transparent
+                        : scheme.outlineVariant.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          // Right content column
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _label(entry),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: scheme.onSurface,
+                          ),
+                        ),
+                      ),
+                      if (entry.country != null) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: scheme.secondaryContainer.withValues(alpha: 0.4),
+                            borderRadius: AppRadii.smR,
+                            border: Border.all(
+                              color: scheme.outlineVariant.withValues(alpha: 0.6),
+                              width: 0.6,
+                            ),
+                          ),
+                          child: Text(
+                            entry.country!,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: scheme.onSecondaryContainer,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _timeAgo(entry.accessedAt),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
-            )
-          : null,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -90,9 +228,9 @@ class _Row extends StatelessWidget {
 
   String _label(ShareAccess access) {
     final base = switch (access.action) {
-      'download' => 'Download',
-      'preview' => 'Preview',
-      _ => 'View',
+      'download' => 'Downloaded',
+      'preview' => 'Previewed',
+      _ => 'Viewed',
     };
     final item = access.itemName == null ? '' : ' · ${access.itemName}';
     return '$base$item';
