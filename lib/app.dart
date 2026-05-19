@@ -1,3 +1,5 @@
+import 'package:animations/animations.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -88,13 +90,27 @@ class TeleDriveApp extends ConsumerWidget {
       ],
     );
 
-    return MaterialApp.router(
-      title: 'TeleDrive',
-      debugShowCheckedModeBanner: false,
-      theme: buildTheme(Brightness.light),
-      darkTheme: buildTheme(Brightness.dark),
-      themeMode: theme.mode,
-      routerConfig: router,
+    return DynamicColorBuilder(
+      builder: (lightDynamic, darkDynamic) {
+        final lightFallback = ColorScheme.fromSeed(
+          seedColor: AppBrand.seed,
+          brightness: Brightness.light,
+        );
+        final darkFallback = ColorScheme.fromSeed(
+          seedColor: AppBrand.seed,
+          brightness: Brightness.dark,
+        );
+        final lightScheme = (lightDynamic ?? lightFallback).harmonized();
+        final darkScheme = (darkDynamic ?? darkFallback).harmonized();
+        return MaterialApp.router(
+          title: 'TeleDrive',
+          debugShowCheckedModeBanner: false,
+          theme: buildTheme(lightScheme),
+          darkTheme: buildTheme(darkScheme),
+          themeMode: theme.mode,
+          routerConfig: router,
+        );
+      },
     );
   }
 }
@@ -116,9 +132,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     _KeepAliveTab(child: SharedScreen()),
   ];
 
-  PageController? _pageController;
   int _selectedIndex = 0;
-  bool _isTapAnimating = false;
 
   @override
   void initState() {
@@ -141,15 +155,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final index = _tabIndexFor(GoRouterState.of(context).matchedLocation);
-    if (index < 0) return;
-    _selectedIndex = index;
-    _pageController ??= PageController(initialPage: index);
-  }
-
-  @override
-  void dispose() {
-    _pageController?.dispose();
-    super.dispose();
+    if (index >= 0) _selectedIndex = index;
   }
 
   @override
@@ -158,79 +164,71 @@ class _MainShellState extends ConsumerState<MainShell> {
     final routeIndex = _tabIndexFor(location);
     final showingTab = routeIndex >= 0;
 
-    if (showingTab && routeIndex != _selectedIndex && !_isTapAnimating) {
-      _selectedIndex = routeIndex;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _pageController?.animateToPage(
-          routeIndex,
-          duration: const Duration(milliseconds: 260),
-          curve: Curves.easeOutCubic,
-        );
-      });
-    }
-
     return Scaffold(
       body: Stack(
         children: [
           if (showingTab)
-            PageView(
-              controller: _pageController,
-              physics: const PageScrollPhysics(),
-              onPageChanged: _handlePageChanged,
-              children: _tabPages,
+            PageTransitionSwitcher(
+              duration: AppDurations.medium2,
+              reverse: false,
+              transitionBuilder: (child, primary, secondary) {
+                return SharedAxisTransition(
+                  animation: primary,
+                  secondaryAnimation: secondary,
+                  transitionType: SharedAxisTransitionType.horizontal,
+                  fillColor: Theme.of(context).colorScheme.surface,
+                  child: child,
+                );
+              },
+              child: KeyedSubtree(
+                key: ValueKey<int>(routeIndex),
+                child: _tabPages[routeIndex],
+              ),
             )
           else
             widget.child,
           if (showingTab)
             const Positioned(
-              left: 12,
-              right: 12,
-              bottom: 86,
+              left: AppSpacing.sm,
+              right: AppSpacing.sm,
+              bottom: 96,
               child: UploadOverlay(),
             ),
           if (showingTab)
             const Positioned(
               left: 0,
               right: 0,
-              bottom: 24,
+              bottom: AppSpacing.lg,
               child: Center(child: FolderToastOverlay()),
             ),
         ],
       ),
       bottomNavigationBar: showingTab
-          ? DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: Theme.of(context).colorScheme.outline),
+          ? NavigationBar(
+              selectedIndex: routeIndex.clamp(0, _tabPaths.length - 1),
+              onDestinationSelected: _handleDestinationSelected,
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.folder_outlined),
+                  selectedIcon: Icon(Icons.folder),
+                  label: 'Drive',
                 ),
-              ),
-              child: NavigationBar(
-                selectedIndex: _selectedIndex,
-                onDestinationSelected: _handleDestinationSelected,
-                destinations: const [
-                  NavigationDestination(
-                    icon: Icon(Icons.folder_outlined),
-                    selectedIcon: Icon(Icons.folder_outlined),
-                    label: 'Drive',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.photo_library_outlined),
-                    selectedIcon: Icon(Icons.photo_library_outlined),
-                    label: 'Photos',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.star_border),
-                    selectedIcon: Icon(Icons.star_border),
-                    label: 'Starred',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.group_outlined),
-                    selectedIcon: Icon(Icons.group_outlined),
-                    label: 'Shared',
-                  ),
-                ],
-              ),
+                NavigationDestination(
+                  icon: Icon(Icons.photo_library_outlined),
+                  selectedIcon: Icon(Icons.photo_library),
+                  label: 'Photos',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.star_border_rounded),
+                  selectedIcon: Icon(Icons.star_rounded),
+                  label: 'Starred',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.group_outlined),
+                  selectedIcon: Icon(Icons.group),
+                  label: 'Shared',
+                ),
+              ],
             )
           : null,
     );
@@ -240,27 +238,10 @@ class _MainShellState extends ConsumerState<MainShell> {
     return _tabPaths.indexWhere(location.startsWith);
   }
 
-  Future<void> _handleDestinationSelected(int index) async {
+  void _handleDestinationSelected(int index) {
     if (index == _selectedIndex) return;
     setState(() => _selectedIndex = index);
-    _isTapAnimating = true;
-    await _pageController?.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
-    );
-    _isTapAnimating = false;
-    if (!mounted) return;
     context.go(_tabPaths[index]);
-  }
-
-  void _handlePageChanged(int index) {
-    if (_selectedIndex != index) {
-      setState(() => _selectedIndex = index);
-    }
-    if (!_isTapAnimating) {
-      context.go(_tabPaths[index]);
-    }
   }
 }
 
