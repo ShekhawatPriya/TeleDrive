@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../widgets/sheet/sheet_action_tile.dart';
 import '../../../widgets/sheet/sheet_header.dart';
-import '../../upload/ui/folder_creation/folder_toast_controller.dart';
+
 import '../../upload/upload_controller.dart';
 import '../drive_controller.dart';
 import 'drive_dialogs.dart';
@@ -36,13 +36,8 @@ class DriveFab extends ConsumerWidget {
     } else if (action == 'folder') {
       final name = await promptFolderName(context);
       if (name != null && context.mounted) {
-        final toast = ref.read(folderToastControllerProvider);
         try {
-          await runWithFolderToast(
-            toast,
-            () =>
-                ref.read(driveControllerProvider).createFolder(name, parentId),
-          );
+          await ref.read(driveControllerProvider).createFolder(name, parentId);
         } catch (_) {}
       }
     }

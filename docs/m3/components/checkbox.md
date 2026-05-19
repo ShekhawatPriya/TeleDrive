@@ -84,7 +84,6 @@ Used in:
 - [`lib/features/auth/ui/login_screen.dart`](../../lib/features/auth/ui/login_screen.dart) — terms acceptance
 - [`lib/features/upload/ui/components/upload_card.dart`](../../lib/features/upload/ui/components/upload_card.dart)
 - [`lib/features/upload/ui/components/upload_thumb_slot.dart`](../../lib/features/upload/ui/components/upload_thumb_slot.dart)
-- [`lib/features/drive/components/folder_toast.dart`](../../lib/features/drive/components/folder_toast.dart)
 
 ### Conventions
 

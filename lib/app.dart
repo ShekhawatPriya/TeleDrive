@@ -23,7 +23,7 @@ import 'features/profile/theme_controller.dart';
 import 'features/search/search_controller.dart';
 import 'features/share/share_controller.dart';
 import 'features/share/share_detail_screen.dart';
-import 'features/upload/ui/folder_creation/folder_toast_overlay.dart';
+
 import 'features/upload/ui/upload_overlay.dart';
 import 'shared/splash_screen.dart';
 import 'widgets/ios_more_menu.dart';
@@ -253,7 +253,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                 bottom: 96,
                 child: UploadOverlay(),
               ),
-              const FolderToastSlot(),
+
             ],
           ),
         ),

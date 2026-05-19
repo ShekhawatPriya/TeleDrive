@@ -6,7 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/ios_more_menu.dart';
-import '../upload/ui/folder_creation/folder_toast_overlay.dart';
+
 import '../upload/ui/upload_overlay.dart';
 import 'components/drive_fab.dart';
 import 'components/drive_item_actions.dart';
@@ -116,7 +116,7 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
             bottom: 86,
             child: UploadOverlay(),
           ),
-          const FolderToastSlot(),
+
         ],
       ),
       floatingActionButton: selectMode

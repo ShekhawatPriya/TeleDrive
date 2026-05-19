@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../widgets/ios_more_menu.dart';
 import '../../../widgets/main_tab_menu_sections.dart';
-import '../../upload/ui/folder_creation/folder_toast_controller.dart';
+
 import '../../upload/upload_controller.dart';
 import '../drive_controller.dart';
 import 'drive_dialogs.dart';
@@ -49,13 +49,7 @@ Future<void> _newFolder(
 ) async {
   final name = await promptFolderName(context);
   if (name == null || !context.mounted) return;
-  final toast = ref.read(folderToastControllerProvider);
   try {
-    await runWithFolderToast(
-      toast,
-      () => ref.read(driveControllerProvider).createFolder(name, parentId),
-    );
-  } catch (_) {
-    // Toast surfaces the failure.
-  }
+    await ref.read(driveControllerProvider).createFolder(name, parentId);
+  } catch (_) {}
 }
