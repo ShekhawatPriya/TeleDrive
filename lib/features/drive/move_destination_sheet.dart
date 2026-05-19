@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../models/drive_models.dart';
+import '../../widgets/sheet/sheet_drag_handle.dart';
+import '../../widgets/sheet/sheet_header.dart';
 import 'drive_controller.dart';
 
 const rootMoveDestination = '__teledrive_root__';
@@ -21,11 +24,13 @@ class MoveDestinationSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final drive = ref.watch(driveControllerProvider);
+    final scheme = Theme.of(context).colorScheme;
     final excluded = _excludedIds(drive.folders);
     final roots = drive.folders.where((f) => f.parentId == null).toList()
       ..sort((a, b) => a.name.compareTo(b.name));
 
     return SafeArea(
+      top: false,
       child: DraggableScrollableSheet(
         expand: false,
         initialChildSize: .68,
@@ -34,24 +39,22 @@ class MoveDestinationSheet extends ConsumerWidget {
         builder: (_, controller) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
+            const SheetDragHandle(),
+            SheetHeader(
+              title: title,
+              leadingIcon: Icons.drive_file_move_outlined,
+              leadingAccent: AppColors.link,
+              trailing: IconButton(
+                tooltip: 'Close',
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => Navigator.pop(context),
               ),
+            ),
+            Divider(
+              height: 1,
+              color: scheme.outline.withValues(alpha: .6),
+              indent: 20,
+              endIndent: 20,
             ),
             Expanded(
               child: ListView(

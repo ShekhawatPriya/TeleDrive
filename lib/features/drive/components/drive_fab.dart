@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../widgets/sheet/sheet_action_tile.dart';
+import '../../../widgets/sheet/sheet_drag_handle.dart';
+import '../../../widgets/sheet/sheet_header.dart';
 import '../../upload/ui/folder_creation/folder_toast_controller.dart';
 import '../../upload/upload_controller.dart';
 import '../drive_controller.dart';
@@ -24,6 +27,7 @@ class DriveFab extends ConsumerWidget {
   Future<void> _open(BuildContext context, WidgetRef ref) async {
     final action = await showModalBottomSheet<String>(
       context: context,
+      isScrollControlled: true,
       builder: (_) => const _AddToDriveSheet(),
     );
     if (!context.mounted) return;
@@ -56,38 +60,47 @@ class _AddToDriveSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-              child: Text(
-                'Add to Drive',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ),
-            const Divider(height: 16),
-            ListTile(
-              leading: const Icon(Icons.upload_file),
-              title: const Text('Upload File'),
-              onTap: () => Navigator.pop(context, 'upload'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Take Photo'),
-              onTap: () => Navigator.pop(context, 'photo'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.create_new_folder_outlined),
-              title: const Text('Create Folder'),
-              onTap: () => Navigator.pop(context, 'folder'),
-            ),
-          ],
-        ),
+      top: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SheetDragHandle(),
+          SheetHeader(
+            title: 'Add to Drive',
+            subtitle: 'Upload, capture, or create a folder',
+            leadingIcon: Icons.add_rounded,
+            leadingAccent: scheme.primary,
+          ),
+          Divider(
+            height: 1,
+            color: scheme.outline.withValues(alpha: .6),
+            indent: 20,
+            endIndent: 20,
+          ),
+          const SizedBox(height: 8),
+          SheetActionTile(
+            label: 'Upload File',
+            subtitle: 'Pick from your device',
+            icon: Icons.upload_file_outlined,
+            onTap: () => Navigator.pop(context, 'upload'),
+          ),
+          SheetActionTile(
+            label: 'Take Photo',
+            subtitle: 'Capture with camera',
+            icon: Icons.camera_alt_outlined,
+            onTap: () => Navigator.pop(context, 'photo'),
+          ),
+          SheetActionTile(
+            label: 'Create Folder',
+            subtitle: 'Organize your files',
+            icon: Icons.create_new_folder_outlined,
+            onTap: () => Navigator.pop(context, 'folder'),
+          ),
+          const SizedBox(height: 12),
+        ],
       ),
     );
   }

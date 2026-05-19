@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
 import '../../../models/share_models.dart';
 import '../../share/components/create_share_sheet.dart';
@@ -21,19 +23,51 @@ class DriveItemActions {
     WidgetRef ref,
     DriveFile file,
   ) async {
-    final actions = <String, IconData>{
+    final actions = <SheetActionItem>[
       if (file.shared)
-        'revoke_share': Icons.link_off
+        const SheetActionItem(
+          id: 'revoke_share',
+          label: 'Revoke share',
+          icon: Icons.link_off,
+        )
       else
-        'share': Icons.ios_share,
-      'download': Icons.download,
-      'move': Icons.drive_file_move_outline,
-      'star': Icons.star_border,
-      'delete': Icons.delete_outline,
-    };
+        const SheetActionItem(
+          id: 'share',
+          label: 'Share',
+          icon: Icons.ios_share,
+        ),
+      const SheetActionItem(
+        id: 'download',
+        label: 'Download',
+        icon: Icons.download,
+      ),
+      const SheetActionItem(
+        id: 'move',
+        label: 'Move',
+        icon: Icons.drive_file_move_outline,
+      ),
+      SheetActionItem(
+        id: 'star',
+        label: file.starred ? 'Unstar' : 'Star',
+        icon: file.starred ? Icons.star : Icons.star_border,
+      ),
+      const SheetActionItem(
+        id: 'delete',
+        label: 'Delete',
+        icon: Icons.delete_outline,
+        destructive: true,
+      ),
+    ];
     final action = await showModalBottomSheet<String>(
       context: context,
-      builder: (_) => DriveActionSheet(title: file.name, actions: actions),
+      isScrollControlled: true,
+      builder: (_) => DriveActionSheet(
+        title: file.name,
+        subtitle: _fileSubtitle(file),
+        leadingIcon: _iconForKind(file.kind),
+        leadingAccent: _accentForKind(file.kind),
+        actions: actions,
+      ),
     );
     if (!context.mounted) return;
     final controller = ref.read(driveControllerProvider);
@@ -69,19 +103,52 @@ class DriveItemActions {
     DriveFolder folder, {
     bool allowRename = true,
   }) async {
-    final actions = <String, IconData>{
+    final actions = <SheetActionItem>[
       if (folder.shared)
-        'revoke_share': Icons.link_off
+        const SheetActionItem(
+          id: 'revoke_share',
+          label: 'Revoke share',
+          icon: Icons.link_off,
+        )
       else
-        'share': Icons.ios_share,
-      if (allowRename) 'rename': Icons.edit_outlined,
-      'move': Icons.drive_file_move_outline,
-      'star': Icons.star_border,
-      'delete': Icons.delete_outline,
-    };
+        const SheetActionItem(
+          id: 'share',
+          label: 'Share',
+          icon: Icons.ios_share,
+        ),
+      if (allowRename)
+        const SheetActionItem(
+          id: 'rename',
+          label: 'Rename',
+          icon: Icons.edit_outlined,
+        ),
+      const SheetActionItem(
+        id: 'move',
+        label: 'Move',
+        icon: Icons.drive_file_move_outline,
+      ),
+      SheetActionItem(
+        id: 'star',
+        label: folder.starred ? 'Unstar' : 'Star',
+        icon: folder.starred ? Icons.star : Icons.star_border,
+      ),
+      const SheetActionItem(
+        id: 'delete',
+        label: 'Delete',
+        icon: Icons.delete_outline,
+        destructive: true,
+      ),
+    ];
     final action = await showModalBottomSheet<String>(
       context: context,
-      builder: (_) => DriveActionSheet(title: folder.name, actions: actions),
+      isScrollControlled: true,
+      builder: (_) => DriveActionSheet(
+        title: folder.name,
+        subtitle: _folderSubtitle(folder),
+        leadingIcon: Icons.folder_outlined,
+        leadingAccent: AppColors.amber,
+        actions: actions,
+      ),
     );
     if (!context.mounted) return;
     final controller = ref.read(driveControllerProvider);
@@ -208,5 +275,86 @@ class DriveBulkActions {
           folderIds: folderIds.toList(),
         );
     return true;
+  }
+}
+
+String _fileSubtitle(DriveFile file) {
+  final parts = <String>[
+    formatLabel(file),
+    formatFileSize(file.size),
+    if (formatDate(file.modifiedAt).isNotEmpty) formatDate(file.modifiedAt),
+  ];
+  return parts.join(' · ');
+}
+
+String _folderSubtitle(DriveFolder folder) {
+  final parts = <String>['Folder'];
+  if (folder.recursiveFileCount > 0) {
+    parts.add(
+      '${folder.recursiveFileCount} '
+      '${folder.recursiveFileCount == 1 ? 'item' : 'items'}',
+    );
+  }
+  if (folder.recursiveSize > 0) {
+    parts.add(formatFileSize(folder.recursiveSize));
+  }
+  return parts.join(' · ');
+}
+
+IconData _iconForKind(FileKind kind) {
+  switch (kind) {
+    case FileKind.folder:
+      return Icons.folder_outlined;
+    case FileKind.pdf:
+      return Icons.picture_as_pdf;
+    case FileKind.image:
+      return Icons.image_outlined;
+    case FileKind.video:
+      return Icons.play_circle_outline;
+    case FileKind.doc:
+      return Icons.description_outlined;
+    case FileKind.sheet:
+      return Icons.table_chart_outlined;
+    case FileKind.slides:
+      return Icons.slideshow_outlined;
+    case FileKind.audio:
+      return Icons.audiotrack;
+    case FileKind.zip:
+      return Icons.folder_zip_outlined;
+    case FileKind.code:
+      return Icons.code;
+    case FileKind.text:
+      return Icons.notes;
+    case FileKind.other:
+      return Icons.insert_drive_file_outlined;
+  }
+}
+
+Color _accentForKind(FileKind kind) {
+  switch (kind) {
+    case FileKind.folder:
+      return AppColors.amber;
+    case FileKind.pdf:
+      return AppColors.error;
+    case FileKind.image:
+      return AppColors.pink;
+    case FileKind.video:
+      return AppColors.violet;
+    case FileKind.doc:
+      return AppColors.link;
+    case FileKind.sheet:
+      return AppColors.green;
+    case FileKind.slides:
+      return AppColors.warning;
+    case FileKind.audio:
+      return AppColors.cyan;
+    case FileKind.zip:
+      return AppColors.amber;
+    case FileKind.code:
+      return AppColors.linkDeep;
+    case FileKind.text:
+      return AppColors.mute;
+    case FileKind.other:
+      return AppColors.body;
   }
 }
