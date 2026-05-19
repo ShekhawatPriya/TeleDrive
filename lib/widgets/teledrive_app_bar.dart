@@ -79,8 +79,7 @@ class _LogoLeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(start: AppSpacing.md),
+    return Center(
       child: Icon(Icons.cloud_rounded, color: scheme.primary, size: 26),
     );
   }
