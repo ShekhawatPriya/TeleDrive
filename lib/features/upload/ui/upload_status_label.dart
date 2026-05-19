@@ -1,4 +1,4 @@
-import '../upload_controller.dart';
+import '../upload_models.dart';
 
 /// User-facing label for an upload phase.  Internal backend terminology
 /// (`waitingForServer`, `uploadingToTelegram`, `processing`) is collapsed

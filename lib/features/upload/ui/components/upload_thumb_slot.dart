@@ -7,7 +7,7 @@ import '../../../../core/storage/thumbnail_cache_manager.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/file_type_detector.dart';
 import '../../../../models/drive_models.dart';
-import '../../upload_controller.dart';
+import '../../upload_models.dart';
 
 /// Leading thumb slot in an upload card.
 ///

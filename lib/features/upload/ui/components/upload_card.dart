@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/file_type_detector.dart';
 import '../../upload_controller.dart';
+import '../../upload_models.dart';
 import '../upload_status_label.dart';
 import 'upload_progress_bar.dart';
 import 'upload_thumb_slot.dart';
