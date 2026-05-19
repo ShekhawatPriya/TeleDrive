@@ -253,12 +253,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                 bottom: 96,
                 child: UploadOverlay(),
               ),
-              const Positioned(
-                left: 0,
-                right: 0,
-                bottom: AppSpacing.lg,
-                child: Center(child: FolderToastOverlay()),
-              ),
+              const FolderToastSlot(),
             ],
           ),
         ),
