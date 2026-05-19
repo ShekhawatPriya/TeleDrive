@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../widgets/ios_more_menu.dart';
+import '../../../widgets/main_tab_menu_sections.dart';
 import '../../upload/ui/folder_creation/folder_toast_controller.dart';
 import '../../upload/upload_controller.dart';
 import '../drive_controller.dart';
-import '../view_preferences_controller.dart';
 import 'drive_dialogs.dart';
 
 /// Builds the iOS-style three-dot menu sections for both the home and
@@ -18,7 +18,6 @@ List<IosMenuSection> buildDriveMenuSections(
   required VoidCallback onSelect,
   required bool includeLayoutSection,
 }) {
-  final prefs = ref.read(viewPreferencesProvider);
   return [
     IosMenuSection([
       IosMenuItem(
@@ -38,44 +37,10 @@ List<IosMenuSection> buildDriveMenuSections(
             ref.read(uploadControllerProvider).pickPhoto(folderId: folderId),
       ),
     ]),
-    if (includeLayoutSection)
-      IosMenuSection([
-        IosMenuItem(
-          label: 'Icons',
-          trailingIcon: Icons.grid_view,
-          checked: prefs.layout == LayoutMode.grid,
-          onTap: () => ref
-              .read(viewPreferencesProvider)
-              .setLayout(LayoutMode.grid),
-        ),
-        IosMenuItem(
-          label: 'List',
-          trailingIcon: Icons.view_list,
-          checked: prefs.layout == LayoutMode.list,
-          onTap: () => ref
-              .read(viewPreferencesProvider)
-              .setLayout(LayoutMode.list),
-        ),
-      ]),
-    IosMenuSection([
-      for (final field in SortField.values)
-        IosMenuItem(
-          label: _sortLabel(field),
-          checked: prefs.sort == field,
-          subtitle: prefs.sortSubtitle(field),
-          onTap: () =>
-              ref.read(viewPreferencesProvider).selectSort(field),
-        ),
-    ]),
+    if (includeLayoutSection) ...buildLayoutMenuSection(ref),
+    ...buildSortMenuSection(ref),
   ];
 }
-
-String _sortLabel(SortField f) => switch (f) {
-  SortField.name => 'Name',
-  SortField.kind => 'Kind',
-  SortField.date => 'Date',
-  SortField.size => 'Size',
-};
 
 Future<void> _newFolder(
   BuildContext context,

@@ -6,16 +6,15 @@ import '../../core/theme/app_theme.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/skeletons.dart';
-import '../../widgets/teledrive_app_bar.dart';
 import '../search/search_controller.dart';
 import 'components/drive_fab.dart';
 import 'components/drive_header_widgets.dart';
 import 'components/drive_item_actions.dart';
 import 'components/drive_list_slivers.dart';
-import 'components/drive_menu_builder.dart';
 import 'components/drive_selection_bar.dart';
 import 'components/selection_mode_mixin.dart';
 import 'drive_controller.dart';
+import 'drive_tab_commands.dart';
 import 'view_preferences_controller.dart';
 
 class DriveScreen extends ConsumerStatefulWidget {
@@ -27,8 +26,17 @@ class DriveScreen extends ConsumerStatefulWidget {
 
 class _DriveScreenState extends ConsumerState<DriveScreen>
     with SelectionModeMixin<DriveScreen> {
+  int _handledSelectRequests = 0;
+
   @override
   Widget build(BuildContext context) {
+    final commands = ref.watch(driveTabCommandsProvider);
+    if (commands.selectRequests != _handledSelectRequests) {
+      _handledSelectRequests = commands.selectRequests;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !selectMode) setState(() => selectMode = true);
+      });
+    }
     final drive = ref.watch(driveControllerProvider);
     final prefs = ref.watch(viewPreferencesProvider);
     final state = drive.state;
@@ -45,11 +53,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
           .toList();
     }
     folders = sortDriveFolders(folders, ascending: prefs.ascending);
-    files = sortDriveFiles(
-      files,
-      sort: prefs.sort,
-      ascending: prefs.ascending,
-    );
+    files = sortDriveFiles(files, sort: prefs.sort, ascending: prefs.ascending);
     final recent = drive.recentFiles();
     final grid = prefs.layout == LayoutMode.grid;
 
@@ -78,10 +82,9 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                         selectMode: true,
                         selectedFolderIds: selectedFolderIds,
                         onFolderTap: _onFolderTap,
-                        onFolderLongPress: (id) =>
-                            enterSelect(folderId: id),
-                        onFolderMore: (folder) => DriveItemActions.openFolder(
-                          context, ref, folder),
+                        onFolderLongPress: (id) => enterSelect(folderId: id),
+                        onFolderMore: (folder) =>
+                            DriveItemActions.openFolder(context, ref, folder),
                       ),
                       if (files.isNotEmpty) const DriveSectionHeader('Files'),
                       DriveFilesSliver(
@@ -109,20 +112,14 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
         onRefresh: drive.refresh,
         child: CustomScrollView(
           slivers: [
-            TeleDriveAppBar(
-              scope: SearchScope.drive,
-              menuSections: (ctx) => buildDriveMenuSections(
-                ctx,
-                ref,
-                folderId: null,
-                includeLayoutSection: true,
-                onSelect: () => setState(() => selectMode = true),
-              ),
-            ),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.xs),
+                  AppSpacing.md,
+                  AppSpacing.sm,
+                  AppSpacing.md,
+                  AppSpacing.xs,
+                ),
                 child: DriveStoragePill(used: state.usedStorage),
               ),
             ),
@@ -140,9 +137,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
               SliverFillRemaining(
                 child: EmptyState(
                   icon: query.isEmpty ? Icons.folder_open : Icons.search_off,
-                  title: query.isEmpty
-                      ? 'Your Drive is empty'
-                      : 'No results',
+                  title: query.isEmpty ? 'Your Drive is empty' : 'No results',
                   body: query.isEmpty
                       ? 'Upload files or create a folder to get started.'
                       : 'Try a different file or folder name.',
@@ -194,31 +189,38 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
 
   Future<void> _bulkShare() async {
     await DriveBulkActions.share(
-      context, ref,
-      fileIds: selectedFileIds, folderIds: selectedFolderIds,
+      context,
+      ref,
+      fileIds: selectedFileIds,
+      folderIds: selectedFolderIds,
     );
   }
 
   Future<void> _bulkStar() async {
     await DriveBulkActions.star(
       ref,
-      fileIds: selectedFileIds, folderIds: selectedFolderIds,
+      fileIds: selectedFileIds,
+      folderIds: selectedFolderIds,
     );
     exitSelect();
   }
 
   Future<void> _bulkMove() async {
     await DriveBulkActions.move(
-      context, ref,
-      fileIds: selectedFileIds, folderIds: selectedFolderIds,
+      context,
+      ref,
+      fileIds: selectedFileIds,
+      folderIds: selectedFolderIds,
     );
     if (mounted) exitSelect();
   }
 
   Future<void> _bulkDelete() async {
     final ok = await DriveBulkActions.delete(
-      context, ref,
-      fileIds: selectedFileIds, folderIds: selectedFolderIds,
+      context,
+      ref,
+      fileIds: selectedFileIds,
+      folderIds: selectedFolderIds,
     );
     if (ok && mounted) exitSelect();
   }

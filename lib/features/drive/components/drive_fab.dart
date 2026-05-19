@@ -16,10 +16,9 @@ class DriveFab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return FloatingActionButton.extended(
+    return FloatingActionButton(
       onPressed: () => _open(context, ref),
-      icon: const Icon(Icons.add),
-      label: const Text('New'),
+      child: const Icon(Icons.add),
     );
   }
 
@@ -41,9 +40,8 @@ class DriveFab extends ConsumerWidget {
         try {
           await runWithFolderToast(
             toast,
-            () => ref
-                .read(driveControllerProvider)
-                .createFolder(name, parentId),
+            () =>
+                ref.read(driveControllerProvider).createFolder(name, parentId),
           );
         } catch (_) {}
       }
