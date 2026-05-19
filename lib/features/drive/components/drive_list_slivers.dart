@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
-import '../../../widgets/file_tiles.dart';
+import '../../../widgets/file_card_tile.dart';
+import '../../../widgets/file_list_tile.dart';
 import '../../upload/upload_controller.dart';
 import '../drive_controller.dart';
 
