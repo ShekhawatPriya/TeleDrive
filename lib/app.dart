@@ -292,7 +292,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         IosMenuSection([
           IosMenuItem(
             label: 'Refresh',
-            trailingIcon: Icons.refresh_rounded,
+            leadingIcon: Icons.refresh_rounded,
             onTap: () =>
                 ref.read(shareControllerProvider).refresh(silent: true),
           ),

@@ -3,24 +3,27 @@ import 'package:flutter/material.dart';
 import 'ios_menu_models.dart';
 import 'ios_menu_overlay.dart';
 
-/// Three-dot overflow button rendered in the M3 style: a 40dp `IconButton`
+/// Three-dot overflow button rendered in the M3 style: a 40 dp `IconButton`
 /// using the surrounding [IconButtonTheme]. Opens a Material 3 menu anchored
 /// to the button.
 ///
-/// The class name is kept for backwards compatibility with existing call
-/// sites (`drive_screen.dart`, `folder_screen.dart`, etc.). The menu it
-/// produces is fully Material 3 — see [showIosMoreMenu] / [IosMenuOverlayRoute].
+/// Set [alignToScreenEdge] when other actions (e.g. a profile avatar) sit to
+/// the right of this button. The popup's right edge is then projected to the
+/// screen edge so the menu lands at the same right inset regardless of which
+/// action it visually trails.
 class IosMoreButton extends StatefulWidget {
   const IosMoreButton({
     required this.sectionsBuilder,
     this.tooltip = 'More',
     this.size = 40,
+    this.alignToScreenEdge = false,
     super.key,
   });
 
   final IosMenuSectionsBuilder sectionsBuilder;
   final String tooltip;
   final double size;
+  final bool alignToScreenEdge;
 
   @override
   State<IosMoreButton> createState() => _IosMoreButtonState();
@@ -49,11 +52,15 @@ class _IosMoreButtonState extends State<IosMoreButton> {
     final overlay = Overlay.of(context).context.findRenderObject();
     if (overlay is! RenderBox) return;
     final topLeft = renderObject.localToGlobal(Offset.zero, ancestor: overlay);
-    final anchor = Rect.fromLTWH(
+    final box = renderObject.size;
+    final right = widget.alignToScreenEdge
+        ? MediaQuery.sizeOf(context).width
+        : topLeft.dx + box.width;
+    final anchor = Rect.fromLTRB(
       topLeft.dx,
       topLeft.dy,
-      renderObject.size.width,
-      renderObject.size.height,
+      right,
+      topLeft.dy + box.height,
     );
     showIosMoreMenu(
       context: context,

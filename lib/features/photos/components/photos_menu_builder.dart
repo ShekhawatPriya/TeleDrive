@@ -20,13 +20,13 @@ List<IosMenuSection> buildPhotosMenuSections(
     IosMenuSection([
       IosMenuItem(
         label: 'Smaller tiles',
-        trailingIcon: Icons.grid_view_rounded,
+        leadingIcon: Icons.grid_view_rounded,
         checked: atSmallest,
         onTap: atSmallest ? () {} : density.zoomOut,
       ),
       IosMenuItem(
         label: 'Larger tiles',
-        trailingIcon: Icons.grid_on_rounded,
+        leadingIcon: Icons.grid_on_rounded,
         checked: atLargest,
         onTap: atLargest ? () {} : density.zoomIn,
       ),

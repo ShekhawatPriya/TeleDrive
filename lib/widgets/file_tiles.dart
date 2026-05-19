@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../core/theme/app_theme.dart';
 import '../core/utils/file_type_detector.dart';
@@ -12,10 +13,13 @@ class FileListTile extends StatelessWidget {
     required this.onTap,
     this.file,
     this.isFolder = false,
+    this.isOptimistic = false,
     this.starred = false,
     this.shared = false,
     this.onMore,
     this.onStar,
+    this.onRetry,
+    this.onRemove,
     this.selected,
     this.onLongPress,
     super.key,
@@ -25,11 +29,14 @@ class FileListTile extends StatelessWidget {
   final String subtitle;
   final DriveFile? file;
   final bool isFolder;
+  final bool isOptimistic;
   final bool starred;
   final bool shared;
   final VoidCallback onTap;
   final VoidCallback? onMore;
   final VoidCallback? onStar;
+  final VoidCallback? onRetry;
+  final VoidCallback? onRemove;
   final bool? selected;
   final VoidCallback? onLongPress;
 
@@ -40,6 +47,10 @@ class FileListTile extends StatelessWidget {
     final inSelectMode = selected != null;
     final isShared = shared || (file?.shared ?? false);
     final isSelected = selected == true;
+    final status = file?.uploadStatus;
+    final isFailed =
+        isOptimistic && (status == 'failed' || status == 'cancelled');
+    final isUploading = isOptimistic && !isFailed;
 
     final tile = ListTile(
       onTap: onTap,
@@ -57,24 +68,42 @@ class FileListTile extends StatelessWidget {
         child: Stack(
           children: [
             Positioned.fill(
-              child: isFolder
-                  ? DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: scheme.secondaryContainer,
+              child: _UploadingShimmer(
+                enabled: isUploading,
+                borderRadius: AppRadii.smR,
+                child: isFolder
+                    ? DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: scheme.secondaryContainer,
+                          borderRadius: AppRadii.smR,
+                        ),
+                        child: Icon(
+                          Icons.folder_rounded,
+                          color: scheme.onSecondaryContainer,
+                          size: 28,
+                        ),
+                      )
+                    : ClipRRect(
                         borderRadius: AppRadii.smR,
+                        child: MediaThumb(file: file!, fit: BoxFit.cover),
                       ),
-                      child: Icon(
-                        Icons.folder_rounded,
-                        color: scheme.onSecondaryContainer,
-                        size: 28,
-                      ),
-                    )
-                  : ClipRRect(
-                      borderRadius: AppRadii.smR,
-                      child: MediaThumb(file: file!, fit: BoxFit.cover),
-                    ),
+              ),
             ),
-            if (isShared)
+            if (isFailed)
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: scheme.errorContainer.withValues(alpha: .55),
+                    borderRadius: AppRadii.smR,
+                  ),
+                  child: Icon(
+                    Icons.error_outline_rounded,
+                    color: scheme.onErrorContainer,
+                    size: 26,
+                  ),
+                ),
+              ),
+            if (isShared && !isOptimistic)
               const Positioned(
                 right: 2,
                 bottom: 2,
@@ -120,7 +149,7 @@ class FileListTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodyLarge?.copyWith(
           fontWeight: FontWeight.w500,
-          color: scheme.onSurface,
+          color: isFailed ? scheme.error : scheme.onSurface,
         ),
       ),
       subtitle: Text(
@@ -128,29 +157,60 @@ class FileListTile extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodyMedium?.copyWith(
-          color: scheme.onSurfaceVariant,
+          color: isFailed ? scheme.error : scheme.onSurfaceVariant,
         ),
       ),
       trailing: inSelectMode
           ? null
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  onPressed: onStar,
-                  icon: Icon(
-                    starred ? Icons.star_rounded : Icons.star_border_rounded,
-                    color: starred ? scheme.primary : scheme.onSurfaceVariant,
-                  ),
-                  tooltip: 'Star',
-                ),
-                IconButton(
-                  onPressed: onMore,
-                  icon: const Icon(Icons.more_vert),
-                  tooltip: 'More',
-                ),
-              ],
-            ),
+          : isFailed
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      onPressed: onRetry,
+                      icon: const Icon(Icons.refresh_rounded),
+                      color: scheme.error,
+                      tooltip: 'Retry',
+                    ),
+                    IconButton(
+                      onPressed: onRemove,
+                      icon: const Icon(Icons.close_rounded),
+                      color: scheme.error,
+                      tooltip: 'Remove',
+                    ),
+                  ],
+                )
+              : isUploading
+                  ? const Padding(
+                      padding: EdgeInsetsDirectional.only(end: AppSpacing.sm),
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          onPressed: onStar,
+                          icon: Icon(
+                            starred
+                                ? Icons.star_rounded
+                                : Icons.star_border_rounded,
+                            color: starred
+                                ? scheme.primary
+                                : scheme.onSurfaceVariant,
+                          ),
+                          tooltip: 'Star',
+                        ),
+                        IconButton(
+                          onPressed: onMore,
+                          icon: const Icon(Icons.more_vert),
+                          tooltip: 'More',
+                        ),
+                      ],
+                    ),
     );
 
     return Padding(
@@ -189,6 +249,8 @@ class FileCardTile extends StatelessWidget {
     required this.file,
     required this.onTap,
     this.onMore,
+    this.onRetry,
+    this.onRemove,
     this.selected,
     this.onLongPress,
     super.key,
@@ -196,6 +258,8 @@ class FileCardTile extends StatelessWidget {
   final DriveFile file;
   final VoidCallback onTap;
   final VoidCallback? onMore;
+  final VoidCallback? onRetry;
+  final VoidCallback? onRemove;
   final bool? selected;
   final VoidCallback? onLongPress;
 
@@ -205,15 +269,23 @@ class FileCardTile extends StatelessWidget {
     final scheme = theme.colorScheme;
     final inSelectMode = selected != null;
     final isSelected = selected == true;
+    final status = file.uploadStatus;
+    final isFailed = file.isOptimistic &&
+        (status == 'failed' || status == 'cancelled');
+    final isUploading = file.isOptimistic && !isFailed;
+
+    final borderSide = isSelected
+        ? BorderSide(color: scheme.primary, width: 2)
+        : isFailed
+            ? BorderSide(color: scheme.error, width: 1.5)
+            : BorderSide.none;
 
     return Card(
       margin: EdgeInsets.zero,
       color: scheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         borderRadius: AppRadii.mdR,
-        side: isSelected
-            ? BorderSide(color: scheme.primary, width: 2)
-            : BorderSide.none,
+        side: borderSide,
       ),
       child: InkWell(
         borderRadius: AppRadii.mdR,
@@ -227,13 +299,45 @@ class FileCardTile extends StatelessWidget {
               child: Stack(
                 children: [
                   Positioned.fill(
-                    child: ClipRRect(
+                    child: _UploadingShimmer(
+                      enabled: isUploading,
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(AppRadii.md),
                       ),
-                      child: MediaThumb(file: file, fit: BoxFit.cover),
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(AppRadii.md),
+                        ),
+                        child: MediaThumb(file: file, fit: BoxFit.cover),
+                      ),
                     ),
                   ),
+                  if (isUploading)
+                    Positioned(
+                      left: 8,
+                      bottom: 8,
+                      child: _StatusChip(
+                        label: formatUploadStatus(file),
+                      ),
+                    ),
+                  if (isFailed)
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: scheme.errorContainer.withValues(alpha: .55),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(AppRadii.md),
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.error_outline_rounded,
+                            color: scheme.onErrorContainer,
+                            size: 36,
+                          ),
+                        ),
+                      ),
+                    ),
                   if (inSelectMode)
                     Positioned(
                       top: 8,
@@ -256,7 +360,7 @@ class FileCardTile extends StatelessWidget {
                             : null,
                       ),
                     ),
-                  if (file.shared)
+                  if (file.shared && !file.isOptimistic)
                     const Positioned(
                       right: 8,
                       bottom: 8,
@@ -280,7 +384,7 @@ class FileCardTile extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodyLarge?.copyWith(
                             fontWeight: FontWeight.w500,
-                            color: scheme.onSurface,
+                            color: isFailed ? scheme.error : scheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -291,27 +395,159 @@ class FileCardTile extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
+                            color:
+                                isFailed ? scheme.error : scheme.onSurfaceVariant,
                           ),
                         ),
                       ],
                     ),
                   ),
                   if (!inSelectMode)
-                    IconButton(
-                      onPressed: onMore,
-                      icon: const Icon(Icons.more_vert),
-                      iconSize: 20,
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints.tightFor(
-                          width: 32, height: 32),
-                    ),
+                    if (isFailed)
+                      _CompactIconButton(
+                        icon: Icons.refresh_rounded,
+                        color: scheme.error,
+                        tooltip: 'Retry',
+                        onPressed: onRetry,
+                      ),
+                  if (!inSelectMode)
+                    if (isFailed)
+                      _CompactIconButton(
+                        icon: Icons.close_rounded,
+                        color: scheme.error,
+                        tooltip: 'Remove',
+                        onPressed: onRemove,
+                      )
+                    else if (isUploading)
+                      const Padding(
+                        padding: EdgeInsets.all(8),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    else
+                      _CompactIconButton(
+                        icon: Icons.more_vert,
+                        color: scheme.onSurfaceVariant,
+                        tooltip: 'More',
+                        onPressed: onMore,
+                      ),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CompactIconButton extends StatelessWidget {
+  const _CompactIconButton({
+    required this.icon,
+    required this.color,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onPressed,
+      icon: Icon(icon, color: color),
+      iconSize: 20,
+      tooltip: tooltip,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surface.withValues(alpha: .82),
+        borderRadius: BorderRadius.circular(AppRadii.xs),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 10,
+              height: 10,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.6,
+                valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: scheme.onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Wraps [child] with a subtle shimmer sweep while [enabled] is true. When
+/// disabled, returns the child untouched (no animation overhead). The shimmer
+/// is clipped to [borderRadius] so it follows the underlying surface.
+class _UploadingShimmer extends StatelessWidget {
+  const _UploadingShimmer({
+    required this.enabled,
+    required this.child,
+    required this.borderRadius,
+  });
+
+  final bool enabled;
+  final Widget child;
+  final BorderRadius borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) return child;
+    final scheme = Theme.of(context).colorScheme;
+    return ClipRRect(
+      borderRadius: borderRadius,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          child,
+          IgnorePointer(
+            child: Shimmer.fromColors(
+              baseColor: scheme.surfaceContainerHighest.withValues(alpha: .55),
+              highlightColor: scheme.surfaceContainerLow.withValues(alpha: .25),
+              period: const Duration(milliseconds: 1400),
+              child: ColoredBox(
+                color: scheme.surfaceContainerHighest.withValues(alpha: .35),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

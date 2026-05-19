@@ -94,10 +94,12 @@ class DriveController extends ChangeNotifier {
         state.files.where((f) => f.isOptimistic).toList();
     final keptOptimisticMedia =
         state.mediaFiles.where((f) => f.isOptimistic).toList();
+    final keptOptimisticFolders =
+        state.folders.where((f) => f.isOptimistic).toList();
     state = state.copyWith(
       files: [...keptOptimisticFiles, ...incomingFiles],
       mediaFiles: [...keptOptimisticMedia, ...incomingMedia],
-      folders: snapshot.folders,
+      folders: [...keptOptimisticFolders, ...snapshot.folders],
       mediaCursor: snapshot.mediaCursor,
       loading: false,
       clearError: true,
@@ -215,10 +217,34 @@ class DriveController extends ChangeNotifier {
   }
 
   Future<DriveFolder> createFolder(String name, String? parentId) async {
-    final folder = await _repo.createFolder(name, parentId);
-    state = state.copyWith(folders: [folder, ...state.folders]);
+    final tempId = 'local:${DateTime.now().microsecondsSinceEpoch}';
+    final now = DateTime.now().toIso8601String();
+    final placeholder = DriveFolder(
+      id: tempId,
+      name: name,
+      parentId: parentId,
+      modifiedAt: now,
+      createdAt: now,
+      isOptimistic: true,
+    );
+    state = state.copyWith(folders: [placeholder, ...state.folders]);
     notifyListeners();
-    return folder;
+    try {
+      final created = await _repo.createFolder(name, parentId);
+      state = state.copyWith(
+        folders: state.folders
+            .map((f) => f.id == tempId ? created : f)
+            .toList(),
+      );
+      notifyListeners();
+      return created;
+    } catch (err) {
+      state = state.copyWith(
+        folders: state.folders.where((f) => f.id != tempId).toList(),
+      );
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> renameFolder(String id, String name) async {

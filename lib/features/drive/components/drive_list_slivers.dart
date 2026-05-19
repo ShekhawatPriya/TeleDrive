@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
 import '../../../widgets/file_tiles.dart';
+import '../../upload/upload_controller.dart';
 import '../drive_controller.dart';
 
 typedef FolderTapHandler = void Function(DriveFolder folder);
@@ -42,18 +43,24 @@ class DriveFolderSliver extends ConsumerWidget {
         return FileListTile(
           key: ValueKey('folder-${folder.id}'),
           name: folder.name,
-          subtitle:
-              '${folder.recursiveFileCount} files \u00b7 ${formatFileSize(folder.recursiveSize)}',
+          subtitle: folder.isOptimistic
+              ? 'Creating folder…'
+              : '${folder.recursiveFileCount} files · ${formatFileSize(folder.recursiveSize)}',
           isFolder: true,
+          isOptimistic: folder.isOptimistic,
           starred: folder.starred,
           shared: folder.shared,
           selected: selectMode ? selectedFolderIds.contains(folder.id) : null,
           onTap: () => onFolderTap(folder),
-          onLongPress: () => onFolderLongPress(folder.id),
-          onStar: () => ref
-              .read(driveControllerProvider)
-              .toggleStar(folder.id, folder: true),
-          onMore: () => onFolderMore(folder),
+          onLongPress: folder.isOptimistic
+              ? null
+              : () => onFolderLongPress(folder.id),
+          onStar: folder.isOptimistic
+              ? null
+              : () => ref
+                  .read(driveControllerProvider)
+                  .toggleStar(folder.id, folder: true),
+          onMore: folder.isOptimistic ? null : () => onFolderMore(folder),
         );
       },
     );
@@ -98,6 +105,7 @@ class DriveFilesSliver extends ConsumerWidget {
           itemCount: files.length,
           itemBuilder: (_, i) {
             final file = files[i];
+            final isFailed = _isFailed(file);
             return FileCardTile(
               key: ValueKey(file.id),
               file: file,
@@ -105,6 +113,10 @@ class DriveFilesSliver extends ConsumerWidget {
               onTap: () => onFileTap(file),
               onLongPress: () => onFileLongPress(file.id),
               onMore: () => onFileMore(file),
+              onRetry: isFailed
+                  ? () => ref.read(uploadControllerProvider).retryFailed()
+                  : null,
+              onRemove: isFailed ? () => _removeOptimistic(ref, file) : null,
             );
           },
         ),
@@ -116,13 +128,15 @@ class DriveFilesSliver extends ConsumerWidget {
         itemCount: files.length,
         itemBuilder: (_, i) {
           final file = files[i];
+          final isFailed = _isFailed(file);
           return FileListTile(
             key: ValueKey(file.id),
             name: file.name,
             subtitle: file.isOptimistic
-                ? '${formatUploadStatus(file)} \u00b7 ${formatFileSize(file.size)}'
-                : '${formatLabel(file)} \u00b7 ${formatFileSize(file.size)} \u00b7 ${formatDate(file.modifiedAt)}',
+                ? '${formatUploadStatus(file)} · ${formatFileSize(file.size)}'
+                : '${formatLabel(file)} · ${formatFileSize(file.size)} · ${formatDate(file.modifiedAt)}',
             file: file,
+            isOptimistic: file.isOptimistic,
             starred: file.starred,
             selected: selectMode ? selectedFileIds.contains(file.id) : null,
             onTap: () => onFileTap(file),
@@ -131,11 +145,27 @@ class DriveFilesSliver extends ConsumerWidget {
                 ? null
                 : () => ref.read(driveControllerProvider).toggleStar(file.id),
             onMore: file.isOptimistic ? null : () => onFileMore(file),
+            onRetry: isFailed
+                ? () => ref.read(uploadControllerProvider).retryFailed()
+                : null,
+            onRemove: isFailed ? () => _removeOptimistic(ref, file) : null,
           );
         },
       ),
     );
   }
+}
+
+bool _isFailed(DriveFile file) =>
+    file.isOptimistic &&
+    (file.uploadStatus == 'failed' || file.uploadStatus == 'cancelled');
+
+void _removeOptimistic(WidgetRef ref, DriveFile file) {
+  // Optimistic file IDs are encoded as `local:<localId>` by
+  // UploadController._syncOptimistic. Decode and dismiss the failed item.
+  if (!file.id.startsWith('local:')) return;
+  final localId = file.id.substring('local:'.length);
+  ref.read(uploadControllerProvider).removeFailed(localId);
 }
 
 /// Horizontal recents strip shown on the drive home screen.

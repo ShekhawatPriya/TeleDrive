@@ -22,17 +22,17 @@ List<IosMenuSection> buildDriveMenuSections(
     IosMenuSection([
       IosMenuItem(
         label: 'Select',
-        trailingIcon: Icons.check_circle_outline,
+        leadingIcon: Icons.check_circle_outline,
         onTap: onSelect,
       ),
       IosMenuItem(
         label: 'New Folder',
-        trailingIcon: Icons.create_new_folder_outlined,
+        leadingIcon: Icons.create_new_folder_outlined,
         onTap: () => _newFolder(context, ref, folderId),
       ),
       IosMenuItem(
         label: 'Scan Documents',
-        trailingIcon: Icons.document_scanner_outlined,
+        leadingIcon: Icons.document_scanner_outlined,
         onTap: () =>
             ref.read(uploadControllerProvider).pickPhoto(folderId: folderId),
       ),

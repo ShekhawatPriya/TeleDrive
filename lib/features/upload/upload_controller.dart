@@ -670,6 +670,25 @@ class UploadController extends ChangeNotifier {
     await confirmUpload();
   }
 
+  /// Drops a settled (failed / cancelled) item from the list so its optimistic
+  /// tile disappears from the drive UI. No-op for in-flight items.
+  void removeFailed(String localId) {
+    final item = _findItem(localId);
+    if (item == null) return;
+    if (item.status != UploadStatus.failed &&
+        item.status != UploadStatus.cancelled) {
+      return;
+    }
+    items = items.where((i) => i.localId != localId).toList();
+    if (items.isEmpty) {
+      sheetVisible = false;
+      uploadSessionId = null;
+      error = null;
+    }
+    _syncOptimistic();
+    _notifyListeners();
+  }
+
   void dismiss() {
     if (uploading) return;
     for (final timer in _pollTimersByLocalId.values) {

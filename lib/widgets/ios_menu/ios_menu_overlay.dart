@@ -4,8 +4,8 @@ import '../../core/theme/app_theme.dart';
 import 'ios_menu_models.dart';
 
 /// Material 3 popup menu route. Anchors a tonal-elevation surface near the
-/// triggering button, animates with the M3 emphasized-decelerate curve, and
-/// lays sections out as `MenuItemButton`-style rows separated by 1dp dividers.
+/// triggering button, animates with the M3 emphasized curve, and lays
+/// sections out as `MenuItemButton`-style rows separated by a thin trough.
 class IosMenuOverlayRoute extends PopupRoute<void> {
   IosMenuOverlayRoute({required this.anchor, required this.sections});
 
@@ -13,7 +13,7 @@ class IosMenuOverlayRoute extends PopupRoute<void> {
   final List<IosMenuSection> sections;
 
   @override
-  Color? get barrierColor => Colors.black.withValues(alpha: .12);
+  Color? get barrierColor => Colors.black.withValues(alpha: .22);
 
   @override
   bool get barrierDismissible => true;
@@ -22,7 +22,10 @@ class IosMenuOverlayRoute extends PopupRoute<void> {
   String? get barrierLabel => 'Dismiss menu';
 
   @override
-  Duration get transitionDuration => AppDurations.short3;
+  Duration get transitionDuration => AppDurations.medium2;
+
+  @override
+  Duration get reverseTransitionDuration => AppDurations.short3;
 
   @override
   Widget buildPage(
@@ -47,7 +50,7 @@ class IosMenuOverlayRoute extends PopupRoute<void> {
     return FadeTransition(
       opacity: CurvedAnimation(
         parent: animation,
-        curve: AppEasing.emphasizedDecelerate,
+        curve: AppEasing.emphasized,
       ),
       child: child,
     );
@@ -65,7 +68,7 @@ class _MenuOverlay extends StatelessWidget {
   final List<IosMenuSection> sections;
   final Animation<double> animation;
 
-  static const double _menuWidth = 280;
+  static const double _menuWidth = 268;
   static const double _gap = 8;
   static const double _edgeMargin = 12;
 
@@ -106,7 +109,7 @@ class _MenuOverlay extends StatelessWidget {
               scale: CurvedAnimation(
                 parent: animation,
                 curve: AppEasing.emphasizedDecelerate,
-              ).drive(Tween(begin: .85, end: 1)),
+              ).drive(Tween(begin: .92, end: 1)),
               child: _MenuCard(sections: sections),
             ),
           ),
@@ -127,24 +130,42 @@ class _MenuCard extends StatelessWidget {
 
     return Material(
       type: MaterialType.card,
-      color: scheme.surfaceContainer,
+      color: scheme.surfaceContainerHigh,
       surfaceTintColor: scheme.surfaceTint,
       shadowColor: scheme.shadow,
-      elevation: AppElevation.level2,
-      borderRadius: AppRadii.xsR,
+      elevation: AppElevation.level3,
+      borderRadius: AppRadii.mdR,
       clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var i = 0; i < sections.length; i++) ...[
-              if (i > 0)
-                Divider(height: 1, thickness: 1, color: scheme.outlineVariant),
-              const SizedBox(height: AppSpacing.xs),
-              ...sections[i].items.map((item) => _MenuRow(item: item)),
-              const SizedBox(height: AppSpacing.xs),
-            ],
-          ],
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: AppRadii.mdR,
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: .6),
+            width: 1,
+          ),
+        ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < sections.length; i++) ...[
+                  if (i > 0)
+                    Container(
+                      height: 6,
+                      margin: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.xxs,
+                      ),
+                      color: scheme.surfaceContainerLowest.withValues(
+                        alpha: .55,
+                      ),
+                    ),
+                  ...sections[i].items.map((item) => _MenuRow(item: item)),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -159,27 +180,40 @@ class _MenuRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final labelColor = item.destructive ? scheme.error : scheme.onSurface;
-    final iconColor = item.destructive ? scheme.error : scheme.onSurfaceVariant;
+    final destructive = item.destructive;
+    final labelColor = destructive ? scheme.error : scheme.onSurface;
+    final iconColor = destructive ? scheme.error : scheme.onSurfaceVariant;
+    final highlight = destructive
+        ? scheme.errorContainer.withValues(alpha: .35)
+        : scheme.onSurface.withValues(alpha: .06);
+    final splash = destructive
+        ? scheme.error.withValues(alpha: .12)
+        : scheme.primary.withValues(alpha: .12);
+
+    final leadingIcon = item.leadingIcon;
 
     return InkWell(
       onTap: () {
         Navigator.of(context, rootNavigator: true).pop();
         item.onTap();
       },
+      splashColor: splash,
+      highlightColor: highlight,
       child: Container(
-        constraints: const BoxConstraints(minHeight: 48),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xs,
+        constraints: const BoxConstraints(minHeight: 52),
+        padding: const EdgeInsetsDirectional.fromSTEB(
+          AppSpacing.md,
+          AppSpacing.xs,
+          AppSpacing.sm,
+          AppSpacing.xs,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SizedBox(
               width: 24,
-              child: item.checked
-                  ? Icon(Icons.check, size: 18, color: iconColor)
+              child: leadingIcon != null
+                  ? Icon(leadingIcon, size: 20, color: iconColor)
                   : const SizedBox.shrink(),
             ),
             const SizedBox(width: AppSpacing.sm),
@@ -192,6 +226,8 @@ class _MenuRow extends StatelessWidget {
                     item.label,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: labelColor,
+                      fontWeight: FontWeight.w500,
+                      height: 1.2,
                     ),
                   ),
                   if (item.subtitle != null && item.subtitle!.isNotEmpty)
@@ -207,13 +243,24 @@ class _MenuRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (item.trailingIcon != null) ...[
-              const SizedBox(width: AppSpacing.xs),
-              Icon(item.trailingIcon, size: 20, color: iconColor),
-            ],
+            const SizedBox(width: AppSpacing.xs),
+            SizedBox(
+              width: 24,
+              child: _trailing(scheme, iconColor),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _trailing(ColorScheme scheme, Color iconColor) {
+    if (item.checked) {
+      return Icon(Icons.check_rounded, size: 20, color: scheme.primary);
+    }
+    if (item.trailingIcon != null) {
+      return Icon(item.trailingIcon, size: 20, color: iconColor);
+    }
+    return const SizedBox.shrink();
   }
 }

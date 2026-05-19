@@ -123,6 +123,8 @@ class DriveFolder {
     this.shared = false,
     this.recursiveFileCount = 0,
     this.recursiveSize = 0,
+    this.isOptimistic = false,
+    this.uploadError,
   });
 
   final String id;
@@ -134,6 +136,8 @@ class DriveFolder {
   final bool shared;
   final int recursiveFileCount;
   final int recursiveSize;
+  final bool isOptimistic;
+  final String? uploadError;
 
   DriveFolder copyWith({
     String? name,
@@ -142,6 +146,9 @@ class DriveFolder {
     bool? shared,
     int? recursiveFileCount,
     int? recursiveSize,
+    bool? isOptimistic,
+    String? uploadError,
+    bool clearUploadError = false,
   }) => DriveFolder(
     id: id,
     name: name ?? this.name,
@@ -152,6 +159,8 @@ class DriveFolder {
     shared: shared ?? this.shared,
     recursiveFileCount: recursiveFileCount ?? this.recursiveFileCount,
     recursiveSize: recursiveSize ?? this.recursiveSize,
+    isOptimistic: isOptimistic ?? this.isOptimistic,
+    uploadError: clearUploadError ? null : uploadError ?? this.uploadError,
   );
 }
 

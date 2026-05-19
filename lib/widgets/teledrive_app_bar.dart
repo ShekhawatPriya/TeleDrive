@@ -92,7 +92,11 @@ List<Widget> _buildAppBarActions(
 ) {
   final auth = ref.watch(authControllerProvider);
   return [
-    if (menuSections != null) IosMoreButton(sectionsBuilder: menuSections),
+    if (menuSections != null)
+      IosMoreButton(
+        sectionsBuilder: menuSections,
+        alignToScreenEdge: true,
+      ),
     Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(
         AppSpacing.xxs,

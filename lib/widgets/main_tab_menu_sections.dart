@@ -10,14 +10,14 @@ List<IosMenuSection> buildLayoutMenuSection(WidgetRef ref) {
     IosMenuSection([
       IosMenuItem(
         label: 'Icons',
-        trailingIcon: Icons.grid_view,
+        leadingIcon: Icons.grid_view,
         checked: prefs.layout == LayoutMode.grid,
         onTap: () =>
             ref.read(viewPreferencesProvider).setLayout(LayoutMode.grid),
       ),
       IosMenuItem(
         label: 'List',
-        trailingIcon: Icons.view_list,
+        leadingIcon: Icons.view_list,
         checked: prefs.layout == LayoutMode.list,
         onTap: () =>
             ref.read(viewPreferencesProvider).setLayout(LayoutMode.list),
@@ -33,6 +33,7 @@ List<IosMenuSection> buildSortMenuSection(WidgetRef ref) {
       for (final field in SortField.values)
         IosMenuItem(
           label: _sortLabel(field),
+          leadingIcon: _sortIcon(field),
           checked: prefs.sort == field,
           subtitle: prefs.sortSubtitle(field),
           onTap: () => ref.read(viewPreferencesProvider).selectSort(field),
@@ -46,4 +47,11 @@ String _sortLabel(SortField f) => switch (f) {
   SortField.kind => 'Kind',
   SortField.date => 'Date',
   SortField.size => 'Size',
+};
+
+IconData _sortIcon(SortField f) => switch (f) {
+  SortField.name => Icons.sort_by_alpha_rounded,
+  SortField.kind => Icons.category_outlined,
+  SortField.date => Icons.event_outlined,
+  SortField.size => Icons.straighten_rounded,
 };

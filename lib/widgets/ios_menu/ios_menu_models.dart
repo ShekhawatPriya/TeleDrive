@@ -4,6 +4,7 @@ class IosMenuItem {
   const IosMenuItem({
     required this.label,
     required this.onTap,
+    this.leadingIcon,
     this.trailingIcon,
     this.checked = false,
     this.subtitle,
@@ -12,6 +13,7 @@ class IosMenuItem {
 
   final String label;
   final VoidCallback onTap;
+  final IconData? leadingIcon;
   final IconData? trailingIcon;
   final bool checked;
   final String? subtitle;
