@@ -1,10 +1,13 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AppConfig {
-  static const apiBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://192.168.1.3:8000/api',
-  );
+  static const _fallbackApiBaseUrl = 'http://192.168.1.15:8000/api';
+
+  static String get apiBaseUrl {
+    final value = dotenv.maybeGet('API_BASE_URL');
+    return (value == null || value.isEmpty) ? _fallbackApiBaseUrl : value;
+  }
 
   /// The public GitHub repository URL for TeleDrive.
   static const repositoryUrl = 'https://github.com/caamer20/Telegram-Drive';
