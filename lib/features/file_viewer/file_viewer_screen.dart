@@ -421,10 +421,10 @@ class _DocumentPreviewState extends State<_DocumentPreview> {
 
   Color _kindAccent(FileKind kind, ColorScheme scheme) {
     return switch (kind) {
-      FileKind.pdf => AppColors.error,
-      FileKind.doc => AppColors.link,
-      FileKind.sheet => AppColors.green,
-      FileKind.slides => AppColors.violet,
+      FileKind.pdf => scheme.error,
+      FileKind.doc => scheme.primary,
+      FileKind.sheet => AppColors.success,
+      FileKind.slides => scheme.tertiary,
       _ => scheme.primary,
     };
   }

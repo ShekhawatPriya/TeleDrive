@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
+
+/// Contextual top app bar shown when one or more photos are selected.
 class PhotosSelectionBar extends StatelessWidget {
   const PhotosSelectionBar({
     required this.selectedCount,
@@ -18,48 +21,52 @@ class PhotosSelectionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final hasSelection = selectedCount > 0;
     return Material(
-      color: scheme.surface,
-      shape: Border(bottom: BorderSide(color: scheme.outline)),
-      child: SizedBox(
-        height: 56,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            children: [
-              IconButton(
-                tooltip: 'Cancel',
-                onPressed: onCancel,
-                icon: const Icon(Icons.close_rounded),
-                color: scheme.onSurface,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                hasSelection ? '$selectedCount selected' : 'Select items',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: scheme.onSurface,
+      color: scheme.surfaceContainer,
+      surfaceTintColor: scheme.surfaceTint,
+      elevation: AppElevation.level2,
+      child: SafeArea(
+        bottom: false,
+        child: SizedBox(
+          height: 64,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: 'Cancel',
+                  onPressed: onCancel,
+                  icon: const Icon(Icons.close),
                 ),
-              ),
-              const Spacer(),
-              IconButton(
-                tooltip: 'Share',
-                onPressed: hasSelection ? onShare : null,
-                icon: const Icon(Icons.ios_share),
-              ),
-              IconButton(
-                tooltip: 'Move',
-                onPressed: hasSelection ? onMove : null,
-                icon: const Icon(Icons.drive_file_move_outline),
-              ),
-              IconButton(
-                tooltip: 'Delete',
-                onPressed: hasSelection ? onDelete : null,
-                icon: const Icon(Icons.delete_outline),
-              ),
-            ],
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    hasSelection ? '$selectedCount selected' : 'Select items',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Share',
+                  onPressed: hasSelection ? onShare : null,
+                  icon: const Icon(Icons.share_outlined),
+                ),
+                IconButton(
+                  tooltip: 'Move',
+                  onPressed: hasSelection ? onMove : null,
+                  icon: const Icon(Icons.drive_file_move_outline),
+                ),
+                IconButton(
+                  tooltip: 'Delete',
+                  onPressed: hasSelection ? onDelete : null,
+                  icon: const Icon(Icons.delete_outline),
+                ),
+              ],
+            ),
           ),
         ),
       ),

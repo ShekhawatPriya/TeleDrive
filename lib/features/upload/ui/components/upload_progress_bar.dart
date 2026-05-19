@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Slim progress line. Replaces Material's
-/// LinearProgressIndicator so we control radius, height, and tones.
+/// Slim progress line wrapper around M3 [LinearProgressIndicator] with
+/// project-tuned defaults (4dp thickness, theme tints).
 class UploadProgressBar extends StatelessWidget {
   const UploadProgressBar({
     required this.value,
@@ -17,34 +17,16 @@ class UploadProgressBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final track = scheme.surfaceContainerHighest;
-    final fill = scheme.primary;
-
-    if (indeterminate) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(height),
-        child: SizedBox(
-          height: height,
-          child: LinearProgressIndicator(
-            backgroundColor: track,
-            valueColor: AlwaysStoppedAnimation<Color>(fill),
-          ),
-        ),
-      );
-    }
-
     return ClipRRect(
       borderRadius: BorderRadius.circular(height),
-      child: Stack(
-        children: [
-          Container(height: height, color: track),
-          AnimatedFractionallySizedBox(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            widthFactor: value.clamp(0.0, 1.0),
-            child: Container(height: height, color: fill),
-          ),
-        ],
+      child: SizedBox(
+        height: height,
+        child: LinearProgressIndicator(
+          value: indeterminate ? null : value.clamp(0.0, 1.0),
+          minHeight: height,
+          backgroundColor: scheme.surfaceContainerHighest,
+          valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
+        ),
       ),
     );
   }

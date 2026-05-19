@@ -11,20 +11,20 @@ class SkeletonList extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final base = scheme.surfaceContainerHighest;
-    final highlight = scheme.surface;
+    final highlight = scheme.surfaceContainer;
     return Shimmer.fromColors(
       baseColor: base,
       highlightColor: highlight,
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 22, 16, 120),
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md, AppSpacing.lg, AppSpacing.md, 120),
         itemCount: count,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
         itemBuilder: (_, __) => Container(
           height: 72,
           decoration: BoxDecoration(
             color: base,
-            borderRadius: BorderRadius.circular(AppRadii.lg),
-            border: Border.all(color: scheme.outline.withValues(alpha: .72)),
+            borderRadius: AppRadii.mdR,
           ),
         ),
       ),

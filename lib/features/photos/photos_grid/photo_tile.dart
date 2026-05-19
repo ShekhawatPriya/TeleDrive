@@ -24,7 +24,7 @@ class PhotoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final selectedWash = scheme.primary.withValues(alpha: .08);
+    final selectedWash = scheme.primary.withValues(alpha: .12);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -35,12 +35,13 @@ class PhotoTile extends StatelessWidget {
           return MediaThumb(file: file, fit: BoxFit.cover, radius: 0);
         },
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          curve: Curves.easeOut,
+          duration: AppDurations.short3,
+          curve: AppEasing.standardDecelerate,
           padding: selected ? const EdgeInsets.all(8) : EdgeInsets.zero,
           color: selected ? selectedWash : Colors.transparent,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(selected ? AppRadii.sm : 0),
+            borderRadius:
+                BorderRadius.circular(selected ? AppRadii.xs : 0),
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -67,17 +68,17 @@ class PhotoTile extends StatelessWidget {
   Widget _videoBadge() {
     final hasDuration = file.duration != null;
     return Positioned(
-      left: 6,
-      bottom: 6,
+      left: 8,
+      bottom: 8,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: .55),
-          borderRadius: BorderRadius.circular(20),
+          color: Colors.black.withValues(alpha: .6),
+          borderRadius: BorderRadius.circular(AppRadii.xs),
         ),
         child: Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: hasDuration ? 7 : 5,
-            vertical: 2,
+            horizontal: hasDuration ? 8 : 6,
+            vertical: 3,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -85,7 +86,7 @@ class PhotoTile extends StatelessWidget {
               const Icon(
                 Icons.play_arrow_rounded,
                 color: Colors.white,
-                size: 13,
+                size: 14,
               ),
               if (hasDuration) ...[
                 const SizedBox(width: 2),
@@ -108,17 +109,15 @@ class PhotoTile extends StatelessWidget {
   Widget _selectionMark(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Positioned(
-      top: 6,
-      left: 6,
+      top: 8,
+      left: 8,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        width: 22,
-        height: 22,
+        duration: AppDurations.short3,
+        width: 24,
+        height: 24,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: selected
-              ? scheme.primary
-              : Colors.black.withValues(alpha: .25),
+          color: selected ? scheme.primary : Colors.black.withValues(alpha: .25),
           border: Border.all(color: scheme.surface, width: 2),
         ),
         child: selected

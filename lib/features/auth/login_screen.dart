@@ -17,8 +17,7 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen>
-    with SingleTickerProviderStateMixin {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   _Step _step = _Step.phone;
   final _phone = TextEditingController();
   final _code = TextEditingController();
@@ -29,39 +28,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   String? _error;
   bool _obscurePassword = true;
 
-  late final AnimationController _animController;
-  late final Animation<double> _fadeAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 350),
-    );
-    _fadeAnim = CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOutCubic,
-    );
-    _animController.forward();
-  }
-
   @override
   void dispose() {
     _phone.dispose();
     _code.dispose();
     _password.dispose();
-    _animController.dispose();
     super.dispose();
   }
 
   void _setStep(_Step next) {
-    _animController.reverse().then((_) {
-      setState(() {
-        _step = next;
-        _error = null;
-      });
-      _animController.forward();
+    setState(() {
+      _step = next;
+      _error = null;
     });
     HapticFeedback.lightImpact();
   }
@@ -92,11 +70,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       return;
     }
     try {
-      final data = await _call(
-        () => ref
-            .read(authRepositoryProvider)
-            .start('${_selectedCountry.dialCode}$local'),
-      );
+      final data = await _call(() => ref
+          .read(authRepositoryProvider)
+          .start('${_selectedCountry.dialCode}$local'));
       _attemptId = (data['attempt_id'] as num).toInt();
       _setStep(_Step.code);
     } catch (_) {}
@@ -109,11 +85,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       return;
     }
     try {
-      final data = await _call(
-        () => ref
-            .read(authRepositoryProvider)
-            .verifyCode(_attemptId!, _code.text.trim()),
-      );
+      final data = await _call(() => ref
+          .read(authRepositoryProvider)
+          .verifyCode(_attemptId!, _code.text.trim()));
       if (data['status'] == 'requires_2fa') {
         _setStep(_Step.password);
       } else if (data['token'] != null) {
@@ -129,11 +103,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       return;
     }
     try {
-      final data = await _call(
-        () => ref
-            .read(authRepositoryProvider)
-            .verifyPassword(_attemptId!, _password.text.trim()),
-      );
+      final data = await _call(() => ref
+          .read(authRepositoryProvider)
+          .verifyPassword(_attemptId!, _password.text.trim()));
       if (data['token'] != null) {
         await _completeLogin('${data['token']}', data);
       }
@@ -163,51 +135,65 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Future<void> _pickCountry() async {
     final picked = await showCountryPicker(context);
-    if (picked != null) {
-      setState(() => _selectedCountry = picked);
-    }
+    if (picked != null) setState(() => _selectedCountry = picked);
   }
 
-  // ─── Design System Colors ──────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg, vertical: AppSpacing.xl),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
+              constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo mark
-                  _buildLogo(),
-                  const SizedBox(height: 36),
-                  // Title & subtitle
+                  Container(
+                    width: 88,
+                    height: 88,
+                    decoration: BoxDecoration(
+                      color: scheme.primaryContainer,
+                      borderRadius: AppRadii.xlR,
+                    ),
+                    child: Icon(
+                      Icons.cloud_outlined,
+                      color: scheme.onPrimaryContainer,
+                      size: 40,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
                   _buildHeader(),
-                  const SizedBox(height: 32),
-                  // Form card
-                  FadeTransition(
-                    opacity: _fadeAnim,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, 0.03),
-                        end: Offset.zero,
-                      ).animate(_fadeAnim),
+                  const SizedBox(height: AppSpacing.lg),
+                  AnimatedSwitcher(
+                    duration: AppDurations.medium2,
+                    switchInCurve: AppEasing.emphasizedDecelerate,
+                    switchOutCurve: AppEasing.emphasizedAccelerate,
+                    transitionBuilder: (child, anim) => FadeTransition(
+                      opacity: anim,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, .04),
+                          end: Offset.zero,
+                        ).animate(anim),
+                        child: child,
+                      ),
+                    ),
+                    child: KeyedSubtree(
+                      key: ValueKey(_step),
                       child: _buildFormCard(),
                     ),
                   ),
-                  const SizedBox(height: 32),
-                  // Footer text
+                  const SizedBox(height: AppSpacing.lg),
                   Text(
                     'Your data is stored securely on Telegram servers.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
-                      height: 1.6,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -220,101 +206,64 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildLogo() {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Container(
-      width: 80,
-      height: 80,
-      decoration: BoxDecoration(
-        color: scheme.primary,
-        borderRadius: BorderRadius.circular(AppRadii.xl),
-        border: Border.all(color: scheme.outline),
-        boxShadow: AppShadows.floating(theme.brightness),
-      ),
-      child: Icon(Icons.send_rounded, color: scheme.onPrimary, size: 36),
-    );
-  }
-
   Widget _buildHeader() {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final (title, subtitle) = switch (_step) {
       _Step.phone => (
-        'Sign in to TeleDrive',
-        'Enter your phone number to connect\nyour Telegram account.',
-      ),
+          'Sign in to TeleDrive',
+          'Enter your phone number to connect your Telegram account.'
+        ),
       _Step.code => (
-        'Verification code',
-        'We sent a code to your Telegram app.\nPlease enter it below.',
-      ),
+          'Verification code',
+          'We sent a code to your Telegram app. Enter it below.'
+        ),
       _Step.password => (
-        'Two-factor authentication',
-        'Your account has 2FA enabled.\nEnter your cloud password.',
-      ),
+          'Two-factor authentication',
+          'Your account has 2FA enabled. Enter your cloud password.'
+        ),
     };
 
     return Column(
       children: [
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 280),
-          child: Text(
-            title,
-            key: ValueKey('title_$_step'),
-            style: theme.textTheme.headlineMedium,
-            textAlign: TextAlign.center,
-          ),
+        Text(
+          title,
+          style: theme.textTheme.headlineSmall,
+          textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 10),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 280),
-          child: Text(
-            subtitle,
-            key: ValueKey('sub_$_step'),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: scheme.onSurfaceVariant,
-              height: 1.6,
-            ),
-            textAlign: TextAlign.center,
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          subtitle,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: scheme.onSurfaceVariant,
           ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
   }
 
   Widget _buildFormCard() {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: scheme.outline),
-        boxShadow: AppShadows.floating(theme.brightness),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Step indicator
-          _StepIndicator(currentStep: _step),
-          const SizedBox(height: 24),
-          // Error banner
-          if (_error != null) ...[
-            _ErrorBanner(message: _error!),
-            const SizedBox(height: 16),
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _StepIndicator(currentStep: _step),
+            const SizedBox(height: AppSpacing.lg),
+            if (_error != null) ...[
+              _ErrorBanner(message: _error!),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            if (_step == _Step.phone) _buildPhoneStep(),
+            if (_step == _Step.code) _buildCodeStep(),
+            if (_step == _Step.password) _buildPasswordStep(),
           ],
-          // Form fields
-          if (_step == _Step.phone) _buildPhoneStep(),
-          if (_step == _Step.code) _buildCodeStep(),
-          if (_step == _Step.password) _buildPasswordStep(),
-        ],
+        ),
       ),
     );
   }
-
-  // ─── Phone Step ─────────────────────────────────────────────────────────────
 
   Widget _buildPhoneStep() {
     final theme = Theme.of(context);
@@ -322,366 +271,143 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // "Phone number" label
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Text(
-            'Phone number',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: scheme.onSurface,
+        InkWell(
+          onTap: _pickCountry,
+          borderRadius: AppRadii.xsR,
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'Country',
+              prefixIcon: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                child: Text(_selectedCountry.flag,
+                    style: const TextStyle(fontSize: 22)),
+              ),
+              prefixIconConstraints: const BoxConstraints(minWidth: 44),
+              suffixIcon: Icon(Icons.arrow_drop_down_rounded,
+                  color: scheme.onSurfaceVariant),
+            ),
+            child: Text(
+              '${_selectedCountry.name} (${_selectedCountry.dialCode})',
+              style: theme.textTheme.bodyLarge,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ),
-        // Combined phone input row — flag/code selector + number field
-        Container(
-          height: 52,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.sm),
-            border: Border.all(color: scheme.outline),
-            color: scheme.surface,
+        const SizedBox(height: AppSpacing.md),
+        TextField(
+          controller: _phone,
+          keyboardType: TextInputType.phone,
+          textInputAction: TextInputAction.send,
+          decoration: InputDecoration(
+            labelText: 'Phone number',
+            prefixIcon: const Icon(Icons.phone_outlined),
+            prefixText: '${_selectedCountry.dialCode} ',
+            prefixStyle: theme.textTheme.bodyLarge,
           ),
-          child: Row(
-            children: [
-              // Country selector button (flag + dropdown arrow + dial code)
-              GestureDetector(
-                onTap: _pickCountry,
-                child: Container(
-                  height: 52,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    border: Border(right: BorderSide(color: scheme.outline)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _selectedCountry.flag,
-                        style: const TextStyle(fontSize: 22),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.arrow_drop_down_rounded,
-                        color: scheme.onSurfaceVariant,
-                        size: 20,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // Dial code display
-              Padding(
-                padding: const EdgeInsets.only(left: 12),
-                child: Text(
-                  _selectedCountry.dialCode,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: scheme.onSurface,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ),
-              // Vertical separator
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 10),
-                width: 1,
-                height: 24,
-                color: scheme.outline,
-              ),
-              // Phone number input
-              Expanded(
-                child: TextField(
-                  key: const ValueKey('phone_input'),
-                  controller: _phone,
-                  keyboardType: TextInputType.phone,
-                  textInputAction: TextInputAction.send,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
-                    color: scheme.onSurface,
-                    letterSpacing: 0,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Phone number',
-                    hintStyle: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                    filled: false,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    isDense: true,
-                  ),
-                  onSubmitted: (_) => _sendCode(),
-                ),
-              ),
-              const SizedBox(width: 8),
-            ],
-          ),
+          onSubmitted: (_) => _sendCode(),
         ),
-        const SizedBox(height: 8),
-        // Country name hint
-        GestureDetector(
-          onTap: _pickCountry,
-          child: Row(
-            children: [
-              Icon(
-                Icons.public_rounded,
-                size: 14,
-                color: scheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  _selectedCountry.name,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 16,
-                color: scheme.onSurfaceVariant,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        // Continue button
-        _PrimaryButton(
-          label: 'Continue',
-          loading: _loading,
-          onPressed: _sendCode,
+        const SizedBox(height: AppSpacing.lg),
+        FilledButton(
+          onPressed: _loading ? null : _sendCode,
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+          child: _loading
+              ? const SizedBox(
+                  width: 22, height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5))
+              : const Text('Continue'),
         ),
       ],
     );
   }
-
-  // ─── Code Step ──────────────────────────────────────────────────────────────
 
   Widget _buildCodeStep() {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Text(
-            'Verification code',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: scheme.onSurface,
-            ),
+        TextField(
+          controller: _code,
+          keyboardType: TextInputType.number,
+          textAlign: TextAlign.center,
+          maxLength: 6,
+          autofocus: true,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(6),
+          ],
+          style: Theme.of(context).textTheme.headlineSmall,
+          decoration: const InputDecoration(
+            labelText: 'Verification code',
+            counterText: '',
+            hintText: '——————',
           ),
+          onSubmitted: (_) => _verifyCode(),
         ),
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.sm),
-            color: scheme.surface,
-          ),
-          child: TextField(
-            key: const ValueKey('code_input'),
-            controller: _code,
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            maxLength: 6,
-            autofocus: true,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w500,
-              fontSize: 28,
-              letterSpacing: 0,
-              color: scheme.onSurface,
-            ),
-            decoration: InputDecoration(
-              hintText: '\u2022 \u2022 \u2022 \u2022 \u2022 \u2022',
-              hintStyle: TextStyle(
-                color: scheme.onSurfaceVariant,
-                letterSpacing: 0,
-                fontSize: 22,
-              ),
-              counterText: '',
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 18,
-              ),
-              filled: true,
-              fillColor: scheme.surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-                borderSide: BorderSide(color: scheme.outline),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-                borderSide: BorderSide(color: scheme.outline),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-                borderSide: BorderSide(color: scheme.primary, width: 1.2),
-              ),
-            ),
-            onSubmitted: (_) => _verifyCode(),
-          ),
+        const SizedBox(height: AppSpacing.lg),
+        FilledButton(
+          onPressed: _loading ? null : _verifyCode,
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+          child: _loading
+              ? const SizedBox(
+                  width: 22, height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5))
+              : const Text('Verify'),
         ),
-        const SizedBox(height: 24),
-        _PrimaryButton(
-          label: 'Verify',
-          loading: _loading,
-          onPressed: _verifyCode,
-        ),
-        const SizedBox(height: 14),
-        Center(
-          child: GestureDetector(
-            onTap: () => _setStep(_Step.phone),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.arrow_back_rounded,
-                  size: 16,
-                  color: scheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Wrong number?',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
+        const SizedBox(height: AppSpacing.xs),
+        TextButton.icon(
+          onPressed: () => _setStep(_Step.phone),
+          icon: const Icon(Icons.arrow_back_rounded, size: 18),
+          label: const Text('Wrong number?'),
         ),
       ],
     );
   }
 
-  // ─── Password Step ──────────────────────────────────────────────────────────
-
   Widget _buildPasswordStep() {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Text(
-            'Cloud password',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: scheme.onSurface,
+        TextField(
+          controller: _password,
+          keyboardType: TextInputType.visiblePassword,
+          textInputAction: TextInputAction.done,
+          enableSuggestions: false,
+          autocorrect: false,
+          obscureText: _obscurePassword,
+          autofocus: true,
+          decoration: InputDecoration(
+            labelText: 'Cloud password',
+            prefixIcon: const Icon(Icons.lock_outline_rounded),
+            suffixIcon: IconButton(
+              icon: Icon(_obscurePassword
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined),
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
             ),
           ),
+          onSubmitted: (_) => _verifyPassword(),
         ),
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.sm),
-            color: scheme.surface,
-          ),
-          child: TextField(
-            key: const ValueKey('password_input'),
-            controller: _password,
-            keyboardType: TextInputType.visiblePassword,
-            textInputAction: TextInputAction.done,
-            enableSuggestions: false,
-            autocorrect: false,
-            obscureText: _obscurePassword,
-            autofocus: true,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-              color: scheme.onSurface,
-            ),
-            decoration: InputDecoration(
-              hintText: 'Enter your password',
-              hintStyle: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w400,
-                color: scheme.onSurfaceVariant,
-              ),
-              prefixIcon: Icon(
-                Icons.lock_outline_rounded,
-                color: scheme.onSurfaceVariant,
-                size: 20,
-              ),
-              suffixIcon: GestureDetector(
-                onTap: () =>
-                    setState(() => _obscurePassword = !_obscurePassword),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Icon(
-                    _obscurePassword
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    color: scheme.onSurfaceVariant,
-                    size: 20,
-                  ),
-                ),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 16,
-              ),
-              filled: true,
-              fillColor: scheme.surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-                borderSide: BorderSide(color: scheme.outline),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-                borderSide: BorderSide(color: scheme.outline),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-                borderSide: BorderSide(color: scheme.primary, width: 1.2),
-              ),
-            ),
-            onSubmitted: (_) => _verifyPassword(),
-          ),
+        const SizedBox(height: AppSpacing.lg),
+        FilledButton(
+          onPressed: _loading ? null : _verifyPassword,
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+          child: _loading
+              ? const SizedBox(
+                  width: 22, height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5))
+              : const Text('Sign in'),
         ),
-        const SizedBox(height: 24),
-        _PrimaryButton(
-          label: 'Sign in',
-          loading: _loading,
-          onPressed: _verifyPassword,
-        ),
-        const SizedBox(height: 14),
-        Center(
-          child: GestureDetector(
-            onTap: () => _setStep(_Step.phone),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.arrow_back_rounded,
-                  size: 16,
-                  color: scheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Start over',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
+        const SizedBox(height: AppSpacing.xs),
+        TextButton.icon(
+          onPressed: () => _setStep(_Step.phone),
+          icon: const Icon(Icons.arrow_back_rounded, size: 18),
+          label: const Text('Start over'),
         ),
       ],
     );
   }
 }
-
-// ─── Supporting Widgets ─────────────────────────────────────────────────────
 
 class _StepIndicator extends StatelessWidget {
   const _StepIndicator({required this.currentStep});
@@ -695,89 +421,23 @@ class _StepIndicator extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(3, (i) {
-        final isCompleted = i < current;
+        final isActive = i <= current;
         final isCurrent = i == current;
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 3),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 320),
-            curve: Curves.easeOutCubic,
-            width: isCurrent ? 28 : 8,
+            duration: AppDurations.medium2,
+            curve: AppEasing.emphasized,
+            width: isCurrent ? 32 : 8,
             height: 6,
             decoration: BoxDecoration(
-              color: isCompleted || isCurrent
-                  ? scheme.primary
-                  : scheme.surfaceContainerHighest,
+              color:
+                  isActive ? scheme.primary : scheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(3),
             ),
           ),
         );
       }),
-    );
-  }
-}
-
-class _PrimaryButton extends StatefulWidget {
-  const _PrimaryButton({
-    required this.label,
-    required this.loading,
-    required this.onPressed,
-  });
-
-  final String label;
-  final bool loading;
-  final VoidCallback onPressed;
-
-  @override
-  State<_PrimaryButton> createState() => _PrimaryButtonState();
-}
-
-class _PrimaryButtonState extends State<_PrimaryButton> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final bgColor = widget.loading
-        ? scheme.primary.withValues(alpha: .72)
-        : _pressed
-        ? scheme.primary.withValues(alpha: .88)
-        : scheme.primary;
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        if (!widget.loading) widget.onPressed();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOut,
-        height: 52,
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(AppRadii.pill),
-          border: Border.all(color: scheme.primary),
-        ),
-        alignment: Alignment.center,
-        child: widget.loading
-            ? SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: scheme.onPrimary,
-                ),
-              )
-            : Text(
-                widget.label,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: scheme.onPrimary,
-                  fontSize: 16,
-                ),
-              ),
-      ),
     );
   }
 }
@@ -791,23 +451,21 @@ class _ErrorBanner extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: scheme.errorContainer,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: scheme.error.withValues(alpha: .25)),
+        borderRadius: AppRadii.smR,
       ),
       child: Row(
         children: [
-          Icon(Icons.error_outline_rounded, color: AppColors.error, size: 18),
-          const SizedBox(width: 10),
+          Icon(Icons.error_outline_rounded,
+              color: scheme.onErrorContainer, size: 20),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               message,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: scheme.error,
-                fontWeight: FontWeight.w500,
-                height: 1.4,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onErrorContainer,
               ),
             ),
           ),

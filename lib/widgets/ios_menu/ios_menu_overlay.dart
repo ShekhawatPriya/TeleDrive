@@ -1,11 +1,11 @@
-import 'dart:ui';
-
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 import 'ios_menu_models.dart';
 
+/// Material 3 popup menu route. Anchors a tonal-elevation surface near the
+/// triggering button, animates with the M3 emphasized-decelerate curve, and
+/// lays sections out as `MenuItemButton`-style rows separated by 1dp dividers.
 class IosMenuOverlayRoute extends PopupRoute<void> {
   IosMenuOverlayRoute({required this.anchor, required this.sections});
 
@@ -22,7 +22,7 @@ class IosMenuOverlayRoute extends PopupRoute<void> {
   String? get barrierLabel => 'Dismiss menu';
 
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 180);
+  Duration get transitionDuration => AppDurations.short3;
 
   @override
   Widget buildPage(
@@ -30,7 +30,7 @@ class IosMenuOverlayRoute extends PopupRoute<void> {
     Animation<double> animation,
     Animation<double> secondaryAnimation,
   ) {
-    return _IosMenuOverlay(
+    return _MenuOverlay(
       anchor: anchor,
       sections: sections,
       animation: animation,
@@ -45,14 +45,17 @@ class IosMenuOverlayRoute extends PopupRoute<void> {
     Widget child,
   ) {
     return FadeTransition(
-      opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+      opacity: CurvedAnimation(
+        parent: animation,
+        curve: AppEasing.emphasizedDecelerate,
+      ),
       child: child,
     );
   }
 }
 
-class _IosMenuOverlay extends StatelessWidget {
-  const _IosMenuOverlay({
+class _MenuOverlay extends StatelessWidget {
+  const _MenuOverlay({
     required this.anchor,
     required this.sections,
     required this.animation,
@@ -62,7 +65,7 @@ class _IosMenuOverlay extends StatelessWidget {
   final List<IosMenuSection> sections;
   final Animation<double> animation;
 
-  static const double _menuWidth = 260;
+  static const double _menuWidth = 280;
   static const double _gap = 8;
   static const double _edgeMargin = 12;
 
@@ -86,14 +89,11 @@ class _IosMenuOverlay extends StatelessWidget {
         ? spaceAbove - _gap - _edgeMargin
         : spaceBelow - _gap - _edgeMargin;
 
+    final originY = showAbove ? 1.0 : -1.0;
+    final originX = ((anchor.center.dx - left) / _menuWidth) * 2 - 1;
+
     return Stack(
       children: [
-        Positioned.fill(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-            child: const SizedBox.expand(),
-          ),
-        ),
         Positioned(
           left: left,
           top: top,
@@ -102,14 +102,11 @@ class _IosMenuOverlay extends StatelessWidget {
           child: ConstrainedBox(
             constraints: BoxConstraints(maxHeight: maxHeight.clamp(120, 600)),
             child: ScaleTransition(
-              alignment: Alignment(
-                ((anchor.center.dx - left) / _menuWidth) * 2 - 1,
-                showAbove ? 1 : -1,
-              ),
+              alignment: Alignment(originX, originY),
               scale: CurvedAnimation(
                 parent: animation,
-                curve: Curves.easeOutCubic,
-              ).drive(Tween(begin: .92, end: 1)),
+                curve: AppEasing.emphasizedDecelerate,
+              ).drive(Tween(begin: .85, end: 1)),
               child: _MenuCard(sections: sections),
             ),
           ),
@@ -128,30 +125,30 @@ class _MenuCard extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadii.lg),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Material(
-          color: scheme.surface.withValues(alpha: .96),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (var i = 0; i < sections.length; i++) ...[
-                  if (i > 0) _sectionDivider(scheme),
-                  ...sections[i].items.map((item) => _MenuRow(item: item)),
-                ],
-              ],
-            ),
-          ),
+    return Material(
+      type: MaterialType.card,
+      color: scheme.surfaceContainer,
+      surfaceTintColor: scheme.surfaceTint,
+      shadowColor: scheme.shadow,
+      elevation: AppElevation.level2,
+      borderRadius: AppRadii.xsR,
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < sections.length; i++) ...[
+              if (i > 0)
+                Divider(height: 1, thickness: 1, color: scheme.outlineVariant),
+              const SizedBox(height: AppSpacing.xs),
+              ...sections[i].items.map((item) => _MenuRow(item: item)),
+              const SizedBox(height: AppSpacing.xs),
+            ],
+          ],
         ),
       ),
     );
   }
-
-  Widget _sectionDivider(ColorScheme scheme) =>
-      Container(height: 6, color: scheme.surfaceContainerHighest);
 }
 
 class _MenuRow extends StatelessWidget {
@@ -160,65 +157,61 @@ class _MenuRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final labelColor = item.destructive
-        ? CupertinoColors.systemRed
-        : scheme.onSurface;
-    final iconColor = labelColor;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final labelColor = item.destructive ? scheme.error : scheme.onSurface;
+    final iconColor = item.destructive ? scheme.error : scheme.onSurfaceVariant;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          Navigator.of(context, rootNavigator: true).pop();
-          item.onTap();
-        },
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 44),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 18,
-                child: item.checked
-                    ? Icon(Icons.check, size: 16, color: iconColor)
-                    : const SizedBox.shrink(),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      item.label,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: labelColor,
-                        fontWeight: FontWeight.w500,
-                      ),
+    return InkWell(
+      onTap: () {
+        Navigator.of(context, rootNavigator: true).pop();
+        item.onTap();
+      },
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 48),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 24,
+              child: item.checked
+                  ? Icon(Icons.check, size: 18, color: iconColor)
+                  : const SizedBox.shrink(),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    item.label,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: labelColor,
                     ),
-                    if (item.subtitle != null && item.subtitle!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          item.subtitle!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: labelColor.withValues(alpha: .55),
-                          ),
+                  ),
+                  if (item.subtitle != null && item.subtitle!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        item.subtitle!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
-              if (item.trailingIcon != null) ...[
-                const SizedBox(width: 8),
-                Icon(item.trailingIcon, size: 20, color: iconColor),
-              ],
+            ),
+            if (item.trailingIcon != null) ...[
+              const SizedBox(width: AppSpacing.xs),
+              Icon(item.trailingIcon, size: 20, color: iconColor),
             ],
-          ),
+          ],
         ),
       ),
     );

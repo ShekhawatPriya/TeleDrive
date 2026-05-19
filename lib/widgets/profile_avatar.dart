@@ -13,7 +13,7 @@ class ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final scheme = Theme.of(context).colorScheme;
     final initial =
         (user?.firstName.isNotEmpty == true ? user!.firstName[0] : '?')
             .toUpperCase();
@@ -24,14 +24,13 @@ class ProfileAvatar extends StatelessWidget {
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: colors.primary,
+        color: scheme.primaryContainer,
         shape: BoxShape.circle,
-        border: Border.all(color: colors.outline),
       ),
       child: Text(
         initial,
         style: TextStyle(
-          color: colors.onPrimary,
+          color: scheme.onPrimaryContainer,
           fontSize: size * .38,
           fontWeight: FontWeight.w600,
         ),

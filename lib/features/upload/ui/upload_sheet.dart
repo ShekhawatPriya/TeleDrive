@@ -6,16 +6,14 @@ import '../upload_controller.dart';
 import 'components/upload_card.dart';
 import 'components/upload_sheet_header.dart';
 
-/// Expanded upload sheet.  No close/cancel buttons — dismissed only by
-/// swiping down or tapping the dimmed barrier.
+/// Expanded modal upload sheet. Listens for drags below the snap threshold
+/// and dismisses; otherwise lays one [UploadCard] per file.
 class UploadSheet extends ConsumerWidget {
   const UploadSheet({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final upload = ref.watch(uploadControllerProvider);
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
 
     return DraggableScrollableSheet(
       expand: false,
@@ -32,49 +30,29 @@ class UploadSheet extends ConsumerWidget {
             }
             return false;
           },
-          child: Container(
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(AppRadii.sheet),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: AppSpacing.xs),
+              UploadSheetHeader(upload: upload),
+              Expanded(
+                child: ListView.separated(
+                  controller: controller,
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md, AppSpacing.xs,
+                      AppSpacing.md, AppSpacing.lg),
+                  itemCount: upload.items.length,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: AppSpacing.sm),
+                  itemBuilder: (_, i) {
+                    final item = upload.items[i];
+                    return UploadCard(key: ValueKey(item.localId), item: item);
+                  },
+                ),
               ),
-              border: Border(top: BorderSide(color: scheme.outline)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: UploadSheetHeader(upload: upload),
-                ),
-                Container(height: 1, color: scheme.outline),
-                Expanded(
-                  child: _CardList(upload: upload, controller: controller),
-                ),
-              ],
-            ),
+            ],
           ),
         );
-      },
-    );
-  }
-}
-
-class _CardList extends StatelessWidget {
-  const _CardList({required this.upload, required this.controller});
-  final UploadController upload;
-  final ScrollController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.separated(
-      controller: controller,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      itemCount: upload.items.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (_, i) {
-        final item = upload.items[i];
-        return UploadCard(key: ValueKey(item.localId), item: item);
       },
     );
   }

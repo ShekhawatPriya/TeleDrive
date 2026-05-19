@@ -22,10 +22,8 @@ class ProfileScreen extends ConsumerWidget {
     final user = auth.user;
     final files = drive.files;
     final used = drive.state.usedStorage;
-    final storageCategories = _storageCategories(
-      files,
-      Theme.of(context).colorScheme,
-    );
+    final scheme = Theme.of(context).colorScheme;
+    final storageCategories = _storageCategories(files, scheme);
 
     return PopScope(
       canPop: GoRouter.of(context).canPop(),
@@ -35,63 +33,58 @@ class ProfileScreen extends ConsumerWidget {
       },
       child: Scaffold(
         appBar: AppBar(
-          leading: Padding(
-            padding: const EdgeInsets.only(left: 12),
-            child: Center(
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, size: 20),
-                tooltip: 'Back to Drive',
-                onPressed: () {
-                  if (GoRouter.of(context).canPop()) {
-                    context.pop();
-                  } else {
-                    context.go('/drive');
-                  }
-                },
-              ),
-            ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Back',
+            onPressed: () {
+              if (GoRouter.of(context).canPop()) {
+                context.pop();
+              } else {
+                context.go('/drive');
+              }
+            },
           ),
-          leadingWidth: 60,
           title: const Text('Account'),
         ),
         body: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 112),
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md, AppSpacing.xs, AppSpacing.md, 112),
           children: [
             _ProfileHeader(user: user),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             _TelegramStatusCard(
               connected: auth.telegramConnected,
               telegramId: user?.telegramId,
             ),
-            const SizedBox(height: 24),
-            _SectionLabel('STORAGE'),
+            const SizedBox(height: AppSpacing.lg),
+            const _SectionLabel('Storage'),
             _StorageCard(used: used, categories: storageCategories),
-            const SizedBox(height: 24),
-            _SectionLabel('PROFILE'),
+            const SizedBox(height: AppSpacing.lg),
+            const _SectionLabel('Profile'),
             _InfoCard(
               children: [
-                _InfoRow(
+                _ActionRow(
                   icon: Icons.alternate_email,
                   label: 'Username',
                   value: user?.username == null
                       ? 'Not set'
                       : '@${user!.username}',
                 ),
-                _InfoRow(
+                _ActionRow(
                   icon: Icons.badge_outlined,
                   label: 'Telegram ID',
                   value: user?.telegramId == null ? '-' : '${user!.telegramId}',
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            _SectionLabel('APPEARANCE'),
+            const SizedBox(height: AppSpacing.lg),
+            const _SectionLabel('Appearance'),
             _ThemeSelector(
               mode: ref.watch(themeControllerProvider).mode,
               onChanged: ref.read(themeControllerProvider).setMode,
             ),
-            const SizedBox(height: 24),
-            _SectionLabel('ABOUT'),
+            const SizedBox(height: AppSpacing.lg),
+            const _SectionLabel('About'),
             _InfoCard(
               children: [
                 _ActionRow(
@@ -117,7 +110,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.md),
             _InfoCard(
               children: [
                 _ActionRow(
@@ -128,9 +121,9 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.lg),
             Text(
-              'TeleDrive - A DevsDoCode Project',
+              'TeleDrive — A DevsDoCode Project',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),
@@ -149,6 +142,7 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final displayName = user?.displayName.isNotEmpty == true
         ? user!.displayName
         : 'TeleDrive user';
@@ -158,36 +152,23 @@ class _ProfileHeader extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
           children: [
-            ProfileAvatar(user: user),
-            const SizedBox(width: 14),
+            ProfileAvatar(user: user, size: 64),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(displayName, style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.send_outlined,
-                        size: 14,
-                        color: theme.colorScheme.primary,
-                      ),
-                      const SizedBox(width: 5),
-                      Flexible(
-                        child: Text(
-                          subtitle,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(
+                    subtitle,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -211,53 +192,51 @@ class _TelegramStatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final isConnected = connected == true;
-    final statusColor = isConnected
-        ? AppColors.success
-        : theme.colorScheme.error;
-    final bg = statusColor.withValues(alpha: .12);
+    final container = isConnected
+        ? scheme.tertiaryContainer
+        : scheme.errorContainer;
+    final onContainer = isConnected
+        ? scheme.onTertiaryContainer
+        : scheme.onErrorContainer;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: statusColor.withValues(alpha: .35)),
+        color: container,
+        borderRadius: AppRadii.mdR,
       ),
       child: Row(
         children: [
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: statusColor,
-              shape: BoxShape.circle,
-            ),
+          Icon(
+            isConnected ? Icons.check_circle_rounded : Icons.error_outline,
+            color: onContainer,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isConnected ? 'Telegram connected' : 'Telegram not connected',
+                  isConnected
+                      ? 'Telegram connected'
+                      : 'Telegram not connected',
                   style: theme.textTheme.titleMedium?.copyWith(
-                    color: statusColor,
+                    color: onContainer,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
                   isConnected
                       ? 'Storage is active${telegramId == null ? '' : ' for ID $telegramId'}.'
                       : 'Connect Telegram to upload and access files.',
-                  style: theme.textTheme.bodyMedium,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: onContainer.withValues(alpha: .85),
+                  ),
                 ),
               ],
             ),
-          ),
-          Icon(
-            isConnected ? Icons.check_circle : Icons.error_outline,
-            color: statusColor,
           ),
         ],
       ),
@@ -274,72 +253,58 @@ class _StorageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final nonEmpty = categories
-        .where((category) => category.bytes > 0)
-        .toList();
+    final scheme = theme.colorScheme;
+    final nonEmpty = categories.where((c) => c.bytes > 0).toList();
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    'Storage used',
-                    style: theme.textTheme.titleMedium,
-                  ),
+                  child: Text('Storage used', style: theme.textTheme.titleMedium),
                 ),
                 Text(
                   formatFileSize(used),
                   style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.primary,
+                    color: scheme.primary,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Container(
-              height: 10,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.onSurface.withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(AppRadii.pill),
+            const SizedBox(height: AppSpacing.sm),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: SizedBox(
+                height: 8,
+                child: nonEmpty.isEmpty
+                    ? ColoredBox(color: scheme.surfaceContainerHighest)
+                    : Row(
+                        children: [
+                          for (final c in nonEmpty)
+                            Expanded(
+                              flex: ((c.bytes / used) * 1000)
+                                  .round()
+                                  .clamp(1, 1000),
+                              child: Container(color: c.color),
+                            ),
+                        ],
+                      ),
               ),
-              clipBehavior: Clip.antiAlias,
-              child: nonEmpty.isEmpty
-                  ? null
-                  : Row(
-                      children: [
-                        for (final category in nonEmpty)
-                          Expanded(
-                            flex: ((category.bytes / used) * 1000)
-                                .round()
-                                .clamp(1, 1000)
-                                .toInt(),
-                            child: Container(color: category.color),
-                          ),
-                      ],
-                    ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.sm),
             Text(
-              used == 0
-                  ? 'No storage used yet'
-                  : '${formatFileSize(used)} stored in Telegram',
-              style: theme.textTheme.bodyMedium,
+              used == 0 ? 'No storage used yet' : '${formatFileSize(used)} stored in Telegram',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
             ),
-            const SizedBox(height: 18),
-            Column(
-              children: categories
-                  .map(
-                    (category) =>
-                        _StorageCategoryRow(category: category, total: used),
-                  )
-                  .toList(),
-            ),
+            const SizedBox(height: AppSpacing.md),
+            for (final c in categories)
+              _StorageCategoryRow(category: c, total: used),
           ],
         ),
       ),
@@ -358,7 +323,7 @@ class _StorageCategoryRow extends StatelessWidget {
     final theme = Theme.of(context);
     final pct = total == 0 ? 0.0 : category.bytes / total;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxs + 2),
       child: Row(
         children: [
           Container(
@@ -369,13 +334,11 @@ class _StorageCategoryRow extends StatelessWidget {
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(category.label, style: theme.textTheme.bodyMedium),
-          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(child: Text(category.label, style: theme.textTheme.bodyMedium)),
           Text(
             '${formatFileSize(category.bytes)} (${(pct * 100).toStringAsFixed(pct == 0 ? 0 : 1)}%)',
-            style: theme.textTheme.bodyMedium?.copyWith(
+            style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
@@ -391,7 +354,6 @@ class _StorageCategory {
     required this.bytes,
     required this.color,
   });
-
   final String label;
   final int bytes;
   final Color color;
@@ -399,44 +361,31 @@ class _StorageCategory {
 
 List<_StorageCategory> _storageCategories(
   List<DriveFile> files,
-  ColorScheme colors,
+  ColorScheme scheme,
 ) {
-  var photos = 0;
-  var videos = 0;
-  var documents = 0;
-  var other = 0;
-
+  var photos = 0, videos = 0, documents = 0, other = 0;
   for (final file in files) {
     if (file.kind == FileKind.image) {
       photos += file.size;
     } else if (file.kind == FileKind.video) {
       videos += file.size;
     } else if ({
-      FileKind.pdf,
-      FileKind.doc,
-      FileKind.sheet,
-      FileKind.slides,
-      FileKind.code,
-      FileKind.text,
+      FileKind.pdf, FileKind.doc, FileKind.sheet,
+      FileKind.slides, FileKind.code, FileKind.text,
     }.contains(file.kind)) {
       documents += file.size;
     } else {
       other += file.size;
     }
   }
-
   return [
-    _StorageCategory(label: 'Photos', bytes: photos, color: AppColors.link),
-    _StorageCategory(label: 'Videos', bytes: videos, color: AppColors.cyan),
-    _StorageCategory(
-      label: 'Documents',
-      bytes: documents,
-      color: AppColors.violet,
-    ),
+    _StorageCategory(label: 'Photos', bytes: photos, color: scheme.primary),
+    _StorageCategory(label: 'Videos', bytes: videos, color: scheme.tertiary),
+    _StorageCategory(label: 'Documents', bytes: documents, color: scheme.secondary),
     _StorageCategory(
       label: 'Other',
       bytes: other,
-      color: colors.onSurfaceVariant.withValues(alpha: .55),
+      color: scheme.onSurfaceVariant.withValues(alpha: .55),
     ),
   ];
 }
@@ -449,81 +398,28 @@ class _ThemeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final options = [
-      (mode: ThemeMode.light, icon: Icons.light_mode_outlined, label: 'Light'),
-      (mode: ThemeMode.dark, icon: Icons.dark_mode_outlined, label: 'Dark'),
-      (mode: ThemeMode.system, icon: Icons.phone_android, label: 'Auto'),
-    ];
-    return Row(
-      children: options.map((option) {
-        final selected = mode == option.mode;
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(right: option == options.last ? 0 : 10),
-            child: _ThemeOption(
-              icon: option.icon,
-              label: option.label,
-              selected: selected,
-              onTap: () => onChanged(option.mode),
-            ),
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<ThemeMode>(
+        segments: const [
+          ButtonSegment(
+            value: ThemeMode.light,
+            label: Text('Light'),
+            icon: Icon(Icons.light_mode_outlined),
           ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-class _ThemeOption extends StatelessWidget {
-  const _ThemeOption({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppRadii.lg),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        decoration: BoxDecoration(
-          color: selected
-              ? theme.colorScheme.primary
-              : theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(AppRadii.lg),
-          border: Border.all(
-            color: selected
-                ? theme.colorScheme.primary
-                : theme.colorScheme.outline.withValues(alpha: .82),
+          ButtonSegment(
+            value: ThemeMode.dark,
+            label: Text('Dark'),
+            icon: Icon(Icons.dark_mode_outlined),
           ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: selected
-                  ? theme.colorScheme.onPrimary
-                  : theme.colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: selected
-                    ? theme.colorScheme.onPrimary
-                    : theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
+          ButtonSegment(
+            value: ThemeMode.system,
+            label: Text('Auto'),
+            icon: Icon(Icons.phone_android),
+          ),
+        ],
+        selected: {mode},
+        onSelectionChanged: (s) => onChanged(s.first),
       ),
     );
   }
@@ -531,7 +427,6 @@ class _ThemeOption extends StatelessWidget {
 
 class _InfoCard extends StatelessWidget {
   const _InfoCard({required this.children});
-
   final List<Widget> children;
 
   @override
@@ -540,23 +435,6 @@ class _InfoCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Column(children: children),
     );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return _ActionRow(icon: icon, label: label, value: value);
   }
 }
 
@@ -578,42 +456,27 @@ class _ActionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = destructive
-        ? theme.colorScheme.error
-        : theme.colorScheme.onSurface;
+    final scheme = theme.colorScheme;
+    final tint = destructive ? scheme.error : scheme.onSurfaceVariant;
 
     return ListTile(
-      leading: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color:
-              (destructive
-                      ? theme.colorScheme.error
-                      : theme.colorScheme.primary)
-                  .withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(AppRadii.md),
-        ),
-        child: Icon(
-          icon,
-          size: 20,
-          color: destructive
-              ? theme.colorScheme.error
-              : theme.colorScheme.primary,
-        ),
-      ),
+      leading: Icon(icon, color: tint),
       title: Text(
         label,
-        style: theme.textTheme.titleSmall?.copyWith(color: color),
+        style: theme.textTheme.bodyLarge?.copyWith(
+          color: destructive ? scheme.error : scheme.onSurface,
+        ),
       ),
       trailing: value != null
-          ? Text(value!, style: theme.textTheme.bodyMedium)
-          : onTap == null
-          ? null
-          : Icon(
-              Icons.chevron_right,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+          ? Text(
+              value!,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            )
+          : (onTap == null
+              ? null
+              : Icon(Icons.chevron_right, color: scheme.onSurfaceVariant)),
       onTap: onTap,
     );
   }
@@ -621,17 +484,17 @@ class _ActionRow extends StatelessWidget {
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.label);
-
   final String label;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.xxs, 0, 0, AppSpacing.xs),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

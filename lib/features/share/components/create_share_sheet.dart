@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
 
+import '../../../core/theme/app_theme.dart';
 import '../../../models/share_models.dart';
 import '../share_controller.dart';
 import 'share_result_view.dart';
@@ -57,12 +58,13 @@ class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
+      top: false,
       child: Padding(
         padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          left: AppSpacing.md,
+          right: AppSpacing.md,
+          top: AppSpacing.xs,
+          bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
         ),
         child: _buildBody(),
       ),
@@ -81,24 +83,22 @@ class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
     }
     if (_busy) {
       return const SizedBox(
-        height: 160,
+        height: 200,
         child: Center(child: CircularProgressIndicator()),
       );
     }
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Share failed',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
+        Text('Share failed', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: AppSpacing.xs),
         Text(
           _error ?? 'Unknown error.',
-          style: TextStyle(color: Theme.of(context).colorScheme.error),
+          style: TextStyle(color: scheme.error),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         FilledButton(
           onPressed: () {
             setState(() {
@@ -107,6 +107,8 @@ class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
             });
             _create();
           },
+          style:
+              FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
           child: const Text('Try again'),
         ),
       ],
@@ -118,18 +120,16 @@ class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
     if (share == null) return;
     await Clipboard.setData(ClipboardData(text: share.url));
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Link copied')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Link copied')));
   }
 
   Future<void> _shareSheet() async {
     final share = _result;
     if (share == null) return;
     final box = context.findRenderObject() as RenderBox?;
-    final origin = box == null
-        ? Rect.zero
-        : box.localToGlobal(Offset.zero) & box.size;
+    final origin =
+        box == null ? Rect.zero : box.localToGlobal(Offset.zero) & box.size;
     await share_plus.Share.share(
       share.url,
       subject: share.primaryName ?? 'TeleDrive share',

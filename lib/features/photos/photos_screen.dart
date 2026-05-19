@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/file_tiles.dart';
-import '../../widgets/tab_header.dart';
+import '../../widgets/profile_avatar.dart';
+import '../auth/auth_controller.dart';
 import '../drive/components/selection_mode_mixin.dart';
 import '../drive/drive_controller.dart';
 import '../share/my_shares_screen.dart';
@@ -36,9 +38,11 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
 
   @override
   Widget build(BuildContext context) {
+    final auth = ref.watch(authControllerProvider);
     final drive = ref.watch(driveControllerProvider);
     final files = drive.photoFiles('all');
     final allCount = files.length;
+    final theme = Theme.of(context);
 
     return PopScope(
       canPop: !selectMode,
@@ -46,37 +50,80 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
         if (!didPop && selectMode) exitSelect();
       },
       child: Scaffold(
-        body: SafeArea(
-          child: Column(
-            children: [
-              if (selectMode)
-                PhotosSelectionBar(
-                  selectedCount: selectedCount,
-                  onCancel: exitSelect,
-                  onShare: _onBulkShare,
-                  onMove: _onBulkMove,
-                  onDelete: _onBulkDelete,
-                )
-              else ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  child: TabHeader(
-                    title: 'Photos',
-                    subtitle: allCount == 0
-                        ? 'Your media library'
-                        : '$allCount item${allCount == 1 ? '' : 's'}',
-                  ),
-                ),
-                _PhotosToolbar(count: allCount, density: _density),
-              ],
-              Expanded(
-                child: files.isEmpty
-                    ? const EmptyState(
+        body: Column(
+          children: [
+            if (selectMode)
+              PhotosSelectionBar(
+                selectedCount: selectedCount,
+                onCancel: exitSelect,
+                onShare: _onBulkShare,
+                onMove: _onBulkMove,
+                onDelete: _onBulkDelete,
+              ),
+            Expanded(
+              child: CustomScrollView(
+                slivers: [
+                  if (!selectMode)
+                    SliverAppBar.medium(
+                      pinned: true,
+                      expandedHeight: 128,
+                      title: Text(
+                        'Photos',
+                        style: theme.textTheme.titleLarge,
+                      ),
+                      flexibleSpace: FlexibleSpaceBar(
+                        titlePadding: const EdgeInsetsDirectional.fromSTEB(
+                            AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+                        title: Text(
+                          allCount == 0
+                              ? 'Your media library'
+                              : '$allCount item${allCount == 1 ? '' : 's'}',
+                          style: theme.textTheme.headlineSmall,
+                        ),
+                      ),
+                      actions: [
+                        AnimatedBuilder(
+                          animation: _density,
+                          builder: (_, __) => IconButton(
+                            tooltip: 'Smaller tiles',
+                            onPressed: _density.columns >= _density.max
+                                ? null
+                                : _density.zoomOut,
+                            icon: const Icon(Icons.grid_view_rounded),
+                          ),
+                        ),
+                        AnimatedBuilder(
+                          animation: _density,
+                          builder: (_, __) => IconButton(
+                            tooltip: 'Larger tiles',
+                            onPressed: _density.columns <= _density.min
+                                ? null
+                                : _density.zoomIn,
+                            icon: const Icon(Icons.grid_on_rounded),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsetsDirectional.fromSTEB(
+                              0, 0, AppSpacing.sm, 0),
+                          child: GestureDetector(
+                            onTap: () => context.push('/profile'),
+                            child: ProfileAvatar(user: auth.user, size: 36),
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (files.isEmpty)
+                    const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: EmptyState(
                         icon: Icons.photo_library_outlined,
                         title: 'No photos yet',
                         body: 'Photos and videos appear here after upload.',
-                      )
-                    : PhotosGridView(
+                      ),
+                    )
+                  else
+                    SliverFillRemaining(
+                      child: PhotosGridView(
                         files: files,
                         density: _density,
                         loadingMore: drive.state.loadingMoreMedia,
@@ -88,9 +135,11 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
                         onLoadMore: () =>
                             ref.read(driveControllerProvider).loadMoreMedia(),
                       ),
+                    ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -149,48 +198,6 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
   }
 }
 
-class _PhotosToolbar extends StatelessWidget {
-  const _PhotosToolbar({required this.count, required this.density});
-  final int count;
-  final PhotoGridDensity density;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: density,
-      builder: (context, _) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  count == 0 ? '' : '$count item${count == 1 ? '' : 's'}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-              IconButton(
-                tooltip: 'Smaller tiles',
-                onPressed: density.columns >= density.max
-                    ? null
-                    : density.zoomOut,
-                icon: const Icon(Icons.grid_view_rounded, size: 18),
-              ),
-              IconButton(
-                tooltip: 'Larger tiles',
-                onPressed: density.columns <= density.min
-                    ? null
-                    : density.zoomIn,
-                icon: const Icon(Icons.grid_on_rounded, size: 18),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Starred
 // ---------------------------------------------------------------------------
@@ -200,77 +207,91 @@ class StarredScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authControllerProvider);
     final drive = ref.watch(driveControllerProvider);
     final starred = drive.starred();
     final totalItems = starred.files.length + starred.folders.length;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: TabHeader(
-                  title: 'Starred',
-                  subtitle: totalItems == 0
-                      ? 'Quick access to favourites'
-                      : '$totalItems item${totalItems == 1 ? '' : 's'}',
-                ),
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar.medium(
+            pinned: true,
+            expandedHeight: 128,
+            title: Text('Starred', style: theme.textTheme.titleLarge),
+            flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsetsDirectional.fromSTEB(
+                  AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+              title: Text(
+                totalItems == 0
+                    ? 'Quick access to favourites'
+                    : '$totalItems item${totalItems == 1 ? '' : 's'}',
+                style: theme.textTheme.headlineSmall,
               ),
             ),
-            if (starred.files.isEmpty && starred.folders.isEmpty)
-              const SliverFillRemaining(
-                child: EmptyState(
-                  icon: Icons.star_border,
-                  title: 'Nothing starred',
-                  body: 'Star files and folders for quick access.',
+            actions: [
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                    0, 0, AppSpacing.sm, 0),
+                child: GestureDetector(
+                  onTap: () => context.push('/profile'),
+                  child: ProfileAvatar(user: auth.user, size: 36),
                 ),
               ),
-            if (starred.folders.isNotEmpty)
-              SliverList.builder(
-                itemCount: starred.folders.length,
+            ],
+          ),
+          if (starred.files.isEmpty && starred.folders.isEmpty)
+            const SliverFillRemaining(
+              child: EmptyState(
+                icon: Icons.star_border_rounded,
+                title: 'Nothing starred',
+                body: 'Star files and folders for quick access.',
+              ),
+            ),
+          if (starred.folders.isNotEmpty)
+            SliverList.builder(
+              itemCount: starred.folders.length,
+              itemBuilder: (_, i) {
+                final folder = starred.folders[i];
+                return FileListTile(
+                  name: folder.name,
+                  subtitle:
+                      '${folder.recursiveFileCount} files · ${formatFileSize(folder.recursiveSize)}',
+                  isFolder: true,
+                  starred: true,
+                  shared: folder.shared,
+                  onTap: () => context.push('/folder/${folder.id}'),
+                  onStar: () => ref
+                      .read(driveControllerProvider)
+                      .toggleStar(folder.id, folder: true),
+                );
+              },
+            ),
+          if (starred.files.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.only(bottom: 120),
+              sliver: SliverList.builder(
+                itemCount: starred.files.length,
                 itemBuilder: (_, i) {
-                  final folder = starred.folders[i];
+                  final file = starred.files[i];
                   return FileListTile(
-                    name: folder.name,
+                    name: file.name,
                     subtitle:
-                        '${folder.recursiveFileCount} files \u00b7 ${formatFileSize(folder.recursiveSize)}',
-                    isFolder: true,
+                        '${formatLabel(file)} · ${formatFileSize(file.size)} · ${formatDate(file.modifiedAt)}',
+                    file: file,
                     starred: true,
-                    shared: folder.shared,
-                    onTap: () => context.push('/folder/${folder.id}'),
-                    onStar: () => ref
-                        .read(driveControllerProvider)
-                        .toggleStar(folder.id, folder: true),
+                    onTap: () {
+                      ref.read(driveControllerProvider).markAccessed(file.id);
+                      context.push('/file/${file.id}');
+                    },
+                    onStar: () =>
+                        ref.read(driveControllerProvider).toggleStar(file.id),
                   );
                 },
               ),
-            if (starred.files.isNotEmpty)
-              SliverPadding(
-                padding: const EdgeInsets.only(bottom: 120),
-                sliver: SliverList.builder(
-                  itemCount: starred.files.length,
-                  itemBuilder: (_, i) {
-                    final file = starred.files[i];
-                    return FileListTile(
-                      name: file.name,
-                      subtitle:
-                          '${formatLabel(file)} \u00b7 ${formatFileSize(file.size)} \u00b7 ${formatDate(file.modifiedAt)}',
-                      file: file,
-                      starred: true,
-                      onTap: () {
-                        ref.read(driveControllerProvider).markAccessed(file.id);
-                        context.push('/file/${file.id}');
-                      },
-                      onStar: () =>
-                          ref.read(driveControllerProvider).toggleStar(file.id),
-                    );
-                  },
-                ),
-              ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }

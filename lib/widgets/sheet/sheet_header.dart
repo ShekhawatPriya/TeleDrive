@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_theme.dart';
-
 class SheetHeader extends StatelessWidget {
   const SheetHeader({
     required this.title,
@@ -22,30 +20,29 @@ class SheetHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final accent = leadingAccent;
 
-    final containerColor = accent != null
-        ? accent.withValues(alpha: .12)
-        : scheme.surfaceContainerHighest;
-    final iconColor = accent ?? scheme.onSurface;
+    final containerColor = leadingAccent != null
+        ? leadingAccent!.withValues(alpha: .14)
+        : scheme.secondaryContainer;
+    final iconColor = leadingAccent ?? scheme.onSecondaryContainer;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 16, 16),
+      padding: const EdgeInsets.fromLTRB(24, 0, 16, 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           if (leadingIcon != null) ...[
             Container(
-              width: 48,
-              height: 48,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: containerColor,
-                borderRadius: BorderRadius.circular(AppRadii.sm),
+                shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
-              child: Icon(leadingIcon, size: 24, color: iconColor),
+              child: Icon(leadingIcon, size: 22, color: iconColor),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 16),
           ],
           Expanded(
             child: Column(
@@ -57,7 +54,7 @@ class SheetHeader extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface,
                   ),
                 ),
                 if (subtitle != null && subtitle!.isNotEmpty) ...[
@@ -66,7 +63,7 @@ class SheetHeader extends StatelessWidget {
                     subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
                   ),

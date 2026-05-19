@@ -4,6 +4,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../components/upload_progress_bar.dart';
 import 'folder_toast_controller.dart';
 
+/// Lightweight toast (M3 snackbar-style surface) shown while a folder is being
+/// created from the FAB sheet.
 class FolderToast extends StatelessWidget {
   const FolderToast({required this.state, super.key});
   final FolderToastState state;
@@ -12,15 +14,19 @@ class FolderToast extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final accent = scheme.primary;
+    final fg = state.isError ? scheme.onErrorContainer : scheme.onSurface;
+    final bg = state.isError
+        ? scheme.errorContainer
+        : scheme.inverseSurface;
+    final fgOnBg = state.isError ? fg : scheme.onInverseSurface;
 
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 220),
+      duration: AppDurations.short3,
       transitionBuilder: (child, anim) {
         final offset = Tween<Offset>(
           begin: const Offset(0, 0.4),
           end: Offset.zero,
-        ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOut));
+        ).animate(CurvedAnimation(parent: anim, curve: AppEasing.standardDecelerate));
         return FadeTransition(
           opacity: anim,
           child: SlideTransition(position: offset, child: child),
@@ -28,55 +34,46 @@ class FolderToast extends StatelessWidget {
       },
       child: !state.visible
           ? const SizedBox.shrink(key: ValueKey('hidden'))
-          : Container(
+          : Material(
               key: ValueKey('toast-${state.label}-${state.isError}'),
-              constraints: const BoxConstraints(maxWidth: 320),
-              decoration: BoxDecoration(
-                color: scheme.surface,
-                borderRadius: BorderRadius.circular(AppRadii.md),
-                border: Border.all(color: scheme.outline),
-                boxShadow: AppShadows.floating(theme.brightness),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadii.md),
+              color: bg,
+              surfaceTintColor: scheme.surfaceTint,
+              shadowColor: scheme.shadow,
+              elevation: AppElevation.level3,
+              borderRadius: AppRadii.xsR,
+              clipBehavior: Clip.antiAlias,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+                      padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.md, AppSpacing.sm,
+                          AppSpacing.md, AppSpacing.sm),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (state.isError)
-                            Icon(
-                              Icons.error_outline_rounded,
-                              size: 16,
-                              color: scheme.error,
-                            )
+                            Icon(Icons.error_outline_rounded,
+                                size: 18, color: fgOnBg)
                           else
                             SizedBox(
-                              width: 16,
-                              height: 16,
+                              width: 18, height: 18,
                               child: CircularProgressIndicator(
-                                strokeWidth: 1.6,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  accent,
-                                ),
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(fgOnBg),
                               ),
                             ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: AppSpacing.sm),
                           Flexible(
                             child: Text(
                               state.label,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: state.isError
-                                    ? scheme.error
-                                    : scheme.onSurface,
-                                height: 1.3,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: fgOnBg,
                               ),
                             ),
                           ),
@@ -86,7 +83,7 @@ class FolderToast extends StatelessWidget {
                     if (!state.isError)
                       const UploadProgressBar(
                         value: 0,
-                        height: 1.6,
+                        height: 2,
                         indeterminate: true,
                       ),
                   ],

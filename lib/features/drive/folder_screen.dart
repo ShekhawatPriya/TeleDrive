@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/ios_more_menu.dart';
@@ -42,86 +43,75 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
     final grid = prefs.layout == LayoutMode.grid;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(folder?.name ?? 'Folder'),
-        actions: [
-          IosMoreButton(
-            sectionsBuilder: (ctx) => buildDriveMenuSections(
-              ctx,
-              ref,
-              folderId: widget.folderId,
-              includeLayoutSection: true,
-              onSelect: () => setState(() => selectMode = true),
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              if (selectMode)
-                DriveSelectionBar(
-                  selectedCount: selectedCount,
-                  onCancel: exitSelect,
-                  onShare: _bulkShare,
-                  onStar: _bulkStar,
-                  onMove: _bulkMove,
-                  onDelete: _bulkDelete,
-                ),
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: ref.read(driveControllerProvider).refresh,
-                  child: CustomScrollView(
-                    slivers: [
-                      SliverToBoxAdapter(child: _Breadcrumbs(path: path)),
-                      if (folders.isEmpty && files.isEmpty)
-                        const SliverToBoxAdapter(
-                          child: SizedBox(
-                            height: 520,
-                            child: EmptyState(
-                              icon: Icons.folder_open,
-                              title: 'Nothing here yet',
-                              body: 'Upload files or create a nested folder.',
-                            ),
-                          ),
-                        ),
-                      DriveFolderSliver(
-                        folders: folders,
-                        selectMode: selectMode,
-                        selectedFolderIds: selectedFolderIds,
-                        onFolderTap: _onFolderTap,
-                        onFolderLongPress: (id) =>
-                            enterSelect(folderId: id),
-                        onFolderMore: (f) => DriveItemActions.openFolder(
-                          context,
-                          ref,
-                          f,
-                          allowRename: false,
-                        ),
-                      ),
-                      DriveFilesSliver(
-                        files: files,
-                        grid: grid,
-                        selectMode: selectMode,
-                        selectedFileIds: selectedFileIds,
-                        onFileTap: _onFileTap,
-                        onFileLongPress: (id) =>
-                            enterSelect(fileId: id),
-                        onFileMore: (f) =>
-                            DriveItemActions.openFile(context, ref, f),
-                        bottomPadding: 150,
-                      ),
-                    ],
+      appBar: selectMode
+          ? PreferredSize(
+              preferredSize: const Size.fromHeight(64),
+              child: DriveSelectionBar(
+                selectedCount: selectedCount,
+                onCancel: exitSelect,
+                onShare: _bulkShare,
+                onStar: _bulkStar,
+                onMove: _bulkMove,
+                onDelete: _bulkDelete,
+              ),
+            )
+          : AppBar(
+              title: Text(folder?.name ?? 'Folder'),
+              actions: [
+                IosMoreButton(
+                  sectionsBuilder: (ctx) => buildDriveMenuSections(
+                    ctx,
+                    ref,
+                    folderId: widget.folderId,
+                    includeLayoutSection: true,
+                    onSelect: () => setState(() => selectMode = true),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: AppSpacing.xs),
+              ],
+            ),
+      body: Stack(
+        children: [
+          RefreshIndicator(
+            onRefresh: ref.read(driveControllerProvider).refresh,
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: _Breadcrumbs(path: path)),
+                if (folders.isEmpty && files.isEmpty)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: EmptyState(
+                      icon: Icons.folder_open,
+                      title: 'Nothing here yet',
+                      body: 'Upload files or create a nested folder.',
+                    ),
+                  ),
+                DriveFolderSliver(
+                  folders: folders,
+                  selectMode: selectMode,
+                  selectedFolderIds: selectedFolderIds,
+                  onFolderTap: _onFolderTap,
+                  onFolderLongPress: (id) => enterSelect(folderId: id),
+                  onFolderMore: (f) => DriveItemActions.openFolder(
+                    context, ref, f, allowRename: false,
+                  ),
+                ),
+                DriveFilesSliver(
+                  files: files,
+                  grid: grid,
+                  selectMode: selectMode,
+                  selectedFileIds: selectedFileIds,
+                  onFileTap: _onFileTap,
+                  onFileLongPress: (id) => enterSelect(fileId: id),
+                  onFileMore: (f) => DriveItemActions.openFile(context, ref, f),
+                  bottomPadding: 150,
+                ),
+              ],
+            ),
           ),
           const Positioned(
-            left: 12,
-            right: 12,
+            left: AppSpacing.sm,
+            right: AppSpacing.sm,
             bottom: 86,
             child: UploadOverlay(),
           ),
@@ -151,28 +141,23 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
 
   Future<void> _bulkShare() async {
     await DriveBulkActions.share(
-      context,
-      ref,
-      fileIds: selectedFileIds,
-      folderIds: selectedFolderIds,
+      context, ref,
+      fileIds: selectedFileIds, folderIds: selectedFolderIds,
     );
   }
 
   Future<void> _bulkStar() async {
     await DriveBulkActions.star(
       ref,
-      fileIds: selectedFileIds,
-      folderIds: selectedFolderIds,
+      fileIds: selectedFileIds, folderIds: selectedFolderIds,
     );
     exitSelect();
   }
 
   Future<void> _bulkMove() async {
     await DriveBulkActions.move(
-      context,
-      ref,
-      fileIds: selectedFileIds,
-      folderIds: selectedFolderIds,
+      context, ref,
+      fileIds: selectedFileIds, folderIds: selectedFolderIds,
       currentParentId: widget.folderId,
     );
     if (mounted) exitSelect();
@@ -180,10 +165,8 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
 
   Future<void> _bulkDelete() async {
     final ok = await DriveBulkActions.delete(
-      context,
-      ref,
-      fileIds: selectedFileIds,
-      folderIds: selectedFolderIds,
+      context, ref,
+      fileIds: selectedFileIds, folderIds: selectedFolderIds,
     );
     if (ok && mounted) exitSelect();
   }
@@ -195,20 +178,28 @@ class _Breadcrumbs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return SizedBox(
-      height: 42,
+      height: 48,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
         scrollDirection: Axis.horizontal,
         itemCount: path.length,
-        separatorBuilder: (_, __) =>
-            const Icon(Icons.chevron_right, size: 18),
-        itemBuilder: (_, i) => ActionChip(
-          label: Text(path[i].name as String),
-          onPressed: i == path.length - 1
-              ? null
-              : () => context.push('/folder/${path[i].id}'),
+        separatorBuilder: (_, __) => Center(
+          child: Icon(Icons.chevron_right, size: 18, color: scheme.onSurfaceVariant),
         ),
+        itemBuilder: (_, i) {
+          final isLast = i == path.length - 1;
+          return Center(
+            child: TextButton(
+              onPressed: isLast ? null : () => context.push('/folder/${path[i].id}'),
+              style: TextButton.styleFrom(
+                foregroundColor: isLast ? scheme.onSurface : scheme.primary,
+              ),
+              child: Text(path[i].name as String),
+            ),
+          );
+        },
       ),
     );
   }

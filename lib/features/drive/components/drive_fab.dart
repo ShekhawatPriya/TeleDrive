@@ -2,15 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../widgets/sheet/sheet_action_tile.dart';
-import '../../../widgets/sheet/sheet_drag_handle.dart';
 import '../../../widgets/sheet/sheet_header.dart';
 import '../../upload/ui/folder_creation/folder_toast_controller.dart';
 import '../../upload/upload_controller.dart';
 import '../drive_controller.dart';
 import 'drive_dialogs.dart';
 
-/// "+" floating-action button shown on the home and folder screens.  Opens
-/// a bottom sheet with Upload File / Take Photo / Create Folder options.
+/// Floating action button shown on the home and folder screens.  Opens a
+/// modal bottom sheet with Upload File / Take Photo / Create Folder options.
 class DriveFab extends ConsumerWidget {
   const DriveFab({this.parentId, super.key});
   final String? parentId;
@@ -20,7 +19,7 @@ class DriveFab extends ConsumerWidget {
     return FloatingActionButton.extended(
       onPressed: () => _open(context, ref),
       icon: const Icon(Icons.add),
-      label: const Text('Add'),
+      label: const Text('New'),
     );
   }
 
@@ -46,10 +45,7 @@ class DriveFab extends ConsumerWidget {
                 .read(driveControllerProvider)
                 .createFolder(name, parentId),
           );
-        } catch (_) {
-          // Toast surfaces the failure.  Drive controller already owns
-          // any deeper recovery; nothing more to do here.
-        }
+        } catch (_) {}
       }
     }
   }
@@ -67,20 +63,12 @@ class _AddToDriveSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SheetDragHandle(),
           SheetHeader(
             title: 'Add to Drive',
             subtitle: 'Upload, capture, or create a folder',
             leadingIcon: Icons.add_rounded,
             leadingAccent: scheme.primary,
           ),
-          Divider(
-            height: 1,
-            color: scheme.outline.withValues(alpha: .6),
-            indent: 20,
-            endIndent: 20,
-          ),
-          const SizedBox(height: 8),
           SheetActionTile(
             label: 'Upload File',
             subtitle: 'Pick from your device',
@@ -99,7 +87,7 @@ class _AddToDriveSheet extends StatelessWidget {
             icon: Icons.create_new_folder_outlined,
             onTap: () => Navigator.pop(context, 'folder'),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
         ],
       ),
     );

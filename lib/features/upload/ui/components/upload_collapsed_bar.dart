@@ -5,9 +5,9 @@ import '../../../../core/utils/file_type_detector.dart';
 import '../../upload_controller.dart';
 import 'upload_progress_bar.dart';
 
-/// Premium collapsed pill that appears at the bottom of the screen while
-/// uploads are in flight.  Tap target = whole card.
-class UploadCollapsedBar extends StatefulWidget {
+/// Collapsed pill that floats above the FAB while uploads are running. Tapping
+/// expands the modal upload sheet.
+class UploadCollapsedBar extends StatelessWidget {
   const UploadCollapsedBar({
     required this.upload,
     required this.onTap,
@@ -18,33 +18,9 @@ class UploadCollapsedBar extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<UploadCollapsedBar> createState() => _UploadCollapsedBarState();
-}
-
-class _UploadCollapsedBarState extends State<UploadCollapsedBar>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _breath;
-
-  @override
-  void initState() {
-    super.initState();
-    _breath = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _breath.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final upload = widget.upload;
 
     final total = upload.items.length;
     final done = upload.uploadedCount;
@@ -59,105 +35,77 @@ class _UploadCollapsedBarState extends State<UploadCollapsedBar>
       (s, i) => s + (i.progress * i.size).round(),
     );
 
-    final accent = scheme.primary;
-
     return Material(
-      color: Colors.transparent,
+      color: scheme.surfaceContainer,
+      surfaceTintColor: scheme.surfaceTint,
+      shadowColor: scheme.shadow,
+      elevation: AppElevation.level3,
+      borderRadius: AppRadii.lgR,
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        onTap: widget.onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: scheme.surface,
-            borderRadius: BorderRadius.circular(AppRadii.lg),
-            border: Border.all(color: scheme.outline.withValues(alpha: .82)),
-            boxShadow: AppShadows.floating(theme.brightness),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadii.lg),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 14, 10),
-                  child: Row(
-                    children: [
-                      AnimatedBuilder(
-                        animation: _breath,
-                        builder: (context, _) {
-                          final scale = completed
-                              ? 1.0
-                              : 1.0 + (_breath.value * 0.04);
-                          return Transform.scale(
-                            scale: scale,
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: scheme.surfaceContainerHighest,
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.md,
-                                ),
-                              ),
-                              child: Icon(
-                                completed
-                                    ? Icons.check_rounded
-                                    : Icons.cloud_upload_outlined,
-                                size: 18,
-                                color: accent,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              completed
-                                  ? '$total ${total == 1 ? 'file' : 'files'} uploaded'
-                                  : 'Uploading $total ${total == 1 ? 'file' : 'files'}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: scheme.onSurface,
-                                height: 1.2,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '$done of $total \u00b7 '
-                              '${formatFileSize(completedBytes)}/${formatFileSize(totalBytes)}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                                color: scheme.onSurface.withValues(alpha: .55),
-                                height: 1.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Icon(
-                        Icons.keyboard_arrow_up_rounded,
-                        size: 22,
-                        color: scheme.onSurface.withValues(alpha: .45),
-                      ),
-                    ],
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.sm, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: scheme.primaryContainer,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      completed
+                          ? Icons.check_rounded
+                          : Icons.cloud_upload_outlined,
+                      size: 20,
+                      color: scheme.onPrimaryContainer,
+                    ),
                   ),
-                ),
-                UploadProgressBar(value: completed ? 1 : progress, height: 3),
-              ],
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          completed
+                              ? '$total ${total == 1 ? 'file' : 'files'} uploaded'
+                              : 'Uploading $total ${total == 1 ? 'file' : 'files'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: scheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$done of $total · '
+                          '${formatFileSize(completedBytes)}/${formatFileSize(totalBytes)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.keyboard_arrow_up_rounded,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
             ),
-          ),
+            UploadProgressBar(value: completed ? 1 : progress, height: 4),
+          ],
         ),
       ),
     );

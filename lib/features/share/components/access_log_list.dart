@@ -19,10 +19,16 @@ class ShareAccessLogList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     if (accesses.isEmpty && !loading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 24),
-        child: Center(child: Text('No activity yet')),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+        child: Center(
+          child: Text(
+            'No activity yet',
+            style: TextStyle(color: scheme.onSurfaceVariant),
+          ),
+        ),
       );
     }
     return Column(
@@ -31,11 +37,11 @@ class ShareAccessLogList extends StatelessWidget {
         for (final entry in accesses) _Row(entry: entry),
         if (hasMore)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
             child: Center(
               child: TextButton(
                 onPressed: loading ? null : onLoadMore,
-                child: Text(loading ? 'Loading...' : 'Load more'),
+                child: Text(loading ? 'Loading…' : 'Load more'),
               ),
             ),
           ),
@@ -50,24 +56,25 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return ListTile(
       dense: true,
-      leading: Icon(_iconFor(entry.action), size: 20),
+      leading: Icon(_iconFor(entry.action), color: scheme.onSurfaceVariant),
       title: Text(_label(entry)),
       subtitle: Text(_timeAgo(entry.accessedAt)),
       trailing: entry.country != null
           ? Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xs, vertical: 2),
               decoration: BoxDecoration(
-                color: scheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(AppRadii.pill),
+                color: scheme.secondaryContainer,
+                borderRadius: AppRadii.smR,
               ),
               child: Text(
                 entry.country!,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: scheme.onSecondaryContainer,
                 ),
               ),
             )
@@ -76,10 +83,10 @@ class _Row extends StatelessWidget {
   }
 
   IconData _iconFor(String action) => switch (action) {
-    'download' => Icons.download_outlined,
-    'preview' => Icons.visibility_outlined,
-    _ => Icons.open_in_new,
-  };
+        'download' => Icons.download_outlined,
+        'preview' => Icons.visibility_outlined,
+        _ => Icons.open_in_new,
+      };
 
   String _label(ShareAccess access) {
     final base = switch (access.action) {
@@ -87,7 +94,7 @@ class _Row extends StatelessWidget {
       'preview' => 'Preview',
       _ => 'View',
     };
-    final item = access.itemName == null ? '' : ' \u00b7 ${access.itemName}';
+    final item = access.itemName == null ? '' : ' · ${access.itemName}';
     return '$base$item';
   }
 

@@ -3,12 +3,18 @@ import 'package:flutter/material.dart';
 import 'ios_menu_models.dart';
 import 'ios_menu_overlay.dart';
 
-/// Circular three-dot button that opens a centred iOS-style menu.
+/// Three-dot overflow button rendered in the M3 style: a 40dp `IconButton`
+/// using the surrounding [IconButtonTheme]. Opens a Material 3 menu anchored
+/// to the button.
+///
+/// The class name is kept for backwards compatibility with existing call
+/// sites (`drive_screen.dart`, `folder_screen.dart`, etc.). The menu it
+/// produces is fully Material 3 — see [showIosMoreMenu] / [IosMenuOverlayRoute].
 class IosMoreButton extends StatefulWidget {
   const IosMoreButton({
     required this.sectionsBuilder,
     this.tooltip = 'More',
-    this.size = 36,
+    this.size = 40,
     super.key,
   });
 
@@ -25,26 +31,14 @@ class _IosMoreButtonState extends State<IosMoreButton> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Tooltip(
-      message: widget.tooltip,
-      child: SizedBox(
-        key: _anchorKey,
-        width: widget.size,
-        height: widget.size,
-        child: Material(
-          color: scheme.surface,
-          shape: CircleBorder(side: BorderSide(color: scheme.outline)),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: _open,
-            child: Icon(
-              Icons.more_horiz,
-              size: 20,
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-        ),
+    return SizedBox(
+      key: _anchorKey,
+      width: widget.size,
+      height: widget.size,
+      child: IconButton(
+        tooltip: widget.tooltip,
+        onPressed: _open,
+        icon: const Icon(Icons.more_vert),
       ),
     );
   }

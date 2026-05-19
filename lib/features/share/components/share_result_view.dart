@@ -27,50 +27,32 @@ class ShareResultView extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Center(
-          child: Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: scheme.outlineVariant,
-              borderRadius: BorderRadius.circular(AppRadii.pill),
-            ),
-          ),
-        ),
-        const SizedBox(height: 22),
         Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 44, height: 44,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: scheme.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppRadii.md),
+                color: scheme.primaryContainer,
+                shape: BoxShape.circle,
               ),
-              child: Icon(Icons.link_rounded, size: 20, color: scheme.primary),
+              child: Icon(Icons.link_rounded,
+                  size: 22, color: scheme.onPrimaryContainer),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Link ready',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      height: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
+                  Text('Link ready', style: theme.textTheme.titleLarge),
+                  const SizedBox(height: 2),
                   Text(
                     canDownload
                         ? 'Anyone with this link can view and download.'
                         : 'Anyone with this link can preview.',
-                    style: theme.textTheme.bodySmall?.copyWith(
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
-                      height: 1.35,
                     ),
                   ),
                 ],
@@ -78,12 +60,13 @@ class ShareResultView extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: AppSpacing.lg),
         Container(
-          padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md, AppSpacing.xs, AppSpacing.xs, AppSpacing.xs),
           decoration: BoxDecoration(
             color: scheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(AppRadii.lg),
+            borderRadius: AppRadii.smR,
           ),
           child: Row(
             children: [
@@ -95,58 +78,28 @@ class ShareResultView extends StatelessWidget {
                   style: theme.textTheme.code(scheme.onSurface),
                 ),
               ),
-              const SizedBox(width: 6),
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                  onTap: onCopy,
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: scheme.surface,
-                      borderRadius: BorderRadius.circular(AppRadii.md),
-                    ),
-                    child: Icon(
-                      Icons.content_copy_rounded,
-                      size: 17,
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                ),
+              const SizedBox(width: AppSpacing.xs),
+              IconButton.filledTonal(
+                onPressed: onCopy,
+                icon: const Icon(Icons.content_copy_rounded, size: 18),
+                tooltip: 'Copy',
               ),
             ],
           ),
         ),
-        const SizedBox(height: 18),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: onShare,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(50),
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(AppRadii.pill)),
-              ),
-              textStyle: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
-              ),
-            ),
-            icon: const Icon(Icons.ios_share_rounded, size: 18),
-            label: const Text('Share link'),
-          ),
+        const SizedBox(height: AppSpacing.md),
+        FilledButton.icon(
+          onPressed: onShare,
+          style:
+              FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+          icon: const Icon(Icons.share_outlined),
+          label: const Text('Share link'),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpacing.xxs),
         TextButton(
           onPressed: onDone,
-          style: TextButton.styleFrom(
-            foregroundColor: scheme.onSurfaceVariant,
-            minimumSize: const Size.fromHeight(44),
-            textStyle: const TextStyle(fontWeight: FontWeight.w500),
-          ),
+          style:
+              TextButton.styleFrom(minimumSize: const Size.fromHeight(44)),
           child: const Text('Done'),
         ),
       ],

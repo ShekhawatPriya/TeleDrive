@@ -5,12 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/auth_controller.dart';
 import 'profile_avatar.dart';
 
-/// Shared header widget used across all tab screens to enforce visual
-/// consistency.  Renders a branded title in [headlineMedium] with the
-/// primary colour, a contextual subtitle below, and the user's profile
-/// avatar on the right.  When [trailing] is provided it is rendered
-/// immediately to the left of the avatar (used for the iOS-style three-dot
-/// menu beside the profile icon on the home screen).
+/// Shared header used across tab screens. Renders a Material 3 `headlineSmall`
+/// title (24/32, w400) with a `bodyMedium` muted subtitle, and the user's
+/// profile avatar on the right. Optional [trailing] sits between the subtitle
+/// column and the avatar — used for the overflow `MenuAnchor` button on the
+/// home screen.
 class TabHeader extends ConsumerWidget {
   const TabHeader({
     required this.title,
@@ -37,8 +36,9 @@ class TabHeader extends ConsumerWidget {
             children: [
               Text(
                 title,
-                style: theme.textTheme.headlineMedium?.copyWith(
+                style: theme.textTheme.headlineSmall?.copyWith(
                   color: scheme.onSurface,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
               const SizedBox(height: 2),
@@ -54,7 +54,7 @@ class TabHeader extends ConsumerWidget {
         if (trailing != null) ...[trailing!, const SizedBox(width: 8)],
         GestureDetector(
           onTap: () => context.push('/profile'),
-          child: ProfileAvatar(user: auth.user, size: 42),
+          child: ProfileAvatar(user: auth.user, size: 40),
         ),
       ],
     );

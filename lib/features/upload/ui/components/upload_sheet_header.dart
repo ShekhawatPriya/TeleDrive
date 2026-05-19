@@ -24,8 +24,7 @@ class UploadSheetHeader extends StatelessWidget {
       (s, i) => s + (i.progress * i.size).round(),
     );
 
-    final stillGeneratingThumbs =
-        completed &&
+    final stillGeneratingThumbs = completed &&
         upload.items.any((i) {
           final kind = detectFileKind(i.name, i.mimeType);
           final previewable = kind == FileKind.image || kind == FileKind.video;
@@ -36,36 +35,23 @@ class UploadSheetHeader extends StatelessWidget {
         ? 'All set'
         : '$total ${total == 1 ? 'file' : 'files'}';
     final subtitle = stillGeneratingThumbs
-        ? 'Generating previews...'
-        : '$done of $total uploaded \u00b7 '
-              '${formatFileSize(completedBytes)} of ${formatFileSize(totalBytes)}';
+        ? 'Generating previews…'
+        : '$done of $total uploaded · '
+            '${formatFileSize(completedBytes)} of ${formatFileSize(totalBytes)}';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.md),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: scheme.outline,
-                borderRadius: BorderRadius.circular(AppRadii.pill),
-              ),
-            ),
-          ),
           Text(title, style: theme.textTheme.headlineSmall),
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: scheme.onSurface.withValues(alpha: .6),
-              height: 1.35,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
             ),
           ),
         ],

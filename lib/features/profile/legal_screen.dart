@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/theme/app_theme.dart';
 
 enum LegalKind { privacy, terms }
 
@@ -11,6 +12,8 @@ class LegalScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final title = kind == LegalKind.privacy
         ? 'Privacy Policy'
         : 'Terms of Service';
@@ -24,58 +27,25 @@ class LegalScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 80),
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 80),
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: GestureDetector(
-              onTap: () => AppConfig.openRepository(),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: .12),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      icon,
-                      size: 20,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Open Source Project',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Icon(
-                      Icons.open_in_new,
-                      size: 14,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          ActionChip(
+            avatar: Icon(icon, size: 18, color: scheme.onSecondaryContainer),
+            label: const Text('Open Source Project'),
+            onPressed: () => AppConfig.openRepository(),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             'Last updated: May 2026',
-            style: Theme.of(context).textTheme.bodySmall,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.lg),
           for (final section in sections) ...[
             _LegalSection(section),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.lg),
           ],
         ],
       ),
@@ -94,8 +64,8 @@ class _LegalSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(section.title, style: theme.textTheme.titleLarge),
-        const SizedBox(height: 10),
+        Text(section.title, style: theme.textTheme.headlineSmall),
+        const SizedBox(height: AppSpacing.xs),
         if (section.paragraph != null)
           Text(section.paragraph!, style: theme.textTheme.bodyLarge),
         for (final item in section.bullets) _BulletItem(item),
@@ -113,18 +83,20 @@ class _BulletItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: AppSpacing.xs),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '-',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w600,
+          Padding(
+            padding: const EdgeInsets.only(top: 8, right: AppSpacing.sm),
+            child: Container(
+              width: 6, height: 6,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
             ),
           ),
-          const SizedBox(width: 8),
           Expanded(child: Text(text, style: theme.textTheme.bodyLarge)),
         ],
       ),

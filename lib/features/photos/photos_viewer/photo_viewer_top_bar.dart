@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../models/drive_models.dart';
 
+/// Translucent overlay top bar for the photo viewer. Surface uses the
+/// theme's `inverseSurface` (black-on-light, white-on-dark) at 60% opacity
+/// so the underlying photo remains visible while the bar is readable.
 class PhotoViewerTopBar extends StatelessWidget {
   const PhotoViewerTopBar({
     required this.file,
@@ -25,7 +29,7 @@ class PhotoViewerTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedOpacity(
-      duration: const Duration(milliseconds: 180),
+      duration: AppDurations.short3,
       opacity: visible ? 1 : 0,
       child: IgnorePointer(
         ignoring: !visible,
@@ -50,14 +54,16 @@ class PhotoViewerTopBar extends StatelessWidget {
                 IconButton(
                   onPressed: file == null ? null : onStar,
                   icon: Icon(
-                    file?.starred == true ? Icons.star : Icons.star_border,
+                    file?.starred == true
+                        ? Icons.star_rounded
+                        : Icons.star_border_rounded,
                     color: Colors.white,
                   ),
                   tooltip: 'Star',
                 ),
                 IconButton(
                   onPressed: file == null ? null : onDownload,
-                  icon: const Icon(Icons.download, color: Colors.white),
+                  icon: const Icon(Icons.download_rounded, color: Colors.white),
                   tooltip: 'Download',
                 ),
                 IconButton(

@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/ios_more_menu.dart';
+import '../../widgets/profile_avatar.dart';
 import '../../widgets/skeletons.dart';
-import '../../widgets/tab_header.dart';
 import '../auth/auth_controller.dart';
 import 'components/drive_fab.dart';
 import 'components/drive_header_widgets.dart';
@@ -61,107 +62,177 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
     );
     final recent = drive.recentFiles();
     final grid = prefs.layout == LayoutMode.grid;
+    final firstName = auth.user?.firstName ?? 'there';
 
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            if (selectMode)
+    if (selectMode) {
+      return Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
               DriveSelectionBar(
                 selectedCount: selectedCount,
                 onCancel: exitSelect,
                 onShare: _bulkShare,
-                onStar: () => _bulkStar(),
-                onMove: () => _bulkMove(),
-                onDelete: () => _bulkDelete(),
+                onStar: _bulkStar,
+                onMove: _bulkMove,
+                onDelete: _bulkDelete,
               ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: drive.refresh,
-                child: CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: _Header(
-                        userName: auth.user?.firstName ?? 'there',
-                        searchController: search,
-                        used: state.usedStorage,
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: drive.refresh,
+                  child: CustomScrollView(
+                    slivers: [
+                      if (folders.isNotEmpty)
+                        const DriveSectionHeader('Folders'),
+                      DriveFolderSliver(
+                        folders: folders,
+                        selectMode: true,
+                        selectedFolderIds: selectedFolderIds,
+                        onFolderTap: _onFolderTap,
+                        onFolderLongPress: (id) =>
+                            enterSelect(folderId: id),
+                        onFolderMore: (folder) => DriveItemActions.openFolder(
+                          context, ref, folder),
+                      ),
+                      if (files.isNotEmpty) const DriveSectionHeader('Files'),
+                      DriveFilesSliver(
+                        files: files,
                         grid: grid,
-                        onLayoutToggle: () => ref
-                            .read(viewPreferencesProvider)
-                            .setLayout(
-                              grid ? LayoutMode.list : LayoutMode.grid,
-                            ),
-                        onSearchChanged: () => setState(() {}),
-                        menuButton: IosMoreButton(
-                          sectionsBuilder: (ctx) => buildDriveMenuSections(
-                            ctx,
-                            ref,
-                            folderId: null,
-                            includeLayoutSection: false,
-                            onSelect: () =>
-                                setState(() => selectMode = true),
-                          ),
-                        ),
+                        selectMode: true,
+                        selectedFileIds: selectedFileIds,
+                        onFileTap: _onFileTap,
+                        onFileLongPress: (id) => enterSelect(fileId: id),
+                        onFileMore: (file) =>
+                            DriveItemActions.openFile(context, ref, file),
                       ),
-                    ),
-                    if (state.loading && files.isEmpty && folders.isEmpty)
-                      const SliverFillRemaining(child: SkeletonList()),
-                    if (state.error != null) _ErrorBanner(state.error!),
-                    if (recent.isNotEmpty && query.isEmpty && !selectMode)
-                      SliverToBoxAdapter(
-                        child: DriveRecentsStrip(
-                          files: recent,
-                          onFileTap: (f) => openDriveFile(context, ref, f),
-                        ),
-                      ),
-                    if (!state.loading && folders.isEmpty && files.isEmpty)
-                      SliverFillRemaining(
-                        child: EmptyState(
-                          icon: query.isEmpty
-                              ? Icons.folder_open
-                              : Icons.search,
-                          title: query.isEmpty
-                              ? 'Your Drive is empty'
-                              : 'No results',
-                          body: query.isEmpty
-                              ? 'Upload files or create a folder to get started.'
-                              : 'Try a different file or folder name.',
-                        ),
-                      ),
-                    if (folders.isNotEmpty)
-                      const DriveSectionHeader('Folders'),
-                    DriveFolderSliver(
-                      folders: folders,
-                      selectMode: selectMode,
-                      selectedFolderIds: selectedFolderIds,
-                      onFolderTap: _onFolderTap,
-                      onFolderLongPress: (id) =>
-                          enterSelect(folderId: id),
-                      onFolderMore: (folder) => DriveItemActions.openFolder(
-                        context,
-                        ref,
-                        folder,
-                      ),
-                    ),
-                    if (files.isNotEmpty) const DriveSectionHeader('Files'),
-                    DriveFilesSliver(
-                      files: files,
-                      grid: grid,
-                      selectMode: selectMode,
-                      selectedFileIds: selectedFileIds,
-                      onFileTap: _onFileTap,
-                      onFileLongPress: (id) => enterSelect(fileId: id),
-                      onFileMore: (file) =>
-                          DriveItemActions.openFile(context, ref, file),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: drive.refresh,
+        child: CustomScrollView(
+          slivers: [
+            SliverAppBar.medium(
+              pinned: true,
+              floating: false,
+              expandedHeight: 128,
+              title: Text(
+                'TeleDrive',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              flexibleSpace: FlexibleSpaceBar(
+                titlePadding: const EdgeInsetsDirectional.fromSTEB(
+                    AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+                title: Text(
+                  'Hi, $firstName',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+              ),
+              actions: [
+                IconButton(
+                  tooltip: grid ? 'List view' : 'Grid view',
+                  onPressed: () => ref.read(viewPreferencesProvider).setLayout(
+                      grid ? LayoutMode.list : LayoutMode.grid),
+                  icon: Icon(grid
+                      ? Icons.view_agenda_outlined
+                      : Icons.grid_view_outlined),
+                ),
+                IosMoreButton(
+                  sectionsBuilder: (ctx) => buildDriveMenuSections(
+                    ctx,
+                    ref,
+                    folderId: null,
+                    includeLayoutSection: false,
+                    onSelect: () => setState(() => selectMode = true),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(
+                      0, 0, AppSpacing.sm, 0),
+                  child: GestureDetector(
+                    onTap: () => context.push('/profile'),
+                    child: ProfileAvatar(user: auth.user, size: 36),
+                  ),
+                ),
+              ],
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md, AppSpacing.xs, AppSpacing.md, AppSpacing.sm),
+                child: SearchBar(
+                  controller: search,
+                  hintText: 'Search files and folders',
+                  leading: Icon(
+                    Icons.search,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md, 0, AppSpacing.md, AppSpacing.xs),
+                child: DriveStoragePill(used: state.usedStorage),
+              ),
+            ),
+            if (state.loading && files.isEmpty && folders.isEmpty)
+              const SliverFillRemaining(child: SkeletonList()),
+            if (state.error != null) _ErrorBanner(state.error!),
+            if (recent.isNotEmpty && query.isEmpty)
+              SliverToBoxAdapter(
+                child: DriveRecentsStrip(
+                  files: recent,
+                  onFileTap: (f) => openDriveFile(context, ref, f),
+                ),
+              ),
+            if (!state.loading && folders.isEmpty && files.isEmpty)
+              SliverFillRemaining(
+                child: EmptyState(
+                  icon: query.isEmpty ? Icons.folder_open : Icons.search_off,
+                  title: query.isEmpty
+                      ? 'Your Drive is empty'
+                      : 'No results',
+                  body: query.isEmpty
+                      ? 'Upload files or create a folder to get started.'
+                      : 'Try a different file or folder name.',
+                ),
+              ),
+            if (folders.isNotEmpty) const DriveSectionHeader('Folders'),
+            DriveFolderSliver(
+              folders: folders,
+              selectMode: false,
+              selectedFolderIds: selectedFolderIds,
+              onFolderTap: _onFolderTap,
+              onFolderLongPress: (id) => enterSelect(folderId: id),
+              onFolderMore: (folder) =>
+                  DriveItemActions.openFolder(context, ref, folder),
+            ),
+            if (files.isNotEmpty) const DriveSectionHeader('Files'),
+            DriveFilesSliver(
+              files: files,
+              grid: grid,
+              selectMode: false,
+              selectedFileIds: selectedFileIds,
+              onFileTap: _onFileTap,
+              onFileLongPress: (id) => enterSelect(fileId: id),
+              onFileMore: (file) =>
+                  DriveItemActions.openFile(context, ref, file),
             ),
           ],
         ),
       ),
-      floatingActionButton: selectMode ? null : const DriveFab(),
+      floatingActionButton: const DriveFab(),
     );
   }
 
@@ -183,98 +254,33 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
 
   Future<void> _bulkShare() async {
     await DriveBulkActions.share(
-      context,
-      ref,
-      fileIds: selectedFileIds,
-      folderIds: selectedFolderIds,
+      context, ref,
+      fileIds: selectedFileIds, folderIds: selectedFolderIds,
     );
   }
 
   Future<void> _bulkStar() async {
     await DriveBulkActions.star(
       ref,
-      fileIds: selectedFileIds,
-      folderIds: selectedFolderIds,
+      fileIds: selectedFileIds, folderIds: selectedFolderIds,
     );
     exitSelect();
   }
 
   Future<void> _bulkMove() async {
     await DriveBulkActions.move(
-      context,
-      ref,
-      fileIds: selectedFileIds,
-      folderIds: selectedFolderIds,
+      context, ref,
+      fileIds: selectedFileIds, folderIds: selectedFolderIds,
     );
     if (mounted) exitSelect();
   }
 
   Future<void> _bulkDelete() async {
     final ok = await DriveBulkActions.delete(
-      context,
-      ref,
-      fileIds: selectedFileIds,
-      folderIds: selectedFolderIds,
+      context, ref,
+      fileIds: selectedFileIds, folderIds: selectedFolderIds,
     );
     if (ok && mounted) exitSelect();
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({
-    required this.userName,
-    required this.searchController,
-    required this.used,
-    required this.grid,
-    required this.onLayoutToggle,
-    required this.onSearchChanged,
-    required this.menuButton,
-  });
-
-  final String userName;
-  final TextEditingController searchController;
-  final int used;
-  final bool grid;
-  final VoidCallback onLayoutToggle;
-  final VoidCallback onSearchChanged;
-  final Widget menuButton;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TabHeader(
-            title: 'TeleDrive',
-            subtitle: 'Hi, $userName',
-            trailing: menuButton,
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: searchController,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search),
-              hintText: 'Search files and folders',
-            ),
-            onChanged: (_) => onSearchChanged(),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              DriveStoragePill(used: used),
-              const Spacer(),
-              IconButton(
-                onPressed: onLayoutToggle,
-                icon: Icon(grid ? Icons.view_list : Icons.grid_view),
-                tooltip: 'Toggle view',
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -283,15 +289,33 @@ class _ErrorBanner extends StatelessWidget {
   final String message;
 
   @override
-  Widget build(BuildContext context) => SliverToBoxAdapter(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(message),
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: scheme.errorContainer,
+            borderRadius: AppRadii.mdR,
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.error_outline, color: scheme.onErrorContainer),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  message,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: scheme.onErrorContainer,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

@@ -28,61 +28,82 @@ class ShareDetailBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final byCountry = stats?.byCountry ?? const {};
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
           decoration: BoxDecoration(
             color: scheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(AppRadii.md),
+            borderRadius: AppRadii.smR,
           ),
           child: Text(
             share.url,
-            style: Theme.of(context).textTheme.code(scheme.onSurface),
+            style: theme.textTheme.code(scheme.onSurface),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.sm),
         Row(
           children: [
             Expanded(
-              child: OutlinedButton.icon(
+              child: FilledButton.tonalIcon(
                 onPressed: onCopy,
-                icon: const Icon(Icons.copy_outlined, size: 18),
+                icon: const Icon(Icons.content_copy_rounded, size: 18),
                 label: const Text('Copy link'),
+                style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44)),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.xs),
             Expanded(
-              child: OutlinedButton.icon(
+              child: FilledButton.tonalIcon(
                 onPressed: onShare,
-                icon: const Icon(Icons.ios_share, size: 18),
+                icon: const Icon(Icons.share_outlined, size: 18),
                 label: const Text('Share'),
+                style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44)),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.lg),
         ShareCounters(share: share, stats: stats),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.lg),
         if (byCountry.isNotEmpty) ...[
-          Text('By country', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
+          Text(
+            'By country',
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: scheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
           for (final entry in byCountry.entries)
             ListTile(
               dense: true,
-              leading: const Icon(Icons.public, size: 20),
+              leading: Icon(Icons.public, color: scheme.onSurfaceVariant),
               title: Text(entry.key),
-              trailing: Text('${entry.value}'),
+              trailing: Text(
+                '${entry.value}',
+                style: theme.textTheme.labelMedium,
+              ),
             ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.lg),
         ],
-        Text('Activity', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 8),
+        Text(
+          'Activity',
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: scheme.primary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
         ShareAccessLogList(
           accesses: accesses,
           loading: accessesLoading,
@@ -118,27 +139,26 @@ class _Counter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
         decoration: BoxDecoration(
-          color: scheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(AppRadii.md),
+          color: scheme.surfaceContainerLow,
+          borderRadius: AppRadii.smR,
+          border: Border.all(color: scheme.outlineVariant),
         ),
         child: Column(
           children: [
-            Text(
-              '$value',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
-            ),
+            Text('$value', style: theme.textTheme.headlineSmall),
             const SizedBox(height: 2),
             Text(
               label,
-              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),

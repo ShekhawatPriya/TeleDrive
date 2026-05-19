@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_theme.dart';
-
+/// Drag indicator for non-modal sheets. Modal bottom sheets pick up the
+/// theme's `dragHandleColor` / `dragHandleSize` automatically and don't
+/// need this widget.
 class SheetDragHandle extends StatelessWidget {
   const SheetDragHandle({super.key});
 
@@ -9,14 +10,14 @@ class SheetDragHandle extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(top: 10, bottom: 6),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Center(
         child: Container(
-          width: 36,
+          width: 32,
           height: 4,
           decoration: BoxDecoration(
-            color: scheme.onSurface.withValues(alpha: .18),
-            borderRadius: BorderRadius.circular(AppRadii.pill),
+            color: scheme.onSurfaceVariant.withValues(alpha: .4),
+            borderRadius: BorderRadius.circular(2),
           ),
         ),
       ),

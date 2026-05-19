@@ -146,7 +146,7 @@ class DriveItemActions {
         title: folder.name,
         subtitle: _folderSubtitle(folder),
         leadingIcon: Icons.folder_outlined,
-        leadingAccent: AppColors.amber,
+        leadingAccent: AppColors.warning,
         actions: actions,
       ),
     );
@@ -333,28 +333,28 @@ IconData _iconForKind(FileKind kind) {
 Color _accentForKind(FileKind kind) {
   switch (kind) {
     case FileKind.folder:
-      return AppColors.amber;
+      return AppColors.warning;
     case FileKind.pdf:
-      return AppColors.error;
+      return const Color(0xFFC5221F);
     case FileKind.image:
-      return AppColors.pink;
+      return const Color(0xFFD81B60);
     case FileKind.video:
-      return AppColors.violet;
+      return const Color(0xFF7B1FA2);
     case FileKind.doc:
-      return AppColors.link;
+      return const Color(0xFF1A73E8);
     case FileKind.sheet:
-      return AppColors.green;
+      return AppColors.success;
     case FileKind.slides:
       return AppColors.warning;
     case FileKind.audio:
-      return AppColors.cyan;
+      return const Color(0xFF00ACC1);
     case FileKind.zip:
-      return AppColors.amber;
+      return AppColors.warning;
     case FileKind.code:
-      return AppColors.linkDeep;
+      return const Color(0xFF0B57D0);
     case FileKind.text:
-      return AppColors.mute;
+      return const Color(0xFF6F6F6F);
     case FileKind.other:
-      return AppColors.body;
+      return const Color(0xFF424242);
   }
 }

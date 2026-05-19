@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../models/drive_models.dart';
-import '../../widgets/sheet/sheet_drag_handle.dart';
 import '../../widgets/sheet/sheet_header.dart';
 import 'drive_controller.dart';
 
@@ -39,38 +38,35 @@ class MoveDestinationSheet extends ConsumerWidget {
         builder: (_, controller) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SheetDragHandle(),
             SheetHeader(
               title: title,
               leadingIcon: Icons.drive_file_move_outlined,
-              leadingAccent: AppColors.link,
+              leadingAccent: scheme.primary,
               trailing: IconButton(
                 tooltip: 'Close',
                 icon: const Icon(Icons.close_rounded),
                 onPressed: () => Navigator.pop(context),
               ),
             ),
-            Divider(
-              height: 1,
-              color: scheme.outline.withValues(alpha: .6),
-              indent: 20,
-              endIndent: 20,
-            ),
             Expanded(
               child: ListView(
                 controller: controller,
                 children: [
                   ListTile(
-                    leading: const Icon(Icons.drive_folder_upload_outlined),
+                    leading: const Icon(Icons.cloud_outlined),
                     title: const Text('My Drive'),
                     enabled: currentParentId != null,
                     onTap: currentParentId == null
                         ? null
                         : () => Navigator.pop(context, rootMoveDestination),
                   ),
-                  const Divider(height: 1),
+                  Divider(
+                    height: 1, color: scheme.outlineVariant,
+                    indent: AppSpacing.md, endIndent: AppSpacing.md,
+                  ),
                   for (final folder in roots)
-                    ..._folderRows(context, drive.folders, folder, excluded, 0),
+                    ..._folderRows(context, scheme, drive.folders, folder,
+                        excluded, 0),
                 ],
               ),
             ),
@@ -96,6 +92,7 @@ class MoveDestinationSheet extends ConsumerWidget {
 
   List<Widget> _folderRows(
     BuildContext context,
+    ColorScheme scheme,
     List<DriveFolder> folders,
     DriveFolder folder,
     Set<String> excluded,
@@ -106,9 +103,13 @@ class MoveDestinationSheet extends ConsumerWidget {
       ..sort((a, b) => a.name.compareTo(b.name));
     return [
       ListTile(
-        leading: Padding(
-          padding: EdgeInsets.only(left: depth * 18),
-          child: const Icon(Icons.folder_outlined),
+        contentPadding: EdgeInsetsDirectional.only(
+          start: AppSpacing.md + depth * 20,
+          end: AppSpacing.md,
+        ),
+        leading: Icon(
+          Icons.folder_outlined,
+          color: scheme.onSurfaceVariant,
         ),
         title: Text(folder.name, maxLines: 1, overflow: TextOverflow.ellipsis),
         enabled: currentParentId != folder.id,
@@ -117,7 +118,7 @@ class MoveDestinationSheet extends ConsumerWidget {
             : () => Navigator.pop(context, folder.id),
       ),
       for (final child in children)
-        ..._folderRows(context, folders, child, excluded, depth + 1),
+        ..._folderRows(context, scheme, folders, child, excluded, depth + 1),
     ];
   }
 }
