@@ -7,14 +7,14 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/file_tiles.dart';
-import '../../widgets/teledrive_app_bar.dart';
+import '../drive/components/drive_item_actions.dart';
 import '../drive/components/selection_mode_mixin.dart';
 import '../drive/drive_controller.dart';
+import '../drive/view_preferences_controller.dart';
 import '../search/search_controller.dart';
 import '../share/my_shares_screen.dart';
 import 'components/photo_context_menu.dart';
 import 'components/photo_preview_overlay.dart';
-import 'components/photos_menu_builder.dart';
 import 'components/photos_selection_bar.dart';
 import 'photos_actions.dart';
 import 'photos_grid/photo_grid_density.dart';
@@ -29,17 +29,10 @@ class PhotosScreen extends ConsumerStatefulWidget {
 
 class _PhotosScreenState extends ConsumerState<PhotosScreen>
     with SelectionModeMixin<PhotosScreen> {
-  final PhotoGridDensity _density = PhotoGridDensity();
-
-  @override
-  void dispose() {
-    _density.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final drive = ref.watch(driveControllerProvider);
+    final density = ref.watch(photoGridDensityProvider);
     final query = ref.watch(searchQueryProvider(SearchScope.photos)).query;
     final all = drive.photoFiles('all');
     final files = query.isEmpty
@@ -68,27 +61,20 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
               child: CustomScrollView(
                 slivers: [
                   if (!selectMode)
-                    TeleDriveAppBar(
-                      scope: SearchScope.photos,
-                      menuSections: (ctx) => buildPhotosMenuSections(
-                        ctx,
-                        density: _density,
-                      ),
-                    ),
-                  if (!selectMode)
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.md,
-                            AppSpacing.sm,
-                            AppSpacing.md,
-                            AppSpacing.sm),
+                          AppSpacing.md,
+                          AppSpacing.sm,
+                          AppSpacing.md,
+                          AppSpacing.sm,
+                        ),
                         child: Text(
                           query.isNotEmpty
                               ? '$allCount match${allCount == 1 ? '' : 'es'}'
                               : (allCount == 0
-                                  ? 'Your media library'
-                                  : '$allCount item${allCount == 1 ? '' : 's'}'),
+                                    ? 'Your media library'
+                                    : '$allCount item${allCount == 1 ? '' : 's'}'),
                           style: theme.textTheme.headlineSmall,
                         ),
                       ),
@@ -112,7 +98,7 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
                     SliverFillRemaining(
                       child: PhotosGridView(
                         files: files,
-                        density: _density,
+                        density: density,
                         loadingMore: drive.state.loadingMoreMedia,
                         selectMode: selectMode,
                         selectedIds: selectedFileIds,
@@ -195,35 +181,47 @@ class StarredScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final drive = ref.watch(driveControllerProvider);
+    final prefs = ref.watch(viewPreferencesProvider);
     final query = ref.watch(searchQueryProvider(SearchScope.starred)).query;
     final raw = drive.starred();
-    final starredFiles = query.isEmpty
+    var starredFiles = query.isEmpty
         ? raw.files
-        : raw.files
-            .where((f) => f.name.toLowerCase().contains(query))
-            .toList();
-    final starredFolders = query.isEmpty
+        : raw.files.where((f) => f.name.toLowerCase().contains(query)).toList();
+    var starredFolders = query.isEmpty
         ? raw.folders
         : raw.folders
-            .where((f) => f.name.toLowerCase().contains(query))
-            .toList();
+              .where((f) => f.name.toLowerCase().contains(query))
+              .toList();
+    starredFolders = sortDriveFolders(
+      starredFolders,
+      ascending: prefs.ascending,
+    );
+    starredFiles = sortDriveFiles(
+      starredFiles,
+      sort: prefs.sort,
+      ascending: prefs.ascending,
+    );
     final totalItems = starredFiles.length + starredFolders.length;
     final theme = Theme.of(context);
+    final grid = prefs.layout == LayoutMode.grid;
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          const TeleDriveAppBar(scope: SearchScope.starred),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                AppSpacing.sm,
+              ),
               child: Text(
                 query.isNotEmpty
                     ? '$totalItems match${totalItems == 1 ? '' : 'es'}'
                     : (totalItems == 0
-                        ? 'Quick access to favourites'
-                        : '$totalItems item${totalItems == 1 ? '' : 's'}'),
+                          ? 'Quick access to favourites'
+                          : '$totalItems item${totalItems == 1 ? '' : 's'}'),
                 style: theme.textTheme.headlineSmall,
               ),
             ),
@@ -258,31 +256,64 @@ class StarredScreen extends ConsumerWidget {
                   onStar: () => ref
                       .read(driveControllerProvider)
                       .toggleStar(folder.id, folder: true),
+                  onMore: () =>
+                      DriveItemActions.openFolder(context, ref, folder),
                 );
               },
             ),
           if (starredFiles.isNotEmpty)
             SliverPadding(
               padding: const EdgeInsets.only(bottom: 120),
-              sliver: SliverList.builder(
-                itemCount: starredFiles.length,
-                itemBuilder: (_, i) {
-                  final file = starredFiles[i];
-                  return FileListTile(
-                    name: file.name,
-                    subtitle:
-                        '${formatLabel(file)} · ${formatFileSize(file.size)} · ${formatDate(file.modifiedAt)}',
-                    file: file,
-                    starred: true,
-                    onTap: () {
-                      ref.read(driveControllerProvider).markAccessed(file.id);
-                      context.push('/file/${file.id}');
-                    },
-                    onStar: () =>
-                        ref.read(driveControllerProvider).toggleStar(file.id),
-                  );
-                },
-              ),
+              sliver: grid
+                  ? SliverGrid.builder(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: .82,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                          ),
+                      itemCount: starredFiles.length,
+                      itemBuilder: (_, i) {
+                        final file = starredFiles[i];
+                        return FileCardTile(
+                          key: ValueKey(file.id),
+                          file: file,
+                          onTap: () {
+                            ref
+                                .read(driveControllerProvider)
+                                .markAccessed(file.id);
+                            context.push('/file/${file.id}');
+                          },
+                          onMore: () =>
+                              DriveItemActions.openFile(context, ref, file),
+                        );
+                      },
+                    )
+                  : SliverList.builder(
+                      itemCount: starredFiles.length,
+                      itemBuilder: (_, i) {
+                        final file = starredFiles[i];
+                        return FileListTile(
+                          name: file.name,
+                          subtitle:
+                              '${formatLabel(file)} · ${formatFileSize(file.size)} · ${formatDate(file.modifiedAt)}',
+                          file: file,
+                          starred: true,
+                          onTap: () {
+                            ref
+                                .read(driveControllerProvider)
+                                .markAccessed(file.id);
+                            context.push('/file/${file.id}');
+                          },
+                          onStar: () => ref
+                              .read(driveControllerProvider)
+                              .toggleStar(file.id),
+                          onMore: () =>
+                              DriveItemActions.openFile(context, ref, file),
+                        );
+                      },
+                    ),
             ),
         ],
       ),

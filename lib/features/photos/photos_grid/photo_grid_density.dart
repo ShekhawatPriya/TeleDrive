@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PhotoGridDensity extends ChangeNotifier {
   PhotoGridDensity({this.min = 2, this.max = 5, int initial = 3})
-      : _columns = initial.clamp(min, max) {
+    : _columns = initial.clamp(min, max) {
     _load();
   }
 
@@ -18,7 +19,10 @@ class PhotoGridDensity extends ChangeNotifier {
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getInt(_key);
-    if (stored != null && stored >= min && stored <= max && stored != _columns) {
+    if (stored != null &&
+        stored >= min &&
+        stored <= max &&
+        stored != _columns) {
       _columns = stored;
       notifyListeners();
     }
@@ -36,6 +40,14 @@ class PhotoGridDensity extends ChangeNotifier {
   void zoomIn() => set(_columns - 1);
   void zoomOut() => set(_columns + 1);
 }
+
+final photoGridDensityProvider = ChangeNotifierProvider<PhotoGridDensity>((
+  ref,
+) {
+  final density = PhotoGridDensity();
+  ref.onDispose(density.dispose);
+  return density;
+});
 
 class PhotoGridPinchDetector extends StatefulWidget {
   const PhotoGridPinchDetector({
