@@ -513,10 +513,9 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-/// Wraps [child] with a subtle shimmer sweep while [enabled] is true. When
-/// disabled, returns the child untouched (no animation overhead). The shimmer
-/// is clipped to [borderRadius] so it follows the underlying surface.
-class _UploadingShimmer extends StatelessWidget {
+/// Wraps [child] with a visible, premium shimmer sweep and breathing pulse while [enabled] is true. 
+/// When disabled, returns the child untouched with no animation overhead.
+class _UploadingShimmer extends StatefulWidget {
   const _UploadingShimmer({
     required this.enabled,
     required this.child,
@@ -528,24 +527,98 @@ class _UploadingShimmer extends StatelessWidget {
   final BorderRadius borderRadius;
 
   @override
+  State<_UploadingShimmer> createState() => _UploadingShimmerState();
+}
+
+class _UploadingShimmerState extends State<_UploadingShimmer>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    );
+
+    _pulseAnimation = Tween<double>(begin: 0.3, end: 0.75).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOutSine,
+      ),
+    );
+
+    if (widget.enabled) {
+      _pulseController.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _UploadingShimmer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.enabled != oldWidget.enabled) {
+      if (widget.enabled) {
+        _pulseController.repeat(reverse: true);
+      } else {
+        _pulseController.stop();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (!enabled) return child;
+    if (!widget.enabled) return widget.child;
     final scheme = Theme.of(context).colorScheme;
+
     return ClipRRect(
-      borderRadius: borderRadius,
+      borderRadius: widget.borderRadius,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          child,
-          IgnorePointer(
-            child: Shimmer.fromColors(
-              baseColor: scheme.surfaceContainerHighest.withValues(alpha: .55),
-              highlightColor: scheme.surfaceContainerLow.withValues(alpha: .25),
-              period: const Duration(milliseconds: 1400),
-              child: ColoredBox(
-                color: scheme.surfaceContainerHighest.withValues(alpha: .35),
-              ),
-            ),
+          widget.child,
+          // Animated breathing/pulsing overlay with primary brand colors for strong visibility
+          AnimatedBuilder(
+            animation: _pulseAnimation,
+            builder: (context, child) {
+              return IgnorePointer(
+                child: Opacity(
+                  opacity: _pulseAnimation.value,
+                  child: Shimmer.fromColors(
+                    baseColor: scheme.primaryContainer.withValues(alpha: .35),
+                    highlightColor: scheme.primary.withValues(alpha: .75),
+                    period: const Duration(milliseconds: 1200),
+                    child: const ColoredBox(
+                      color: Colors.white, // Opaque mask for high-contrast colors
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          // Pulsing premium glowing border outline
+          AnimatedBuilder(
+            animation: _pulseAnimation,
+            builder: (context, child) {
+              return IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: widget.borderRadius,
+                    border: Border.all(
+                      color: scheme.primary.withValues(alpha: _pulseAnimation.value * 0.7),
+                      width: 2.0,
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
