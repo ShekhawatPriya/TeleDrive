@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/theme/app_theme.dart';
 import '../models/drive_models.dart';
+import 'google_drive_icon.dart';
 import 'media_thumb.dart';
 import 'uploading_shimmer.dart';
 
@@ -73,15 +74,13 @@ class FileListTile extends StatelessWidget {
                 enabled: isUploading,
                 borderRadius: AppRadii.smR,
                 child: isFolder
-                    ? DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: scheme.secondaryContainer,
-                          borderRadius: AppRadii.smR,
-                        ),
-                        child: Icon(
-                          Icons.folder_rounded,
-                          color: scheme.onSecondaryContainer,
-                          size: 28,
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(4.0),
+                          child: GoogleDriveIcon.folder(
+                            isShared: isShared,
+                            size: 48,
+                          ),
                         ),
                       )
                     : ClipRRect(

@@ -153,10 +153,14 @@ class _DocumentPreviewState extends State<DocumentPreview> {
 
   Color _kindAccent(FileKind kind, ColorScheme scheme) {
     return switch (kind) {
-      FileKind.pdf => scheme.error,
-      FileKind.doc => scheme.primary,
-      FileKind.sheet => AppColors.success,
-      FileKind.slides => scheme.tertiary,
+      FileKind.pdf => const Color(0xFFEA4335),    // Google Red
+      FileKind.doc => const Color(0xFF1A73E8),    // Google Blue
+      FileKind.sheet => const Color(0xFF1E8E3E),  // Google Green
+      FileKind.slides => const Color(0xFFF9A825), // Google Yellow/Amber
+      FileKind.audio => const Color(0xFF5C6BC0),  // Indigo
+      FileKind.video => const Color(0xFF00BCD4),  // Cyan
+      FileKind.zip => const Color(0xFF8D6E63),    // Brown
+      FileKind.code => const Color(0xFF455A64),   // Slate
       _ => scheme.primary,
     };
   }

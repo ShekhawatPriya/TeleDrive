@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../core/storage/thumbnail_cache_manager.dart';
 import '../models/drive_models.dart';
+import 'google_drive_icon.dart';
 
 class MediaThumb extends StatelessWidget {
   const MediaThumb({
@@ -56,23 +58,20 @@ class MediaThumb extends StatelessWidget {
   }
 
   Widget _fallback(BuildContext context) {
-    final icon = switch (file.kind) {
-      FileKind.video => Icons.play_circle_outline,
-      FileKind.image => Icons.image_outlined,
-      FileKind.pdf => Icons.picture_as_pdf_outlined,
-      FileKind.audio => Icons.graphic_eq,
-      FileKind.zip => Icons.archive_outlined,
-      FileKind.doc ||
-      FileKind.sheet ||
-      FileKind.slides => Icons.description_outlined,
-      FileKind.code => Icons.code,
-      _ => Icons.insert_drive_file_outlined,
-    };
-    return Center(
-      child: Icon(
-        icon,
-        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .45),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final minDim = math.min(constraints.maxWidth, constraints.maxHeight);
+        final iconSize = (minDim.isInfinite || minDim <= 0) ? 40.0 : minDim;
+        return Center(
+          child: Padding(
+            padding: EdgeInsets.all(iconSize * 0.08),
+            child: GoogleDriveIcon.file(
+              file,
+              size: iconSize * 0.84,
+            ),
+          ),
+        );
+      },
     );
   }
 }
