@@ -5,10 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
-import '../../widgets/ios_more_menu.dart';
-import '../../widgets/profile_avatar.dart';
 import '../../widgets/skeletons.dart';
-import '../auth/auth_controller.dart';
+import '../../widgets/teledrive_app_bar.dart';
+import '../search/search_controller.dart';
 import 'components/drive_fab.dart';
 import 'components/drive_header_widgets.dart';
 import 'components/drive_item_actions.dart';
@@ -28,21 +27,12 @@ class DriveScreen extends ConsumerStatefulWidget {
 
 class _DriveScreenState extends ConsumerState<DriveScreen>
     with SelectionModeMixin<DriveScreen> {
-  final search = TextEditingController();
-
-  @override
-  void dispose() {
-    search.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final auth = ref.watch(authControllerProvider);
     final drive = ref.watch(driveControllerProvider);
     final prefs = ref.watch(viewPreferencesProvider);
     final state = drive.state;
-    final query = search.text.trim().toLowerCase();
+    final query = ref.watch(searchQueryProvider(SearchScope.drive)).query;
 
     var folders = drive.foldersInFolder(null);
     var files = drive.filesInFolder(null);
@@ -62,7 +52,6 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
     );
     final recent = drive.recentFiles();
     final grid = prefs.layout == LayoutMode.grid;
-    final firstName = auth.user?.firstName ?? 'there';
 
     if (selectMode) {
       return Scaffold(
@@ -120,69 +109,20 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
         onRefresh: drive.refresh,
         child: CustomScrollView(
           slivers: [
-            SliverAppBar.medium(
-              pinned: true,
-              floating: false,
-              expandedHeight: 128,
-              title: Text(
-                'TeleDrive',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              flexibleSpace: FlexibleSpaceBar(
-                titlePadding: const EdgeInsetsDirectional.fromSTEB(
-                    AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
-                title: Text(
-                  'Hi, $firstName',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-              ),
-              actions: [
-                IconButton(
-                  tooltip: grid ? 'List view' : 'Grid view',
-                  onPressed: () => ref.read(viewPreferencesProvider).setLayout(
-                      grid ? LayoutMode.list : LayoutMode.grid),
-                  icon: Icon(grid
-                      ? Icons.view_agenda_outlined
-                      : Icons.grid_view_outlined),
-                ),
-                IosMoreButton(
-                  sectionsBuilder: (ctx) => buildDriveMenuSections(
-                    ctx,
-                    ref,
-                    folderId: null,
-                    includeLayoutSection: false,
-                    onSelect: () => setState(() => selectMode = true),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(
-                      0, 0, AppSpacing.sm, 0),
-                  child: GestureDetector(
-                    onTap: () => context.push('/profile'),
-                    child: ProfileAvatar(user: auth.user, size: 36),
-                  ),
-                ),
-              ],
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.md, AppSpacing.xs, AppSpacing.md, AppSpacing.sm),
-                child: SearchBar(
-                  controller: search,
-                  hintText: 'Search files and folders',
-                  leading: Icon(
-                    Icons.search,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  onChanged: (_) => setState(() {}),
-                ),
+            TeleDriveAppBar(
+              scope: SearchScope.drive,
+              menuSections: (ctx) => buildDriveMenuSections(
+                ctx,
+                ref,
+                folderId: null,
+                includeLayoutSection: true,
+                onSelect: () => setState(() => selectMode = true),
               ),
             ),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.md, 0, AppSpacing.md, AppSpacing.xs),
+                    AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.xs),
                 child: DriveStoragePill(used: state.usedStorage),
               ),
             ),

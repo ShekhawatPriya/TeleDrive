@@ -7,13 +7,14 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/file_tiles.dart';
-import '../../widgets/profile_avatar.dart';
-import '../auth/auth_controller.dart';
+import '../../widgets/teledrive_app_bar.dart';
 import '../drive/components/selection_mode_mixin.dart';
 import '../drive/drive_controller.dart';
+import '../search/search_controller.dart';
 import '../share/my_shares_screen.dart';
 import 'components/photo_context_menu.dart';
 import 'components/photo_preview_overlay.dart';
+import 'components/photos_menu_builder.dart';
 import 'components/photos_selection_bar.dart';
 import 'photos_actions.dart';
 import 'photos_grid/photo_grid_density.dart';
@@ -38,9 +39,12 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
 
   @override
   Widget build(BuildContext context) {
-    final auth = ref.watch(authControllerProvider);
     final drive = ref.watch(driveControllerProvider);
-    final files = drive.photoFiles('all');
+    final query = ref.watch(searchQueryProvider(SearchScope.photos)).query;
+    final all = drive.photoFiles('all');
+    final files = query.isEmpty
+        ? all
+        : all.where((f) => f.name.toLowerCase().contains(query)).toList();
     final allCount = files.length;
     final theme = Theme.of(context);
 
@@ -64,61 +68,44 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
               child: CustomScrollView(
                 slivers: [
                   if (!selectMode)
-                    SliverAppBar.medium(
-                      pinned: true,
-                      expandedHeight: 128,
-                      title: Text(
-                        'Photos',
-                        style: theme.textTheme.titleLarge,
+                    TeleDriveAppBar(
+                      scope: SearchScope.photos,
+                      menuSections: (ctx) => buildPhotosMenuSections(
+                        ctx,
+                        density: _density,
                       ),
-                      flexibleSpace: FlexibleSpaceBar(
-                        titlePadding: const EdgeInsetsDirectional.fromSTEB(
-                            AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
-                        title: Text(
-                          allCount == 0
-                              ? 'Your media library'
-                              : '$allCount item${allCount == 1 ? '' : 's'}',
+                    ),
+                  if (!selectMode)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.md,
+                            AppSpacing.sm,
+                            AppSpacing.md,
+                            AppSpacing.sm),
+                        child: Text(
+                          query.isNotEmpty
+                              ? '$allCount match${allCount == 1 ? '' : 'es'}'
+                              : (allCount == 0
+                                  ? 'Your media library'
+                                  : '$allCount item${allCount == 1 ? '' : 's'}'),
                           style: theme.textTheme.headlineSmall,
                         ),
                       ),
-                      actions: [
-                        AnimatedBuilder(
-                          animation: _density,
-                          builder: (_, __) => IconButton(
-                            tooltip: 'Smaller tiles',
-                            onPressed: _density.columns >= _density.max
-                                ? null
-                                : _density.zoomOut,
-                            icon: const Icon(Icons.grid_view_rounded),
-                          ),
-                        ),
-                        AnimatedBuilder(
-                          animation: _density,
-                          builder: (_, __) => IconButton(
-                            tooltip: 'Larger tiles',
-                            onPressed: _density.columns <= _density.min
-                                ? null
-                                : _density.zoomIn,
-                            icon: const Icon(Icons.grid_on_rounded),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsetsDirectional.fromSTEB(
-                              0, 0, AppSpacing.sm, 0),
-                          child: GestureDetector(
-                            onTap: () => context.push('/profile'),
-                            child: ProfileAvatar(user: auth.user, size: 36),
-                          ),
-                        ),
-                      ],
                     ),
                   if (files.isEmpty)
-                    const SliverFillRemaining(
+                    SliverFillRemaining(
                       hasScrollBody: false,
                       child: EmptyState(
-                        icon: Icons.photo_library_outlined,
-                        title: 'No photos yet',
-                        body: 'Photos and videos appear here after upload.',
+                        icon: query.isEmpty
+                            ? Icons.photo_library_outlined
+                            : Icons.search_off,
+                        title: query.isEmpty
+                            ? 'No photos yet'
+                            : 'No matching photos',
+                        body: query.isEmpty
+                            ? 'Photos and videos appear here after upload.'
+                            : 'Try a different file name.',
                       ),
                     )
                   else
@@ -207,53 +194,59 @@ class StarredScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.watch(authControllerProvider);
     final drive = ref.watch(driveControllerProvider);
-    final starred = drive.starred();
-    final totalItems = starred.files.length + starred.folders.length;
+    final query = ref.watch(searchQueryProvider(SearchScope.starred)).query;
+    final raw = drive.starred();
+    final starredFiles = query.isEmpty
+        ? raw.files
+        : raw.files
+            .where((f) => f.name.toLowerCase().contains(query))
+            .toList();
+    final starredFolders = query.isEmpty
+        ? raw.folders
+        : raw.folders
+            .where((f) => f.name.toLowerCase().contains(query))
+            .toList();
+    final totalItems = starredFiles.length + starredFolders.length;
     final theme = Theme.of(context);
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar.medium(
-            pinned: true,
-            expandedHeight: 128,
-            title: Text('Starred', style: theme.textTheme.titleLarge),
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsetsDirectional.fromSTEB(
-                  AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
-              title: Text(
-                totalItems == 0
-                    ? 'Quick access to favourites'
-                    : '$totalItems item${totalItems == 1 ? '' : 's'}',
+          const TeleDriveAppBar(scope: SearchScope.starred),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+              child: Text(
+                query.isNotEmpty
+                    ? '$totalItems match${totalItems == 1 ? '' : 'es'}'
+                    : (totalItems == 0
+                        ? 'Quick access to favourites'
+                        : '$totalItems item${totalItems == 1 ? '' : 's'}'),
                 style: theme.textTheme.headlineSmall,
               ),
             ),
-            actions: [
-              Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(
-                    0, 0, AppSpacing.sm, 0),
-                child: GestureDetector(
-                  onTap: () => context.push('/profile'),
-                  child: ProfileAvatar(user: auth.user, size: 36),
-                ),
-              ),
-            ],
           ),
-          if (starred.files.isEmpty && starred.folders.isEmpty)
-            const SliverFillRemaining(
+          if (starredFiles.isEmpty && starredFolders.isEmpty)
+            SliverFillRemaining(
               child: EmptyState(
-                icon: Icons.star_border_rounded,
-                title: 'Nothing starred',
-                body: 'Star files and folders for quick access.',
+                icon: query.isEmpty
+                    ? Icons.star_border_rounded
+                    : Icons.search_off,
+                title: query.isEmpty
+                    ? 'Nothing starred'
+                    : 'No matching starred items',
+                body: query.isEmpty
+                    ? 'Star files and folders for quick access.'
+                    : 'Try a different name.',
               ),
             ),
-          if (starred.folders.isNotEmpty)
+          if (starredFolders.isNotEmpty)
             SliverList.builder(
-              itemCount: starred.folders.length,
+              itemCount: starredFolders.length,
               itemBuilder: (_, i) {
-                final folder = starred.folders[i];
+                final folder = starredFolders[i];
                 return FileListTile(
                   name: folder.name,
                   subtitle:
@@ -268,13 +261,13 @@ class StarredScreen extends ConsumerWidget {
                 );
               },
             ),
-          if (starred.files.isNotEmpty)
+          if (starredFiles.isNotEmpty)
             SliverPadding(
               padding: const EdgeInsets.only(bottom: 120),
               sliver: SliverList.builder(
-                itemCount: starred.files.length,
+                itemCount: starredFiles.length,
                 itemBuilder: (_, i) {
-                  final file = starred.files[i];
+                  final file = starredFiles[i];
                   return FileListTile(
                     name: file.name,
                     subtitle:

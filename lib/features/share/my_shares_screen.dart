@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../models/share_models.dart';
 import '../../widgets/empty_state.dart';
-import '../../widgets/profile_avatar.dart';
-import '../auth/auth_controller.dart';
+import '../../widgets/teledrive_app_bar.dart';
+import '../search/search_controller.dart';
 import 'components/share_list_tile.dart';
 import 'share_controller.dart';
 
@@ -57,9 +57,10 @@ class _MySharesScreenState extends ConsumerState<MySharesScreen>
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRefresh());
     final controller = ref.watch(shareControllerProvider);
-    final auth = ref.watch(authControllerProvider);
+    final query = ref.watch(searchQueryProvider(SearchScope.shared)).query;
     final theme = Theme.of(context);
-    final shareCount = controller.shares.length;
+    final filtered = _applyQuery(controller.shares, query);
+    final shareCount = filtered.length;
 
     return Scaffold(
       body: RefreshIndicator(
@@ -69,39 +70,39 @@ class _MySharesScreenState extends ConsumerState<MySharesScreen>
         },
         child: CustomScrollView(
           slivers: [
-            SliverAppBar.medium(
-              pinned: true,
-              expandedHeight: 128,
-              title: Text('Shared', style: theme.textTheme.titleLarge),
-              flexibleSpace: FlexibleSpaceBar(
-                titlePadding: const EdgeInsetsDirectional.fromSTEB(
-                    AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
-                title: Text(
-                  shareCount == 0
-                      ? 'My shared links'
-                      : '$shareCount link${shareCount == 1 ? '' : 's'}',
+            const TeleDriveAppBar(scope: SearchScope.shared),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+                child: Text(
+                  query.isNotEmpty
+                      ? '$shareCount match${shareCount == 1 ? '' : 'es'}'
+                      : (shareCount == 0
+                          ? 'My shared links'
+                          : '$shareCount link${shareCount == 1 ? '' : 's'}'),
                   style: theme.textTheme.headlineSmall,
                 ),
               ),
-              actions: [
-                Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(
-                      0, 0, AppSpacing.sm, 0),
-                  child: GestureDetector(
-                    onTap: () => context.push('/profile'),
-                    child: ProfileAvatar(user: auth.user, size: 36),
-                  ),
-                ),
-              ],
             ),
-            ..._buildBody(controller),
+            ..._buildBody(controller, filtered, query),
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _buildBody(ShareController controller) {
+  List<Share> _applyQuery(List<Share> shares, String query) {
+    if (query.isEmpty) return shares;
+    return shares.where((s) {
+      final primary = s.primaryName?.toLowerCase() ?? '';
+      if (primary.contains(query)) return true;
+      return s.items.any((it) => it.name.toLowerCase().contains(query));
+    }).toList();
+  }
+
+  List<Widget> _buildBody(
+      ShareController controller, List<Share> filtered, String query) {
     if (controller.loading && controller.shares.isEmpty) {
       return const [
         SliverFillRemaining(child: Center(child: CircularProgressIndicator())),
@@ -123,15 +124,17 @@ class _MySharesScreenState extends ConsumerState<MySharesScreen>
         ),
       ];
     }
-    if (controller.shares.isEmpty) {
-      return const [
+    if (filtered.isEmpty) {
+      final searching = query.isNotEmpty;
+      return [
         SliverFillRemaining(
           hasScrollBody: false,
           child: EmptyState(
-            icon: Icons.share_outlined,
-            title: 'No active shares',
-            body:
-                'Share a file or folder from Drive or Photos to see it here.',
+            icon: searching ? Icons.search_off : Icons.share_outlined,
+            title: searching ? 'No matching shares' : 'No active shares',
+            body: searching
+                ? 'Try a different name.'
+                : 'Share a file or folder from Drive or Photos to see it here.',
           ),
         ),
       ];
@@ -140,8 +143,8 @@ class _MySharesScreenState extends ConsumerState<MySharesScreen>
       SliverPadding(
         padding: const EdgeInsets.only(bottom: AppSpacing.lg),
         sliver: SliverList.builder(
-          itemCount: controller.shares.length,
-          itemBuilder: (_, i) => ShareListTile(share: controller.shares[i]),
+          itemCount: filtered.length,
+          itemBuilder: (_, i) => ShareListTile(share: filtered[i]),
         ),
       ),
     ];

@@ -9,9 +9,8 @@ import '../view_preferences_controller.dart';
 import 'drive_dialogs.dart';
 
 /// Builds the iOS-style three-dot menu sections for both the home and
-/// folder screens.  The home screen omits the layout (Icons/List) section
-/// because the home screen still exposes a standalone layout toggle in its
-/// header; folder screens have no separate toggle, so the section is shown.
+/// folder screens. Both surface the layout (Icons/List) section here —
+/// neither header exposes a standalone layout toggle anymore.
 List<IosMenuSection> buildDriveMenuSections(
   BuildContext context,
   WidgetRef ref, {
