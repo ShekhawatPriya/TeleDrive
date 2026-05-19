@@ -825,11 +825,22 @@ class UploadController extends ChangeNotifier {
   }
 
   void _syncOptimistic() {
+    final serverFileIds = _drive.state.files
+        .where((f) => !f.isOptimistic)
+        .map((f) => f.id)
+        .toSet();
     _drive.syncOptimisticUploads(
-      items.where((i) => i.status != UploadStatus.selected).map((i) {
+      items.where((i) {
+        if (i.status == UploadStatus.uploaded &&
+            i.fileId != null &&
+            serverFileIds.contains('${i.fileId}')) {
+          return false;
+        }
+        return true;
+      }).map((i) {
         final kind = detectFileKind(i.name, i.mimeType);
         return DriveFile(
-          id: i.fileId == null ? 'local:${i.localId}' : '${i.fileId}',
+          id: 'local:${i.localId}',
           name: i.name,
           kind: kind,
           size: i.size,
