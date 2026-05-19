@@ -22,43 +22,91 @@ import 'profile_avatar.dart';
 /// theme's `scrolledUnderElevation` provides the subtle tint when content
 /// scrolls beneath.
 class TeleDriveAppBar extends ConsumerWidget {
-  const TeleDriveAppBar({
-    required this.scope,
-    this.menuSections,
-    super.key,
-  });
+  const TeleDriveAppBar({required this.scope, this.menuSections, super.key});
 
   final SearchScope scope;
   final IosMenuSectionsBuilder? menuSections;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.watch(authControllerProvider);
-    final scheme = Theme.of(context).colorScheme;
     return SliverAppBar(
       pinned: true,
       automaticallyImplyLeading: false,
       titleSpacing: AppSpacing.sm,
       leadingWidth: 48,
-      leading: Padding(
-        padding: const EdgeInsetsDirectional.only(start: AppSpacing.md),
-        child: Icon(Icons.cloud_rounded, color: scheme.primary, size: 26),
-      ),
+      leading: const _LogoLeading(),
       title: _SearchPill(scope: scope),
-      actions: [
-        if (menuSections != null)
-          IosMoreButton(sectionsBuilder: menuSections!),
-        Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(
-              AppSpacing.xxs, 0, AppSpacing.sm, 0),
-          child: GestureDetector(
-            onTap: () => context.push('/profile'),
-            child: ProfileAvatar(user: auth.user, size: 36),
-          ),
-        ),
-      ],
+      actions: _buildAppBarActions(context, ref, menuSections),
     );
   }
+}
+
+class TeleDriveTopBar extends ConsumerWidget {
+  const TeleDriveTopBar({required this.scope, this.menuSections, super.key});
+
+  final SearchScope scope;
+  final IosMenuSectionsBuilder? menuSections;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surface,
+      surfaceTintColor: scheme.surfaceTint,
+      child: SafeArea(
+        bottom: false,
+        child: SizedBox(
+          height: 64,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(start: AppSpacing.sm),
+            child: Row(
+              children: [
+                const SizedBox(width: 48, child: _LogoLeading()),
+                Expanded(child: _SearchPill(scope: scope)),
+                ..._buildAppBarActions(context, ref, menuSections),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LogoLeading extends StatelessWidget {
+  const _LogoLeading();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(start: AppSpacing.md),
+      child: Icon(Icons.cloud_rounded, color: scheme.primary, size: 26),
+    );
+  }
+}
+
+List<Widget> _buildAppBarActions(
+  BuildContext context,
+  WidgetRef ref,
+  IosMenuSectionsBuilder? menuSections,
+) {
+  final auth = ref.watch(authControllerProvider);
+  return [
+    if (menuSections != null) IosMoreButton(sectionsBuilder: menuSections),
+    Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(
+        AppSpacing.xxs,
+        0,
+        AppSpacing.sm,
+        0,
+      ),
+      child: GestureDetector(
+        onTap: () => context.push('/profile'),
+        child: ProfileAvatar(user: auth.user, size: 36),
+      ),
+    ),
+  ];
 }
 
 class _SearchPill extends ConsumerStatefulWidget {
@@ -82,6 +130,16 @@ class _SearchPillState extends ConsumerState<_SearchPill> {
     // has an active query.
     final initial = ref.read(searchQueryProvider(widget.scope)).raw;
     if (initial.isNotEmpty) _text.text = initial;
+  }
+
+  @override
+  void didUpdateWidget(covariant _SearchPill oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.scope == widget.scope) return;
+    final next = ref.read(searchQueryProvider(widget.scope)).raw;
+    if (_text.text != next) _text.text = next;
+    _focus.unfocus();
+    setState(() {});
   }
 
   @override
@@ -118,9 +176,7 @@ class _SearchPillState extends ConsumerState<_SearchPill> {
                   alignment: Alignment.centerLeft,
                   children: [
                     if (!focused && !hasText)
-                      IgnorePointer(
-                        child: _RotatingHint(scope: widget.scope),
-                      ),
+                      IgnorePointer(child: _RotatingHint(scope: widget.scope)),
                     TextField(
                       controller: _text,
                       focusNode: _focus,
@@ -212,6 +268,14 @@ class _RotatingHintState extends State<_RotatingHint> {
       if (!mounted) return;
       setState(() => _index = (_index + 1) % _list.length);
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant _RotatingHint oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.scope != widget.scope) {
+      _index = 0;
+    }
   }
 
   @override

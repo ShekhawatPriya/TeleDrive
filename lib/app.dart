@@ -1,4 +1,3 @@
-import 'package:animations/animations.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,19 +7,28 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/login_screen.dart';
 import 'features/drive/drive_controller.dart';
+import 'features/drive/components/drive_menu_builder.dart';
 import 'features/drive/drive_screen.dart';
+import 'features/drive/drive_tab_commands.dart';
 import 'features/drive/folder_screen.dart';
 import 'features/file_viewer/file_viewer_screen.dart';
+import 'features/photos/components/photos_menu_builder.dart';
 import 'features/photos/photos_filter.dart';
+import 'features/photos/photos_grid/photo_grid_density.dart';
 import 'features/photos/photos_screen.dart';
 import 'features/photos/photos_viewer/photo_viewer_screen.dart';
 import 'features/profile/legal_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/theme_controller.dart';
+import 'features/search/search_controller.dart';
+import 'features/share/share_controller.dart';
 import 'features/share/share_detail_screen.dart';
 import 'features/upload/ui/folder_creation/folder_toast_overlay.dart';
 import 'features/upload/ui/upload_overlay.dart';
 import 'shared/splash_screen.dart';
+import 'widgets/ios_more_menu.dart';
+import 'widgets/main_tab_menu_sections.dart';
+import 'widgets/teledrive_app_bar.dart';
 
 class TeleDriveApp extends ConsumerWidget {
   const TeleDriveApp({super.key});
@@ -133,10 +141,12 @@ class _MainShellState extends ConsumerState<MainShell> {
   ];
 
   int _selectedIndex = 0;
+  late final PageController _pageController;
 
   @override
   void initState() {
     super.initState();
+    _pageController = PageController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = ref.read(authControllerProvider);
       if (auth.isAuthenticated && auth.telegramConnected == true) {
@@ -152,10 +162,9 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final index = _tabIndexFor(GoRouterState.of(context).matchedLocation);
-    if (index >= 0) _selectedIndex = index;
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -163,46 +172,19 @@ class _MainShellState extends ConsumerState<MainShell> {
     final location = GoRouterState.of(context).matchedLocation;
     final routeIndex = _tabIndexFor(location);
     final showingTab = routeIndex >= 0;
+    if (showingTab && routeIndex != _selectedIndex) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _selectedIndex = routeIndex;
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(routeIndex);
+        }
+        setState(() {});
+      });
+    }
 
     return Scaffold(
-      body: Stack(
-        children: [
-          if (showingTab)
-            PageTransitionSwitcher(
-              duration: AppDurations.medium2,
-              reverse: false,
-              transitionBuilder: (child, primary, secondary) {
-                return SharedAxisTransition(
-                  animation: primary,
-                  secondaryAnimation: secondary,
-                  transitionType: SharedAxisTransitionType.horizontal,
-                  fillColor: Theme.of(context).colorScheme.surface,
-                  child: child,
-                );
-              },
-              child: KeyedSubtree(
-                key: ValueKey<int>(routeIndex),
-                child: _tabPages[routeIndex],
-              ),
-            )
-          else
-            widget.child,
-          if (showingTab)
-            const Positioned(
-              left: AppSpacing.sm,
-              right: AppSpacing.sm,
-              bottom: 96,
-              child: UploadOverlay(),
-            ),
-          if (showingTab)
-            const Positioned(
-              left: 0,
-              right: 0,
-              bottom: AppSpacing.lg,
-              child: Center(child: FolderToastOverlay()),
-            ),
-        ],
-      ),
+      body: showingTab ? _buildTabs(routeIndex) : widget.child,
       bottomNavigationBar: showingTab
           ? NavigationBar(
               selectedIndex: routeIndex.clamp(0, _tabPaths.length - 1),
@@ -241,7 +223,88 @@ class _MainShellState extends ConsumerState<MainShell> {
   void _handleDestinationSelected(int index) {
     if (index == _selectedIndex) return;
     setState(() => _selectedIndex = index);
+    _pageController.animateToPage(
+      index,
+      duration: AppDurations.medium3,
+      curve: AppEasing.emphasizedDecelerate,
+    );
     context.go(_tabPaths[index]);
+  }
+
+  Widget _buildTabs(int routeIndex) {
+    return Column(
+      children: [
+        TeleDriveTopBar(
+          scope: _scopeFor(routeIndex),
+          menuSections: (ctx) => _menuSectionsFor(ctx, routeIndex),
+        ),
+        Expanded(
+          child: Stack(
+            children: [
+              PageView(
+                controller: _pageController,
+                physics: const ClampingScrollPhysics(),
+                onPageChanged: _handlePageChanged,
+                children: _tabPages,
+              ),
+              const Positioned(
+                left: AppSpacing.sm,
+                right: AppSpacing.sm,
+                bottom: 96,
+                child: UploadOverlay(),
+              ),
+              const Positioned(
+                left: 0,
+                right: 0,
+                bottom: AppSpacing.lg,
+                child: Center(child: FolderToastOverlay()),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _handlePageChanged(int index) {
+    if (index == _selectedIndex) return;
+    setState(() => _selectedIndex = index);
+    context.go(_tabPaths[index]);
+  }
+
+  SearchScope _scopeFor(int index) => switch (index) {
+    0 => SearchScope.drive,
+    1 => SearchScope.photos,
+    2 => SearchScope.starred,
+    _ => SearchScope.shared,
+  };
+
+  List<IosMenuSection> _menuSectionsFor(BuildContext context, int index) {
+    return switch (index) {
+      0 => buildDriveMenuSections(
+        context,
+        ref,
+        folderId: null,
+        includeLayoutSection: true,
+        onSelect: () => ref.read(driveTabCommandsProvider).requestSelectMode(),
+      ),
+      1 => buildPhotosMenuSections(
+        context,
+        density: ref.read(photoGridDensityProvider),
+      ),
+      2 => [...buildLayoutMenuSection(ref), ...buildSortMenuSection(ref)],
+      _ => [
+        IosMenuSection([
+          IosMenuItem(
+            label: 'Refresh',
+            trailingIcon: Icons.refresh_rounded,
+            onTap: () =>
+                ref.read(shareControllerProvider).refresh(silent: true),
+          ),
+        ]),
+        ...buildLayoutMenuSection(ref),
+      ],
+    };
   }
 }
 
