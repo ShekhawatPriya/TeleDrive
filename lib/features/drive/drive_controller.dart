@@ -84,13 +84,19 @@ class DriveController extends ChangeNotifier {
   }
 
   void applyDriveState(DriveSnapshot snapshot, {bool notify = true}) {
+    final incomingFiles = snapshot.files
+        .where((f) => f.uploadStatus == 'available')
+        .toList();
+    final incomingMedia = snapshot.mediaFiles
+        .where((f) => f.uploadStatus == 'available')
+        .toList();
+    final keptOptimisticFiles =
+        state.files.where((f) => f.isOptimistic).toList();
+    final keptOptimisticMedia =
+        state.mediaFiles.where((f) => f.isOptimistic).toList();
     state = state.copyWith(
-      files: snapshot.files
-          .where((f) => f.uploadStatus == 'available')
-          .toList(),
-      mediaFiles: snapshot.mediaFiles
-          .where((f) => f.uploadStatus == 'available')
-          .toList(),
+      files: [...keptOptimisticFiles, ...incomingFiles],
+      mediaFiles: [...keptOptimisticMedia, ...incomingMedia],
       folders: snapshot.folders,
       mediaCursor: snapshot.mediaCursor,
       loading: false,
@@ -423,14 +429,10 @@ class DriveController extends ChangeNotifier {
   }
 
   void syncOptimisticUploads(List<DriveFile> optimistic) {
-    final serverIds = state.files.map((f) => f.id).toSet();
-    final local = optimistic
-        .where(
-          (f) => !serverIds.contains(f.id) && f.uploadStatus != 'cancelled',
-        )
-        .toList();
+    final keep =
+        optimistic.where((f) => f.uploadStatus != 'cancelled').toList();
     state = state.copyWith(
-      files: [...local, ...state.files.where((f) => !f.isOptimistic)],
+      files: [...keep, ...state.files.where((f) => !f.isOptimistic)],
     );
     notifyListeners();
   }
