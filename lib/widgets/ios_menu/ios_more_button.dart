@@ -26,7 +26,6 @@ class _IosMoreButtonState extends State<IosMoreButton> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Tooltip(
       message: widget.tooltip,
       child: SizedBox(
@@ -34,17 +33,15 @@ class _IosMoreButtonState extends State<IosMoreButton> {
         width: widget.size,
         height: widget.size,
         child: Material(
-          color: isDark ? const Color(0xFF3D3D3A) : scheme.secondary,
-          shape: const CircleBorder(),
+          color: scheme.surface,
+          shape: CircleBorder(side: BorderSide(color: scheme.outline)),
           child: InkWell(
             customBorder: const CircleBorder(),
             onTap: _open,
             child: Icon(
               Icons.more_horiz,
               size: 20,
-              color: isDark
-                  ? const Color(0xFFE8E6DC)
-                  : const Color(0xFF4D4C48),
+              color: scheme.onSurfaceVariant,
             ),
           ),
         ),
@@ -77,7 +74,8 @@ Future<void> showIosMoreMenu({
   required Rect anchor,
   required List<IosMenuSection> sections,
 }) {
-  return Navigator.of(context, rootNavigator: true).push(
-    IosMenuOverlayRoute(anchor: anchor, sections: sections),
-  );
+  return Navigator.of(
+    context,
+    rootNavigator: true,
+  ).push(IosMenuOverlayRoute(anchor: anchor, sections: sections));
 }

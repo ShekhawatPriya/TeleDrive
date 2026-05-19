@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/theme/app_theme.dart';
 import '../core/utils/file_type_detector.dart';
 import '../models/drive_models.dart';
 import 'media_thumb.dart';
@@ -34,52 +35,65 @@ class FileListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final scheme = Theme.of(context).colorScheme;
     final inSelectMode = selected != null;
     final isShared = shared || (file?.shared ?? false);
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 10,
+        ),
+        minLeadingWidth: inSelectMode ? 96 : 64,
         leading: SizedBox(
-          width: inSelectMode ? 84 : 52,
-          height: 52,
+          width: inSelectMode ? 96 : 64,
+          height: 64,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (inSelectMode)
                 Padding(
-                  padding: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.only(right: 10),
                   child: Icon(
-                    selected! ? Icons.check_circle : Icons.radio_button_unchecked,
+                    selected!
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
                     color: selected!
                         ? scheme.primary
                         : scheme.onSurface.withValues(alpha: .4),
                   ),
                 ),
               SizedBox(
-                width: 52,
-                height: 52,
+                width: 64,
+                height: 64,
                 child: Stack(
                   children: [
                     Positioned.fill(
                       child: isFolder
                           ? DecoratedBox(
                               decoration: BoxDecoration(
-                                color: scheme.primary.withValues(alpha: .12),
-                                borderRadius: BorderRadius.circular(14),
+                                color: scheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.md,
+                                ),
+                                border: Border.all(
+                                  color: scheme.outline.withValues(alpha: .72),
+                                ),
                               ),
                               child: Icon(
-                                Icons.folder_rounded,
-                                color: scheme.primary,
+                                Icons.folder_outlined,
+                                color: scheme.onSurface,
+                                size: 30,
                               ),
                             )
                           : MediaThumb(file: file!, fit: BoxFit.cover),
                     ),
                     if (isShared)
                       const Positioned(
-                        right: 2,
-                        bottom: 2,
+                        right: 4,
+                        bottom: 4,
                         child: SharedBadge(),
                       ),
                   ],
@@ -92,9 +106,18 @@ class FileListTile extends StatelessWidget {
           name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontWeight: FontWeight.w700),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text(
+          subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
         trailing: inSelectMode
             ? null
             : Row(
@@ -134,7 +157,11 @@ class SharedBadge extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: scheme.surface, width: 1.5),
       ),
-      child: Icon(Icons.link, size: size * 0.65, color: scheme.onPrimary),
+      child: Icon(
+        Icons.link_rounded,
+        size: size * 0.65,
+        color: scheme.onPrimary,
+      ),
     );
   }
 }
@@ -160,11 +187,11 @@ class FileCardTile extends StatelessWidget {
     final inSelectMode = selected != null;
     return Card(
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         onTap: onTap,
         onLongPress: onLongPress,
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -204,7 +231,9 @@ class FileCardTile extends StatelessWidget {
                       file.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   if (!inSelectMode)
@@ -221,9 +250,11 @@ class FileCardTile extends StatelessWidget {
               ),
               Text(
                 file.isOptimistic
-                    ? '${formatUploadStatus(file)} • ${formatFileSize(file.size)}'
-                    : '${formatLabel(file)} • ${formatFileSize(file.size)}',
-                style: Theme.of(context).textTheme.bodySmall,
+                    ? '${formatUploadStatus(file)} \u00b7 ${formatFileSize(file.size)}'
+                    : '${formatLabel(file)} \u00b7 ${formatFileSize(file.size)}',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
             ],
           ),

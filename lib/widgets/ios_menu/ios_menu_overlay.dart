@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
 import 'ios_menu_models.dart';
 
 class IosMenuOverlayRoute extends PopupRoute<void> {
@@ -124,26 +125,22 @@ class _MenuCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark
-        ? const Color(0xFF1C1C1E).withValues(alpha: .92)
-        : const Color(0xFFF7F7F7).withValues(alpha: .92);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadii.lg),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Material(
-          color: cardColor,
+          color: scheme.surface.withValues(alpha: .96),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 for (var i = 0; i < sections.length; i++) ...[
-                  if (i > 0) _sectionDivider(isDark),
-                  ...sections[i].items.map(
-                    (item) => _MenuRow(item: item, isDark: isDark),
-                  ),
+                  if (i > 0) _sectionDivider(scheme),
+                  ...sections[i].items.map((item) => _MenuRow(item: item)),
                 ],
               ],
             ),
@@ -153,24 +150,20 @@ class _MenuCard extends StatelessWidget {
     );
   }
 
-  Widget _sectionDivider(bool isDark) => Container(
-    height: 6,
-    color: isDark
-        ? Colors.white.withValues(alpha: .04)
-        : Colors.black.withValues(alpha: .04),
-  );
+  Widget _sectionDivider(ColorScheme scheme) =>
+      Container(height: 6, color: scheme.surfaceContainerHighest);
 }
 
 class _MenuRow extends StatelessWidget {
-  const _MenuRow({required this.item, required this.isDark});
+  const _MenuRow({required this.item});
   final IosMenuItem item;
-  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final labelColor = item.destructive
         ? CupertinoColors.systemRed
-        : (isDark ? Colors.white : Colors.black87);
+        : scheme.onSurface;
     final iconColor = labelColor;
 
     return Material(
@@ -201,9 +194,9 @@ class _MenuRow extends StatelessWidget {
                     Text(
                       item.label,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         color: labelColor,
-                        fontWeight: FontWeight.w400,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     if (item.subtitle != null && item.subtitle!.isNotEmpty)

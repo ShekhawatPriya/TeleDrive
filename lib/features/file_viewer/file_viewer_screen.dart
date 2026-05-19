@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/storage/thumbnail_cache_manager.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
@@ -65,7 +66,10 @@ class FileViewerScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
         children: [
-          _PreviewCard(file: file, onOpen: () => _openExternal(context, ref, file)),
+          _PreviewCard(
+            file: file,
+            onOpen: () => _openExternal(context, ref, file),
+          ),
           const SizedBox(height: 24),
           Text(
             file.name,
@@ -96,14 +100,10 @@ class FileViewerScreen extends ConsumerWidget {
       formatFileSize(file.size),
       formatDate(file.modifiedAt),
     ];
-    return parts.where((p) => p.isNotEmpty).join('  ·  ');
+    return parts.where((p) => p.isNotEmpty).join('  \u00b7  ');
   }
 
-  Future<void> _download(
-    BuildContext context,
-    WidgetRef ref,
-    DriveFile file,
-  ) =>
+  Future<void> _download(BuildContext context, WidgetRef ref, DriveFile file) =>
       _openExternal(context, ref, file);
 
   Future<void> _openExternal(
@@ -133,7 +133,9 @@ class FileViewerScreen extends ConsumerWidget {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            ref.read(apiClientProvider).errorMessage(err, 'Could not open file.'),
+            ref
+                .read(apiClientProvider)
+                .errorMessage(err, 'Could not open file.'),
           ),
         ),
       );
@@ -196,7 +198,7 @@ class _PreviewCard extends StatelessWidget {
     }
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppRadii.xl),
       child: AspectRatio(
         aspectRatio: aspect,
         child: ColoredBox(
@@ -322,20 +324,35 @@ class _DocumentPreviewState extends State<_DocumentPreview> {
                           label,
                           style: theme.textTheme.labelLarge?.copyWith(
                             color: accent,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0,
                           ),
                         ),
                         const Spacer(),
-                        _DocLine(width: double.infinity, color: scheme.outlineVariant),
+                        _DocLine(
+                          width: double.infinity,
+                          color: scheme.outlineVariant,
+                        ),
                         const SizedBox(height: 6),
-                        _DocLine(widthFraction: 0.85, color: scheme.outlineVariant),
+                        _DocLine(
+                          widthFraction: 0.85,
+                          color: scheme.outlineVariant,
+                        ),
                         const SizedBox(height: 6),
-                        _DocLine(widthFraction: 0.7, color: scheme.outlineVariant),
+                        _DocLine(
+                          widthFraction: 0.7,
+                          color: scheme.outlineVariant,
+                        ),
                         const SizedBox(height: 6),
-                        _DocLine(widthFraction: 0.92, color: scheme.outlineVariant),
+                        _DocLine(
+                          widthFraction: 0.92,
+                          color: scheme.outlineVariant,
+                        ),
                         const SizedBox(height: 6),
-                        _DocLine(widthFraction: 0.55, color: scheme.outlineVariant),
+                        _DocLine(
+                          widthFraction: 0.55,
+                          color: scheme.outlineVariant,
+                        ),
                       ],
                     ),
                   ),
@@ -351,7 +368,9 @@ class _DocumentPreviewState extends State<_DocumentPreview> {
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(46),
                 shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(14)),
+                  borderRadius: BorderRadius.all(
+                    Radius.circular(AppRadii.pill),
+                  ),
                 ),
               ),
               icon: _opening
@@ -402,10 +421,10 @@ class _DocumentPreviewState extends State<_DocumentPreview> {
 
   Color _kindAccent(FileKind kind, ColorScheme scheme) {
     return switch (kind) {
-      FileKind.pdf => const Color(0xFFB53333),
-      FileKind.doc => const Color(0xFF2D6CDF),
-      FileKind.sheet => const Color(0xFF2E8C5A),
-      FileKind.slides => const Color(0xFFD97706),
+      FileKind.pdf => AppColors.error,
+      FileKind.doc => AppColors.link,
+      FileKind.sheet => AppColors.green,
+      FileKind.slides => AppColors.violet,
       _ => scheme.primary,
     };
   }
@@ -458,10 +477,7 @@ class _DocumentPagePainter extends CustomPainter {
         radius: const Radius.circular(radius),
       )
       ..lineTo(0, radius)
-      ..arcToPoint(
-        Offset(radius, 0),
-        radius: const Radius.circular(radius),
-      );
+      ..arcToPoint(Offset(radius, 0), radius: const Radius.circular(radius));
 
     final fill = Paint()
       ..color = fillColor
@@ -519,10 +535,7 @@ class _MetadataBlock extends StatelessWidget {
         _MetaRow('Dimensions', '${file.widthPx} × ${file.heightPx}'),
       if (file.duration != null)
         _MetaRow('Duration', formatDuration(file.duration!)),
-      _MetaRow(
-        'Upload',
-        _humanize(file.uploadStatus ?? 'available'),
-      ),
+      _MetaRow('Upload', _humanize(file.uploadStatus ?? 'available')),
       _MetaRow(
         'Preview',
         file.previewStatus == 'available' || file.previewUrl != null
@@ -533,47 +546,49 @@ class _MetadataBlock extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: scheme.outlineVariant, width: 1),
-        ),
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: .9)),
       ),
-      child: Column(
-        children: [
-          for (var i = 0; i < rows.length; i++) ...[
-            if (i != 0)
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: scheme.outlineVariant,
-              ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 110,
-                    child: Text(
-                      rows[i].label,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        child: Column(
+          children: [
+            for (var i = 0; i < rows.length; i++) ...[
+              if (i != 0)
+                Divider(height: 1, thickness: 1, color: scheme.outlineVariant),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 15,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 110,
+                      child: Text(
+                        rows[i].label,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      rows[i].value,
-                      textAlign: TextAlign.end,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Text(
+                        rows[i].value,
+                        textAlign: TextAlign.end,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

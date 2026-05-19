@@ -27,6 +27,7 @@ class TabHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
 
     return Row(
       children: [
@@ -37,17 +38,20 @@ class TabHeader extends ConsumerWidget {
               Text(
                 title,
                 style: theme.textTheme.headlineMedium?.copyWith(
-                  color: theme.colorScheme.primary,
+                  color: scheme.onSurface,
                 ),
               ),
-              Text(subtitle, style: theme.textTheme.bodyMedium),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
             ],
           ),
         ),
-        if (trailing != null) ...[
-          trailing!,
-          const SizedBox(width: 8),
-        ],
+        if (trailing != null) ...[trailing!, const SizedBox(width: 8)],
         GestureDetector(
           onTap: () => context.push('/profile'),
           child: ProfileAvatar(user: auth.user, size: 42),

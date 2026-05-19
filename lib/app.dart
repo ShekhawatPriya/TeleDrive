@@ -52,10 +52,7 @@ class TeleDriveApp extends ConsumerWidget {
             GoRoute(path: '/shared', builder: (_, __) => const SharedScreen()),
           ],
         ),
-        GoRoute(
-          path: '/profile',
-          builder: (_, __) => const ProfileScreen(),
-        ),
+        GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
         GoRoute(
           path: '/folder/:id',
           builder: (_, state) =>
@@ -202,31 +199,38 @@ class _MainShellState extends ConsumerState<MainShell> {
         ],
       ),
       bottomNavigationBar: showingTab
-          ? NavigationBar(
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: _handleDestinationSelected,
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.folder_outlined),
-                  selectedIcon: Icon(Icons.folder),
-                  label: 'Drive',
+          ? DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: Theme.of(context).colorScheme.outline),
                 ),
-                NavigationDestination(
-                  icon: Icon(Icons.photo_library_outlined),
-                  selectedIcon: Icon(Icons.photo_library),
-                  label: 'Photos',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.star_border),
-                  selectedIcon: Icon(Icons.star),
-                  label: 'Starred',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.group_outlined),
-                  selectedIcon: Icon(Icons.group),
-                  label: 'Shared',
-                ),
-              ],
+              ),
+              child: NavigationBar(
+                selectedIndex: _selectedIndex,
+                onDestinationSelected: _handleDestinationSelected,
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.folder_outlined),
+                    selectedIcon: Icon(Icons.folder_outlined),
+                    label: 'Drive',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.photo_library_outlined),
+                    selectedIcon: Icon(Icons.photo_library_outlined),
+                    label: 'Photos',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.star_border),
+                    selectedIcon: Icon(Icons.star_border),
+                    label: 'Starred',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.group_outlined),
+                    selectedIcon: Icon(Icons.group_outlined),
+                    label: 'Shared',
+                  ),
+                ],
+              ),
             )
           : null,
     );

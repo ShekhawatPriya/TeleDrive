@@ -169,21 +169,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   // ─── Design System Colors ──────────────────────────────────────────────────
-  static const _parchment = AppColors.parchment;
-  static const _ivory = AppColors.ivory;
-  static const _nearBlack = AppColors.nearBlack;
-  static const _terracotta = AppColors.terracotta;
-  static const _oliveGray = AppColors.oliveGray;
-  static const _stone = AppColors.stone;
-  static const _borderCream = AppColors.border;
-  static const _borderWarm = AppColors.warmSand;
-
-  static const _focusBlue = Color(0xff3898ec);
-
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Scaffold(
-      backgroundColor: _parchment,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -214,10 +205,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   // Footer text
                   Text(
                     'Your data is stored securely on Telegram servers.',
-                    style: TextStyle(
-                      fontFamily: 'Roboto',
-                      fontSize: 13,
-                      color: _stone,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
                       height: 1.6,
                     ),
                     textAlign: TextAlign.center,
@@ -232,35 +221,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Widget _buildLogo() {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Container(
       width: 80,
       height: 80,
       decoration: BoxDecoration(
-        color: _terracotta,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          // Ring shadow per design system
-          BoxShadow(
-            color: _terracotta.withValues(alpha: 0.18),
-            blurRadius: 0,
-            spreadRadius: 1,
-          ),
-          BoxShadow(
-            color: _terracotta.withValues(alpha: 0.10),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: scheme.primary,
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        border: Border.all(color: scheme.outline),
+        boxShadow: AppShadows.floating(theme.brightness),
       ),
-      child: const Icon(
-        Icons.send_rounded,
-        color: Color(0xfffaf9f5), // Ivory
-        size: 36,
-      ),
+      child: Icon(Icons.send_rounded, color: scheme.onPrimary, size: 36),
     );
   }
 
   Widget _buildHeader() {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final (title, subtitle) = switch (_step) {
       _Step.phone => (
         'Sign in to TeleDrive',
@@ -283,13 +261,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           child: Text(
             title,
             key: ValueKey('title_$_step'),
-            style: const TextStyle(
-              fontFamily: 'Georgia',
-              fontSize: 26,
-              fontWeight: FontWeight.w500,
-              color: _nearBlack,
-              height: 1.16,
-            ),
+            style: theme.textTheme.headlineMedium,
             textAlign: TextAlign.center,
           ),
         ),
@@ -299,11 +271,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           child: Text(
             subtitle,
             key: ValueKey('sub_$_step'),
-            style: const TextStyle(
-              fontFamily: 'Roboto',
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
-              color: _oliveGray,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
               height: 1.6,
             ),
             textAlign: TextAlign.center,
@@ -314,20 +283,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Widget _buildFormCard() {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: _ivory,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _borderCream),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0D000000), // rgba(0,0,0,0.05)
-            blurRadius: 24,
-            offset: Offset(0, 4),
-          ),
-        ],
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: scheme.outline),
+        boxShadow: AppShadows.floating(theme.brightness),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -352,21 +317,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   // ─── Phone Step ─────────────────────────────────────────────────────────────
 
   Widget _buildPhoneStep() {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // "Phone number" label
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
           child: Text(
             'Phone number',
-            style: TextStyle(
-              fontFamily: 'Roboto',
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: _nearBlack,
-              height: 1.43,
-              letterSpacing: 0.12,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: scheme.onSurface,
             ),
           ),
         ),
@@ -374,9 +336,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         Container(
           height: 52,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _borderWarm),
-            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+            border: Border.all(color: scheme.outline),
+            color: scheme.surface,
           ),
           child: Row(
             children: [
@@ -387,7 +349,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   height: 52,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    border: Border(right: BorderSide(color: _borderWarm)),
+                    border: Border(right: BorderSide(color: scheme.outline)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -399,7 +361,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       const SizedBox(width: 4),
                       Icon(
                         Icons.arrow_drop_down_rounded,
-                        color: _stone,
+                        color: scheme.onSurfaceVariant,
                         size: 20,
                       ),
                     ],
@@ -411,12 +373,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 padding: const EdgeInsets.only(left: 12),
                 child: Text(
                   _selectedCountry.dialCode,
-                  style: const TextStyle(
-                    fontFamily: 'Roboto',
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: _nearBlack,
-                    letterSpacing: 0.3,
+                    color: scheme.onSurface,
+                    letterSpacing: 0,
                   ),
                 ),
               ),
@@ -425,7 +386,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 margin: const EdgeInsets.symmetric(horizontal: 10),
                 width: 1,
                 height: 24,
-                color: _borderCream,
+                color: scheme.outline,
               ),
               // Phone number input
               Expanded(
@@ -434,20 +395,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   controller: _phone,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.send,
-                  style: const TextStyle(
-                    fontFamily: 'Roboto',
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w400,
-                    color: _nearBlack,
-                    letterSpacing: 0.8,
+                    color: scheme.onSurface,
+                    letterSpacing: 0,
                   ),
                   decoration: InputDecoration(
                     hintText: 'Phone number',
                     hintStyle: TextStyle(
-                      fontFamily: 'Roboto',
                       fontSize: 15,
                       fontWeight: FontWeight.w400,
-                      color: _stone.withValues(alpha: 0.6),
+                      color: scheme.onSurfaceVariant,
                     ),
                     contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     filled: false,
@@ -469,16 +428,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           onTap: _pickCountry,
           child: Row(
             children: [
-              Icon(Icons.public_rounded, size: 14, color: _stone),
+              Icon(
+                Icons.public_rounded,
+                size: 14,
+                color: scheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   _selectedCountry.name,
-                  style: const TextStyle(
-                    fontFamily: 'Roboto',
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
-                    color: _stone,
+                    color: scheme.onSurfaceVariant,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -486,7 +448,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               Icon(
                 Icons.chevron_right_rounded,
                 size: 16,
-                color: _stone.withValues(alpha: 0.5),
+                color: scheme.onSurfaceVariant,
               ),
             ],
           ),
@@ -505,27 +467,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   // ─── Code Step ──────────────────────────────────────────────────────────────
 
   Widget _buildCodeStep() {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
           child: Text(
             'Verification code',
-            style: TextStyle(
-              fontFamily: 'Roboto',
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: _nearBlack,
-              height: 1.43,
-              letterSpacing: 0.12,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: scheme.onSurface,
             ),
           ),
         ),
         Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+            color: scheme.surface,
           ),
           child: TextField(
             key: const ValueKey('code_input'),
@@ -534,18 +493,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             textAlign: TextAlign.center,
             maxLength: 6,
             autofocus: true,
-            style: const TextStyle(
-              fontFamily: 'Georgia',
+            style: TextStyle(
+              fontFamily: 'Inter',
               fontWeight: FontWeight.w500,
               fontSize: 28,
-              letterSpacing: 10,
-              color: _nearBlack,
+              letterSpacing: 0,
+              color: scheme.onSurface,
             ),
             decoration: InputDecoration(
-              hintText: '• • • • • •',
+              hintText: '\u2022 \u2022 \u2022 \u2022 \u2022 \u2022',
               hintStyle: TextStyle(
-                color: _stone.withValues(alpha: 0.4),
-                letterSpacing: 8,
+                color: scheme.onSurfaceVariant,
+                letterSpacing: 0,
                 fontSize: 22,
               ),
               counterText: '',
@@ -554,18 +513,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 vertical: 18,
               ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: scheme.surface,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: _borderWarm),
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                borderSide: BorderSide(color: scheme.outline),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: _borderWarm),
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                borderSide: BorderSide(color: scheme.outline),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: _focusBlue, width: 1.4),
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                borderSide: BorderSide(color: scheme.primary, width: 1.2),
               ),
             ),
             onSubmitted: (_) => _verifyCode(),
@@ -584,15 +543,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.arrow_back_rounded, size: 16, color: _oliveGray),
+                Icon(
+                  Icons.arrow_back_rounded,
+                  size: 16,
+                  color: scheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 6),
-                const Text(
+                Text(
                   'Wrong number?',
-                  style: TextStyle(
-                    fontFamily: 'Roboto',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: _oliveGray,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -606,27 +566,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   // ─── Password Step ──────────────────────────────────────────────────────────
 
   Widget _buildPasswordStep() {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
           child: Text(
             'Cloud password',
-            style: TextStyle(
-              fontFamily: 'Roboto',
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: _nearBlack,
-              height: 1.43,
-              letterSpacing: 0.12,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: scheme.onSurface,
             ),
           ),
         ),
         Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+            color: scheme.surface,
           ),
           child: TextField(
             key: const ValueKey('password_input'),
@@ -637,23 +594,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             autocorrect: false,
             obscureText: _obscurePassword,
             autofocus: true,
-            style: const TextStyle(
-              fontFamily: 'Roboto',
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w400,
-              color: _nearBlack,
+              color: scheme.onSurface,
             ),
             decoration: InputDecoration(
               hintText: 'Enter your password',
               hintStyle: TextStyle(
-                fontFamily: 'Roboto',
                 fontSize: 15,
                 fontWeight: FontWeight.w400,
-                color: _stone.withValues(alpha: 0.6),
+                color: scheme.onSurfaceVariant,
               ),
               prefixIcon: Icon(
                 Icons.lock_outline_rounded,
-                color: _stone,
+                color: scheme.onSurfaceVariant,
                 size: 20,
               ),
               suffixIcon: GestureDetector(
@@ -665,7 +620,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     _obscurePassword
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
-                    color: _stone,
+                    color: scheme.onSurfaceVariant,
                     size: 20,
                   ),
                 ),
@@ -675,18 +630,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 vertical: 16,
               ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: scheme.surface,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: _borderWarm),
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                borderSide: BorderSide(color: scheme.outline),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: _borderWarm),
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                borderSide: BorderSide(color: scheme.outline),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: _focusBlue, width: 1.4),
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                borderSide: BorderSide(color: scheme.primary, width: 1.2),
               ),
             ),
             onSubmitted: (_) => _verifyPassword(),
@@ -705,15 +660,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.arrow_back_rounded, size: 16, color: _oliveGray),
+                Icon(
+                  Icons.arrow_back_rounded,
+                  size: 16,
+                  color: scheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 6),
-                const Text(
+                Text(
                   'Start over',
-                  style: TextStyle(
-                    fontFamily: 'Roboto',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: _oliveGray,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -733,6 +689,7 @@ class _StepIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final current = _Step.values.indexOf(currentStep);
 
     return Row(
@@ -749,8 +706,8 @@ class _StepIndicator extends StatelessWidget {
             height: 6,
             decoration: BoxDecoration(
               color: isCompleted || isCurrent
-                  ? AppColors.terracotta
-                  : AppColors.warmSand,
+                  ? scheme.primary
+                  : scheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(3),
             ),
           ),
@@ -780,6 +737,13 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final bgColor = widget.loading
+        ? scheme.primary.withValues(alpha: .72)
+        : _pressed
+        ? scheme.primary.withValues(alpha: .88)
+        : scheme.primary;
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -792,45 +756,25 @@ class _PrimaryButtonState extends State<_PrimaryButton> {
         curve: Curves.easeOut,
         height: 52,
         decoration: BoxDecoration(
-          color: widget.loading
-              ? AppColors.terracotta.withValues(alpha: 0.7)
-              : _pressed
-              ? const Color(0xffb5573a) // Slightly darker terracotta
-              : AppColors.terracotta,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            // Ring shadow per design system
-            BoxShadow(
-              color: AppColors.terracotta.withValues(alpha: 0.0),
-              blurRadius: 0,
-              spreadRadius: 0,
-            ),
-            const BoxShadow(
-              color: Color(0xffc96442), // terracotta
-              blurRadius: 0,
-              spreadRadius: 1,
-              offset: Offset(0, 0),
-            ),
-          ],
+          color: bgColor,
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          border: Border.all(color: scheme.primary),
         ),
         alignment: Alignment.center,
         child: widget.loading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 22,
                 height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  color: Color(0xfffaf9f5), // Ivory
+                  color: scheme.onPrimary,
                 ),
               )
             : Text(
                 widget.label,
-                style: const TextStyle(
-                  fontFamily: 'Roboto',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: scheme.onPrimary,
                   fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xfffaf9f5), // Ivory
-                  letterSpacing: 0.3,
                 ),
               ),
       ),
@@ -844,12 +788,14 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.15)),
+        color: scheme.errorContainer,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: scheme.error.withValues(alpha: .25)),
       ),
       child: Row(
         children: [
@@ -858,10 +804,8 @@ class _ErrorBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
-                fontFamily: 'Roboto',
-                color: AppColors.error,
-                fontSize: 13,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.error,
                 fontWeight: FontWeight.w500,
                 height: 1.4,
               ),

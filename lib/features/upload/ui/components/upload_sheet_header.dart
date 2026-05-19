@@ -13,7 +13,6 @@ class UploadSheetHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final dark = theme.brightness == Brightness.dark;
 
     final total = upload.items.length;
     final done = upload.uploadedCount;
@@ -25,19 +24,21 @@ class UploadSheetHeader extends StatelessWidget {
       (s, i) => s + (i.progress * i.size).round(),
     );
 
-    final stillGeneratingThumbs = completed &&
+    final stillGeneratingThumbs =
+        completed &&
         upload.items.any((i) {
           final kind = detectFileKind(i.name, i.mimeType);
-          final previewable =
-              kind == FileKind.image || kind == FileKind.video;
+          final previewable = kind == FileKind.image || kind == FileKind.video;
           return previewable && !i.thumbnailReady;
         });
 
-    final title = completed ? 'All set' : '$total ${total == 1 ? 'file' : 'files'}';
+    final title = completed
+        ? 'All set'
+        : '$total ${total == 1 ? 'file' : 'files'}';
     final subtitle = stillGeneratingThumbs
-        ? 'Generating previews…'
-        : '$done of $total uploaded · '
-            '${formatFileSize(completedBytes)} of ${formatFileSize(totalBytes)}';
+        ? 'Generating previews...'
+        : '$done of $total uploaded \u00b7 '
+              '${formatFileSize(completedBytes)} of ${formatFileSize(totalBytes)}';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
@@ -51,21 +52,12 @@ class UploadSheetHeader extends StatelessWidget {
               height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: dark ? const Color(0xff3d3d3a) : AppColors.warmSand,
-                borderRadius: BorderRadius.circular(4),
+                color: scheme.outline,
+                borderRadius: BorderRadius.circular(AppRadii.pill),
               ),
             ),
           ),
-          Text(
-            title,
-            style: TextStyle(
-              fontFamily: 'Georgia',
-              fontSize: 22,
-              fontWeight: FontWeight.w500,
-              color: scheme.onSurface,
-              height: 1.15,
-            ),
-          ),
+          Text(title, style: theme.textTheme.headlineSmall),
           const SizedBox(height: 4),
           Text(
             subtitle,

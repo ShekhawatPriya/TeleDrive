@@ -11,9 +11,8 @@ class FolderToast extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dark = theme.brightness == Brightness.dark;
     final scheme = theme.colorScheme;
-    final accent = dark ? AppColors.coral : AppColors.terracotta;
+    final accent = scheme.primary;
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 220),
@@ -33,21 +32,13 @@ class FolderToast extends StatelessWidget {
               key: ValueKey('toast-${state.label}-${state.isError}'),
               constraints: const BoxConstraints(maxWidth: 320),
               decoration: BoxDecoration(
-                color: dark ? AppColors.darkSurface : AppColors.ivory,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: dark ? const Color(0xff3d3d3a) : AppColors.border,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: .05),
-                    blurRadius: 24,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                color: scheme.surface,
+                borderRadius: BorderRadius.circular(AppRadii.md),
+                border: Border.all(color: scheme.outline),
+                boxShadow: AppShadows.floating(theme.brightness),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(AppRadii.md),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -68,8 +59,9 @@ class FolderToast extends StatelessWidget {
                               height: 16,
                               child: CircularProgressIndicator(
                                 strokeWidth: 1.6,
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(accent),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  accent,
+                                ),
                               ),
                             ),
                           const SizedBox(width: 10),

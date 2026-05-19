@@ -10,7 +10,7 @@ class MediaThumb extends StatelessWidget {
   const MediaThumb({
     required this.file,
     this.fit = BoxFit.contain,
-    this.radius = 14,
+    this.radius = 18,
     super.key,
   });
 
@@ -21,7 +21,7 @@ class MediaThumb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = file.thumbnailUrl ?? file.previewUrl;
-    final bg = Theme.of(context).colorScheme.secondary.withValues(alpha: .55);
+    final bg = Theme.of(context).colorScheme.surfaceContainerHighest;
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: ColoredBox(

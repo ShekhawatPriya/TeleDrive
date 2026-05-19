@@ -15,7 +15,7 @@ class UploadSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final upload = ref.watch(uploadControllerProvider);
     final theme = Theme.of(context);
-    final dark = theme.brightness == Brightness.dark;
+    final scheme = theme.colorScheme;
 
     return DraggableScrollableSheet(
       expand: false,
@@ -34,10 +34,11 @@ class UploadSheet extends ConsumerWidget {
           },
           child: Container(
             decoration: BoxDecoration(
-              color: dark ? AppColors.nearBlack : AppColors.parchment,
+              color: scheme.surface,
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
+                top: Radius.circular(AppRadii.sheet),
               ),
+              border: Border(top: BorderSide(color: scheme.outline)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -46,15 +47,9 @@ class UploadSheet extends ConsumerWidget {
                   padding: const EdgeInsets.only(top: 8),
                   child: UploadSheetHeader(upload: upload),
                 ),
-                Container(
-                  height: 1,
-                  color: dark ? const Color(0xff3d3d3a) : AppColors.border,
-                ),
+                Container(height: 1, color: scheme.outline),
                 Expanded(
-                  child: _CardList(
-                    upload: upload,
-                    controller: controller,
-                  ),
+                  child: _CardList(upload: upload, controller: controller),
                 ),
               ],
             ),
@@ -79,10 +74,7 @@ class _CardList extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (_, i) {
         final item = upload.items[i];
-        return UploadCard(
-          key: ValueKey(item.localId),
-          item: item,
-        );
+        return UploadCard(key: ValueKey(item.localId), item: item);
       },
     );
   }

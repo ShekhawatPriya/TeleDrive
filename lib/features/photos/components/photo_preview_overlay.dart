@@ -1,8 +1,8 @@
 import 'dart:ui';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
 import '../../../widgets/media_thumb.dart';
@@ -117,8 +117,10 @@ class _PhotoPreviewBody extends StatelessWidget {
       builder: (context, _) {
         final t = eased.value;
         final rect = rectTween.transform(t)!;
-        final menuLeft = (rect.center.dx - _menuWidth / 2)
-            .clamp(_edgeMargin, size.width - _menuWidth - _edgeMargin);
+        final menuLeft = (rect.center.dx - _menuWidth / 2).clamp(
+          _edgeMargin,
+          size.width - _menuWidth - _edgeMargin,
+        );
         final menuTop = rect.bottom + _gap;
 
         return Stack(
@@ -126,8 +128,8 @@ class _PhotoPreviewBody extends StatelessWidget {
             Positioned.fill(
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: () => Navigator.of(context, rootNavigator: true)
-                    .maybePop(),
+                onTap: () =>
+                    Navigator.of(context, rootNavigator: true).maybePop(),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 18 * t, sigmaY: 18 * t),
                   child: ColoredBox(
@@ -171,7 +173,8 @@ class _PhotoPreviewBody extends StatelessWidget {
 
   Rect _computeTargetRect(Size size, EdgeInsets padding) {
     final availableWidth = size.width - _edgeMargin * 2;
-    final availableHeight = size.height -
+    final availableHeight =
+        size.height -
         padding.top -
         padding.bottom -
         _menuHeight -
@@ -294,12 +297,10 @@ class _PreviewMenuCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark
-        ? const Color(0xFF1C1C1E).withValues(alpha: .92)
-        : const Color(0xFFF7F7F7).withValues(alpha: .94);
+    final scheme = Theme.of(context).colorScheme;
+    final cardColor = scheme.surface.withValues(alpha: .96);
     return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadii.md),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Material(
@@ -307,25 +308,18 @@ class _PreviewMenuCard extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _MenuRow(
-                label: 'Share',
-                icon: Icons.ios_share,
-                onTap: onShare,
-                isDark: isDark,
-              ),
-              _hairline(isDark),
+              _MenuRow(label: 'Share', icon: Icons.ios_share, onTap: onShare),
+              _hairline(scheme),
               _MenuRow(
                 label: 'Move',
                 icon: Icons.drive_file_move_outline,
                 onTap: onMove,
-                isDark: isDark,
               ),
-              _hairline(isDark),
+              _hairline(scheme),
               _MenuRow(
                 label: 'Select',
                 icon: Icons.check_circle_outline,
                 onTap: onSelect,
-                isDark: isDark,
               ),
             ],
           ),
@@ -334,12 +328,8 @@ class _PreviewMenuCard extends StatelessWidget {
     );
   }
 
-  Widget _hairline(bool isDark) => Container(
-        height: 0.5,
-        color: isDark
-            ? Colors.white.withValues(alpha: .08)
-            : Colors.black.withValues(alpha: .08),
-      );
+  Widget _hairline(ColorScheme scheme) =>
+      Container(height: 0.5, color: scheme.outline);
 }
 
 class _MenuRow extends StatelessWidget {
@@ -347,17 +337,15 @@ class _MenuRow extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.onTap,
-    required this.isDark,
   });
 
   final String label;
   final IconData icon;
   final VoidCallback onTap;
-  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
-    final color = isDark ? Colors.white : CupertinoColors.label.darkColor;
+    final color = Theme.of(context).colorScheme.onSurface;
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -369,9 +357,9 @@ class _MenuRow extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  fontSize: 17,
+                  fontSize: 14,
                   color: color,
-                  fontWeight: FontWeight.w400,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),

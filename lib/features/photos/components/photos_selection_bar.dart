@@ -19,9 +19,11 @@ class PhotosSelectionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
     final hasSelection = selectedCount > 0;
     return Material(
       color: scheme.surface,
+      shape: Border(bottom: BorderSide(color: scheme.outline)),
       child: SizedBox(
         height: 56,
         child: Padding(
@@ -37,9 +39,7 @@ class PhotosSelectionBar extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 hasSelection ? '$selectedCount selected' : 'Select items',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
+                style: theme.textTheme.titleSmall?.copyWith(
                   color: scheme.onSurface,
                 ),
               ),

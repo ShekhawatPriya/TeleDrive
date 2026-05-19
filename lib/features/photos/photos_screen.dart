@@ -85,9 +85,8 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
                         onTileTap: _onTileTap,
                         onTileLongPress: _onTileLongPress,
                         onTilePanSelect: _onTilePanSelect,
-                        onLoadMore: () => ref
-                            .read(driveControllerProvider)
-                            .loadMoreMedia(),
+                        onLoadMore: () =>
+                            ref.read(driveControllerProvider).loadMoreMedia(),
                       ),
               ),
             ],
@@ -120,16 +119,8 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
       context: context,
       sourceRect: anchor,
       file: file,
-      onShare: () => PhotosActions.share(
-        context,
-        ref,
-        fileIds: {fileId},
-      ),
-      onMove: () => PhotosActions.move(
-        context,
-        ref,
-        fileIds: {fileId},
-      ),
+      onShare: () => PhotosActions.share(context, ref, fileIds: {fileId}),
+      onMove: () => PhotosActions.move(context, ref, fileIds: {fileId}),
       onSelect: () => enterSelect(fileId: fileId),
     );
   }
@@ -180,14 +171,16 @@ class _PhotosToolbar extends StatelessWidget {
               ),
               IconButton(
                 tooltip: 'Smaller tiles',
-                onPressed:
-                    density.columns >= density.max ? null : density.zoomOut,
+                onPressed: density.columns >= density.max
+                    ? null
+                    : density.zoomOut,
                 icon: const Icon(Icons.grid_view_rounded, size: 18),
               ),
               IconButton(
                 tooltip: 'Larger tiles',
-                onPressed:
-                    density.columns <= density.min ? null : density.zoomIn,
+                onPressed: density.columns <= density.min
+                    ? null
+                    : density.zoomIn,
                 icon: const Icon(Icons.grid_on_rounded, size: 18),
               ),
             ],
@@ -242,7 +235,7 @@ class StarredScreen extends ConsumerWidget {
                   return FileListTile(
                     name: folder.name,
                     subtitle:
-                        '${folder.recursiveFileCount} files • ${formatFileSize(folder.recursiveSize)}',
+                        '${folder.recursiveFileCount} files \u00b7 ${formatFileSize(folder.recursiveSize)}',
                     isFolder: true,
                     starred: true,
                     shared: folder.shared,
@@ -263,18 +256,15 @@ class StarredScreen extends ConsumerWidget {
                     return FileListTile(
                       name: file.name,
                       subtitle:
-                          '${formatLabel(file)} • ${formatFileSize(file.size)} • ${formatDate(file.modifiedAt)}',
+                          '${formatLabel(file)} \u00b7 ${formatFileSize(file.size)} \u00b7 ${formatDate(file.modifiedAt)}',
                       file: file,
                       starred: true,
                       onTap: () {
-                        ref
-                            .read(driveControllerProvider)
-                            .markAccessed(file.id);
+                        ref.read(driveControllerProvider).markAccessed(file.id);
                         context.push('/file/${file.id}');
                       },
-                      onStar: () => ref
-                          .read(driveControllerProvider)
-                          .toggleStar(file.id),
+                      onStar: () =>
+                          ref.read(driveControllerProvider).toggleStar(file.id),
                     );
                   },
                 ),

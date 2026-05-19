@@ -36,13 +36,9 @@ class PhotoGridSection extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Text(
               section.label,
-              style: TextStyle(
-                fontFamily: 'Georgia',
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                color: scheme.onSurface,
-                height: 1.2,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: scheme.onSurface),
             ),
           ),
           GridView.builder(

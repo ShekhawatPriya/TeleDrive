@@ -21,23 +21,22 @@ class DriveSelectionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
     final hasSelection = selectedCount > 0;
     return Material(
       color: scheme.surface,
+      shape: Border(bottom: BorderSide(color: scheme.outline)),
       child: SizedBox(
         height: 56,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             children: [
-              TextButton(
-                onPressed: onCancel,
-                child: const Text('Cancel'),
-              ),
+              TextButton(onPressed: onCancel, child: const Text('Cancel')),
               const SizedBox(width: 4),
               Text(
                 hasSelection ? '$selectedCount selected' : 'Select items',
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                style: theme.textTheme.titleSmall,
               ),
               const Spacer(),
               IconButton(

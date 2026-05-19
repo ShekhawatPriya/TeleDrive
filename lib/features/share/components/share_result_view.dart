@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../models/share_models.dart';
 
 class ShareResultView extends StatelessWidget {
@@ -32,7 +33,7 @@ class ShareResultView extends StatelessWidget {
             height: 4,
             decoration: BoxDecoration(
               color: scheme.outlineVariant,
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(AppRadii.pill),
             ),
           ),
         ),
@@ -45,13 +46,9 @@ class ShareResultView extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: scheme.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppRadii.md),
               ),
-              child: Icon(
-                Icons.link_rounded,
-                size: 20,
-                color: scheme.primary,
-              ),
+              child: Icon(Icons.link_rounded, size: 20, color: scheme.primary),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -86,7 +83,7 @@ class ShareResultView extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
           decoration: BoxDecoration(
             color: scheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
           ),
           child: Row(
             children: [
@@ -95,18 +92,14 @@ class ShareResultView extends StatelessWidget {
                   share.url,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 13,
-                    height: 1.3,
-                  ),
+                  style: theme.textTheme.code(scheme.onSurface),
                 ),
               ),
               const SizedBox(width: 6),
               Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
                   onTap: onCopy,
                   child: Container(
                     width: 38,
@@ -114,7 +107,7 @@ class ShareResultView extends StatelessWidget {
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: scheme.surface,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(AppRadii.md),
                     ),
                     child: Icon(
                       Icons.content_copy_rounded,
@@ -135,7 +128,7 @@ class ShareResultView extends StatelessWidget {
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(50),
               shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(14)),
+                borderRadius: BorderRadius.all(Radius.circular(AppRadii.pill)),
               ),
               textStyle: const TextStyle(
                 fontWeight: FontWeight.w600,

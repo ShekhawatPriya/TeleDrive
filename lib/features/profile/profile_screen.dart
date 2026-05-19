@@ -55,87 +55,87 @@ class ProfileScreen extends ConsumerWidget {
           title: const Text('Account'),
         ),
         body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 112),
-        children: [
-          _ProfileHeader(user: user),
-          const SizedBox(height: 12),
-          _TelegramStatusCard(
-            connected: auth.telegramConnected,
-            telegramId: user?.telegramId,
-          ),
-          const SizedBox(height: 24),
-          _SectionLabel('STORAGE'),
-          _StorageCard(used: used, categories: storageCategories),
-          const SizedBox(height: 24),
-          _SectionLabel('PROFILE'),
-          _InfoCard(
-            children: [
-              _InfoRow(
-                icon: Icons.alternate_email,
-                label: 'Username',
-                value: user?.username == null
-                    ? 'Not set'
-                    : '@${user!.username}',
-              ),
-              _InfoRow(
-                icon: Icons.badge_outlined,
-                label: 'Telegram ID',
-                value: user?.telegramId == null ? '-' : '${user!.telegramId}',
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _SectionLabel('APPEARANCE'),
-          _ThemeSelector(
-            mode: ref.watch(themeControllerProvider).mode,
-            onChanged: ref.read(themeControllerProvider).setMode,
-          ),
-          const SizedBox(height: 24),
-          _SectionLabel('ABOUT'),
-          _InfoCard(
-            children: [
-              _ActionRow(
-                icon: Icons.info_outline,
-                label: 'Version',
-                value: '1.0.0',
-              ),
-              _ActionRow(
-                icon: Icons.code,
-                label: 'Open Source',
-                value: 'GitHub',
-                onTap: () => AppConfig.openRepository(),
-              ),
-              _ActionRow(
-                icon: Icons.privacy_tip_outlined,
-                label: 'Privacy Policy',
-                onTap: () => context.push('/privacy'),
-              ),
-              _ActionRow(
-                icon: Icons.description_outlined,
-                label: 'Terms of Service',
-                onTap: () => context.push('/terms'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _InfoCard(
-            children: [
-              _ActionRow(
-                icon: Icons.logout,
-                label: 'Sign Out',
-                destructive: true,
-                onTap: () => ref.read(authControllerProvider).logout(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'TeleDrive - A DevsDoCode Project',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-      ),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 112),
+          children: [
+            _ProfileHeader(user: user),
+            const SizedBox(height: 12),
+            _TelegramStatusCard(
+              connected: auth.telegramConnected,
+              telegramId: user?.telegramId,
+            ),
+            const SizedBox(height: 24),
+            _SectionLabel('STORAGE'),
+            _StorageCard(used: used, categories: storageCategories),
+            const SizedBox(height: 24),
+            _SectionLabel('PROFILE'),
+            _InfoCard(
+              children: [
+                _InfoRow(
+                  icon: Icons.alternate_email,
+                  label: 'Username',
+                  value: user?.username == null
+                      ? 'Not set'
+                      : '@${user!.username}',
+                ),
+                _InfoRow(
+                  icon: Icons.badge_outlined,
+                  label: 'Telegram ID',
+                  value: user?.telegramId == null ? '-' : '${user!.telegramId}',
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _SectionLabel('APPEARANCE'),
+            _ThemeSelector(
+              mode: ref.watch(themeControllerProvider).mode,
+              onChanged: ref.read(themeControllerProvider).setMode,
+            ),
+            const SizedBox(height: 24),
+            _SectionLabel('ABOUT'),
+            _InfoCard(
+              children: [
+                _ActionRow(
+                  icon: Icons.info_outline,
+                  label: 'Version',
+                  value: '1.0.0',
+                ),
+                _ActionRow(
+                  icon: Icons.code,
+                  label: 'Open Source',
+                  value: 'GitHub',
+                  onTap: () => AppConfig.openRepository(),
+                ),
+                _ActionRow(
+                  icon: Icons.privacy_tip_outlined,
+                  label: 'Privacy Policy',
+                  onTap: () => context.push('/privacy'),
+                ),
+                _ActionRow(
+                  icon: Icons.description_outlined,
+                  label: 'Terms of Service',
+                  onTap: () => context.push('/terms'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _InfoCard(
+              children: [
+                _ActionRow(
+                  icon: Icons.logout,
+                  label: 'Sign Out',
+                  destructive: true,
+                  onTap: () => ref.read(authControllerProvider).logout(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'TeleDrive - A DevsDoCode Project',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -158,7 +158,7 @@ class _ProfileHeader extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Row(
           children: [
             ProfileAvatar(user: user),
@@ -183,7 +183,7 @@ class _ProfileHeader extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -221,8 +221,8 @@ class _TelegramStatusCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: statusColor.withValues(alpha: .45)),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: statusColor.withValues(alpha: .35)),
       ),
       child: Row(
         children: [
@@ -280,7 +280,7 @@ class _StorageCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -302,11 +302,11 @@ class _StorageCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Container(
-              height: 12,
+              height: 10,
               width: double.infinity,
               decoration: BoxDecoration(
                 color: theme.colorScheme.onSurface.withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(AppRadii.pill),
               ),
               clipBehavior: Clip.antiAlias,
               child: nonEmpty.isEmpty
@@ -426,20 +426,12 @@ List<_StorageCategory> _storageCategories(
   }
 
   return [
-    _StorageCategory(
-      label: 'Photos',
-      bytes: photos,
-      color: const Color(0xFFDB6B57),
-    ),
-    _StorageCategory(
-      label: 'Videos',
-      bytes: videos,
-      color: const Color(0xFFEA9C3D),
-    ),
+    _StorageCategory(label: 'Photos', bytes: photos, color: AppColors.link),
+    _StorageCategory(label: 'Videos', bytes: videos, color: AppColors.cyan),
     _StorageCategory(
       label: 'Documents',
       bytes: documents,
-      color: const Color(0xFF6D7F5F),
+      color: AppColors.violet,
     ),
     _StorageCategory(
       label: 'Other',
@@ -498,19 +490,19 @@ class _ThemeOption extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppRadii.lg),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 18),
         decoration: BoxDecoration(
           color: selected
               ? theme.colorScheme.primary
               : theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
           border: Border.all(
             color: selected
                 ? theme.colorScheme.primary
-                : theme.colorScheme.outline,
+                : theme.colorScheme.outline.withValues(alpha: .82),
           ),
         ),
         child: Column(
@@ -592,25 +584,28 @@ class _ActionRow extends StatelessWidget {
 
     return ListTile(
       leading: Container(
-        width: 34,
-        height: 34,
+        width: 42,
+        height: 42,
         decoration: BoxDecoration(
           color:
               (destructive
                       ? theme.colorScheme.error
                       : theme.colorScheme.primary)
                   .withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppRadii.md),
         ),
         child: Icon(
           icon,
-          size: 18,
+          size: 20,
           color: destructive
               ? theme.colorScheme.error
               : theme.colorScheme.primary,
         ),
       ),
-      title: Text(label, style: TextStyle(color: color)),
+      title: Text(
+        label,
+        style: theme.textTheme.titleSmall?.copyWith(color: color),
+      ),
       trailing: value != null
           ? Text(value!, style: theme.textTheme.bodyMedium)
           : onTap == null
@@ -637,8 +632,6 @@ class _SectionLabel extends StatelessWidget {
         label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: Theme.of(context).colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w800,
-          letterSpacing: .8,
         ),
       ),
     );

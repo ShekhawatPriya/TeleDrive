@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../models/share_models.dart';
 
 class ShareAccessLogList extends StatelessWidget {
@@ -34,7 +35,7 @@ class ShareAccessLogList extends StatelessWidget {
             child: Center(
               child: TextButton(
                 onPressed: loading ? null : onLoadMore,
-                child: Text(loading ? 'Loading…' : 'Load more'),
+                child: Text(loading ? 'Loading...' : 'Load more'),
               ),
             ),
           ),
@@ -60,11 +61,14 @@ class _Row extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 color: scheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppRadii.pill),
               ),
               child: Text(
                 entry.country!,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             )
           : null,
@@ -83,7 +87,7 @@ class _Row extends StatelessWidget {
       'preview' => 'Preview',
       _ => 'View',
     };
-    final item = access.itemName == null ? '' : ' · ${access.itemName}';
+    final item = access.itemName == null ? '' : ' \u00b7 ${access.itemName}';
     return '$base$item';
   }
 

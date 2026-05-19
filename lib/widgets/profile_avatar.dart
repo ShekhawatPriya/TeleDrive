@@ -23,13 +23,17 @@ class ProfileAvatar extends StatelessWidget {
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: colors.primary, shape: BoxShape.circle),
+      decoration: BoxDecoration(
+        color: colors.primary,
+        shape: BoxShape.circle,
+        border: Border.all(color: colors.outline),
+      ),
       child: Text(
         initial,
         style: TextStyle(
           color: colors.onPrimary,
           fontSize: size * .38,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_type_detector.dart';
 
 class DriveStoragePill extends StatelessWidget {
@@ -8,22 +9,27 @@ class DriveStoragePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Expanded(
       child: Card(
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 '${formatFileSize(used)} used',
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               LinearProgressIndicator(
                 value: used > 0 ? 1 : 0,
-                minHeight: 6,
-                borderRadius: BorderRadius.circular(8),
+                minHeight: 7,
+                backgroundColor: scheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(AppRadii.pill),
               ),
             ],
           ),

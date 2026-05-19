@@ -42,7 +42,7 @@ class DriveFolderSliver extends ConsumerWidget {
         return FileListTile(
           name: folder.name,
           subtitle:
-              '${folder.recursiveFileCount} files • ${formatFileSize(folder.recursiveSize)}',
+              '${folder.recursiveFileCount} files \u00b7 ${formatFileSize(folder.recursiveSize)}',
           isFolder: true,
           starred: folder.starred,
           shared: folder.shared,
@@ -114,8 +114,8 @@ class DriveFilesSliver extends ConsumerWidget {
           return FileListTile(
             name: file.name,
             subtitle: file.isOptimistic
-                ? '${formatUploadStatus(file)} • ${formatFileSize(file.size)}'
-                : '${formatLabel(file)} • ${formatFileSize(file.size)} • ${formatDate(file.modifiedAt)}',
+                ? '${formatUploadStatus(file)} \u00b7 ${formatFileSize(file.size)}'
+                : '${formatLabel(file)} \u00b7 ${formatFileSize(file.size)} \u00b7 ${formatDate(file.modifiedAt)}',
             file: file,
             starred: file.starred,
             selected: selectMode ? selectedFileIds.contains(file.id) : null,

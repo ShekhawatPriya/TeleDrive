@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_theme.dart';
-
-/// Slim, warm-toned progress line.  Replaces Material's
+/// Slim progress line. Replaces Material's
 /// LinearProgressIndicator so we control radius, height, and tones.
 class UploadProgressBar extends StatelessWidget {
   const UploadProgressBar({
@@ -18,9 +16,9 @@ class UploadProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final track = dark ? const Color(0xff3d3d3a) : AppColors.warmSand;
-    final fill = dark ? AppColors.coral : AppColors.terracotta;
+    final scheme = Theme.of(context).colorScheme;
+    final track = scheme.surfaceContainerHighest;
+    final fill = scheme.primary;
 
     if (indeterminate) {
       return ClipRRect(

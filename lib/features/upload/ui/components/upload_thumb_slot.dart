@@ -11,9 +11,9 @@ import '../../upload_controller.dart';
 
 /// Leading thumb slot in an upload card.
 ///
-///   active upload  → subtle file-type glyph on warm sand
-///   uploaded, no thumb yet → spinner over the glyph
-///   uploaded + thumb ready → image fades in
+///   active upload -> subtle file-type glyph on a muted surface
+///   uploaded, no thumb yet -> spinner over the glyph
+///   uploaded + thumb ready -> image fades in
 class UploadThumbSlot extends StatelessWidget {
   const UploadThumbSlot({required this.item, this.size = 44, super.key});
 
@@ -29,14 +29,12 @@ class UploadThumbSlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final bg = dark ? const Color(0xff3d3d3a) : AppColors.warmSand;
+    final bg = Theme.of(context).colorScheme.surfaceContainerHighest;
     final showSpinner = _isUploaded && _isPreviewable && !item.thumbnailReady;
-    final showThumb =
-        _isUploaded && _isPreviewable && item.thumbnailReady;
+    final showThumb = _isUploaded && _isPreviewable && item.thumbnailReady;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppRadii.md),
       child: Container(
         width: size,
         height: size,
@@ -47,14 +45,14 @@ class UploadThumbSlot extends StatelessWidget {
           child: showThumb
               ? _Thumb(item: item, key: ValueKey('thumb-${item.localId}'))
               : showSpinner
-                  ? _Spinner(
-                      kind: detectFileKind(item.name, item.mimeType),
-                      key: ValueKey('spin-${item.localId}'),
-                    )
-                  : _Glyph(
-                      kind: detectFileKind(item.name, item.mimeType),
-                      key: ValueKey('glyph-${item.localId}'),
-                    ),
+              ? _Spinner(
+                  kind: detectFileKind(item.name, item.mimeType),
+                  key: ValueKey('spin-${item.localId}'),
+                )
+              : _Glyph(
+                  kind: detectFileKind(item.name, item.mimeType),
+                  key: ValueKey('glyph-${item.localId}'),
+                ),
         ),
       ),
     );
@@ -78,8 +76,7 @@ class _Spinner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final tint = dark ? AppColors.coral : AppColors.terracotta;
+    final tint = Theme.of(context).colorScheme.primary;
     return Stack(
       alignment: Alignment.center,
       children: [
@@ -89,7 +86,9 @@ class _Spinner extends StatelessWidget {
           height: 18,
           child: CircularProgressIndicator(
             strokeWidth: 1.6,
-            valueColor: AlwaysStoppedAnimation<Color>(tint.withValues(alpha: .7)),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              tint.withValues(alpha: .7),
+            ),
           ),
         ),
       ],
@@ -104,7 +103,8 @@ class _Thumb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = item.thumbnailUrl;
-    if (url == null) return _Glyph(kind: detectFileKind(item.name, item.mimeType));
+    if (url == null)
+      return _Glyph(kind: detectFileKind(item.name, item.mimeType));
     final isLocal = url.startsWith('/') || url.contains(':\\');
     if (isLocal) {
       return Image.file(

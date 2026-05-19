@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/theme/app_theme.dart';
+
 /// Prompts the user for a new folder name and returns the trimmed value
 /// (or null if cancelled / left blank).
 Future<String?> promptFolderName(
@@ -71,7 +73,7 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
       elevation: 0,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(20)),
+        borderRadius: BorderRadius.all(Radius.circular(AppRadii.lg)),
       ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 360),
@@ -128,7 +130,9 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
                       minimumSize: const Size(96, 40),
                       padding: const EdgeInsets.symmetric(horizontal: 18),
                       shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(12)),
+                        borderRadius: BorderRadius.all(
+                          Radius.circular(AppRadii.pill),
+                        ),
                       ),
                     ),
                     child: Text(widget.confirmLabel),
@@ -165,7 +169,7 @@ Future<bool> confirmAction(
         elevation: 0,
         insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(20)),
+          borderRadius: BorderRadius.all(Radius.circular(AppRadii.lg)),
         ),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
@@ -211,7 +215,9 @@ Future<bool> confirmAction(
                         minimumSize: const Size(96, 40),
                         padding: const EdgeInsets.symmetric(horizontal: 18),
                         shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(AppRadii.pill),
+                          ),
                         ),
                       ),
                       child: Text(confirmLabel),

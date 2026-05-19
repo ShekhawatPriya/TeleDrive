@@ -43,7 +43,6 @@ class _UploadCollapsedBarState extends State<UploadCollapsedBar>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dark = theme.brightness == Brightness.dark;
     final scheme = theme.colorScheme;
     final upload = widget.upload;
 
@@ -60,30 +59,22 @@ class _UploadCollapsedBarState extends State<UploadCollapsedBar>
       (s, i) => s + (i.progress * i.size).round(),
     );
 
-    final accent = dark ? AppColors.coral : AppColors.terracotta;
+    final accent = scheme.primary;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         onTap: widget.onTap,
         child: Container(
           decoration: BoxDecoration(
-            color: dark ? AppColors.darkSurface : AppColors.ivory,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: dark ? const Color(0xff3d3d3a) : AppColors.border,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: .05),
-                blurRadius: 24,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            color: scheme.surface,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(color: scheme.outline.withValues(alpha: .82)),
+            boxShadow: AppShadows.floating(theme.brightness),
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadii.lg),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -103,10 +94,10 @@ class _UploadCollapsedBarState extends State<UploadCollapsedBar>
                               width: 32,
                               height: 32,
                               decoration: BoxDecoration(
-                                color: dark
-                                    ? const Color(0xff3d3d3a)
-                                    : AppColors.warmSand,
-                                borderRadius: BorderRadius.circular(10),
+                                color: scheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.md,
+                                ),
                               ),
                               child: Icon(
                                 completed
@@ -140,7 +131,7 @@ class _UploadCollapsedBarState extends State<UploadCollapsedBar>
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '$done of $total · '
+                              '$done of $total \u00b7 '
                               '${formatFileSize(completedBytes)}/${formatFileSize(totalBytes)}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -163,10 +154,7 @@ class _UploadCollapsedBarState extends State<UploadCollapsedBar>
                     ],
                   ),
                 ),
-                UploadProgressBar(
-                  value: completed ? 1 : progress,
-                  height: 3,
-                ),
+                UploadProgressBar(value: completed ? 1 : progress, height: 3),
               ],
             ),
           ),

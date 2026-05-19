@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
 
@@ -25,7 +26,10 @@ class PhotoDetailsSheet extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: scheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadii.sheet),
+        ),
+        border: Border(top: BorderSide(color: scheme.outline)),
       ),
       child: ListView(
         controller: scrollController,
@@ -38,7 +42,7 @@ class PhotoDetailsSheet extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
                 color: scheme.onSurface.withValues(alpha: .2),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(AppRadii.pill),
               ),
             ),
           ),
@@ -52,7 +56,7 @@ class PhotoDetailsSheet extends StatelessWidget {
           Text(
             modified == null
                 ? formatDate(file.modifiedAt)
-                : DateFormat('EEE, MMM d, y · h:mm a').format(modified),
+                : DateFormat('EEE, MMM d, y \u00b7 h:mm a').format(modified),
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
@@ -92,34 +96,33 @@ class PhotoDetailsSheet extends StatelessWidget {
             _DetailRow(
               icon: Icons.add_circle_outline,
               label: 'Created',
-              value: DateFormat('MMM d, y · h:mm a').format(created),
+              value: DateFormat('MMM d, y \u00b7 h:mm a').format(created),
             ),
           if (modified != null)
             _DetailRow(
               icon: Icons.history,
               label: 'Modified',
-              value: DateFormat('MMM d, y · h:mm a').format(modified),
+              value: DateFormat('MMM d, y \u00b7 h:mm a').format(modified),
             ),
           if ((file.uploadStatus ?? 'available') != 'available' ||
               (file.previewStatus ?? '').isNotEmpty &&
-                  file.previewStatus != 'available')
-            ...[
-              const SizedBox(height: 16),
-              _SectionTitle('Status'),
-              if ((file.uploadStatus ?? 'available') != 'available')
-                _DetailRow(
-                  icon: Icons.cloud_upload_outlined,
-                  label: 'Upload',
-                  value: formatUploadStatus(file),
-                ),
-              if ((file.previewStatus ?? '').isNotEmpty &&
-                  file.previewStatus != 'available')
-                _DetailRow(
-                  icon: Icons.preview_outlined,
-                  label: 'Preview',
-                  value: file.previewStatus!,
-                ),
-            ],
+                  file.previewStatus != 'available') ...[
+            const SizedBox(height: 16),
+            _SectionTitle('Status'),
+            if ((file.uploadStatus ?? 'available') != 'available')
+              _DetailRow(
+                icon: Icons.cloud_upload_outlined,
+                label: 'Upload',
+                value: formatUploadStatus(file),
+              ),
+            if ((file.previewStatus ?? '').isNotEmpty &&
+                file.previewStatus != 'available')
+              _DetailRow(
+                icon: Icons.preview_outlined,
+                label: 'Preview',
+                value: file.previewStatus!,
+              ),
+          ],
         ],
       ),
     );
@@ -129,7 +132,7 @@ class PhotoDetailsSheet extends StatelessWidget {
     final w = file.widthPx!;
     final h = file.heightPx!;
     final mp = (w * h) / 1000000;
-    return '$w × $h · ${mp.toStringAsFixed(mp >= 10 ? 0 : 1)} MP';
+    return '$w \u00d7 $h \u00b7 ${mp.toStringAsFixed(mp >= 10 ? 0 : 1)} MP';
   }
 }
 
@@ -142,10 +145,8 @@ class _SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         text.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 11,
-          letterSpacing: 0.8,
-          fontWeight: FontWeight.w700,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
       ),
     );
@@ -176,15 +177,9 @@ class _DetailRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                Text(label, style: Theme.of(context).textTheme.bodySmall),
                 const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
+                Text(value, style: Theme.of(context).textTheme.titleSmall),
               ],
             ),
           ),

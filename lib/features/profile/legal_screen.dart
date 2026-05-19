@@ -31,7 +31,10 @@ class LegalScreen extends StatelessWidget {
             child: GestureDetector(
               onTap: () => AppConfig.openRepository(),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Theme.of(
                     context,
@@ -118,7 +121,7 @@ class _BulletItem extends StatelessWidget {
             '-',
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(width: 8),

@@ -10,7 +10,7 @@ import 'upload_thumb_slot.dart';
 /// One persistent card per file for the entire duration of an upload.
 ///
 /// Cards never overlap, never collapse into each other, never cycle.  The
-/// active uploading file is distinguished by a breathing terracotta border.
+/// active uploading file is distinguished by a breathing primary border.
 /// Queued files are slightly muted but fully legible.
 class UploadCard extends StatefulWidget {
   const UploadCard({required this.item, super.key});
@@ -59,31 +59,38 @@ class _UploadCardState extends State<UploadCard>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dark = theme.brightness == Brightness.dark;
     final scheme = theme.colorScheme;
     final item = widget.item;
 
-    final isQueued = item.status == UploadStatus.selected ||
+    final isQueued =
+        item.status == UploadStatus.selected ||
         item.status == UploadStatus.queued;
     final isUploaded = item.status == UploadStatus.uploaded;
     final isFailed = item.status == UploadStatus.failed;
 
-    final baseBorder = dark ? const Color(0xff3d3d3a) : AppColors.border;
-    final accent = dark ? AppColors.coral : AppColors.terracotta;
+    final baseBorder = scheme.outline;
+    final accent = scheme.primary;
 
     return AnimatedBuilder(
       animation: _breath,
       builder: (context, _) {
         final tint = uploadIsActive(item.status)
-            ? Color.lerp(baseBorder, accent.withValues(alpha: .55), _breath.value)
+            ? Color.lerp(
+                baseBorder,
+                accent.withValues(alpha: .55),
+                _breath.value,
+              )
             : baseBorder;
         return Opacity(
           opacity: isQueued ? 0.62 : 1,
           child: Container(
             decoration: BoxDecoration(
-              color: dark ? AppColors.darkSurface : AppColors.ivory,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: tint ?? baseBorder, width: 1),
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(AppRadii.lg),
+              border: Border.all(
+                color: (tint ?? baseBorder).withValues(alpha: .86),
+                width: 1,
+              ),
             ),
             padding: const EdgeInsets.all(12),
             child: Column(
@@ -122,7 +129,7 @@ class _UploadCardState extends State<UploadCard>
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: scheme.onSurface.withValues(alpha: .55),
-                        letterSpacing: 0.1,
+                        letterSpacing: 0,
                       ),
                     ),
                   ],
@@ -136,11 +143,11 @@ class _UploadCardState extends State<UploadCard>
                           accent: accent,
                         )
                       : isFailed
-                          ? const SizedBox(key: ValueKey('failed'), height: 4)
-                          : UploadProgressBar(
-                              key: const ValueKey('bar'),
-                              value: item.progress,
-                            ),
+                      ? const SizedBox(key: ValueKey('failed'), height: 4)
+                      : UploadProgressBar(
+                          key: const ValueKey('bar'),
+                          value: item.progress,
+                        ),
                 ),
               ],
             ),
@@ -211,7 +218,7 @@ class _UploadedStrip extends StatelessWidget {
             fontSize: 12.5,
             fontWeight: FontWeight.w600,
             color: accent,
-            letterSpacing: 0.1,
+            letterSpacing: 0,
           ),
         ),
       ],

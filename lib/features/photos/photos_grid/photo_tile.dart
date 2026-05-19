@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
 import '../../../widgets/media_thumb.dart';
@@ -20,11 +21,10 @@ class PhotoTile extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
-  static const _terracotta = Color(0xFFC96442);
-  static const _ivory = Color(0xFFFAF9F5);
-
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final selectedWash = scheme.primary.withValues(alpha: .08);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -38,15 +38,13 @@ class PhotoTile extends StatelessWidget {
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOut,
           padding: selected ? const EdgeInsets.all(8) : EdgeInsets.zero,
-          color: selected
-              ? _terracotta.withValues(alpha: .12)
-              : Colors.transparent,
+          color: selected ? selectedWash : Colors.transparent,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(selected ? 6 : 0),
+            borderRadius: BorderRadius.circular(selected ? AppRadii.sm : 0),
             child: Stack(
               fit: StackFit.expand,
               children: [
-                _thumb(),
+                _thumb(selectedWash),
                 if (isVideoFile(file)) _videoBadge(),
                 if (selectMode) _selectionMark(context),
               ],
@@ -57,14 +55,11 @@ class PhotoTile extends StatelessWidget {
     );
   }
 
-  Widget _thumb() {
+  Widget _thumb(Color selectedWash) {
     final thumb = MediaThumb(file: file, fit: BoxFit.cover, radius: 0);
     if (!selected) return thumb;
     return ColorFiltered(
-      colorFilter: ColorFilter.mode(
-        _terracotta.withValues(alpha: .18),
-        BlendMode.srcATop,
-      ),
+      colorFilter: ColorFilter.mode(selectedWash, BlendMode.srcATop),
       child: thumb,
     );
   }
@@ -111,6 +106,7 @@ class PhotoTile extends StatelessWidget {
   }
 
   Widget _selectionMark(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Positioned(
       top: 6,
       left: 6,
@@ -120,14 +116,13 @@ class PhotoTile extends StatelessWidget {
         height: 22,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: selected ? _terracotta : Colors.black.withValues(alpha: .25),
-          border: Border.all(
-            color: _ivory,
-            width: 2,
-          ),
+          color: selected
+              ? scheme.primary
+              : Colors.black.withValues(alpha: .25),
+          border: Border.all(color: scheme.surface, width: 2),
         ),
         child: selected
-            ? const Icon(Icons.check, size: 14, color: _ivory)
+            ? Icon(Icons.check, size: 14, color: scheme.onPrimary)
             : null,
       ),
     );
