@@ -40,6 +40,7 @@ class DriveFolderSliver extends ConsumerWidget {
       itemBuilder: (_, i) {
         final folder = folders[i];
         return FileListTile(
+          key: ValueKey('folder-${folder.id}'),
           name: folder.name,
           subtitle:
               '${folder.recursiveFileCount} files \u00b7 ${formatFileSize(folder.recursiveSize)}',
@@ -95,13 +96,17 @@ class DriveFilesSliver extends ConsumerWidget {
             mainAxisSpacing: 10,
           ),
           itemCount: files.length,
-          itemBuilder: (_, i) => FileCardTile(
-            file: files[i],
-            selected: selectMode ? selectedFileIds.contains(files[i].id) : null,
-            onTap: () => onFileTap(files[i]),
-            onLongPress: () => onFileLongPress(files[i].id),
-            onMore: () => onFileMore(files[i]),
-          ),
+          itemBuilder: (_, i) {
+            final file = files[i];
+            return FileCardTile(
+              key: ValueKey(file.id),
+              file: file,
+              selected: selectMode ? selectedFileIds.contains(file.id) : null,
+              onTap: () => onFileTap(file),
+              onLongPress: () => onFileLongPress(file.id),
+              onMore: () => onFileMore(file),
+            );
+          },
         ),
       );
     }
@@ -112,6 +117,7 @@ class DriveFilesSliver extends ConsumerWidget {
         itemBuilder: (_, i) {
           final file = files[i];
           return FileListTile(
+            key: ValueKey(file.id),
             name: file.name,
             subtitle: file.isOptimistic
                 ? '${formatUploadStatus(file)} \u00b7 ${formatFileSize(file.size)}'
@@ -146,13 +152,17 @@ class DriveRecentsStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 156,
+      height: 220,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
         itemBuilder: (_, i) => SizedBox(
           width: 160,
-          child: FileCardTile(file: files[i], onTap: () => onFileTap(files[i])),
+          child: FileCardTile(
+            key: ValueKey(files[i].id),
+            file: files[i],
+            onTap: () => onFileTap(files[i]),
+          ),
         ),
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemCount: files.length,
