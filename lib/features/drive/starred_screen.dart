@@ -8,6 +8,7 @@ import '../../widgets/empty_state.dart';
 import '../../widgets/file_card_tile.dart';
 import '../../widgets/file_list_tile.dart';
 import 'components/drive_item_actions.dart';
+import 'components/drive_list_slivers.dart';
 import 'drive_controller.dart';
 import 'view_preferences_controller.dart';
 import '../search/search_controller.dart';
@@ -116,12 +117,7 @@ class StarredScreen extends ConsumerWidget {
                         return FileCardTile(
                           key: ValueKey(file.localId ?? file.id),
                           file: file,
-                          onTap: () {
-                            ref
-                                .read(driveControllerProvider)
-                                .markAccessed(file.id);
-                            context.push('/file/${file.id}');
-                          },
+                          onTap: () => openDriveFile(context, ref, file),
                           onMore: () =>
                               DriveItemActions.openFile(context, ref, file),
                         );
@@ -137,12 +133,7 @@ class StarredScreen extends ConsumerWidget {
                               '${formatLabel(file)} · ${formatFileSize(file.size)} · ${formatDate(file.modifiedAt)}',
                           file: file,
                           starred: true,
-                          onTap: () {
-                            ref
-                                .read(driveControllerProvider)
-                                .markAccessed(file.id);
-                            context.push('/file/${file.id}');
-                          },
+                          onTap: () => openDriveFile(context, ref, file),
                           onStar: () => ref
                               .read(driveControllerProvider)
                               .toggleStar(file.id),
