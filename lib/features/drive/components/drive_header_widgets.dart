@@ -7,50 +7,59 @@ import '../../../core/utils/file_type_detector.dart';
 /// 4dp linear progress indicator beneath, sized to share its row with a
 /// trailing action via [Expanded].
 class DriveStoragePill extends StatelessWidget {
-  const DriveStoragePill({required this.used, super.key});
+  const DriveStoragePill({required this.used, this.onTap, super.key});
   final int used;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
+    return Card(
+      margin: EdgeInsets.zero,
+      color: scheme.surfaceContainerLow,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
         borderRadius: AppRadii.mdR,
-        border: Border.all(color: scheme.outlineVariant),
+        side: BorderSide(color: scheme.outlineVariant),
       ),
-      padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                Icons.cloud_outlined,
-                size: 18,
-                color: scheme.onSurfaceVariant,
+              Row(
+                children: [
+                  Icon(
+                    Icons.cloud_outlined,
+                    size: 18,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    '${formatFileSize(used)} used',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: AppSpacing.xs),
-              Text(
-                '${formatFileSize(used)} used',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: scheme.onSurface,
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  value: used > 0 ? 1 : 0,
+                  minHeight: 4,
+                  backgroundColor: scheme.surfaceContainerHighest,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: used > 0 ? 1 : 0,
-              minHeight: 4,
-              backgroundColor: scheme.surfaceContainerHighest,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

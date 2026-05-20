@@ -13,11 +13,37 @@ import 'widgets/storage_donut_card.dart';
 import 'widgets/telegram_status_card.dart';
 import 'widgets/theme_picker_cards.dart';
 
-class ProfileScreen extends ConsumerWidget {
-  const ProfileScreen({super.key});
+class ProfileScreen extends ConsumerStatefulWidget {
+  const ProfileScreen({this.scrollToStorage = false, super.key});
+  final bool scrollToStorage;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  final GlobalKey _storageKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.scrollToStorage) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final context = _storageKey.currentContext;
+        if (context != null) {
+          Scrollable.ensureVisible(
+            context,
+            duration: AppDurations.long1,
+            curve: AppEasing.emphasized,
+            alignment: 0.12,
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
     final drive = ref.watch(driveControllerProvider);
     final theme = Theme.of(context);
@@ -68,7 +94,7 @@ class ProfileScreen extends ConsumerWidget {
                     telegramId: user?.telegramId,
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  const AccountSectionLabel('Storage'),
+                  AccountSectionLabel('Storage', key: _storageKey),
                   StorageDonutCard(used: used, categories: categories),
                   const SizedBox(height: AppSpacing.lg),
                   const AccountSectionLabel('Profile'),

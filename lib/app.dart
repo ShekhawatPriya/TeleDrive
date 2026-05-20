@@ -30,73 +30,84 @@ import 'widgets/ios_more_menu.dart';
 import 'widgets/main_tab_menu_sections.dart';
 import 'widgets/teledrive_app_bar.dart';
 
+final routerProvider = Provider<GoRouter>((ref) {
+  final auth = ref.read(authControllerProvider);
+  return GoRouter(
+    initialLocation: '/',
+    refreshListenable: auth,
+    redirect: (context, state) {
+      if (auth.loading) return state.matchedLocation == '/' ? null : '/';
+      final loggingIn = state.matchedLocation == '/login';
+      if (!auth.isAuthenticated) return loggingIn ? null : '/login';
+      if (loggingIn || state.matchedLocation == '/') return '/drive';
+      return null;
+    },
+    routes: [
+      GoRoute(path: '/', builder: (_, __) => const SplashScreen()),
+      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      ShellRoute(
+        builder: (context, state, child) => MainShell(child: child),
+        routes: [
+          GoRoute(path: '/drive', builder: (_, __) => const DriveScreen()),
+          GoRoute(path: '/photos', builder: (_, __) => const PhotosScreen()),
+          GoRoute(
+            path: '/starred',
+            builder: (_, __) => const StarredScreen(),
+          ),
+          GoRoute(path: '/shared', builder: (_, __) => const SharedScreen()),
+        ],
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (_, state) {
+          final scrollToStorage =
+              state.uri.queryParameters['scrollToStorage'] == 'true';
+          return ProfileScreen(scrollToStorage: scrollToStorage);
+        },
+      ),
+      GoRoute(
+        path: '/folder/:id',
+        builder: (_, state) =>
+            FolderScreen(folderId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/shared/:id',
+        builder: (_, state) =>
+            ShareDetailScreen(shareId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/file/:id',
+        builder: (_, state) =>
+            FileViewerScreen(fileId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/photos/view/:id',
+        builder: (_, state) => PhotoViewerScreen(
+          startId: state.pathParameters['id']!,
+          filter: PhotosFilterX.fromQuery(
+            state.uri.queryParameters['filter'],
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/privacy',
+        builder: (_, __) => const LegalScreen(kind: LegalKind.privacy),
+      ),
+      GoRoute(
+        path: '/terms',
+        builder: (_, __) => const LegalScreen(kind: LegalKind.terms),
+      ),
+    ],
+  );
+});
+
 class TeleDriveApp extends ConsumerWidget {
   const TeleDriveApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.watch(authControllerProvider);
     final theme = ref.watch(themeControllerProvider);
-    final router = GoRouter(
-      initialLocation: '/',
-      refreshListenable: auth,
-      redirect: (context, state) {
-        if (auth.loading) return state.matchedLocation == '/' ? null : '/';
-        final loggingIn = state.matchedLocation == '/login';
-        if (!auth.isAuthenticated) return loggingIn ? null : '/login';
-        if (loggingIn || state.matchedLocation == '/') return '/drive';
-        return null;
-      },
-      routes: [
-        GoRoute(path: '/', builder: (_, __) => const SplashScreen()),
-        GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-        ShellRoute(
-          builder: (context, state, child) => MainShell(child: child),
-          routes: [
-            GoRoute(path: '/drive', builder: (_, __) => const DriveScreen()),
-            GoRoute(path: '/photos', builder: (_, __) => const PhotosScreen()),
-            GoRoute(
-              path: '/starred',
-              builder: (_, __) => const StarredScreen(),
-            ),
-            GoRoute(path: '/shared', builder: (_, __) => const SharedScreen()),
-          ],
-        ),
-        GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
-        GoRoute(
-          path: '/folder/:id',
-          builder: (_, state) =>
-              FolderScreen(folderId: state.pathParameters['id']!),
-        ),
-        GoRoute(
-          path: '/shared/:id',
-          builder: (_, state) =>
-              ShareDetailScreen(shareId: state.pathParameters['id']!),
-        ),
-        GoRoute(
-          path: '/file/:id',
-          builder: (_, state) =>
-              FileViewerScreen(fileId: state.pathParameters['id']!),
-        ),
-        GoRoute(
-          path: '/photos/view/:id',
-          builder: (_, state) => PhotoViewerScreen(
-            startId: state.pathParameters['id']!,
-            filter: PhotosFilterX.fromQuery(
-              state.uri.queryParameters['filter'],
-            ),
-          ),
-        ),
-        GoRoute(
-          path: '/privacy',
-          builder: (_, __) => const LegalScreen(kind: LegalKind.privacy),
-        ),
-        GoRoute(
-          path: '/terms',
-          builder: (_, __) => const LegalScreen(kind: LegalKind.terms),
-        ),
-      ],
-    );
+    final router = ref.watch(routerProvider);
 
     return DynamicColorBuilder(
       builder: (lightDynamic, darkDynamic) {

@@ -129,7 +129,10 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                   AppSpacing.md,
                   AppSpacing.xs,
                 ),
-                child: DriveStoragePill(used: state.usedStorage),
+                child: DriveStoragePill(
+                  used: state.usedStorage,
+                  onTap: () => context.push('/profile?scrollToStorage=true'),
+                ),
               ),
             ),
             if (state.loading && files.isEmpty && folders.isEmpty)
