@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../core/theme/app_theme.dart';
+import '../core/utils/safe_navigation.dart';
 import '../features/auth/auth_controller.dart';
 import '../features/search/search_controller.dart';
 import 'ios_more_menu.dart';
@@ -103,7 +103,7 @@ List<Widget> _buildAppBarActions(
         0,
       ),
       child: GestureDetector(
-        onTap: () => context.push('/profile'),
+        onTap: () => context.safePush('/profile'),
         child: ProfileAvatar(user: auth.user, size: 36),
       ),
     ),

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/safe_navigation.dart';
 import '../../widgets/empty_state.dart';
 import '../drive/components/drive_item_actions.dart';
 import '../drive/components/selection_mode_mixin.dart';
@@ -128,7 +128,7 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
       toggleFileSelection(fileId);
       return;
     }
-    context.push('/photos/view/$fileId?filter=all');
+    context.safePush('/photos/view/$fileId?filter=all');
   }
 
   void _onTileLongPress(String fileId, GlobalKey key) {

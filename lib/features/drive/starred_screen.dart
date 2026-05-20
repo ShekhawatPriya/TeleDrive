@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/safe_navigation.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/file_card_tile.dart';
@@ -90,7 +90,7 @@ class StarredScreen extends ConsumerWidget {
                   isFolder: true,
                   starred: true,
                   shared: folder.shared,
-                  onTap: () => context.push('/folder/${folder.id}'),
+                  onTap: () => context.safePush('/folder/${folder.id}'),
                   onStar: () => ref
                       .read(driveControllerProvider)
                       .toggleStar(folder.id, folder: true),

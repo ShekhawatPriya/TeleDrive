@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/safe_navigation.dart';
 import '../../../widgets/github_icon.dart';
 
 class HeroSection extends StatelessWidget {
@@ -64,7 +64,7 @@ class HeroSection extends StatelessWidget {
               child: FilledButton(
                 onPressed: () {
                   HapticFeedback.mediumImpact();
-                  context.push('/login');
+                  context.safePush('/login');
                 },
                 child: const Text('Get Started'),
               ),

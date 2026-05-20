@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/safe_navigation.dart';
 import '../auth/auth_controller.dart';
 import '../drive/drive_controller.dart';
 import 'theme_controller.dart';
@@ -256,12 +257,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       AccountActionRow(
                         icon: Icons.privacy_tip_outlined,
                         label: 'Privacy Policy',
-                        onTap: () => context.push('/privacy'),
+                        onTap: () => context.safePush('/privacy'),
                       ),
                       AccountActionRow(
                         icon: Icons.description_outlined,
                         label: 'Terms of Service',
-                        onTap: () => context.push('/terms'),
+                        onTap: () => context.safePush('/terms'),
                       ),
                     ],
                   ),

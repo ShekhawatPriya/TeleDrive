@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/safe_navigation.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/ios_more_menu.dart';
@@ -146,7 +146,7 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
       toggleFolderSelection(folder.id);
       return;
     }
-    context.push('/folder/${folder.id}');
+    context.safePush('/folder/${folder.id}');
   }
 
 
@@ -172,7 +172,7 @@ class _Breadcrumbs extends StatelessWidget {
           final isLast = i == path.length - 1;
           return Center(
             child: TextButton(
-              onPressed: isLast ? null : () => context.push('/folder/${path[i].id}'),
+              onPressed: isLast ? null : () => context.safePush('/folder/${path[i].id}'),
               style: TextButton.styleFrom(
                 foregroundColor: isLast ? scheme.onSurface : scheme.primary,
               ),

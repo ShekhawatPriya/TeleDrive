@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
+import '../core/utils/safe_navigation.dart';
 import '../features/auth/auth_controller.dart';
 import 'profile_avatar.dart';
 
@@ -53,7 +53,7 @@ class TabHeader extends ConsumerWidget {
         ),
         if (trailing != null) ...[trailing!, const SizedBox(width: 8)],
         GestureDetector(
-          onTap: () => context.push('/profile'),
+          onTap: () => context.safePush('/profile'),
           child: ProfileAvatar(user: auth.user, size: 40),
         ),
       ],

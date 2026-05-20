@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/safe_navigation.dart';
 
 class FinalCtaAndFooter extends StatelessWidget {
   const FinalCtaAndFooter({super.key});
@@ -36,7 +36,7 @@ class FinalCtaAndFooter extends StatelessWidget {
         FilledButton(
           onPressed: () {
             HapticFeedback.mediumImpact();
-            context.push('/login');
+            context.safePush('/login');
           },
           style: FilledButton.styleFrom(
             minimumSize: const Size(200, 44),
@@ -60,7 +60,7 @@ class FinalCtaAndFooter extends StatelessWidget {
             TextButton(
               onPressed: () {
                 HapticFeedback.lightImpact();
-                context.push('/privacy');
+                context.safePush('/privacy');
               },
               style: TextButton.styleFrom(
                 minimumSize: Size.zero,
@@ -80,7 +80,7 @@ class FinalCtaAndFooter extends StatelessWidget {
             TextButton(
               onPressed: () {
                 HapticFeedback.lightImpact();
-                context.push('/terms');
+                context.safePush('/terms');
               },
               style: TextButton.styleFrom(
                 minimumSize: Size.zero,

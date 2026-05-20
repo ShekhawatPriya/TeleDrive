@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/safe_navigation.dart';
 import '../../../models/share_models.dart';
 
 class ShareListTile extends StatelessWidget {
@@ -29,7 +29,7 @@ class ShareListTile extends StatelessWidget {
       ),
       child: InkWell(
         borderRadius: AppRadii.mdR,
-        onTap: () => context.push('/shared/${share.id}'),
+        onTap: () => context.safePush('/shared/${share.id}'),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.sm),
           child: Row(
@@ -119,7 +119,7 @@ class ShareCardTile extends StatelessWidget {
         borderRadius: AppRadii.mdR,
         child: InkWell(
           borderRadius: AppRadii.mdR,
-          onTap: () => context.push('/shared/${share.id}'),
+          onTap: () => context.safePush('/shared/${share.id}'),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

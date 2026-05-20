@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/safe_navigation.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/skeletons.dart';
@@ -137,7 +137,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                 ),
                 child: DriveStoragePill(
                   used: state.usedStorage,
-                  onTap: () => context.push('/profile?scrollToStorage=true'),
+                  onTap: () => context.safePush('/profile?scrollToStorage=true'),
                 ),
               ),
             ),
@@ -204,7 +204,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
       toggleFolderSelection(folder.id);
       return;
     }
-    context.push('/folder/${folder.id}');
+    context.safePush('/folder/${folder.id}');
   }
 
 

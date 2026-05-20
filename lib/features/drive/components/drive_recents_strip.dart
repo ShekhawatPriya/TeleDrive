@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/safe_navigation.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
 import '../../../widgets/google_drive_icon.dart';
@@ -225,5 +225,5 @@ void openDriveFile(BuildContext context, WidgetRef ref, DriveFile file) {
     return;
   }
   ref.read(driveControllerProvider).markAccessed(file.id);
-  context.push('/file/${file.id}');
+  context.safePush('/file/${file.id}');
 }
