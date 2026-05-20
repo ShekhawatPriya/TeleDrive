@@ -11,6 +11,7 @@ import '../../widgets/file_list_tile.dart';
 import '../drive/components/drive_item_actions.dart';
 import '../drive/components/selection_mode_mixin.dart';
 import '../drive/drive_controller.dart';
+import '../drive/drive_tab_commands.dart';
 import '../drive/view_preferences_controller.dart';
 import '../search/search_controller.dart';
 import '../share/my_shares_screen.dart';
@@ -32,6 +33,15 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
     with SelectionModeMixin<PhotosScreen> {
   @override
   Widget build(BuildContext context) {
+    final selectState = ref.read(selectionModeStateProvider);
+    if (selectState.photosSelectMode != selectMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(selectionModeStateProvider).setPhotosSelectMode(selectMode);
+        }
+      });
+    }
+
     final drive = ref.watch(driveControllerProvider);
     final density = ref.watch(photoGridDensityProvider);
     final query = ref.watch(searchQueryProvider(SearchScope.photos)).query;
@@ -169,6 +179,14 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
     final ids = Set<String>.from(selectedFileIds);
     final ok = await PhotosActions.delete(context, ref, fileIds: ids);
     if (mounted && ok) exitSelect();
+  }
+
+  @override
+  void dispose() {
+    try {
+      ref.read(selectionModeStateProvider).setPhotosSelectMode(false);
+    } catch (_) {}
+    super.dispose();
   }
 }
 

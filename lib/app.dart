@@ -232,12 +232,16 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 
   Widget _buildTabs(int routeIndex) {
+    final selectState = ref.watch(selectionModeStateProvider);
+    final isSelectMode = selectState.isSelectModeForTab(routeIndex);
+
     return Column(
       children: [
-        TeleDriveTopBar(
-          scope: _scopeFor(routeIndex),
-          menuSections: (ctx) => _menuSectionsFor(ctx, routeIndex),
-        ),
+        if (!isSelectMode)
+          TeleDriveTopBar(
+            scope: _scopeFor(routeIndex),
+            menuSections: (ctx) => _menuSectionsFor(ctx, routeIndex),
+          ),
         Expanded(
           child: Stack(
             children: [

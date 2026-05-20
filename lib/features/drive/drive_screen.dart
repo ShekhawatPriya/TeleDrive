@@ -36,6 +36,16 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
         if (mounted && !selectMode) setState(() => selectMode = true);
       });
     }
+
+    final selectState = ref.read(selectionModeStateProvider);
+    if (selectState.driveSelectMode != selectMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(selectionModeStateProvider).setDriveSelectMode(selectMode);
+        }
+      });
+    }
+
     final drive = ref.watch(driveControllerProvider);
     final prefs = ref.watch(viewPreferencesProvider);
     final state = drive.state;
@@ -224,6 +234,14 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
       folderIds: selectedFolderIds,
     );
     if (ok && mounted) exitSelect();
+  }
+
+  @override
+  void dispose() {
+    try {
+      ref.read(selectionModeStateProvider).setDriveSelectMode(false);
+    } catch (_) {}
+    super.dispose();
   }
 }
 
