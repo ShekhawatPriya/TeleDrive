@@ -88,22 +88,6 @@ class _UploadingShimmerState extends State<UploadingShimmer> with SingleTickerPr
               );
             },
           ),
-          AnimatedBuilder(
-            animation: _pulseAnimation,
-            builder: (context, child) {
-              return IgnorePointer(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: widget.borderRadius,
-                    border: Border.all(
-                      color: scheme.primary.withValues(alpha: _pulseAnimation.value * 0.7),
-                      width: 2.0,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
         ],
       ),
     );
