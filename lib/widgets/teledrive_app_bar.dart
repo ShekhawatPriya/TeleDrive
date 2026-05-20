@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -225,7 +223,7 @@ class _SearchPillState extends ConsumerState<_SearchPill> {
 }
 
 class _RotatingHint extends ConsumerWidget {
-  const _RotatingHint({required this.scope, super.key});
+  const _RotatingHint({required this.scope});
 
   final SearchScope scope;
 
@@ -234,7 +232,6 @@ class _RotatingHint extends ConsumerWidget {
     final phrase = ref.watch(rotatingPlaceholderProvider).currentPhrase;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final motion = theme.extension<AppMotion>();
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 350),
