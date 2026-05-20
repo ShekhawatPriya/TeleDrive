@@ -121,71 +121,97 @@ class FileCardTile extends StatelessWidget {
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 4, 0),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final height = constraints.maxHeight;
+                    // Only show the subtitle if we have enough vertical space (height >= 38)
+                    final showSubtitle = height >= 38;
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text(
-                          file.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w500,
-                            color: isFailed ? scheme.error : scheme.onSurface,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  file.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                    color: isFailed ? scheme.error : scheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                              if (showSubtitle) ...[
+                                const SizedBox(height: 2),
+                                Flexible(
+                                  child: Text(
+                                    file.isOptimistic
+                                        ? '${formatUploadStatus(file)} · ${formatFileSize(file.size)}'
+                                        : '${formatLabel(file)} · ${formatFileSize(file.size)}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: isFailed ? scheme.error : scheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          file.isOptimistic
-                              ? '${formatUploadStatus(file)} · ${formatFileSize(file.size)}'
-                              : '${formatLabel(file)} · ${formatFileSize(file.size)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: isFailed ? scheme.error : scheme.onSurfaceVariant,
+                        if (!inSelectMode)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: FittedBox(
+                              fit: BoxFit.contain,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (isFailed) ...[
+                                    _CompactIconButton(
+                                      icon: Icons.refresh_rounded,
+                                      color: scheme.error,
+                                      tooltip: 'Retry',
+                                      onPressed: onRetry,
+                                    ),
+                                    _CompactIconButton(
+                                      icon: Icons.close_rounded,
+                                      color: scheme.error,
+                                      tooltip: 'Remove',
+                                      onPressed: onRemove,
+                                    ),
+                                  ] else if (isUploading)
+                                    const Padding(
+                                      padding: EdgeInsets.all(8),
+                                      child: SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      ),
+                                    )
+                                  else
+                                    _CompactIconButton(
+                                      icon: Icons.more_vert,
+                                      color: scheme.onSurfaceVariant,
+                                      tooltip: 'More',
+                                      onPressed: onMore,
+                                    ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
                       ],
-                    ),
-                  ),
-                  if (!inSelectMode)
-                    if (isFailed)
-                      _CompactIconButton(
-                        icon: Icons.refresh_rounded,
-                        color: scheme.error,
-                        tooltip: 'Retry',
-                        onPressed: onRetry,
-                      ),
-                  if (!inSelectMode)
-                    if (isFailed)
-                      _CompactIconButton(
-                        icon: Icons.close_rounded,
-                        color: scheme.error,
-                        tooltip: 'Remove',
-                        onPressed: onRemove,
-                      )
-                    else if (isUploading)
-                      const Padding(
-                        padding: EdgeInsets.all(8),
-                        child: SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      )
-                    else
-                      _CompactIconButton(
-                        icon: Icons.more_vert,
-                        color: scheme.onSurfaceVariant,
-                        tooltip: 'More',
-                        onPressed: onMore,
-                      ),
-                ],
+                    );
+                  },
+                ),
               ),
             ),
           ],

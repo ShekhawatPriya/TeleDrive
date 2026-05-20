@@ -160,7 +160,7 @@ class _MySharesScreenState extends ConsumerState<MySharesScreen>
               sliver: SliverGrid.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  childAspectRatio: .82,
+                  childAspectRatio: .72,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
                 ),
