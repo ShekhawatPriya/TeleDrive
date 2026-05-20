@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import 'auth_controller.dart';
+import 'components/login_error_banner.dart';
+import 'components/login_step_indicator.dart';
 import 'country_data.dart';
 import 'country_picker.dart';
 
@@ -250,10 +252,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _StepIndicator(currentStep: _step),
+            LoginStepIndicator(
+              currentStep: _step.index,
+              totalSteps: _Step.values.length,
+            ),
             const SizedBox(height: AppSpacing.lg),
             if (_error != null) ...[
-              _ErrorBanner(message: _error!),
+              LoginErrorBanner(message: _error!),
               const SizedBox(height: AppSpacing.md),
             ],
             if (_step == _Step.phone) _buildPhoneStep(),
@@ -409,68 +414,4 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 }
 
-class _StepIndicator extends StatelessWidget {
-  const _StepIndicator({required this.currentStep});
-  final _Step currentStep;
 
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final current = _Step.values.indexOf(currentStep);
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(3, (i) {
-        final isActive = i <= current;
-        final isCurrent = i == current;
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 3),
-          child: AnimatedContainer(
-            duration: AppDurations.medium2,
-            curve: AppEasing.emphasized,
-            width: isCurrent ? 32 : 8,
-            height: 6,
-            decoration: BoxDecoration(
-              color:
-                  isActive ? scheme.primary : scheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ),
-        );
-      }),
-    );
-  }
-}
-
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message});
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: scheme.errorContainer,
-        borderRadius: AppRadii.smR,
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline_rounded,
-              color: scheme.onErrorContainer, size: 20),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              message,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: scheme.onErrorContainer,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
