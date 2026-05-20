@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Mixin for screens that support a multi-select mode.  Tracks
+import 'drive_item_actions.dart';
+
+/// Mixin for screens that support a multi-select mode. Tracks
 /// [selectMode] plus the file and folder id sets and exposes helpers for
-/// entering, exiting, and toggling selections.  Hosting widget must call
-/// [setState] indirectly via [updateSelection] so the screen rebuilds.
-mixin SelectionModeMixin<T extends StatefulWidget> on State<T> {
+/// entering, exiting, and toggling selections.
+mixin SelectionModeMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   bool selectMode = false;
   final Set<String> selectedFileIds = {};
   final Set<String> selectedFolderIds = {};
@@ -37,5 +39,44 @@ mixin SelectionModeMixin<T extends StatefulWidget> on State<T> {
     setState(() {
       if (!selectedFolderIds.add(id)) selectedFolderIds.remove(id);
     });
+  }
+
+  Future<void> bulkShare(BuildContext context) async {
+    await DriveBulkActions.share(
+      context,
+      ref,
+      fileIds: selectedFileIds,
+      folderIds: selectedFolderIds,
+    );
+  }
+
+  Future<void> bulkStar() async {
+    await DriveBulkActions.star(
+      ref,
+      fileIds: selectedFileIds,
+      folderIds: selectedFolderIds,
+    );
+    exitSelect();
+  }
+
+  Future<void> bulkMove(BuildContext context, {String? currentParentId}) async {
+    await DriveBulkActions.move(
+      context,
+      ref,
+      fileIds: selectedFileIds,
+      folderIds: selectedFolderIds,
+      currentParentId: currentParentId,
+    );
+    if (mounted) exitSelect();
+  }
+
+  Future<void> bulkDelete(BuildContext context) async {
+    final ok = await DriveBulkActions.delete(
+      context,
+      ref,
+      fileIds: selectedFileIds,
+      folderIds: selectedFolderIds,
+    );
+    if (ok && mounted) exitSelect();
   }
 }

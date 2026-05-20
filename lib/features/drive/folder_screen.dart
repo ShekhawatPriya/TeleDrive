@@ -55,10 +55,10 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
               child: DriveSelectionBar(
                 selectedCount: selectedCount,
                 onCancel: exitSelect,
-                onShare: _bulkShare,
-                onStar: _bulkStar,
-                onMove: _bulkMove,
-                onDelete: _bulkDelete,
+                onShare: () => bulkShare(context),
+                onStar: bulkStar,
+                onMove: () => bulkMove(context, currentParentId: widget.folderId),
+                onDelete: () => bulkDelete(context),
               ),
             )
           : AppBar(
@@ -149,37 +149,7 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
     context.push('/folder/${folder.id}');
   }
 
-  Future<void> _bulkShare() async {
-    await DriveBulkActions.share(
-      context, ref,
-      fileIds: selectedFileIds, folderIds: selectedFolderIds,
-    );
-  }
 
-  Future<void> _bulkStar() async {
-    await DriveBulkActions.star(
-      ref,
-      fileIds: selectedFileIds, folderIds: selectedFolderIds,
-    );
-    exitSelect();
-  }
-
-  Future<void> _bulkMove() async {
-    await DriveBulkActions.move(
-      context, ref,
-      fileIds: selectedFileIds, folderIds: selectedFolderIds,
-      currentParentId: widget.folderId,
-    );
-    if (mounted) exitSelect();
-  }
-
-  Future<void> _bulkDelete() async {
-    final ok = await DriveBulkActions.delete(
-      context, ref,
-      fileIds: selectedFileIds, folderIds: selectedFolderIds,
-    );
-    if (ok && mounted) exitSelect();
-  }
 }
 
 class _Breadcrumbs extends StatelessWidget {

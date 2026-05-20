@@ -12,6 +12,7 @@ import 'features/drive/components/drive_menu_builder.dart';
 import 'features/drive/drive_screen.dart';
 import 'features/drive/drive_tab_commands.dart';
 import 'features/drive/folder_screen.dart';
+import 'features/drive/starred_screen.dart';
 import 'features/file_viewer/file_viewer_screen.dart';
 import 'features/photos/components/photos_menu_builder.dart';
 import 'features/photos/photos_filter.dart';
@@ -22,6 +23,7 @@ import 'features/profile/legal_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/theme_controller.dart';
 import 'features/search/search_controller.dart';
+import 'features/share/my_shares_screen.dart';
 import 'features/share/share_controller.dart';
 import 'features/share/share_detail_screen.dart';
 
@@ -65,7 +67,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/starred',
             builder: (_, __) => const StarredScreen(),
           ),
-          GoRoute(path: '/shared', builder: (_, __) => const SharedScreen()),
+          GoRoute(path: '/shared', builder: (_, __) => const MySharesScreen()),
         ],
       ),
       GoRoute(
@@ -159,7 +161,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     _KeepAliveTab(child: DriveScreen()),
     _KeepAliveTab(child: PhotosScreen()),
     _KeepAliveTab(child: StarredScreen()),
-    _KeepAliveTab(child: SharedScreen()),
+    _KeepAliveTab(child: MySharesScreen()),
   ];
 
   int _selectedIndex = 0;
