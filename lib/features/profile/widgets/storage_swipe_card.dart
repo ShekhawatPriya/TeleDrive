@@ -69,8 +69,7 @@ class StorageSwipeCard extends ConsumerStatefulWidget {
 class _StorageSwipeCardState extends ConsumerState<StorageSwipeCard> {
   late final PageController _pageController;
   final Map<int, double> _heights = {};
-  double _currentPage = 0.0;
-  double? _currentHeight;
+  int _activeIndex = 0;
 
   @override
   void initState() {
@@ -90,41 +89,25 @@ class _StorageSwipeCardState extends ConsumerState<StorageSwipeCard> {
     if (!mounted) return;
     if (_pageController.hasClients) {
       final page = _pageController.page ?? 0.0;
-      setState(() {
-        _currentPage = page;
-        _updateHeight(page);
-      });
-    }
-  }
-
-  void _updateHeight(double page) {
-    final index = page.floor();
-    final nextIndex = page.ceil();
-    final h1 = _heights[index];
-    final h2 = _heights[nextIndex];
-
-    if (h1 != null && h2 != null) {
-      final fraction = page - index;
-      _currentHeight = h1 + (h2 - h1) * fraction;
-    } else if (h1 != null) {
-      _currentHeight = h1;
-    } else if (h2 != null) {
-      _currentHeight = h2;
+      final newActiveIndex = page.round();
+      if (newActiveIndex != _activeIndex) {
+        setState(() {
+          _activeIndex = newActiveIndex;
+        });
+      }
     }
   }
 
   void _onSizeChanged(int index, Size size) {
     if (!mounted) return;
+    final oldHeight = _heights[index];
+    if (oldHeight == size.height) return; // Skip redundant updates if height is unchanged
+    
     _heights[index] = size.height;
     
-    if (_pageController.hasClients) {
-      setState(() {
-        _updateHeight(_pageController.page ?? 0.0);
-      });
-    } else if (index == 0) {
-      setState(() {
-        _currentHeight = size.height;
-      });
+    // Trigger height adjustment rebuild if this page size is finalized
+    if (index == _activeIndex || oldHeight == null) {
+      setState(() {});
     }
   }
 
@@ -140,7 +123,9 @@ class _StorageSwipeCardState extends ConsumerState<StorageSwipeCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final activeIndex = _currentPage.round();
+
+    // Use sensible defaults on first frame if sizes are not yet measured
+    final targetHeight = _heights[_activeIndex] ?? (_activeIndex == 0 ? 340.0 : 500.0);
 
     return Card(
       elevation: 0,
@@ -154,7 +139,7 @@ class _StorageSwipeCardState extends ConsumerState<StorageSwipeCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header segmented tabs capsule
+          // Header segmented tabs capsule driven directly by PageController
           Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.md,
@@ -163,18 +148,18 @@ class _StorageSwipeCardState extends ConsumerState<StorageSwipeCard> {
               0,
             ),
             child: SlidingSegmentedTab(
-              selectedIndex: activeIndex,
+              controller: _pageController,
               onTabSelected: _navigateToPage,
             ),
           ),
           
           const SizedBox(height: AppSpacing.sm),
 
-          // Scrollable content area
+          // Scrollable content area with smooth threshold-based height transitions
           AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
+            duration: const Duration(milliseconds: 300),
             curve: Curves.fastOutSlowIn,
-            height: _currentHeight ?? 340.0,
+            height: targetHeight,
             child: PageView(
               controller: _pageController,
               children: [
@@ -214,11 +199,11 @@ class _StorageSwipeCardState extends ConsumerState<StorageSwipeCard> {
 }
 
 class SlidingSegmentedTab extends StatelessWidget {
-  final int selectedIndex;
+  final PageController controller;
   final ValueChanged<int> onTabSelected;
 
   const SlidingSegmentedTab({
-    required this.selectedIndex,
+    required this.controller,
     required this.onTabSelected,
     super.key,
   });
@@ -243,71 +228,86 @@ class SlidingSegmentedTab extends StatelessWidget {
           final width = constraints.maxWidth;
           final tabWidth = (width - 8) / 2;
 
-          return Stack(
-            children: [
-              // Sliding pill background
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.fastOutSlowIn,
-                left: selectedIndex == 0 ? 0 : tabWidth,
-                width: tabWidth,
-                height: 40,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: scheme.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+          return AnimatedBuilder(
+            animation: controller,
+            builder: (context, child) {
+              double page = 0.0;
+              if (controller.hasClients) {
+                try {
+                  page = controller.page ?? 0.0;
+                } catch (_) {
+                  page = 0.0;
+                }
+              }
+              final clampedPage = page.clamp(0.0, 1.0);
+
+              return Stack(
+                children: [
+                  // Sliding pill background
+                  Positioned(
+                    left: clampedPage * tabWidth,
+                    width: tabWidth,
+                    height: 40,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: scheme.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Interactive tabs with dynamic cross-fading text colors
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => onTabSelected(0),
+                          behavior: HitTestBehavior.opaque,
+                          child: Center(
+                            child: Text(
+                              'Cloud Storage',
+                              style: theme.textTheme.labelLarge!.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Color.lerp(
+                                  scheme.onSurfaceVariant,
+                                  scheme.primary,
+                                  1.0 - clampedPage,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => onTabSelected(1),
+                          behavior: HitTestBehavior.opaque,
+                          child: Center(
+                            child: Text(
+                              'Device Cache',
+                              style: theme.textTheme.labelLarge!.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Color.lerp(
+                                  scheme.onSurfaceVariant,
+                                  scheme.primary,
+                                  clampedPage,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ),
-              // Interactive tabs
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => onTabSelected(0),
-                      behavior: HitTestBehavior.opaque,
-                      child: Center(
-                        child: AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 200),
-                          style: theme.textTheme.labelLarge!.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: selectedIndex == 0
-                                ? scheme.primary
-                                : scheme.onSurfaceVariant,
-                          ),
-                          child: const Text('Cloud Storage'),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => onTabSelected(1),
-                      behavior: HitTestBehavior.opaque,
-                      child: Center(
-                        child: AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 200),
-                          style: theme.textTheme.labelLarge!.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: selectedIndex == 1
-                                ? scheme.primary
-                                : scheme.onSurfaceVariant,
-                          ),
-                          child: const Text('Device Cache'),
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
-              ),
-            ],
+              );
+            },
           );
         },
       ),
