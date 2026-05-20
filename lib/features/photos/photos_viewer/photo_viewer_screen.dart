@@ -157,6 +157,8 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      elevation: 0,
+      showDragHandle: false,
       builder: (_) => DraggableScrollableSheet(
         initialChildSize: 0.55,
         minChildSize: 0.3,

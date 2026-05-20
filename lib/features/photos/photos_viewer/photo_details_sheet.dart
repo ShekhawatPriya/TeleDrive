@@ -29,93 +29,112 @@ class PhotoDetailsSheet extends StatelessWidget {
         color: scheme.surfaceContainerLow,
         borderRadius: AppRadii.sheetTop,
       ),
-      child: ListView(
-        controller: scrollController,
-        padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, AppSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.md),
-            child: Text(
-              file.name,
-              style: theme.textTheme.titleLarge,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+          Center(
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 32,
+              height: 4,
+              decoration: BoxDecoration(
+                color: scheme.onSurfaceVariant.withValues(alpha: .4),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
-          if (modified != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: Text(
-                DateFormat('EEE, MMM d, y · h:mm a').format(modified),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
+          Expanded(
+            child: ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, AppSpacing.xl),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  child: Text(
+                    file.name,
+                    style: theme.textTheme.titleLarge,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
+                if (modified != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                    child: Text(
+                      DateFormat('EEE, MMM d, y · h:mm a').format(modified),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                _SectionTitle('Details'),
+                if (file.widthPx != null && file.heightPx != null)
+                  _DetailRow(
+                    icon: Icons.photo_size_select_actual_outlined,
+                    label: 'Dimensions',
+                    value: _dimensions(file),
+                  ),
+                _DetailRow(
+                  icon: Icons.sd_storage_outlined,
+                  label: 'Size',
+                  value: formatFileSize(file.size),
+                ),
+                _DetailRow(
+                  icon: Icons.code,
+                  label: 'Type',
+                  value: file.mimeType ?? formatLabel(file),
+                ),
+                if (file.duration != null)
+                  _DetailRow(
+                    icon: Icons.timer_outlined,
+                    label: 'Duration',
+                    value: formatDuration(file.duration!),
+                  ),
+                const SizedBox(height: AppSpacing.md),
+                _SectionTitle('Location'),
+                _DetailRow(
+                  icon: Icons.folder_outlined,
+                  label: 'Folder',
+                  value: folderName ?? 'My Drive',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _SectionTitle('Timeline'),
+                if (created != null)
+                  _DetailRow(
+                    icon: Icons.add_circle_outline,
+                    label: 'Created',
+                    value: DateFormat('MMM d, y · h:mm a').format(created),
+                  ),
+                if (modified != null)
+                  _DetailRow(
+                    icon: Icons.history,
+                    label: 'Modified',
+                    value: DateFormat('MMM d, y · h:mm a').format(modified),
+                  ),
+                if ((file.uploadStatus ?? 'available') != 'available' ||
+                    (file.previewStatus ?? '').isNotEmpty &&
+                        file.previewStatus != 'available') ...[
+                  const SizedBox(height: AppSpacing.md),
+                  _SectionTitle('Status'),
+                  if ((file.uploadStatus ?? 'available') != 'available')
+                    _DetailRow(
+                      icon: Icons.cloud_upload_outlined,
+                      label: 'Upload',
+                      value: formatUploadStatus(file),
+                    ),
+                  if ((file.previewStatus ?? '').isNotEmpty &&
+                      file.previewStatus != 'available')
+                    _DetailRow(
+                      icon: Icons.preview_outlined,
+                      label: 'Preview',
+                      value: file.previewStatus!,
+                    ),
+                ],
+              ],
             ),
-          _SectionTitle('Details'),
-          if (file.widthPx != null && file.heightPx != null)
-            _DetailRow(
-              icon: Icons.photo_size_select_actual_outlined,
-              label: 'Dimensions',
-              value: _dimensions(file),
-            ),
-          _DetailRow(
-            icon: Icons.sd_storage_outlined,
-            label: 'Size',
-            value: formatFileSize(file.size),
           ),
-          _DetailRow(
-            icon: Icons.code,
-            label: 'Type',
-            value: file.mimeType ?? formatLabel(file),
-          ),
-          if (file.duration != null)
-            _DetailRow(
-              icon: Icons.timer_outlined,
-              label: 'Duration',
-              value: formatDuration(file.duration!),
-            ),
-          const SizedBox(height: AppSpacing.md),
-          _SectionTitle('Location'),
-          _DetailRow(
-            icon: Icons.folder_outlined,
-            label: 'Folder',
-            value: folderName ?? 'My Drive',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _SectionTitle('Timeline'),
-          if (created != null)
-            _DetailRow(
-              icon: Icons.add_circle_outline,
-              label: 'Created',
-              value: DateFormat('MMM d, y · h:mm a').format(created),
-            ),
-          if (modified != null)
-            _DetailRow(
-              icon: Icons.history,
-              label: 'Modified',
-              value: DateFormat('MMM d, y · h:mm a').format(modified),
-            ),
-          if ((file.uploadStatus ?? 'available') != 'available' ||
-              (file.previewStatus ?? '').isNotEmpty &&
-                  file.previewStatus != 'available') ...[
-            const SizedBox(height: AppSpacing.md),
-            _SectionTitle('Status'),
-            if ((file.uploadStatus ?? 'available') != 'available')
-              _DetailRow(
-                icon: Icons.cloud_upload_outlined,
-                label: 'Upload',
-                value: formatUploadStatus(file),
-              ),
-            if ((file.previewStatus ?? '').isNotEmpty &&
-                file.previewStatus != 'available')
-              _DetailRow(
-                icon: Icons.preview_outlined,
-                label: 'Preview',
-                value: file.previewStatus!,
-              ),
-          ],
         ],
       ),
     );
