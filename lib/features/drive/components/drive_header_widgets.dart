@@ -14,45 +14,43 @@ class DriveStoragePill extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    return Expanded(
-      child: Container(
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerLow,
-          borderRadius: AppRadii.mdR,
-          border: Border.all(color: scheme.outlineVariant),
-        ),
-        padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.cloud_outlined,
-                  size: 18,
-                  color: scheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                Text(
-                  '${formatFileSize(used)} used',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: scheme.onSurface,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: LinearProgressIndicator(
-                value: used > 0 ? 1 : 0,
-                minHeight: 4,
-                backgroundColor: scheme.surfaceContainerHighest,
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: AppRadii.mdR,
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.cloud_outlined,
+                size: 18,
+                color: scheme.onSurfaceVariant,
               ),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                '${formatFileSize(used)} used',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: scheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: used > 0 ? 1 : 0,
+              minHeight: 4,
+              backgroundColor: scheme.surfaceContainerHighest,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
