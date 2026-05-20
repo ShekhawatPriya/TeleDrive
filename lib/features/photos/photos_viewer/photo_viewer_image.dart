@@ -23,8 +23,6 @@ class PhotoViewerImage extends ConsumerStatefulWidget {
   ConsumerState<PhotoViewerImage> createState() => _PhotoViewerImageState();
 }
 
-class _ProfileViewerImageState extends _PhotoViewerImageState {} // Kept for class mapping structure if needed
-
 class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
   ImageStream? _imageStream;
   ImageStreamListener? _imageListener;
