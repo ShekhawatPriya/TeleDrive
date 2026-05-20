@@ -59,6 +59,7 @@ dependencies:
   url_launcher: ^6.3.2
   uuid: ^4.5.2
   video_player: ^2.10.1
+  lottie: ^3.3.3
 
 dev_dependencies:
   flutter_test:

@@ -22,10 +22,6 @@ class CommunityPromiseList extends StatelessWidget {
       Icons.verified_user_outlined,
       'Your Telegram session is used only for the requested community join action and your existing drive operations.',
     ),
-    (
-      Icons.info_outline_rounded,
-      'If Telegram refuses the join, login still completes normally.',
-    ),
   ];
 
   @override
@@ -41,30 +37,52 @@ class CommunityPromiseList extends StatelessWidget {
             const SizedBox(width: AppSpacing.sm),
             Text(
               'Our Transparency Promise',
-              style: theme.textTheme.titleMedium,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: scheme.onSurface,
+              ),
             ),
           ],
         ),
         const SizedBox(height: AppSpacing.md),
-        for (final item in _items) ...[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(item.$1, color: scheme.onSurfaceVariant, size: 20),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Text(
-                  item.$2,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    height: 1.35,
-                  ),
-                ),
-              ),
-            ],
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest.withValues(alpha: .24),
+            borderRadius: AppRadii.mdR,
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: .3)),
           ),
-          const SizedBox(height: AppSpacing.md),
-        ],
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              children: [
+                for (var i = 0; i < _items.length; i++) ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        _items[i].$1,
+                        color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
+                        size: 18,
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Text(
+                          _items[i].$2,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (i < _items.length - 1)
+                    const SizedBox(height: AppSpacing.md),
+                ],
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

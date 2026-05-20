@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lottie/lottie.dart';
 
 import '../../core/theme/app_theme.dart';
 import 'auth_controller.dart';
@@ -45,7 +46,16 @@ class _CommunityOnboardingScreenState
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const _ConnectedHeader(),
-                  const SizedBox(height: AppSpacing.lg),
+                  const SizedBox(height: AppSpacing.xxs),
+                  Center(
+                    child: Lottie.asset(
+                      'assets/animations/green_tick.json',
+                      width: 60,
+                      height: 60,
+                      repeat: true,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     'Account Connected!',
                     style: theme.textTheme.titleMedium?.copyWith(
@@ -107,51 +117,48 @@ class _ConnectedHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _IconBubble(
-          asset: 'assets/icon/telegram.png',
-          background: const Color(0xFF229ED9),
+        Image.asset(
+          'assets/icon/telegram.png',
+          width: 74,
+          height: 74,
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: Icon(
-            Icons.check_circle_outline_rounded,
-            color: AppColors.success,
-            size: 30,
+          child: Text(
+            '· · · ·',
+            style: TextStyle(
+              fontSize: 24,
+              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2.0,
+            ),
           ),
         ),
-        _IconBubble(
-          asset: 'assets/icon/devsdocode.png',
-          background: Theme.of(context).colorScheme.primaryContainer,
+        Container(
+          width: 74,
+          height: 74,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Theme.of(context)
+                    .colorScheme
+                    .primaryContainer
+                    .withValues(alpha: .28),
+                blurRadius: 22,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: ClipOval(
+            child: Image.asset(
+              'assets/icon/devsdocode.png',
+              fit: BoxFit.cover,
+            ),
+          ),
         ),
       ],
-    );
-  }
-}
-
-class _IconBubble extends StatelessWidget {
-  const _IconBubble({required this.asset, required this.background});
-
-  final String asset;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 74,
-      height: 74,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: background,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: background.withValues(alpha: .28),
-            blurRadius: 22,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: Image.asset(asset, fit: BoxFit.contain),
     );
   }
 }
