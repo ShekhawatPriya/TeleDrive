@@ -5,16 +5,23 @@ import '../../core/utils/jwt.dart';
 import '../../models/auth_user.dart';
 import '../../models/drive_models.dart';
 import '../drive/drive_repository.dart';
+import 'models/community_onboarding.dart';
 
 class AuthBootstrapResult {
   const AuthBootstrapResult({
     required this.user,
     required this.telegramConnected,
+    this.communityJoinStatus,
+    this.communityJoinError,
+    this.communityTargets = const [],
     this.drive,
   });
 
   final AuthUser user;
   final bool? telegramConnected;
+  final String? communityJoinStatus;
+  final String? communityJoinError;
+  final List<CommunityTarget> communityTargets;
   final DriveSnapshot? drive;
 }
 
@@ -87,20 +94,25 @@ class AuthRepository {
     );
     final data = Map<String, dynamic>.from(res.data as Map);
     final user = _withLoadablePhotoUrl(
-      AuthUser.fromMeJson(Map<String, dynamic>.from(data['currentUser'] as Map)),
+      AuthUser.fromMeJson(
+        Map<String, dynamic>.from(data['currentUser'] as Map),
+      ),
     );
     await storage.saveUser(user);
     final telegram = data['telegram'] is Map
         ? Map<String, dynamic>.from(data['telegram'] as Map)
         : <String, dynamic>{};
     final drive = data['drive'] is Map
-        ? DriveRepository(api).parseDriveState(
-            Map<String, dynamic>.from(data['drive'] as Map),
-          )
+        ? DriveRepository(
+            api,
+          ).parseDriveState(Map<String, dynamic>.from(data['drive'] as Map))
         : null;
     return AuthBootstrapResult(
       user: user,
       telegramConnected: telegram['connected'] as bool?,
+      communityJoinStatus: telegram['communityJoinStatus'] as String?,
+      communityJoinError: telegram['communityJoinError'] as String?,
+      communityTargets: _communityTargets(telegram['communityTargets']),
       drive: drive,
     );
   }
@@ -138,4 +150,28 @@ class AuthRepository {
 
   Future<void> disconnectTelegram() =>
       api.dio.post('/telegram/auth/disconnect').then((_) {});
+
+  Future<CommunityJoinResult> joinCommunity() async {
+    try {
+      final res = await api.dio.post('/telegram/auth/join-community');
+      return CommunityJoinResult.fromJson(
+        Map<String, dynamic>.from(res.data as Map),
+      );
+    } catch (err) {
+      return CommunityJoinResult(
+        status: 'failed',
+        error: api.errorMessage(err),
+      );
+    }
+  }
+
+  List<CommunityTarget> _communityTargets(Object? raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map(
+          (item) => CommunityTarget.fromJson(Map<String, dynamic>.from(item)),
+        )
+        .toList();
+  }
 }

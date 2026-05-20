@@ -95,6 +95,8 @@ flutter:
 
   assets:
     - .env.local
+    - assets/animations/
+    - assets/icon/
 
   fonts:
     - family: Inter

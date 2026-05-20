@@ -7,6 +7,7 @@ import '../../core/storage/secure_storage.dart';
 import '../../models/auth_user.dart';
 import '../../models/drive_models.dart';
 import 'auth_repository.dart';
+import 'models/community_onboarding.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 final secureStorageProvider = Provider<SecureStorageService>(
@@ -31,10 +32,17 @@ class AuthController extends ChangeNotifier {
   String? token;
   bool loading = true;
   bool? telegramConnected;
+  String? communityJoinStatus;
+  String? communityJoinError;
+  List<CommunityTarget> communityTargets = const [];
   String? error;
   DriveSnapshot? pendingDriveBootstrap;
 
   bool get isAuthenticated => user != null && token != null;
+  bool get needsCommunityOnboarding =>
+      isAuthenticated &&
+      telegramConnected == true &&
+      (communityJoinStatus == null || communityJoinStatus == 'pending');
 
   Future<void> bootstrap() async {
     loading = true;
@@ -54,12 +62,18 @@ class AuthController extends ChangeNotifier {
       final bootstrap = await _repo.bootstrap(includeDrive: true);
       user = bootstrap.user;
       telegramConnected = bootstrap.telegramConnected;
+      communityJoinStatus = bootstrap.communityJoinStatus;
+      communityJoinError = bootstrap.communityJoinError;
+      communityTargets = bootstrap.communityTargets;
       pendingDriveBootstrap = bootstrap.drive;
     } catch (err) {
       await _repo.logout();
       token = null;
       user = null;
       telegramConnected = null;
+      communityJoinStatus = null;
+      communityJoinError = null;
+      communityTargets = const [];
       pendingDriveBootstrap = null;
       error = _repo.api.errorMessage(err, 'Auth bootstrap failed.');
     } finally {
@@ -82,7 +96,20 @@ class AuthController extends ChangeNotifier {
     final bootstrap = await _repo.bootstrap(includeDrive: true);
     user = bootstrap.user;
     telegramConnected = bootstrap.telegramConnected;
+    communityJoinStatus = bootstrap.communityJoinStatus;
+    communityJoinError = bootstrap.communityJoinError;
+    communityTargets = bootstrap.communityTargets;
     pendingDriveBootstrap = bootstrap.drive;
+    notifyListeners();
+  }
+
+  Future<void> completeCommunityOnboarding() async {
+    final result = await _repo.joinCommunity();
+    communityJoinStatus = result.status == 'deferred'
+        ? 'failed'
+        : result.status;
+    communityJoinError = result.error;
+    if (result.targets.isNotEmpty) communityTargets = result.targets;
     notifyListeners();
   }
 
@@ -114,6 +141,9 @@ class AuthController extends ChangeNotifier {
     token = null;
     user = null;
     telegramConnected = null;
+    communityJoinStatus = null;
+    communityJoinError = null;
+    communityTargets = const [];
     pendingDriveBootstrap = null;
     error = null;
     notifyListeners();
@@ -122,6 +152,8 @@ class AuthController extends ChangeNotifier {
   Future<void> disconnectTelegram() async {
     await _repo.disconnectTelegram();
     telegramConnected = false;
+    communityJoinStatus = null;
+    communityJoinError = null;
     notifyListeners();
   }
 }
