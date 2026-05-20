@@ -125,13 +125,16 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
             if (state.loading && files.isEmpty && folders.isEmpty)
               const SliverFillRemaining(child: SkeletonList()),
             if (state.error != null) _ErrorBanner(state.error!),
-            if (recent.isNotEmpty && query.isEmpty)
+            if (recent.isNotEmpty && query.isEmpty) ...[
+              const DriveSectionHeader('Recent'),
               SliverToBoxAdapter(
                 child: DriveRecentsStrip(
                   files: recent,
                   onFileTap: (f) => openDriveFile(context, ref, f),
+                  onMore: (f) => DriveItemActions.openFile(context, ref, f),
                 ),
               ),
+            ],
             if (!state.loading && folders.isEmpty && files.isEmpty)
               SliverFillRemaining(
                 child: EmptyState(
