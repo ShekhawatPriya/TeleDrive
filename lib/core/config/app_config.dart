@@ -12,6 +12,9 @@ class AppConfig {
   /// The public GitHub repository URL for TeleDrive.
   static const repositoryUrl = 'https://github.com/caamer20/Telegram-Drive';
 
+  /// The current version of the application.
+  static const appVersion = '2.1.8';
+
   /// Launches the repository URL in the user's default browser.
   static Future<void> openRepository() async {
     final uri = Uri.parse(repositoryUrl);
