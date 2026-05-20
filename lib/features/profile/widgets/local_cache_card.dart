@@ -248,7 +248,7 @@ class LocalCacheCard extends ConsumerWidget {
                           ? null
                           : () async {
                               final controller = ref.read(
-                                cacheControllerProvider.notifier,
+                                cacheControllerProvider,
                               );
                               await controller.clearCache();
                               if (context.mounted) {
@@ -280,7 +280,7 @@ class LocalCacheCard extends ConsumerWidget {
                 onPressed: state.isLoading
                     ? null
                     : () => ref
-                        .read(cacheControllerProvider.notifier)
+                        .read(cacheControllerProvider)
                         .refreshCacheStats(),
                 icon: state.isLoading
                     ? const SizedBox(

@@ -87,51 +87,19 @@ class CacheController extends ChangeNotifier {
         return;
       }
 
-      int total = 0;
-      int thumbnail = 0;
-      int preview = 0;
-      int original = 0;
-      int staging = 0;
-      int itemsCount = 0;
+      final stats = <String, int>{
+        'total': 0,
+        'thumbnail': 0,
+        'preview': 0,
+        'original': 0,
+        'staging': 0,
+        'itemsCount': 0,
+      };
 
       final tempPath = tempDir.path;
+      await _scanDirectory(tempDir, tempPath, stats);
 
-      final stream = tempDir.list(recursive: true, followLinks: false);
-      await for (final entity in stream) {
-        if (entity is File) {
-          try {
-            final size = await entity.length();
-            total += size;
-            itemsCount++;
-
-            final path = entity.path.toLowerCase();
-            final parentPath = entity.parent.path;
-
-            // 1. Thumbnail Cache: inside teledriveThumbnailCache or libCachedImageData
-            if (path.contains('teledrivethumbnailcache') || path.contains('libcachedimagedata')) {
-              thumbnail += size;
-            }
-            // 2. Upload Staging / Picker temporary files: contains file_picker, image_picker or ends with .tmp / .bin
-            else if (path.contains('file_picker') ||
-                path.contains('image_picker') ||
-                path.endsWith('.tmp') ||
-                path.endsWith('.bin')) {
-              staging += size;
-            }
-            // 3. Cached Originals/Downloaded files: direct children in temp directory root
-            else if (parentPath == tempPath) {
-              original += size;
-            }
-            // 4. Preview Cache: general preview chunks or cached streams
-            else {
-              preview += size;
-            }
-          } catch (_) {
-            // File might have been deleted/locked during scanning
-          }
-        }
-      }
-
+      final total = stats['total']!;
       String healthStatus = 'Clean';
       if (total > 500 * 1024 * 1024) {
         // > 500MB
@@ -143,11 +111,11 @@ class CacheController extends ChangeNotifier {
 
       state = state.copyWith(
         totalSize: total,
-        thumbnailSize: thumbnail,
-        previewSize: preview,
-        originalSize: original,
-        uploadStagingSize: staging,
-        estimatedItems: itemsCount,
+        thumbnailSize: stats['thumbnail']!,
+        previewSize: stats['preview']!,
+        originalSize: stats['original']!,
+        uploadStagingSize: stats['staging']!,
+        estimatedItems: stats['itemsCount']!,
         status: healthStatus,
         lastScanTime: DateTime.now(),
         isLoading: false,
@@ -157,6 +125,53 @@ class CacheController extends ChangeNotifier {
       state = state.copyWith(isLoading: false);
     }
     notifyListeners();
+  }
+
+  Future<void> _scanDirectory(Directory dir, String tempPath, Map<String, int> stats) async {
+    try {
+      final stream = dir.list(recursive: false, followLinks: false);
+      await for (final entity in stream.handleError((err) {
+        debugPrint('Error listing directory entity at ${dir.path}: $err');
+      })) {
+        if (entity is File) {
+          try {
+            final size = await entity.length();
+            stats['total'] = stats['total']! + size;
+            stats['itemsCount'] = stats['itemsCount']! + 1;
+
+            final path = entity.path.toLowerCase();
+            final parentPath = entity.parent.path;
+
+            // 1. Thumbnail Cache: inside teledriveThumbnailCache or libCachedImageData
+            if (path.contains('teledrivethumbnailcache') || path.contains('libcachedimagedata')) {
+              stats['thumbnail'] = stats['thumbnail']! + size;
+            }
+            // 2. Upload Staging / Picker temporary files: contains file_picker, image_picker or ends with .tmp / .bin
+            else if (path.contains('file_picker') ||
+                path.contains('image_picker') ||
+                path.endsWith('.tmp') ||
+                path.endsWith('.bin')) {
+              stats['staging'] = stats['staging']! + size;
+            }
+            // 3. Cached Originals/Downloaded files: direct children in temp directory root
+            else if (parentPath == tempPath) {
+              stats['original'] = stats['original']! + size;
+            }
+            // 4. Preview Cache: general preview chunks or cached streams
+            else {
+              stats['preview'] = stats['preview']! + size;
+            }
+          } catch (_) {
+            // File might have been deleted/locked during scanning
+          }
+        } else if (entity is Directory) {
+          // Recursively scan subdirectory safely
+          await _scanDirectory(entity, tempPath, stats);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error accessing directory ${dir.path}: $e');
+    }
   }
 
   Future<void> clearCache() async {
@@ -176,7 +191,9 @@ class CacheController extends ChangeNotifier {
       final tempDir = await getTemporaryDirectory();
       if (await tempDir.exists()) {
         final stream = tempDir.list(recursive: false, followLinks: false);
-        await for (final entity in stream) {
+        await for (final entity in stream.handleError((err) {
+          debugPrint('Error listing directory entity for clearing: $err');
+        })) {
           try {
             if (entity is File) {
               await entity.delete();

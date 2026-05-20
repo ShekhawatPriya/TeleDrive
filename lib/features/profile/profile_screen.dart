@@ -13,6 +13,7 @@ import 'widgets/storage_donut_card.dart';
 import 'widgets/telegram_status_card.dart';
 import 'widgets/theme_picker_cards.dart';
 import 'widgets/storage_swipe_card.dart';
+import 'cache_controller.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({this.scrollToStorage = false, super.key});
@@ -28,6 +29,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(cacheControllerProvider).refreshCacheStats();
+      }
+    });
     if (widget.scrollToStorage) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final context = _storageKey.currentContext;
