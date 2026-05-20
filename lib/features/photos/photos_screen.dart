@@ -296,7 +296,7 @@ class StarredScreen extends ConsumerWidget {
                       itemBuilder: (_, i) {
                         final file = starredFiles[i];
                         return FileCardTile(
-                          key: ValueKey(file.id),
+                          key: ValueKey(file.localId ?? file.id),
                           file: file,
                           onTap: () {
                             ref

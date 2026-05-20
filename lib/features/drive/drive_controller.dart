@@ -33,6 +33,94 @@ class DriveController extends ChangeNotifier {
   Map<String, String> _recent = {};
   Future<void>? _refreshing;
   DateTime? _lastRefreshCompletedAt;
+  final Set<String?> _staleFolderIds = {};
+
+  bool _filesMatch(DriveFile a, DriveFile b) {
+    if (a.id == b.id) return true;
+    if (a.localId != null && b.localId != null && a.localId == b.localId) return true;
+    if (a.id == 'local:${b.localId}') return true;
+    if (b.id == 'local:${a.localId}') return true;
+    return false;
+  }
+
+  List<DriveFile> _reconcileFiles({
+    required List<DriveFile> existing,
+    required List<DriveFile> incoming,
+    bool removeOrphanedOptimistic = false,
+  }) {
+    final List<DriveFile> result = [];
+    final Set<String> processedIncomingIds = {};
+
+    for (final existingFile in existing) {
+      DriveFile? match;
+      for (final inc in incoming) {
+        if (_filesMatch(existingFile, inc)) {
+          match = inc;
+          break;
+        }
+      }
+
+      if (match != null) {
+        final localId = match.localId ?? existingFile.localId;
+        result.add(match.copyWith(localId: localId));
+        processedIncomingIds.add(match.id);
+        if (localId != null) {
+          processedIncomingIds.add('local:$localId');
+        }
+      } else {
+        if (removeOrphanedOptimistic && existingFile.isOptimistic) {
+          continue;
+        }
+        result.add(existingFile);
+      }
+    }
+
+    for (final inc in incoming) {
+      final key1 = inc.id;
+      final key2 = inc.localId != null ? 'local:${inc.localId}' : null;
+      if (!processedIncomingIds.contains(key1) &&
+          (key2 == null || !processedIncomingIds.contains(key2))) {
+        if (inc.isOptimistic) {
+          result.insert(0, inc);
+        } else {
+          result.add(inc);
+        }
+      }
+    }
+
+    return result;
+  }
+
+  void _clearStaleForFolder(String? folderId) {
+    if (folderId == null) {
+      _staleFolderIds.clear();
+    } else {
+      _staleFolderIds.remove(folderId);
+      final descendants = _descendantFolderIds(folderId);
+      _staleFolderIds.removeAll(descendants);
+    }
+  }
+
+  void _markActiveAndAncestorsStale() {
+    _staleFolderIds.add(state.activeFolderId);
+    if (state.activeFolderId != null) {
+      final parents = folderPath(state.activeFolderId!);
+      for (final p in parents) {
+        _staleFolderIds.add(p.id);
+      }
+    }
+    _staleFolderIds.add(null);
+  }
+
+  void setActiveFolderId(String? folderId) {
+    if (state.activeFolderId == folderId) return;
+    state = state.copyWith(activeFolderId: folderId);
+    notifyListeners();
+
+    if (_staleFolderIds.contains(folderId)) {
+      refresh(silent: true, force: true);
+    }
+  }
 
   List<DriveFile> get files => state.files
       .map((f) => f.copyWith(lastAccessedAt: _recent[f.id]))
@@ -74,6 +162,7 @@ class DriveController extends ChangeNotifier {
       applyDriveState(await _repo.getDriveState(), notify: false);
       state = state.copyWith(loading: false, clearError: true);
       _lastRefreshCompletedAt = DateTime.now();
+      _clearStaleForFolder(state.activeFolderId);
     } catch (err) {
       state = state.copyWith(
         loading: false,
@@ -90,16 +179,32 @@ class DriveController extends ChangeNotifier {
     final incomingMedia = snapshot.mediaFiles
         .where((f) => f.uploadStatus == 'available')
         .toList();
-    final keptOptimisticFiles =
-        state.files.where((f) => f.isOptimistic).toList();
-    final keptOptimisticMedia =
-        state.mediaFiles.where((f) => f.isOptimistic).toList();
+
+    final updatedFiles = _reconcileFiles(
+      existing: state.files,
+      incoming: incomingFiles,
+      removeOrphanedOptimistic: false,
+    );
+    final updatedMedia = _reconcileFiles(
+      existing: state.mediaFiles,
+      incoming: incomingMedia,
+      removeOrphanedOptimistic: false,
+    );
+
     final keptOptimisticFolders =
         state.folders.where((f) => f.isOptimistic).toList();
+    final folderIds = <String>{};
+    final reconciledFolders = <DriveFolder>[];
+    for (final f in [...keptOptimisticFolders, ...snapshot.folders]) {
+      if (folderIds.add(f.id)) {
+        reconciledFolders.add(f);
+      }
+    }
+
     state = state.copyWith(
-      files: [...keptOptimisticFiles, ...incomingFiles],
-      mediaFiles: [...keptOptimisticMedia, ...incomingMedia],
-      folders: [...keptOptimisticFolders, ...snapshot.folders],
+      files: updatedFiles,
+      mediaFiles: updatedMedia,
+      folders: reconciledFolders,
       mediaCursor: snapshot.mediaCursor,
       loading: false,
       clearError: true,
@@ -372,12 +477,16 @@ class DriveController extends ChangeNotifier {
         notifyListeners();
       }
     }
-    if (failed > 0)
+    if (failed > 0) {
       state = state.copyWith(
         files: oldFiles,
         mediaFiles: oldMedia,
         folders: oldFolders,
       );
+    } else {
+      _markActiveAndAncestorsStale();
+      refresh(silent: true, force: true);
+    }
     Future<void>.delayed(Duration(milliseconds: failed > 0 ? 2200 : 900), () {
       state = state.copyWith(clearDeleteProgress: true);
       notifyListeners();
@@ -457,8 +566,22 @@ class DriveController extends ChangeNotifier {
   void syncOptimisticUploads(List<DriveFile> optimistic) {
     final keep =
         optimistic.where((f) => f.uploadStatus != 'cancelled').toList();
+    final updatedFiles = _reconcileFiles(
+      existing: state.files,
+      incoming: keep,
+      removeOrphanedOptimistic: true,
+    );
+
+    final keepMedia = keep.where(isMediaFile).toList();
+    final updatedMedia = _reconcileFiles(
+      existing: state.mediaFiles,
+      incoming: keepMedia,
+      removeOrphanedOptimistic: true,
+    );
+
     state = state.copyWith(
-      files: [...keep, ...state.files.where((f) => !f.isOptimistic)],
+      files: updatedFiles,
+      mediaFiles: updatedMedia,
     );
     notifyListeners();
   }

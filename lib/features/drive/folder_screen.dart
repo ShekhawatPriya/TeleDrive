@@ -28,6 +28,12 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
     with SelectionModeMixin<FolderScreen> {
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(driveControllerProvider).setActiveFolderId(widget.folderId);
+      }
+    });
+
     final drive = ref.watch(driveControllerProvider);
     final prefs = ref.watch(viewPreferencesProvider);
     final folder = drive.folder(widget.folderId);

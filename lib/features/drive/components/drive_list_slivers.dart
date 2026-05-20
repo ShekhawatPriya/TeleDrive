@@ -111,7 +111,7 @@ class DriveFilesSliver extends ConsumerWidget {
             final file = files[i];
             final isFailed = _isFailed(file);
             return FileCardTile(
-              key: ValueKey(file.id),
+              key: ValueKey(file.localId ?? file.id),
               file: file,
               selected: selectMode ? selectedFileIds.contains(file.id) : null,
               onTap: () => onFileTap(file),
@@ -134,7 +134,7 @@ class DriveFilesSliver extends ConsumerWidget {
           final file = files[i];
           final isFailed = _isFailed(file);
           return FileListTile(
-            key: ValueKey(file.id),
+            key: ValueKey(file.localId ?? file.id),
             name: file.name,
             subtitle: file.isOptimistic
                 ? '${formatUploadStatus(file)} · ${formatFileSize(file.size)}'
@@ -193,7 +193,7 @@ class DriveRecentsStrip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
         itemBuilder: (_, i) => RecentFileCard(
-          key: ValueKey(files[i].id),
+          key: ValueKey(files[i].localId ?? files[i].id),
           file: files[i],
           onTap: () => onFileTap(files[i]),
           onMore: onMore != null ? () => onMore!(files[i]) : null,

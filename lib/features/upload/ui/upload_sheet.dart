@@ -15,6 +15,12 @@ class UploadSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final upload = ref.watch(uploadControllerProvider);
 
+    ref.listen<UploadController>(uploadControllerProvider, (previous, next) {
+      if ((!next.sheetVisible || next.items.isEmpty) && Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+    });
+
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: .62,
@@ -41,6 +47,7 @@ class UploadSheet extends ConsumerWidget {
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Center(
                   child: Container(

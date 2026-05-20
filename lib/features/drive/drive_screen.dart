@@ -29,6 +29,12 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
 
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(driveControllerProvider).setActiveFolderId(null);
+      }
+    });
+
     final commands = ref.watch(driveTabCommandsProvider);
     if (commands.selectRequests != _handledSelectRequests) {
       _handledSelectRequests = commands.selectRequests;

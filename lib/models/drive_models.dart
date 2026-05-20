@@ -43,6 +43,7 @@ class DriveFile {
     this.localUri,
     this.lastAccessedAt,
     this.isOptimistic = false,
+    this.localId,
   });
 
   final String id;
@@ -71,6 +72,7 @@ class DriveFile {
   final String? localUri;
   final String? lastAccessedAt;
   final bool isOptimistic;
+  final String? localId;
 
   DriveFile copyWith({
     bool? starred,
@@ -80,6 +82,7 @@ class DriveFile {
     String? uploadStatus,
     String? uploadError,
     String? lastAccessedAt,
+    String? localId,
   }) {
     return DriveFile(
       id: id,
@@ -108,6 +111,7 @@ class DriveFile {
       localUri: localUri,
       lastAccessedAt: lastAccessedAt ?? this.lastAccessedAt,
       isOptimistic: isOptimistic,
+      localId: localId ?? this.localId,
     );
   }
 }
@@ -174,6 +178,7 @@ class DriveState {
     this.mediaCursor,
     this.loadingMoreMedia = false,
     this.deleteProgress,
+    this.activeFolderId,
   });
 
   final List<DriveFile> files;
@@ -184,6 +189,7 @@ class DriveState {
   final String? mediaCursor;
   final bool loadingMoreMedia;
   final ({int completed, int failed, int total})? deleteProgress;
+  final String? activeFolderId;
 
   int get usedStorage => files
       .where((f) => f.uploadStatus == null || f.uploadStatus == 'available')
@@ -200,6 +206,7 @@ class DriveState {
     ({int completed, int failed, int total})? deleteProgress,
     bool clearError = false,
     bool clearDeleteProgress = false,
+    Object? activeFolderId = _unset,
   }) {
     return DriveState(
       files: files ?? this.files,
@@ -214,6 +221,9 @@ class DriveState {
       deleteProgress: clearDeleteProgress
           ? null
           : deleteProgress ?? this.deleteProgress,
+      activeFolderId: activeFolderId == _unset
+          ? this.activeFolderId
+          : activeFolderId as String?,
     );
   }
 }

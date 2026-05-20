@@ -130,7 +130,7 @@ extension UploadItemMapping on UploadItem {
   DriveFile toDriveFile(String? activeFolderId) {
     final kind = detectFileKind(name, mimeType);
     return DriveFile(
-      id: 'local:$localId',
+      id: fileId != null ? '$fileId' : 'local:$localId',
       name: name,
       kind: kind,
       size: size,
@@ -145,6 +145,7 @@ extension UploadItemMapping on UploadItem {
       thumbnailUrl: kind == FileKind.image || kind == FileKind.video ? path : null,
       previewUrl: kind == FileKind.image ? path : null,
       isOptimistic: true,
+      localId: localId,
     );
   }
 }

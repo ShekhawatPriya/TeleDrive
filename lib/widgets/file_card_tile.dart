@@ -36,7 +36,7 @@ class FileCardTile extends StatelessWidget {
     final isSelected = selected == true;
     final status = file.uploadStatus;
     final isFailed = file.isOptimistic && (status == 'failed' || status == 'cancelled');
-    final isUploading = file.isOptimistic && !isFailed;
+    final isUploading = file.isOptimistic && !isFailed && status != 'uploaded';
 
     final borderSide = isSelected
         ? BorderSide(color: scheme.primary, width: 2)

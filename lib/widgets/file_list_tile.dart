@@ -51,7 +51,7 @@ class FileListTile extends StatelessWidget {
     final isSelected = selected == true;
     final status = file?.uploadStatus;
     final isFailed = isOptimistic && (status == 'failed' || status == 'cancelled');
-    final isUploading = isOptimistic && !isFailed;
+    final isUploading = isOptimistic && !isFailed && status != 'uploaded';
 
     final tile = ListTile(
       onTap: onTap,

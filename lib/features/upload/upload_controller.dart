@@ -11,6 +11,8 @@ import '../auth/auth_controller.dart';
 import '../drive/drive_controller.dart';
 import 'upload_models.dart';
 import 'upload_picker_helper.dart';
+import '../../core/utils/file_type_detector.dart';
+import '../../models/drive_models.dart';
 
 final uploadControllerProvider = ChangeNotifierProvider<UploadController>((ref) {
   return UploadController(
@@ -32,6 +34,7 @@ class UploadController extends ChangeNotifier {
   final Map<int, Timer> _pollTimersByBatchId = {};
   final Set<int> _pollingBatchIds = {};
   final Set<String> _runningLocalIds = {};
+  final Map<int, DateTime> _batchUploadFinishedTimes = {};
   Timer? _autoDismissTimer;
   String? _refreshedUploadSessionId;
   bool _disposed = false;
@@ -341,9 +344,17 @@ class UploadController extends ChangeNotifier {
         );
       }
       final updated = items.where((i) => i.batchId == batchId).toList();
-      if (updated.isNotEmpty && updated.every((i) => _isTerminalStatus(i.status))) {
-        _stopPollingBatch(batchId);
-        await _refreshIfSettled();
+      final allUploaded = updated.isNotEmpty && updated.every((i) => _isTerminalStatus(i.status));
+      if (allUploaded) {
+        final finishedTime = _batchUploadFinishedTimes.putIfAbsent(batchId, () => DateTime.now());
+        final elapsedSeconds = DateTime.now().difference(finishedTime).inSeconds;
+
+        final allDone = updated.every((i) => !_needsThumbnail(i)) || elapsedSeconds > 25;
+        if (allDone) {
+          _stopPollingBatch(batchId);
+          _batchUploadFinishedTimes.remove(batchId);
+          await _refreshIfSettled();
+        }
       }
     } catch (err) {
       _stopPollingBatch(batchId);
@@ -513,6 +524,20 @@ class UploadController extends ChangeNotifier {
     uploading = items.any(_isActive) || _runningLocalIds.isNotEmpty;
   }
 
+  bool _needsThumbnail(UploadItem i) {
+    final kind = detectFileKind(i.name, i.mimeType);
+    final previewable = kind == FileKind.image || kind == FileKind.video;
+    return i.status == UploadStatus.uploaded && previewable && !i.thumbnailReady;
+  }
+
+  bool get _allItemsCompleted {
+    if (items.isEmpty) return false;
+    return items.every((i) {
+      if (i.status != UploadStatus.uploaded) return false;
+      return !_needsThumbnail(i);
+    });
+  }
+
   Future<void> _refreshIfSettled() async {
     _updateUploadingFlag();
     if (uploading || !items.any((i) => i.status == UploadStatus.uploaded)) {
@@ -523,19 +548,17 @@ class UploadController extends ChangeNotifier {
       _refreshedUploadSessionId = sessionId;
       await _refreshDrive();
     }
-    if (_allItemsUploaded) {
+    if (_allItemsCompleted) {
       _scheduleAutoDismiss();
     }
   }
-
-  bool get _allItemsUploaded => items.isNotEmpty && items.every((i) => i.status == UploadStatus.uploaded);
 
   void _scheduleAutoDismiss() {
     final sessionId = uploadSessionId;
     if (sessionId == null || _autoDismissTimer?.isActive == true) return;
     _autoDismissTimer = Timer(const Duration(milliseconds: 1400), () {
       if (_disposed || uploadSessionId != sessionId || uploading) return;
-      if (!_allItemsUploaded) return;
+      if (!_allItemsCompleted) return;
       items = [];
       sheetVisible = false;
       uploadSessionId = null;
@@ -561,7 +584,13 @@ class UploadController extends ChangeNotifier {
     final serverFileIds = _drive.state.files.where((f) => !f.isOptimistic).map((f) => f.id).toSet();
     _drive.syncOptimisticUploads(
       items
-          .where((i) => i.status != UploadStatus.uploaded || i.fileId == null || !serverFileIds.contains('${i.fileId}'))
+          .where((i) {
+            if (i.status != UploadStatus.uploaded) return true;
+            if (i.fileId == null) return true;
+            if (!serverFileIds.contains('${i.fileId}')) return true;
+            if (_needsThumbnail(i)) return true;
+            return false;
+          })
           .map((i) => i.toDriveFile(activeFolderId))
           .toList(),
     );
