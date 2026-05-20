@@ -224,93 +224,61 @@ class _SearchPillState extends ConsumerState<_SearchPill> {
   }
 }
 
-class _RotatingHint extends StatefulWidget {
-  const _RotatingHint({required this.scope});
+class _RotatingHint extends ConsumerWidget {
+  const _RotatingHint({required this.scope, super.key});
 
   final SearchScope scope;
 
   @override
-  State<_RotatingHint> createState() => _RotatingHintState();
-}
-
-class _RotatingHintState extends State<_RotatingHint> {
-  static const _interval = Duration(milliseconds: 3500);
-  Timer? _timer;
-  int _index = 0;
-
-  static const _phrases = <SearchScope, List<String>>{
-    SearchScope.drive: [
-      'Search files and folders',
-      'Find a PDF',
-      'Find a folder by name',
-      'Search images & videos',
-    ],
-    SearchScope.photos: [
-      'Search photos and videos',
-      'Find by file name',
-      'Find by date',
-    ],
-    SearchScope.starred: [
-      'Search starred items',
-      'Starred files',
-      'Starred folders',
-    ],
-    SearchScope.shared: [
-      'Search shared items',
-      'Find a shared link',
-      'Search by recipient name',
-    ],
-  };
-
-  List<String> get _list => _phrases[widget.scope]!;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(_interval, (_) {
-      if (!mounted) return;
-      setState(() => _index = (_index + 1) % _list.length);
-    });
-  }
-
-  @override
-  void didUpdateWidget(covariant _RotatingHint oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.scope != widget.scope) {
-      _index = 0;
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final phrase = ref.watch(rotatingPlaceholderProvider).currentPhrase;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final motion = theme.extension<AppMotion>();
+
     return AnimatedSwitcher(
-      duration: motion?.durationMedium ?? const Duration(milliseconds: 250),
-      switchInCurve: motion?.emphasized ?? Curves.easeOutCubic,
-      switchOutCurve: motion?.emphasized ?? Curves.easeOutCubic,
+      duration: const Duration(milliseconds: 350),
+      switchInCurve: Curves.easeInOutCubic,
+      switchOutCurve: Curves.easeInOutCubic,
+      layoutBuilder: (currentChild, previousChildren) {
+        return Stack(
+          alignment: Alignment.centerLeft,
+          children: <Widget>[
+            ...previousChildren,
+            if (currentChild != null) currentChild,
+          ],
+        );
+      },
       transitionBuilder: (child, animation) {
+        final isIncoming = child.key == ValueKey<String>(phrase);
+
+        // Sequence the transition:
+        // By applying an Interval(0.5, 1.0), the exit and entry transitions
+        // run sequentially without any overlap:
+        // - Outgoing completes its exit (1.0 -> 0.0) from t = 0.0 to 0.5.
+        // - Incoming completes its entry (0.0 -> 1.0) from t = 0.5 to 1.0.
+        final sequencedAnimation = animation.drive(
+          CurveTween(curve: const Interval(0.5, 1.0, curve: Curves.easeInOutCubic)),
+        );
+
         final slide = Tween<Offset>(
-          begin: const Offset(0, 0.6),
+          begin: isIncoming ? const Offset(0, 1.0) : const Offset(0, -1.0),
           end: Offset.zero,
-        ).animate(animation);
+        ).animate(sequencedAnimation);
+
         return ClipRect(
           child: FadeTransition(
-            opacity: animation,
-            child: SlideTransition(position: slide, child: child),
+            opacity: sequencedAnimation,
+            child: SlideTransition(
+              position: slide,
+              child: child,
+            ),
           ),
         );
       },
       child: Text(
-        _list[_index],
-        key: ValueKey<int>(_index),
+        phrase,
+        key: ValueKey<String>(phrase),
         style: theme.textTheme.bodyLarge?.copyWith(
           color: scheme.onSurfaceVariant,
         ),
