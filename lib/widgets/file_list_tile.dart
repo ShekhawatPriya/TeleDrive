@@ -62,11 +62,11 @@ class FileListTile extends StatelessWidget {
         AppSpacing.xs,
         AppSpacing.xs,
       ),
-      minLeadingWidth: 56,
+      minLeadingWidth: 40,
       horizontalTitleGap: AppSpacing.md,
       leading: SizedBox(
-        width: 56,
-        height: 56,
+        width: 40,
+        height: 40,
         child: Stack(
           children: [
             Positioned.fill(
@@ -75,17 +75,16 @@ class FileListTile extends StatelessWidget {
                 borderRadius: AppRadii.smR,
                 child: isFolder
                     ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(4.0),
-                          child: GoogleDriveIcon.folder(
-                            isShared: isShared,
-                            size: 48,
-                          ),
+                        child: GoogleDriveIcon.folder(
+                          isShared: isShared,
+                          size: 28,
                         ),
                       )
-                    : ClipRRect(
-                        borderRadius: AppRadii.smR,
-                        child: MediaThumb(file: file!, fit: BoxFit.cover),
+                    : MediaThumb(
+                        file: file!,
+                        fit: BoxFit.cover,
+                        radius: AppRadii.sm,
+                        showBackground: false,
                       ),
               ),
             ),
@@ -99,15 +98,15 @@ class FileListTile extends StatelessWidget {
                   child: Icon(
                     Icons.error_outline_rounded,
                     color: scheme.onErrorContainer,
-                    size: 26,
+                    size: 20,
                   ),
                 ),
               ),
             if (isShared && !isOptimistic)
               const Positioned(
-                right: 2,
-                bottom: 2,
-                child: SharedBadge(),
+                right: 0,
+                bottom: 0,
+                child: SharedBadge(size: 14),
               ),
             if (inSelectMode)
               Positioned.fill(
@@ -119,8 +118,8 @@ class FileListTile extends StatelessWidget {
                   child: Align(
                     alignment: Alignment.center,
                     child: Container(
-                      width: 24,
-                      height: 24,
+                      width: 20,
+                      height: 20,
                       decoration: BoxDecoration(
                         color: isSelected ? scheme.primary : scheme.surface,
                         shape: BoxShape.circle,
@@ -129,7 +128,7 @@ class FileListTile extends StatelessWidget {
                           width: 2,
                         ),
                       ),
-                      child: isSelected ? Icon(Icons.check, size: 16, color: scheme.onPrimary) : null,
+                      child: isSelected ? Icon(Icons.check, size: 12, color: scheme.onPrimary) : null,
                     ),
                   ),
                 ),
@@ -211,7 +210,7 @@ class FileListTile extends StatelessWidget {
 }
 
 class SharedBadge extends StatelessWidget {
-  const SharedBadge({this.size = 18, super.key});
+  const SharedBadge({this.size = 14, super.key});
   final double size;
 
   @override

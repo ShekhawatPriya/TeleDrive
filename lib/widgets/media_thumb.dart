@@ -13,24 +13,40 @@ class MediaThumb extends StatelessWidget {
     required this.file,
     this.fit = BoxFit.contain,
     this.radius = 18,
+    this.showBackground = true,
     super.key,
   });
 
   final DriveFile file;
   final BoxFit fit;
   final double radius;
+  final bool showBackground;
 
   @override
   Widget build(BuildContext context) {
     final url = file.thumbnailUrl ?? file.previewUrl;
     final bg = Theme.of(context).colorScheme.surfaceContainerHighest;
+
+    if (url == null) {
+      final fallbackWidget = _fallback(context);
+      if (showBackground) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(radius),
+          child: ColoredBox(
+            color: bg,
+            child: fallbackWidget,
+          ),
+        );
+      } else {
+        return fallbackWidget;
+      }
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: ColoredBox(
         color: bg,
-        child: url == null
-            ? _fallback(context)
-            : url.startsWith('/') || url.contains(':\\')
+        child: url.startsWith('/') || url.contains(':\\')
             ? Image.file(
                 File(url),
                 fit: fit,
@@ -62,12 +78,13 @@ class MediaThumb extends StatelessWidget {
       builder: (context, constraints) {
         final minDim = math.min(constraints.maxWidth, constraints.maxHeight);
         final iconSize = (minDim.isInfinite || minDim <= 0) ? 40.0 : minDim;
+        final targetSize = math.min(iconSize * 0.84, 48.0);
         return Center(
           child: Padding(
             padding: EdgeInsets.all(iconSize * 0.08),
             child: GoogleDriveIcon.file(
               file,
-              size: iconSize * 0.84,
+              size: targetSize,
             ),
           ),
         );
