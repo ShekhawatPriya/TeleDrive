@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/theme/app_theme.dart';
 import 'features/auth/auth_controller.dart';
+import 'features/auth/landing_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/drive/drive_controller.dart';
 import 'features/drive/components/drive_menu_builder.dart';
@@ -37,14 +38,24 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: auth,
     redirect: (context, state) {
       if (auth.loading) return state.matchedLocation == '/' ? null : '/';
-      final loggingIn = state.matchedLocation == '/login';
-      if (!auth.isAuthenticated) return loggingIn ? null : '/login';
-      if (loggingIn || state.matchedLocation == '/') return '/drive';
+      
+      final allowedUnauthRoutes = ['/welcome', '/login', '/privacy', '/terms'];
+      final currentRoute = state.matchedLocation;
+
+      if (!auth.isAuthenticated) {
+        if (allowedUnauthRoutes.contains(currentRoute)) return null;
+        return '/welcome';
+      }
+      
+      if (allowedUnauthRoutes.contains(currentRoute) || currentRoute == '/') {
+        return '/drive';
+      }
       return null;
     },
     routes: [
       GoRoute(path: '/', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(path: '/welcome', builder: (_, __) => const LandingScreen()),
       ShellRoute(
         builder: (context, state, child) => MainShell(child: child),
         routes: [
