@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../models/auth_user.dart';
 import '../../../widgets/profile_avatar.dart';
+import '../cache_controller.dart';
 
-class ProfileHero extends StatelessWidget {
+class ProfileHero extends ConsumerWidget {
   const ProfileHero({required this.user, super.key});
 
   final AuthUser? user;
@@ -28,15 +30,24 @@ class ProfileHero extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final cacheState = ref.watch(cacheControllerProvider).state;
+
     final displayName = user?.displayName.isNotEmpty == true
         ? user!.displayName
         : 'TeleDrive user';
     final subtitle = user?.username != null
         ? '@${user!.username}'
         : 'ID ${user?.telegramId ?? '-'}';
+
+    // Status dot color based on cache health
+    final dotColor = switch (cacheState.status) {
+      'Clean' => Colors.green,
+      'Moderate' => scheme.primary,
+      _ => Colors.orange,
+    };
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -47,29 +58,63 @@ class ProfileHero extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  scheme.primary.withValues(alpha: 0.18),
-                  scheme.tertiary.withValues(alpha: 0.10),
-                ],
-              ),
-            ),
-            padding: const EdgeInsets.all(4),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: scheme.surface,
-                  width: 3,
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      scheme.primary.withValues(alpha: 0.18),
+                      scheme.tertiary.withValues(alpha: 0.10),
+                    ],
+                  ),
+                ),
+                padding: const EdgeInsets.all(4),
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: scheme.surface,
+                      width: 3,
+                    ),
+                  ),
+                  child: ProfileAvatar(user: user, size: 96),
                 ),
               ),
-              child: ProfileAvatar(user: user, size: 96),
-            ),
+              Positioned(
+                bottom: 4,
+                right: 4,
+                child: Tooltip(
+                  message: 'Cache Status: ${cacheState.status}',
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: scheme.surface,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(2.5),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: dotColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.md),
           Text(

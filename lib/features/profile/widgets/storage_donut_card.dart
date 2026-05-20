@@ -60,86 +60,97 @@ class StorageDonutCard extends StatelessWidget {
   const StorageDonutCard({
     required this.used,
     required this.categories,
+    this.embed = false,
     super.key,
   });
 
   final int used;
   final List<StorageCategory> categories;
+  final bool embed;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Storage',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+            Expanded(
+              child: Text(
+                'Storage',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: scheme.primaryContainer.withValues(alpha: 0.6),
-                    borderRadius: AppRadii.smR,
-                  ),
-                  child: Text(
-                    'Telegram',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: scheme.onPrimaryContainer,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: AppSpacing.lg),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final stack = constraints.maxWidth < 360;
-                final donut = _DonutChart(
-                  used: used,
-                  categories: categories,
-                );
-                final legend = _StorageLegend(
-                  used: used,
-                  categories: categories,
-                );
-                if (stack) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Center(child: donut),
-                      const SizedBox(height: AppSpacing.md),
-                      legend,
-                    ],
-                  );
-                }
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    donut,
-                    const SizedBox(width: AppSpacing.lg),
-                    Expanded(child: legend),
-                  ],
-                );
-              },
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: 4,
+              ),
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer.withValues(alpha: 0.6),
+                borderRadius: AppRadii.smR,
+              ),
+              child: Text(
+                'Telegram',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: scheme.onPrimaryContainer,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),
+        const SizedBox(height: AppSpacing.lg),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final stack = constraints.maxWidth < 360;
+            final donut = _DonutChart(
+              used: used,
+              categories: categories,
+            );
+            final legend = _StorageLegend(
+              used: used,
+              categories: categories,
+            );
+            if (stack) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(child: donut),
+                  const SizedBox(height: AppSpacing.md),
+                  legend,
+                ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                donut,
+                const SizedBox(width: AppSpacing.lg),
+                Expanded(child: legend),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+
+    if (embed) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+        child: content,
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: content,
       ),
     );
   }

@@ -12,6 +12,7 @@ import 'widgets/profile_hero.dart';
 import 'widgets/storage_donut_card.dart';
 import 'widgets/telegram_status_card.dart';
 import 'widgets/theme_picker_cards.dart';
+import 'widgets/storage_swipe_card.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({this.scrollToStorage = false, super.key});
@@ -94,8 +95,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     telegramId: user?.telegramId,
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  AccountSectionLabel('Storage', key: _storageKey),
-                  StorageDonutCard(used: used, categories: categories),
+                  AccountSectionLabel('Storage Management', key: _storageKey),
+                  StorageSwipeCard(used: used, categories: categories),
                   const SizedBox(height: AppSpacing.lg),
                   const AccountSectionLabel('Profile'),
                   AccountSection(
