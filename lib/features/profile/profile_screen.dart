@@ -16,6 +16,7 @@ import 'widgets/theme_picker_cards.dart';
 import 'widgets/storage_swipe_card.dart';
 import 'cache_controller.dart';
 import '../../widgets/github_icon.dart';
+import 'widgets/sign_out_sheet.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({this.scrollToStorage = false, super.key});
@@ -273,8 +274,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         icon: Icons.logout_rounded,
                         label: 'Sign Out',
                         destructive: true,
-                        onTap: () =>
-                            ref.read(authControllerProvider).logout(),
+                        onTap: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            useSafeArea: true,
+                            backgroundColor: theme.colorScheme.surfaceContainerLow,
+                            builder: (context) => const SignOutConfirmationSheet(),
+                          );
+                        },
                       ),
                     ],
                   ),
