@@ -24,7 +24,7 @@ import 'features/search/search_controller.dart';
 import 'features/share/share_controller.dart';
 import 'features/share/share_detail_screen.dart';
 
-import 'features/upload/ui/upload_overlay.dart';
+import 'features/upload/ui/components/bottom_action_system.dart';
 import 'shared/splash_screen.dart';
 import 'widgets/ios_more_menu.dart';
 import 'widgets/main_tab_menu_sections.dart';
@@ -247,11 +247,14 @@ class _MainShellState extends ConsumerState<MainShell> {
                 onPageChanged: _handlePageChanged,
                 children: _tabPages,
               ),
-              const Positioned(
-                left: AppSpacing.sm,
-                right: AppSpacing.sm,
-                bottom: 96,
-                child: UploadOverlay(),
+              Positioned(
+                left: AppSpacing.md,
+                right: AppSpacing.md,
+                bottom: AppSpacing.md,
+                child: BottomActionSystem(
+                  showFab: routeIndex == 0,
+                  parentId: null,
+                ),
               ),
 
             ],

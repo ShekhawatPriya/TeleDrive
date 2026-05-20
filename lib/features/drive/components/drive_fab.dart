@@ -17,6 +17,7 @@ class DriveFab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return FloatingActionButton(
+      heroTag: null,
       onPressed: () => _open(context, ref),
       child: const Icon(Icons.add),
     );

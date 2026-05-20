@@ -7,7 +7,6 @@ import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/skeletons.dart';
 import '../search/search_controller.dart';
-import 'components/drive_fab.dart';
 import 'components/drive_header_widgets.dart';
 import 'components/drive_item_actions.dart';
 import 'components/drive_list_slivers.dart';
@@ -167,7 +166,6 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
           ],
         ),
       ),
-      floatingActionButton: const DriveFab(),
     );
   }
 

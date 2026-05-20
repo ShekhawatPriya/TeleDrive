@@ -7,8 +7,7 @@ import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/ios_more_menu.dart';
 
-import '../upload/ui/upload_overlay.dart';
-import 'components/drive_fab.dart';
+import '../upload/ui/components/bottom_action_system.dart';
 import 'components/drive_item_actions.dart';
 import 'components/drive_list_slivers.dart';
 import 'components/drive_menu_builder.dart';
@@ -110,18 +109,21 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
               ],
             ),
           ),
-          const Positioned(
-            left: AppSpacing.sm,
-            right: AppSpacing.sm,
-            bottom: 86,
-            child: UploadOverlay(),
+          Positioned(
+            left: AppSpacing.md,
+            right: AppSpacing.md,
+            bottom: 16,
+            child: SafeArea(
+              top: false,
+              child: BottomActionSystem(
+                showFab: !selectMode,
+                parentId: widget.folderId,
+              ),
+            ),
           ),
 
         ],
       ),
-      floatingActionButton: selectMode
-          ? null
-          : DriveFab(parentId: widget.folderId),
     );
   }
 
