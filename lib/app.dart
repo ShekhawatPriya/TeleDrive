@@ -49,7 +49,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/welcome';
       }
       
-      if (allowedUnauthRoutes.contains(currentRoute) || currentRoute == '/') {
+      final authRedirectRoutes = ['/welcome', '/login', '/'];
+      if (authRedirectRoutes.contains(currentRoute)) {
         return '/drive';
       }
       return null;
