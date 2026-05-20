@@ -4,7 +4,9 @@ import '../core/theme/app_theme.dart';
 import '../models/drive_models.dart';
 import 'google_drive_icon.dart';
 import 'media_thumb.dart';
+import 'selection_indicator.dart';
 import 'uploading_shimmer.dart';
+
 
 class FileListTile extends StatelessWidget {
   const FileListTile({
@@ -108,31 +110,6 @@ class FileListTile extends StatelessWidget {
                 bottom: 0,
                 child: SharedBadge(size: 14),
               ),
-            if (inSelectMode)
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: isSelected ? scheme.primary.withValues(alpha: .35) : Colors.transparent,
-                    borderRadius: AppRadii.smR,
-                  ),
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: isSelected ? scheme.primary : scheme.surface,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected ? scheme.primary : scheme.onSurfaceVariant,
-                          width: 2,
-                        ),
-                      ),
-                      child: isSelected ? Icon(Icons.check, size: 12, color: scheme.onPrimary) : null,
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -154,7 +131,10 @@ class FileListTile extends StatelessWidget {
         ),
       ),
       trailing: inSelectMode
-          ? null
+          ? Padding(
+              padding: const EdgeInsetsDirectional.only(end: AppSpacing.sm),
+              child: PremiumSelectionIndicator(isSelected: isSelected),
+            )
           : isFailed
               ? Row(
                   mainAxisSize: MainAxisSize.min,

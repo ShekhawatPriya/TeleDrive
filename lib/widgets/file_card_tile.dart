@@ -5,6 +5,7 @@ import '../core/utils/file_type_detector.dart';
 import '../models/drive_models.dart';
 import 'file_list_tile.dart';
 import 'media_thumb.dart';
+import 'selection_indicator.dart';
 import 'uploading_shimmer.dart';
 
 class FileCardTile extends StatelessWidget {
@@ -105,20 +106,12 @@ class FileCardTile extends StatelessWidget {
                     Positioned(
                       top: 8,
                       left: 8,
-                      child: Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: isSelected ? scheme.primary : scheme.surface,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isSelected ? scheme.primary : scheme.onSurfaceVariant,
-                            width: 2,
-                        ),
+                      child: PremiumSelectionIndicator(
+                        isSelected: isSelected,
+                        isOverImage: true,
+                        size: 22,
                       ),
-                      child: isSelected ? Icon(Icons.check, size: 16, color: scheme.onPrimary) : null,
                     ),
-                  ),
                   if (file.shared && !file.isOptimistic)
                     const Positioned(
                       right: 8,
