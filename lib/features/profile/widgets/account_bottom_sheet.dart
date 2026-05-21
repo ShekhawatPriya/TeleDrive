@@ -7,6 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../../../core/utils/safe_navigation.dart';
 import '../../../widgets/profile_avatar.dart';
+import '../../../widgets/github_icon.dart';
 import '../../auth/auth_controller.dart';
 import '../../drive/drive_controller.dart';
 import 'switch_account_provider.dart';
@@ -106,7 +107,6 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildAccountBadge(context, accountLabel),
             const SizedBox(height: AppSpacing.md),
             Flexible(
               child: SingleChildScrollView(
@@ -117,7 +117,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                   ),
                   child: Column(
                     children: [
-                      _buildAccountIdentity(context, activeAccount),
+                      _buildAccountIdentity(context, activeAccount, accountLabel),
                       const SizedBox(height: AppSpacing.lg),
                       _buildSwitchAccountCard(
                         context,

@@ -5,12 +5,10 @@ import '../../../core/theme/app_theme.dart';
 class TelegramStatusCard extends StatelessWidget {
   const TelegramStatusCard({
     required this.connected,
-    required this.telegramId,
     super.key,
   });
 
   final bool? connected;
-  final int? telegramId;
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +85,7 @@ class TelegramStatusCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   isConnected
-                      ? 'Storage is active${telegramId == null ? '' : ' for ID $telegramId'}.'
+                      ? 'Storage is active.'
                       : 'Connect Telegram to upload and access files.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: onContainer.withValues(alpha: 0.85),

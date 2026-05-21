@@ -24,7 +24,6 @@ class SettingsScreen extends ConsumerWidget {
     final cache = ref.watch(cacheControllerProvider).state;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final user = auth.user;
 
     return Scaffold(
       appBar: AppBar(
@@ -122,7 +121,6 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.xs),
           TelegramStatusCard(
             connected: auth.telegramConnected,
-            telegramId: user?.telegramId,
           ),
 
           const SizedBox(height: AppSpacing.lg),
@@ -130,26 +128,11 @@ class SettingsScreen extends ConsumerWidget {
           // About Section (Flat Entry)
           _sectionLabel(context, 'About Drive'),
           const SizedBox(height: AppSpacing.xs),
-          Row(
-            children: [
-              Expanded(
-                child: _InfoCard(
-                  icon: Icons.tag_rounded,
-                  title: 'v${AppConfig.appVersion}',
-                  subtitle: 'Version',
-                  iconColor: scheme.primary,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _InfoCard(
-                  iconWidget: GitHubIcon(size: 18, color: scheme.onSurface),
-                  title: 'GitHub',
-                  subtitle: 'Open Source',
-                  onTap: AppConfig.openRepository,
-                ),
-              ),
-            ],
+          _InfoCard(
+            iconWidget: GitHubIcon(size: 18, color: scheme.onSurface),
+            title: 'GitHub',
+            subtitle: 'Open Source Project',
+            onTap: AppConfig.openRepository,
           ),
 
           const SizedBox(height: AppSpacing.xxl),
@@ -821,15 +804,11 @@ class _InfoCard extends StatelessWidget {
   const _InfoCard({
     required this.title,
     required this.subtitle,
-    this.icon,
-    this.iconWidget,
-    this.iconColor,
+    required this.iconWidget,
     this.onTap,
   });
 
-  final IconData? icon;
-  final Widget? iconWidget;
-  final Color? iconColor;
+  final Widget iconWidget;
   final String title;
   final String subtitle;
   final VoidCallback? onTap;
@@ -848,10 +827,10 @@ class _InfoCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: (iconColor ?? scheme.onSurface).withValues(alpha: 0.08),
+              color: scheme.onSurface.withValues(alpha: 0.08),
               shape: BoxShape.circle,
             ),
-            child: iconWidget ?? Icon(icon, size: 18, color: iconColor ?? scheme.onSurface),
+            child: iconWidget,
           ),
           const SizedBox(width: AppSpacing.sm),
           Flexible(
