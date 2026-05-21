@@ -44,17 +44,7 @@ class SettingsScreen extends ConsumerWidget {
         ),
         children: [
           // Section header/title
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.md, left: AppSpacing.xxs),
-            child: Text(
-              'Categories',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: scheme.primary,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
+          _settingsSectionLabel(context, 'Categories'),
 
           // Upload Settings Category Card
           _CategoryNavCard(
@@ -107,7 +97,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.md),
 
           // Appearance Section (Flat Entry)
-          _sectionLabel(context, 'Appearance'),
+          _settingsSectionLabel(context, 'Appearance'),
           const SizedBox(height: AppSpacing.xs),
           ThemePickerCards(
             mode: ref.watch(themeControllerProvider).mode,
@@ -117,7 +107,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.lg),
 
           // Telegram Integration Section (Flat Entry)
-          _sectionLabel(context, 'Telegram Integration'),
+          _settingsSectionLabel(context, 'Telegram Integration'),
           const SizedBox(height: AppSpacing.xs),
           TelegramStatusCard(
             connected: auth.telegramConnected,
@@ -126,7 +116,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.lg),
 
           // About Section (Flat Entry)
-          _sectionLabel(context, 'About Drive'),
+          _settingsSectionLabel(context, 'About Drive'),
           const SizedBox(height: AppSpacing.xs),
           _InfoCard(
             iconWidget: GitHubIcon(size: 18, color: scheme.onSurface),
@@ -149,26 +139,6 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _sectionLabel(BuildContext context, String label) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.xxs,
-        AppSpacing.sm,
-        AppSpacing.xxs,
-        AppSpacing.xs,
-      ),
-      child: Text(
-        label,
-        style: theme.textTheme.titleSmall?.copyWith(
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-
   String _getNotificationStatusText(AppSettingsState settings) {
     if (settings.uploadCompletedAlerts && settings.uploadFailedAlerts) {
       return 'All Alerts';
@@ -185,6 +155,50 @@ class SettingsScreen extends ConsumerWidget {
 // ==========================================
 // Sub-Category Panels
 // ==========================================
+
+/// Shared section label used by [SettingsScreen] and its sub-pages so the
+/// dedicated panels match the parent's visual rhythm exactly.
+Widget _settingsSectionLabel(BuildContext context, String label) {
+  final theme = Theme.of(context);
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(
+      AppSpacing.xxs,
+      AppSpacing.sm,
+      AppSpacing.xxs,
+      AppSpacing.xs,
+    ),
+    child: Text(
+      label,
+      style: theme.textTheme.titleSmall?.copyWith(
+        color: theme.colorScheme.primary,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.5,
+      ),
+    ),
+  );
+}
+
+/// Short paragraph that appears under a section label on a sub-page,
+/// describing what the toggles below do. Mirrors the muted body style used
+/// on the parent settings screen so the surface no longer feels empty.
+Widget _settingsSectionIntro(BuildContext context, String text) {
+  final theme = Theme.of(context);
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(
+      AppSpacing.xxs,
+      0,
+      AppSpacing.xxs,
+      AppSpacing.sm,
+    ),
+    child: Text(
+      text,
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+        height: 1.35,
+      ),
+    ),
+  );
+}
 
 class UploadSettingsScreen extends ConsumerWidget {
   const UploadSettingsScreen({super.key});
@@ -206,8 +220,18 @@ class UploadSettingsScreen extends ConsumerWidget {
       ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.xxl,
+        ),
         children: [
+          _settingsSectionLabel(context, 'Network & Limits'),
+          _settingsSectionIntro(
+            context,
+            'Control when and how files are uploaded to Telegram so you stay within data and quota expectations.',
+          ),
           _PremiumSwitchTile(
             icon: Icons.priority_high_rounded,
             iconColor: Colors.indigo,
@@ -223,6 +247,13 @@ class UploadSettingsScreen extends ConsumerWidget {
             subtitle: 'When off, uploads wait for Wi-Fi automatically.',
             value: settings.uploadOnMobileData,
             onChanged: ref.read(appSettingsControllerProvider).setUploadOnMobileData,
+          ),
+
+          const SizedBox(height: AppSpacing.md),
+          _settingsSectionLabel(context, 'File Handling'),
+          _settingsSectionIntro(
+            context,
+            'How TeleDrive resolves naming conflicts when uploading files that share a name.',
           ),
           _PremiumSwitchTile(
             icon: Icons.drive_file_rename_outline_rounded,
@@ -258,33 +289,50 @@ class CacheStorageSettingsScreen extends ConsumerWidget {
       ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.xxl,
+        ),
         children: [
+          _settingsSectionLabel(context, 'Local Cache'),
+          _settingsSectionIntro(
+            context,
+            'TeleDrive keeps thumbnails and previews on this device so files open instantly. Clearing them only frees space — your files in Telegram are untouched.',
+          ),
           // Elegant usage dashboard
           Container(
             padding: const EdgeInsets.all(AppSpacing.lg),
-            margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+            margin: const EdgeInsets.only(bottom: AppSpacing.md),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  scheme.primaryContainer.withValues(alpha: 0.15),
-                  scheme.primaryContainer.withValues(alpha: 0.05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: AppRadii.xlR,
+              color: scheme.surfaceContainerLow,
+              borderRadius: AppRadii.lgR,
               border: Border.all(
-                color: scheme.primary.withValues(alpha: 0.15),
-                width: 1.5,
+                color: scheme.outlineVariant.withValues(alpha: 0.35),
+                width: 1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
               children: [
-                Icon(
-                  Icons.cleaning_services_rounded,
-                  color: scheme.primary,
-                  size: 44,
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.cleaning_services_rounded,
+                    color: scheme.primary,
+                    size: 32,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
@@ -301,17 +349,14 @@ class CacheStorageSettingsScreen extends ConsumerWidget {
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  'Temporary files, thumbnails, and preview data cached locally. Clearing them will free up device storage without deleting files from Telegram.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    height: 1.4,
-                  ),
-                ),
               ],
             ),
+          ),
+
+          _settingsSectionLabel(context, 'Maintenance'),
+          _settingsSectionIntro(
+            context,
+            'Reclaim device storage by deleting cached previews. Telegram-hosted originals stay intact.',
           ),
           _PremiumActionTile(
             icon: Icons.cleaning_services_rounded,
@@ -344,8 +389,18 @@ class PrivacySecuritySettingsScreen extends ConsumerWidget {
       ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.xxl,
+        ),
         children: [
+          _settingsSectionLabel(context, 'Deletion'),
+          _settingsSectionIntro(
+            context,
+            'Choose what happens when files are deleted, and recover items you removed by mistake.',
+          ),
           _PremiumSwitchTile(
             icon: Icons.delete_sweep_outlined,
             iconColor: Colors.teal,
@@ -361,6 +416,13 @@ class PrivacySecuritySettingsScreen extends ConsumerWidget {
             subtitle: 'Restore items or delete them forever.',
             onTap: () => context.push('/settings/trash'),
           ),
+
+          const SizedBox(height: AppSpacing.md),
+          _settingsSectionLabel(context, 'Sharing'),
+          _settingsSectionIntro(
+            context,
+            'Add a confirmation step before any link is created that anyone with the URL could open.',
+          ),
           _PremiumSwitchTile(
             icon: Icons.link_rounded,
             iconColor: Colors.teal,
@@ -368,6 +430,13 @@ class PrivacySecuritySettingsScreen extends ConsumerWidget {
             subtitle: 'Ask before creating links anyone can open.',
             value: settings.confirmPublicShares,
             onChanged: ref.read(appSettingsControllerProvider).setConfirmPublicShares,
+          ),
+
+          const SizedBox(height: AppSpacing.md),
+          _settingsSectionLabel(context, 'Sign Out'),
+          _settingsSectionIntro(
+            context,
+            'Decide whether previews and thumbnails on this device should be wiped when you sign out. Files in Telegram are never affected.',
           ),
           _PremiumSwitchTile(
             icon: Icons.logout_rounded,
@@ -425,8 +494,18 @@ class NotificationsSettingsScreen extends ConsumerWidget {
       ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.xxl,
+        ),
         children: [
+          _settingsSectionLabel(context, 'Upload Alerts'),
+          _settingsSectionIntro(
+            context,
+            'Choose which upload events should trigger a system notification on this device.',
+          ),
           _PremiumSwitchTile(
             icon: Icons.cloud_done_outlined,
             iconColor: Colors.purple,
