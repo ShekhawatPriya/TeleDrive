@@ -1,5 +1,7 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/file_type_detector.dart';
@@ -23,74 +25,145 @@ class _FreeUpSpaceScreenState extends ConsumerState<FreeUpSpaceScreen> {
     });
   }
 
+  void _showLearnMoreDialog(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('About Backup & Space'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'How does Free Up Space work?',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: scheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Free up space deletes the local cache files (thumbnails, preview files, and cached downloads) stored on this device. These files have already been safely uploaded to your Telegram Cloud Drive.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Will my files be deleted from Telegram?',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: scheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'No. Your files remain completely safe in your Telegram Cloud Drive. You can stream, preview, or download them again at any time within TeleDrive.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cache = ref.watch(cacheControllerProvider).state;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final canFree = formatFileSize(cache.totalSize);
+    final isClearing = cache.isClearing;
+    final totalSize = cache.totalSize;
 
     return Scaffold(
       backgroundColor: scheme.surface,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          tooltip: 'Back',
+          onPressed: () => context.pop(),
+        ),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+      ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            AppSpacing.md,
-            AppSpacing.lg,
-            0,
-          ),
+        top: false, // Let AppBar handle top safe area
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: IconButton(
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  icon: const Icon(Icons.close_rounded),
-                  iconSize: 36,
-                  tooltip: 'Close',
+              const SizedBox(height: 16),
+              Center(
+                child: CustomPaint(
+                  size: const Size(168, 220),
+                  painter: _FreeUpSpaceIllustrationPainter(),
                 ),
               ),
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+              const SizedBox(height: 48),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                child: Text(
+                  'Free up space on this device',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w400,
+                    height: 1.15,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              _FreeUpInfoRow(
+                icon: Icons.cloud_done_outlined,
+                titleWidget: RichText(
+                  text: TextSpan(
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      height: 1.45,
+                    ),
                     children: [
-                      const SizedBox(height: 54),
-                      Center(
-                        child: CustomPaint(
-                          size: const Size(168, 220),
-                          painter: _FreeUpSpaceIllustrationPainter(),
+                      const TextSpan(
+                        text: 'These items are already safely backed up in your chosen quality. ',
+                      ),
+                      TextSpan(
+                        text: 'Learn more',
+                        style: TextStyle(
+                          color: scheme.primary,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
                         ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () => _showLearnMoreDialog(context),
                       ),
-                      const SizedBox(height: 56),
-                      Text(
-                        'Free up space on this device',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          color: scheme.onSurface,
-                          fontWeight: FontWeight.w400,
-                          height: 1.14,
-                        ),
-                      ),
-                      const SizedBox(height: 44),
-                      _FreeUpInfoRow(
-                        icon: Icons.cloud_done_outlined,
-                        text:
-                            'These items are already safely backed up to Telegram Drive.',
-                      ),
-                      const SizedBox(height: 34),
-                      _FreeUpInfoRow(
-                        icon: Icons.fact_check_outlined,
-                        text:
-                            'You can still view them at any time in Telegram Drive.',
-                      ),
-                      const SizedBox(height: 120),
                     ],
                   ),
                 ),
               ),
+              const SizedBox(height: 24),
+              _FreeUpInfoRow(
+                icon: Icons.mobile_friendly_rounded,
+                titleWidget: Text(
+                  'You can still view them at any time in Telegram Drive.',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    height: 1.45,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
             ],
           ),
         ),
@@ -103,16 +176,71 @@ class _FreeUpSpaceScreenState extends ConsumerState<FreeUpSpaceScreen> {
           AppSpacing.lg,
         ),
         child: FilledButton(
-          onPressed: () {},
+          onPressed: (isClearing || totalSize == 0)
+              ? null
+              : () async {
+                  try {
+                    await ref.read(cacheControllerProvider).clearCache();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              Icon(
+                                Icons.check_circle_outline_rounded,
+                                color: scheme.primary,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text('Successfully freed up space!'),
+                            ],
+                          ),
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor: scheme.inverseSurface,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to clear space: $e'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                  }
+                },
           style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(64),
+            minimumSize: const Size.fromHeight(56),
+            shape: const StadiumBorder(),
             backgroundColor: scheme.primaryContainer,
             foregroundColor: scheme.onPrimaryContainer,
+            elevation: 0,
             textStyle: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          child: Text('Free up $canFree'),
+          child: isClearing
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        color: scheme.onPrimaryContainer,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text('Clearing space...'),
+                  ],
+                )
+              : Text(
+                  totalSize == 0
+                      ? 'Space is already free'
+                      : 'Free up $canFree',
+                ),
         ),
       ),
     );
@@ -120,32 +248,32 @@ class _FreeUpSpaceScreenState extends ConsumerState<FreeUpSpaceScreen> {
 }
 
 class _FreeUpInfoRow extends StatelessWidget {
-  const _FreeUpInfoRow({required this.icon, required this.text});
+  const _FreeUpInfoRow({required this.icon, required this.titleWidget});
 
   final IconData icon;
-  final String text;
+  final Widget titleWidget;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(width: 52, child: Icon(icon, color: scheme.primary, size: 32)),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: Text(
-            text,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: scheme.onSurfaceVariant,
-              fontWeight: FontWeight.w400,
-              height: 1.55,
-            ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            color: scheme.primary,
+            size: 26,
           ),
-        ),
-      ],
+          const SizedBox(width: AppSpacing.lg),
+          Expanded(
+            child: titleWidget,
+          ),
+        ],
+      ),
     );
   }
 }
