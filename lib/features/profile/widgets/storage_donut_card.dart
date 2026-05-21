@@ -40,17 +40,25 @@ List<StorageCategory> buildStorageCategories(
     }
   }
   return [
-    StorageCategory(label: 'Photos', bytes: photos, color: scheme.primary),
-    StorageCategory(label: 'Videos', bytes: videos, color: scheme.tertiary),
+    StorageCategory(
+      label: 'Photos',
+      bytes: photos,
+      color: const Color(0xFFFF453A),
+    ),
+    StorageCategory(
+      label: 'Videos',
+      bytes: videos,
+      color: const Color(0xFFFF9F0A),
+    ),
     StorageCategory(
       label: 'Documents',
       bytes: documents,
-      color: scheme.secondary,
+      color: const Color(0xFF0A84FF),
     ),
     StorageCategory(
       label: 'Other',
       bytes: other,
-      color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
+      color: const Color(0xFF8E8E93),
     ),
   ];
 }

@@ -11,6 +11,7 @@ import '../../../widgets/github_icon.dart';
 import '../../../widgets/sheet/sheet_drag_handle.dart';
 import '../../auth/auth_controller.dart';
 import '../../drive/drive_controller.dart';
+import '../../../models/drive_models.dart';
 import 'switch_account_provider.dart';
 
 part 'account_bottom_sheet/account_sheet_actions.dart';
@@ -128,7 +129,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                       const SizedBox(height: _sectionSpacing),
                       _buildBackupCard(context, backupOn),
                       const SizedBox(height: _sectionSpacing),
-                      _buildStorageCard(context, drive.state.usedStorage),
+                      _buildStorageCard(context, drive.state.usedStorage, drive.files),
                       const SizedBox(height: _sectionSpacing),
                       _buildCompactActionPill(
                         context,

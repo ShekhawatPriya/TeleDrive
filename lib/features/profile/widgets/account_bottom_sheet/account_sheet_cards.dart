@@ -1,9 +1,49 @@
 part of '../account_bottom_sheet.dart';
 
 extension _AccountSheetCards on _AccountBottomSheetState {
-  Widget _buildStorageCard(BuildContext context, int used) {
+  Widget _buildStorageCard(BuildContext context, int used, List<DriveFile> files) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+
+    int photosSize = 0;
+    int videosSize = 0;
+    int docsSize = 0;
+    int othersSize = 0;
+
+    for (final file in files) {
+      final isAvailable = file.uploadStatus == null || file.uploadStatus == 'available';
+      if (!isAvailable) continue;
+      final size = file.size;
+      switch (file.kind) {
+        case FileKind.image:
+          photosSize += size;
+          break;
+        case FileKind.video:
+          videosSize += size;
+          break;
+        case FileKind.pdf:
+        case FileKind.doc:
+        case FileKind.sheet:
+        case FileKind.slides:
+        case FileKind.text:
+        case FileKind.code:
+          docsSize += size;
+          break;
+        default:
+          othersSize += size;
+          break;
+      }
+    }
+
+    final categories = [
+      _StorageCategory('Photos', photosSize, const Color(0xFFFF453A)),
+      _StorageCategory('Videos', videosSize, const Color(0xFFFF9F0A)),
+      _StorageCategory('Documents', docsSize, const Color(0xFF0A84FF)),
+      _StorageCategory('Others', othersSize, const Color(0xFF8E8E93)),
+    ];
+
+    final activeCategories = categories.where((c) => c.size > 0).toList();
+    final totalCategorizedSize = activeCategories.fold<int>(0, (sum, c) => sum + c.size);
 
     return _ProfileSheetSection(
       child: InkWell(
@@ -21,58 +61,75 @@ extension _AccountSheetCards on _AccountBottomSheetState {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(
-                    Icons.cloud_queue_rounded,
-                    size: 28,
-                    color: scheme.primary,
+                  Text(
+                    'Telegram Drive',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: Text(
-                      'Unlimited Telegram Drive storage',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: scheme.onSurface,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  Text(
+                    '${formatFileSize(used)} of Unlimited used',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.sm),
               ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: SizedBox(
-                  height: 6,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      ColoredBox(
-                        color: scheme.outlineVariant.withValues(alpha: 0.55),
-                      ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: scheme.primary,
-                            shape: BoxShape.circle,
-                          ),
+                borderRadius: BorderRadius.circular(100),
+                child: Container(
+                  height: 10,
+                  color: scheme.brightness == Brightness.dark
+                      ? Colors.grey[850]
+                      : Colors.grey[300],
+                  child: used == 0 || activeCategories.isEmpty
+                      ? const SizedBox.expand()
+                      : Row(
+                          children: activeCategories.map((cat) {
+                            return Expanded(
+                              flex: (cat.size / totalCategorizedSize * 10000).clamp(1, 10000).toInt(),
+                              child: Container(
+                                color: cat.color,
+                              ),
+                            );
+                          }).toList(),
                         ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              Text(
-                '${formatFileSize(used)} backed up to Telegram Drive',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
+              Wrap(
+                spacing: 12.0,
+                runSpacing: 4.0,
+                alignment: WrapAlignment.start,
+                children: categories.map((cat) {
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: cat.color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        cat.name,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
               ),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.sm),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -80,8 +137,17 @@ extension _AccountSheetCards on _AccountBottomSheetState {
                       context.safePush('/profile?scrollToStorage=true'),
                   style: TextButton.styleFrom(
                     splashFactory: NoSplash.splashFactory,
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(0, 0),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: const Text('Manage storage'),
+                  child: Text(
+                    'Manage storage',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: scheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -179,3 +245,12 @@ extension _AccountSheetCards on _AccountBottomSheetState {
     );
   }
 }
+
+class _StorageCategory {
+  final String name;
+  final int size;
+  final Color color;
+
+  const _StorageCategory(this.name, this.size, this.color);
+}
+
