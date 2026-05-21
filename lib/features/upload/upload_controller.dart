@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -334,6 +335,9 @@ class UploadController extends ChangeNotifier {
                 ? (done / total).clamp(0.0, 1.0)
                 : current.serverProgress;
         final thumbReady = '${matched['thumbnail_status'] ?? ''}' == 'available';
+        if (status == UploadStatus.uploaded && current.status != UploadStatus.uploaded) {
+          unawaited(_safeDeleteLocalFile(current.path));
+        }
         _setItem(
           current.localId,
           status: status,
@@ -394,6 +398,7 @@ class UploadController extends ChangeNotifier {
     if (item.batchId != null) _stopPollingBatch(item.batchId!);
     _runningLocalIds.remove(localId);
     _setItem(localId, status: UploadStatus.cancelled);
+    unawaited(_safeDeleteLocalFile(item.path));
     _syncOptimistic();
     _pumpQueue();
   }
@@ -432,6 +437,7 @@ class UploadController extends ChangeNotifier {
     if (item.status != UploadStatus.failed && item.status != UploadStatus.cancelled) {
       return;
     }
+    unawaited(_safeDeleteLocalFile(item.path));
     items = items.where((i) => i.localId != localId).toList();
     if (items.isEmpty) {
       sheetVisible = false;
@@ -448,6 +454,9 @@ class UploadController extends ChangeNotifier {
       timer.cancel();
     }
     _pollTimersByBatchId.clear();
+    for (final item in items) {
+      _safeDeleteLocalFile(item.path);
+    }
     items = [];
     sheetVisible = false;
     uploadSessionId = null;
@@ -559,6 +568,9 @@ class UploadController extends ChangeNotifier {
     _autoDismissTimer = Timer(const Duration(milliseconds: 1400), () {
       if (_disposed || uploadSessionId != sessionId || uploading) return;
       if (!_allItemsCompleted) return;
+      for (final item in items) {
+        _safeDeleteLocalFile(item.path);
+      }
       items = [];
       sheetVisible = false;
       uploadSessionId = null;
@@ -599,6 +611,18 @@ class UploadController extends ChangeNotifier {
   void _notifyListeners() {
     if (!_disposed) {
       notifyListeners();
+    }
+  }
+
+  Future<void> _safeDeleteLocalFile(String path) async {
+    try {
+      final file = File(path);
+      if (await file.exists()) {
+        await file.delete();
+        debugPrint('Successfully deleted temporary upload file: $path');
+      }
+    } catch (e) {
+      debugPrint('Error deleting temporary upload file: $e');
     }
   }
 
