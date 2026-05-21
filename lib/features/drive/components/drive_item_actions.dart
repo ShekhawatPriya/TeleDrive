@@ -26,18 +26,7 @@ class DriveItemActions {
     DriveFile file,
   ) async {
     final actions = <SheetActionItem>[
-      if (file.shared)
-        const SheetActionItem(
-          id: 'revoke_share',
-          label: 'Revoke share',
-          icon: Icons.link_off,
-        )
-      else
-        const SheetActionItem(
-          id: 'share',
-          label: 'Share',
-          icon: Icons.ios_share,
-        ),
+      _shareAction(file.shared),
       const SheetActionItem(
         id: 'download',
         label: 'Download',
@@ -48,29 +37,16 @@ class DriveItemActions {
         label: 'Move',
         icon: Icons.drive_file_move_outline,
       ),
-      SheetActionItem(
-        id: 'star',
-        label: file.starred ? 'Unstar' : 'Star',
-        icon: file.starred ? Icons.star : Icons.star_border,
-      ),
-      const SheetActionItem(
-        id: 'delete',
-        label: 'Delete',
-        icon: Icons.delete_outline,
-        destructive: true,
-      ),
+      _starAction(file.starred),
+      _deleteAction,
     ];
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      useRootNavigator: true,
-      builder: (_) => DriveActionSheet(
-        title: file.name,
-        subtitle: _fileSubtitle(file),
-        leadingIcon: _iconForKind(file.kind),
-        leadingAccent: _accentForKind(file.kind),
-        actions: actions,
-      ),
+    final action = await _showActions(
+      context,
+      title: file.name,
+      subtitle: _fileSubtitle(file),
+      leadingIcon: _iconForKind(file.kind),
+      leadingAccent: _accentForKind(file.kind),
+      actions: actions,
     );
     if (!context.mounted) return;
     final controller = ref.read(driveControllerProvider);
@@ -79,14 +55,10 @@ class DriveItemActions {
     } else if (action == 'revoke_share') {
       await revokeFileShares(context, ref, file);
     } else if (action == 'move') {
-      final targetId = await showModalBottomSheet<String>(
-        context: context,
-        isScrollControlled: true,
-        useRootNavigator: true,
-        builder: (_) => MoveDestinationSheet(
-          title: 'Move "${file.name}"',
-          currentParentId: file.parentId,
-        ),
+      final targetId = await _pickMoveDestination(
+        context,
+        title: 'Move "${file.name}"',
+        currentParentId: file.parentId,
       );
       if (targetId != null && context.mounted) {
         await controller.moveFile(
@@ -108,18 +80,7 @@ class DriveItemActions {
     bool allowRename = true,
   }) async {
     final actions = <SheetActionItem>[
-      if (folder.shared)
-        const SheetActionItem(
-          id: 'revoke_share',
-          label: 'Revoke share',
-          icon: Icons.link_off,
-        )
-      else
-        const SheetActionItem(
-          id: 'share',
-          label: 'Share',
-          icon: Icons.ios_share,
-        ),
+      _shareAction(folder.shared),
       if (allowRename)
         const SheetActionItem(
           id: 'rename',
@@ -131,29 +92,16 @@ class DriveItemActions {
         label: 'Move',
         icon: Icons.drive_file_move_outline,
       ),
-      SheetActionItem(
-        id: 'star',
-        label: folder.starred ? 'Unstar' : 'Star',
-        icon: folder.starred ? Icons.star : Icons.star_border,
-      ),
-      const SheetActionItem(
-        id: 'delete',
-        label: 'Delete',
-        icon: Icons.delete_outline,
-        destructive: true,
-      ),
+      _starAction(folder.starred),
+      _deleteAction,
     ];
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      useRootNavigator: true,
-      builder: (_) => DriveActionSheet(
-        title: folder.name,
-        subtitle: _folderSubtitle(folder),
-        leadingIcon: Icons.folder_outlined,
-        leadingAccent: AppColors.warning,
-        actions: actions,
-      ),
+    final action = await _showActions(
+      context,
+      title: folder.name,
+      subtitle: _folderSubtitle(folder),
+      leadingIcon: Icons.folder_outlined,
+      leadingAccent: AppColors.warning,
+      actions: actions,
     );
     if (!context.mounted) return;
     final controller = ref.read(driveControllerProvider);
@@ -162,15 +110,11 @@ class DriveItemActions {
     } else if (action == 'revoke_share') {
       await revokeFolderShares(context, ref, folder);
     } else if (action == 'move') {
-      final targetId = await showModalBottomSheet<String>(
-        context: context,
-        isScrollControlled: true,
-        useRootNavigator: true,
-        builder: (_) => MoveDestinationSheet(
-          title: 'Move "${folder.name}"',
-          movingFolderId: folder.id,
-          currentParentId: folder.parentId,
-        ),
+      final targetId = await _pickMoveDestination(
+        context,
+        title: 'Move "${folder.name}"',
+        movingFolderId: folder.id,
+        currentParentId: folder.parentId,
       );
       if (targetId != null && context.mounted) {
         await controller.moveFolder(
@@ -202,6 +146,75 @@ class DriveItemActions {
       }
     }
   }
+}
+
+const _deleteAction = SheetActionItem(
+  id: 'delete',
+  label: 'Delete',
+  icon: Icons.delete_outline,
+  destructive: true,
+);
+
+SheetActionItem _shareAction(bool shared) {
+  return shared
+      ? const SheetActionItem(
+          id: 'revoke_share',
+          label: 'Revoke share',
+          icon: Icons.link_off,
+        )
+      : const SheetActionItem(
+          id: 'share',
+          label: 'Share',
+          icon: Icons.ios_share,
+        );
+}
+
+SheetActionItem _starAction(bool starred) {
+  return SheetActionItem(
+    id: 'star',
+    label: starred ? 'Unstar' : 'Star',
+    icon: starred ? Icons.star : Icons.star_border,
+  );
+}
+
+Future<String?> _showActions(
+  BuildContext context, {
+  required String title,
+  required String subtitle,
+  required IconData leadingIcon,
+  required Color leadingAccent,
+  required List<SheetActionItem> actions,
+}) {
+  return showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    useRootNavigator: true,
+    builder: (_) => DriveActionSheet(
+      title: title,
+      subtitle: subtitle,
+      leadingIcon: leadingIcon,
+      leadingAccent: leadingAccent,
+      actions: actions,
+    ),
+  );
+}
+
+Future<String?> _pickMoveDestination(
+  BuildContext context, {
+  required String title,
+  String? movingFolderId,
+  String? currentParentId,
+}) {
+  return showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    useRootNavigator: true,
+    builder: (_) => MoveDestinationSheet(
+      title: title,
+      movingFolderId: movingFolderId,
+      currentParentId: currentParentId,
+    ),
+  );
 }
 
 String _fileSubtitle(DriveFile file) {
