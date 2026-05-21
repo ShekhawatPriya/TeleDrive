@@ -20,7 +20,6 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
-    final settings = ref.watch(appSettingsControllerProvider).state;
     final cache = ref.watch(cacheControllerProvider).state;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
@@ -52,7 +51,6 @@ class SettingsScreen extends ConsumerWidget {
             iconColor: Colors.indigo,
             title: 'Upload Settings',
             subtitle: 'Manage upload limits, mobile network usage, & renaming',
-            statusText: settings.uploadOnMobileData ? 'Mobile Data & Wi-Fi' : 'Wi-Fi Only',
             onTap: () => Navigator.of(context).push(
               CupertinoPageRoute(builder: (_) => const UploadSettingsScreen()),
             ),
@@ -76,7 +74,6 @@ class SettingsScreen extends ConsumerWidget {
             iconColor: Colors.teal,
             title: 'Privacy & Security Settings',
             subtitle: 'Configure trash bin, share link permissions, & sign out cache',
-            statusText: settings.trashEnabled ? 'Trash Active' : 'Direct Delete',
             onTap: () => Navigator.of(context).push(
               CupertinoPageRoute(builder: (_) => const PrivacySecuritySettingsScreen()),
             ),
@@ -88,7 +85,6 @@ class SettingsScreen extends ConsumerWidget {
             iconColor: Colors.purple,
             title: 'Notifications Settings',
             subtitle: 'Set up push alerts for completed or failed uploads',
-            statusText: _getNotificationStatusText(settings),
             onTap: () => Navigator.of(context).push(
               CupertinoPageRoute(builder: (_) => const NotificationsSettingsScreen()),
             ),
@@ -137,18 +133,6 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  String _getNotificationStatusText(AppSettingsState settings) {
-    if (settings.uploadCompletedAlerts && settings.uploadFailedAlerts) {
-      return 'All Alerts';
-    } else if (settings.uploadCompletedAlerts) {
-      return 'Completed Only';
-    } else if (settings.uploadFailedAlerts) {
-      return 'Failed Only';
-    } else {
-      return 'Muted';
-    }
   }
 }
 
@@ -207,6 +191,8 @@ class UploadSettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(appSettingsControllerProvider).state;
     final auth = ref.watch(authControllerProvider);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final thresholdMbStr = '${(auth.largeUploadThresholdBytes / (1024 * 1024)).toStringAsFixed(0)} MB';
 
     return Scaffold(
@@ -220,46 +206,58 @@ class UploadSettingsScreen extends ConsumerWidget {
       ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.xxl,
+        padding: const EdgeInsets.only(
+          top: AppSpacing.md,
+          bottom: AppSpacing.xxl,
         ),
         children: [
-          _settingsSectionLabel(context, 'Network & Limits'),
-          _settingsSectionIntro(
-            context,
-            'Control when and how files are uploaded to Telegram so you stay within data and quota expectations.',
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionLabel(context, 'Network & Limits'),
           ),
-          _PremiumSwitchTile(
-            icon: Icons.priority_high_rounded,
-            iconColor: Colors.indigo,
-            title: 'Ask before large uploads',
-            subtitle: 'Confirm before uploading files larger than $thresholdMbStr.',
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionIntro(
+              context,
+              'Control when and how files are uploaded to Telegram so you stay within data and quota expectations.',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _FlatSwitchTile(
+            title: 'Ask Before Large Uploads',
+            subtitle: 'Request confirmation when uploading files that exceed $thresholdMbStr.',
             value: settings.askBeforeLargeUploads,
             onChanged: ref.read(appSettingsControllerProvider).setAskBeforeLargeUploads,
           ),
-          _PremiumSwitchTile(
-            icon: Icons.network_cell_rounded,
-            iconColor: Colors.indigo,
-            title: 'Upload on mobile data',
-            subtitle: 'When off, uploads wait for Wi-Fi automatically.',
+          Divider(
+            color: scheme.outlineVariant.withValues(alpha: 0.35),
+            height: 1,
+            thickness: 1,
+            indent: AppSpacing.md,
+          ),
+          _FlatSwitchTile(
+            title: 'Upload on Mobile Data',
+            subtitle: 'Allow uploads over cellular data networks. When disabled, waits for Wi-Fi connection.',
             value: settings.uploadOnMobileData,
             onChanged: ref.read(appSettingsControllerProvider).setUploadOnMobileData,
           ),
 
-          const SizedBox(height: AppSpacing.md),
-          _settingsSectionLabel(context, 'File Handling'),
-          _settingsSectionIntro(
-            context,
-            'How TeleDrive resolves naming conflicts when uploading files that share a name.',
+          const SizedBox(height: AppSpacing.xl),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionLabel(context, 'File Handling'),
           ),
-          _PremiumSwitchTile(
-            icon: Icons.drive_file_rename_outline_rounded,
-            iconColor: Colors.indigo,
-            title: 'Rename duplicate files automatically',
-            subtitle: 'Use clean names like File (1).ext on upload.',
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionIntro(
+              context,
+              'How TeleDrive resolves naming conflicts when uploading files that share a name.',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _FlatSwitchTile(
+            title: 'Auto-Rename Duplicate Files',
+            subtitle: 'Avoid overwriting existing files by appending a unique number (e.g., File (1).ext).',
             value: settings.autoRenameDuplicates,
             onChanged: ref.read(appSettingsControllerProvider).setAutoRenameDuplicates,
           ),
@@ -289,78 +287,91 @@ class CacheStorageSettingsScreen extends ConsumerWidget {
       ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.xxl,
+        padding: const EdgeInsets.only(
+          top: AppSpacing.md,
+          bottom: AppSpacing.xxl,
         ),
         children: [
-          _settingsSectionLabel(context, 'Local Cache'),
-          _settingsSectionIntro(
-            context,
-            'TeleDrive keeps thumbnails and previews on this device so files open instantly. Clearing them only frees space — your files in Telegram are untouched.',
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionLabel(context, 'Local Cache'),
           ),
-          // Elegant usage dashboard
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            margin: const EdgeInsets.only(bottom: AppSpacing.md),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerLow,
-              borderRadius: AppRadii.lgR,
-              border: Border.all(
-                color: scheme.outlineVariant.withValues(alpha: 0.35),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionIntro(
+              context,
+              'TeleDrive keeps thumbnails and previews on this device so files open instantly. Clearing them only frees space — your files in Telegram are untouched.',
             ),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: scheme.primary.withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.cleaning_services_rounded,
-                    color: scheme.primary,
-                    size: 32,
-                  ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          // Elegant usage dashboard
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerLow,
+                borderRadius: AppRadii.lgR,
+                border: Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.35),
+                  width: 1,
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  cache.isLoading ? 'Scanning...' : _formatBytes(cache.totalSize),
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: scheme.onSurface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  'Local Cache Size',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
+                ],
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.sm),
+                    decoration: BoxDecoration(
+                      color: scheme.primary.withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.cleaning_services_rounded,
+                      color: scheme.primary,
+                      size: 32,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    cache.isLoading ? 'Scanning...' : _formatBytes(cache.totalSize),
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(
+                    'Local Cache Size',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
 
-          _settingsSectionLabel(context, 'Maintenance'),
-          _settingsSectionIntro(
-            context,
-            'Reclaim device storage by deleting cached previews. Telegram-hosted originals stay intact.',
+          const SizedBox(height: AppSpacing.xl),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionLabel(context, 'Maintenance'),
           ),
-          _PremiumActionTile(
-            icon: Icons.cleaning_services_rounded,
-            iconColor: Colors.amber[700]!,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionIntro(
+              context,
+              'Reclaim device storage by deleting cached previews. Telegram-hosted originals stay intact.',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _FlatActionTile(
             title: 'Free up space',
             subtitle: 'Delete local cache to reclaim storage.',
             onTap: () => context.push('/profile/free-up-space'),
@@ -377,6 +388,7 @@ class PrivacySecuritySettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(appSettingsControllerProvider).state;
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -389,58 +401,75 @@ class PrivacySecuritySettingsScreen extends ConsumerWidget {
       ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.xxl,
+        padding: const EdgeInsets.only(
+          top: AppSpacing.md,
+          bottom: AppSpacing.xxl,
         ),
         children: [
-          _settingsSectionLabel(context, 'Deletion'),
-          _settingsSectionIntro(
-            context,
-            'Choose what happens when files are deleted, and recover items you removed by mistake.',
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionLabel(context, 'Deletion'),
           ),
-          _PremiumSwitchTile(
-            icon: Icons.delete_sweep_outlined,
-            iconColor: Colors.teal,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionIntro(
+              context,
+              'Choose what happens when files are deleted, and recover items you removed by mistake.',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _FlatSwitchTile(
             title: 'Trash / safer delete',
             subtitle: settings.trashEnabled ? 'Deletes move to Trash first.' : 'Deletes are permanent immediately.',
             value: settings.trashEnabled,
             onChanged: ref.read(appSettingsControllerProvider).setTrashEnabled,
           ),
-          _PremiumActionTile(
-            icon: Icons.restore_from_trash_outlined,
-            iconColor: Colors.teal,
+          Divider(
+            color: scheme.outlineVariant.withValues(alpha: 0.35),
+            height: 1,
+            thickness: 1,
+            indent: AppSpacing.md,
+          ),
+          _FlatActionTile(
             title: 'Trash bin',
             subtitle: 'Restore items or delete them forever.',
             onTap: () => context.push('/settings/trash'),
           ),
 
-          const SizedBox(height: AppSpacing.md),
-          _settingsSectionLabel(context, 'Sharing'),
-          _settingsSectionIntro(
-            context,
-            'Add a confirmation step before any link is created that anyone with the URL could open.',
+          const SizedBox(height: AppSpacing.xl),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionLabel(context, 'Sharing'),
           ),
-          _PremiumSwitchTile(
-            icon: Icons.link_rounded,
-            iconColor: Colors.teal,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionIntro(
+              context,
+              'Add a confirmation step before any link is created that anyone with the URL could open.',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _FlatSwitchTile(
             title: 'Confirm public share links',
             subtitle: 'Ask before creating links anyone can open.',
             value: settings.confirmPublicShares,
             onChanged: ref.read(appSettingsControllerProvider).setConfirmPublicShares,
           ),
 
-          const SizedBox(height: AppSpacing.md),
-          _settingsSectionLabel(context, 'Sign Out'),
-          _settingsSectionIntro(
-            context,
-            'Decide whether previews and thumbnails on this device should be wiped when you sign out. Files in Telegram are never affected.',
+          const SizedBox(height: AppSpacing.xl),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionLabel(context, 'Sign Out'),
           ),
-          _PremiumSwitchTile(
-            icon: Icons.logout_rounded,
-            iconColor: Colors.teal,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionIntro(
+              context,
+              'Decide whether previews and thumbnails on this device should be wiped when you sign out. Files in Telegram are never affected.',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _FlatSwitchTile(
             title: 'Clear local cache on sign out',
             subtitle: 'Keeps Telegram files safe; only local cache is cleared.',
             value: settings.clearCacheOnSignOut,
@@ -482,6 +511,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(appSettingsControllerProvider).state;
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -494,29 +524,36 @@ class NotificationsSettingsScreen extends ConsumerWidget {
       ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.xxl,
+        padding: const EdgeInsets.only(
+          top: AppSpacing.md,
+          bottom: AppSpacing.xxl,
         ),
         children: [
-          _settingsSectionLabel(context, 'Upload Alerts'),
-          _settingsSectionIntro(
-            context,
-            'Choose which upload events should trigger a system notification on this device.',
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionLabel(context, 'Upload Alerts'),
           ),
-          _PremiumSwitchTile(
-            icon: Icons.cloud_done_outlined,
-            iconColor: Colors.purple,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionIntro(
+              context,
+              'Choose which upload events should trigger a system notification on this device.',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _FlatSwitchTile(
             title: 'Upload completed alerts',
             subtitle: 'Show a local alert when uploads finish.',
             value: settings.uploadCompletedAlerts,
             onChanged: (value) => _setNotificationToggle(context, ref, complete: value),
           ),
-          _PremiumSwitchTile(
-            icon: Icons.cloud_off_outlined,
-            iconColor: Colors.purple,
+          Divider(
+            color: scheme.outlineVariant.withValues(alpha: 0.35),
+            height: 1,
+            thickness: 1,
+            indent: AppSpacing.md,
+          ),
+          _FlatSwitchTile(
             title: 'Upload failed alerts',
             subtitle: 'Show a local alert when uploads fail.',
             value: settings.uploadFailedAlerts,
@@ -658,18 +695,14 @@ class _CategoryNavCard extends StatelessWidget {
   }
 }
 
-class _PremiumSwitchTile extends StatelessWidget {
-  const _PremiumSwitchTile({
-    required this.icon,
-    required this.iconColor,
+class _FlatSwitchTile extends StatelessWidget {
+  const _FlatSwitchTile({
     required this.title,
     required this.subtitle,
     required this.value,
     required this.onChanged,
   });
 
-  final IconData icon;
-  final Color iconColor;
   final String title;
   final String subtitle;
   final bool value;
@@ -680,93 +713,48 @@ class _PremiumSwitchTile extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeInOut,
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: value ? scheme.primary.withValues(alpha: 0.04) : scheme.surfaceContainerLow,
-        borderRadius: AppRadii.lgR,
-        border: Border.all(
-          color: value ? scheme.primary.withValues(alpha: 0.35) : scheme.outlineVariant.withValues(alpha: 0.35),
-          width: 1,
-        ),
-        boxShadow: [
-          if (value)
-            BoxShadow(
-              color: scheme.primary.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            )
-          else
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.01),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: AppRadii.lgR,
-        child: InkWell(
-          onTap: () => onChanged(!value),
-          borderRadius: AppRadii.lgR,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: AppSpacing.sm,
-              horizontal: AppSpacing.md,
-            ),
-            child: Row(
-              children: [
-                // Icon
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: value ? scheme.primary.withValues(alpha: 0.12) : iconColor.withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    color: value ? scheme.primary : iconColor,
-                    size: 18,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                // Title / Subtitle
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.md,
+            horizontal: AppSpacing.md,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurface,
+                        height: 1.2,
+                      ),
+                    ),
+                    if (subtitle.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xxs),
                       Text(
-                        title,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: scheme.onSurface,
-                          height: 1.2,
+                        subtitle,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
+                          height: 1.35,
                         ),
                       ),
-                      if (subtitle.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            height: 1.3,
-                          ),
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                // Switch
-                Switch(
-                  value: value,
-                  onChanged: onChanged,
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Switch(
+                value: value,
+                onChanged: onChanged,
+              ),
+            ],
           ),
         ),
       ),
@@ -774,17 +762,13 @@ class _PremiumSwitchTile extends StatelessWidget {
   }
 }
 
-class _PremiumActionTile extends StatelessWidget {
-  const _PremiumActionTile({
-    required this.icon,
-    required this.iconColor,
+class _FlatActionTile extends StatelessWidget {
+  const _FlatActionTile({
     required this.title,
     required this.subtitle,
     required this.onTap,
   });
 
-  final IconData icon;
-  final Color iconColor;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -794,84 +778,49 @@ class _PremiumActionTile extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: AppRadii.lgR,
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.35),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.01),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.md,
+            horizontal: AppSpacing.md,
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: AppRadii.lgR,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: AppRadii.lgR,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: AppSpacing.sm,
-              horizontal: AppSpacing.md,
-            ),
-            child: Row(
-              children: [
-                // Icon
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    color: iconColor,
-                    size: 18,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                // Text info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurface,
+                        height: 1.2,
+                      ),
+                    ),
+                    if (subtitle.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xxs),
                       Text(
-                        title,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: scheme.onSurface,
+                        subtitle,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
+                          height: 1.35,
                         ),
                       ),
-                      if (subtitle.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            height: 1.3,
-                          ),
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                // Trailing Chevron
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: scheme.onSurfaceVariant.withValues(alpha: 0.4),
-                  size: 24,
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.4),
+                size: 24,
+              ),
+            ],
           ),
         ),
       ),
