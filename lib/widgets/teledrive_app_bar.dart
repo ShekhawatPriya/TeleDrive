@@ -107,11 +107,19 @@ List<Widget> _buildAppBarActions(
       ),
       child: GestureDetector(
         onTap: () {
+          final screenHeight = MediaQuery.of(context).size.height;
+          final topPadding = MediaQuery.of(context).padding.top;
+          final notchHeight = topPadding > 0.0
+              ? topPadding
+              : MediaQueryData.fromView(View.of(context)).padding.top;
+          final maxSheetHeight = (screenHeight - (notchHeight + 64.0 + 12.0)).clamp(0.0, double.infinity);
+
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
             useSafeArea: true,
             useRootNavigator: true,
+            constraints: BoxConstraints(maxHeight: maxSheetHeight),
             builder: (context) => const AccountBottomSheet(),
           );
         },
