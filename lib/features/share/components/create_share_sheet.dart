@@ -5,6 +5,8 @@ import 'package:share_plus/share_plus.dart' as share_plus;
 
 import '../../../core/theme/app_theme.dart';
 import '../../../models/share_models.dart';
+import '../../drive/components/drive_dialogs.dart';
+import '../../profile/app_settings_controller.dart';
 import '../share_controller.dart';
 import 'share_result_view.dart';
 
@@ -29,6 +31,19 @@ class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
   }
 
   Future<void> _create() async {
+    if (ref.read(appSettingsControllerProvider).state.confirmPublicShares) {
+      final ok = await confirmAction(
+        context,
+        title: 'Create public link?',
+        message:
+            'Anyone with this link may be able to access the shared file or folder depending on the share rules.',
+        confirmLabel: 'Create link',
+      );
+      if (!ok) {
+        if (mounted) Navigator.pop(context);
+        return;
+      }
+    }
     try {
       final share = await ref
           .read(shareControllerProvider)
@@ -94,10 +109,7 @@ class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
       children: [
         Text('Share failed', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: AppSpacing.xs),
-        Text(
-          _error ?? 'Unknown error.',
-          style: TextStyle(color: scheme.error),
-        ),
+        Text(_error ?? 'Unknown error.', style: TextStyle(color: scheme.error)),
         const SizedBox(height: AppSpacing.md),
         FilledButton(
           onPressed: () {
@@ -107,8 +119,7 @@ class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
             });
             _create();
           },
-          style:
-              FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
           child: const Text('Try again'),
         ),
       ],
@@ -120,16 +131,18 @@ class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
     if (share == null) return;
     await Clipboard.setData(ClipboardData(text: share.url));
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Link copied')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Link copied')));
   }
 
   Future<void> _shareSheet() async {
     final share = _result;
     if (share == null) return;
     final box = context.findRenderObject() as RenderBox?;
-    final origin =
-        box == null ? Rect.zero : box.localToGlobal(Offset.zero) & box.size;
+    final origin = box == null
+        ? Rect.zero
+        : box.localToGlobal(Offset.zero) & box.size;
     await share_plus.Share.share(
       share.url,
       subject: share.primaryName ?? 'TeleDrive share',

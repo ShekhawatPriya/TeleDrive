@@ -79,10 +79,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
                     child: Text(
                       'Storage Breakdown',
-                      style: theme.textTheme.labelLarge?.copyWith(
+                      style: theme.textTheme.titleSmall?.copyWith(
                         color: scheme.primary,
                         fontWeight: FontWeight.w600,
-                        letterSpacing: 0.4,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ),

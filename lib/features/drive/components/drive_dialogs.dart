@@ -121,14 +121,22 @@ Future<bool> confirmAction(
   return result == true;
 }
 
-Future<bool> confirmDelete(BuildContext context, int count) {
+Future<bool> confirmDelete(
+  BuildContext context,
+  int count, {
+  bool trashEnabled = true,
+}) {
   return confirmAction(
     context,
-    title: 'Move to trash?',
-    message: count == 1
-        ? '1 item will be moved to trash. You can restore it later.'
-        : '$count items will be moved to trash. You can restore them later.',
-    confirmLabel: 'Delete',
+    title: trashEnabled ? 'Move to Trash?' : 'Delete forever?',
+    message: trashEnabled
+        ? (count == 1
+              ? '1 item will be moved to Trash. You can restore it later.'
+              : '$count items will be moved to Trash. You can restore them later.')
+        : (count == 1
+              ? '1 item will be permanently deleted from Telegram storage and this database.'
+              : '$count items will be permanently deleted from Telegram storage and this database.'),
+    confirmLabel: trashEnabled ? 'Move to Trash' : 'Delete forever',
     destructive: true,
   );
 }

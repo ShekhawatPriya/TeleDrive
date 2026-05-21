@@ -3,16 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../cache_controller.dart';
+import '../app_settings_controller.dart';
 import '../../auth/auth_controller.dart';
 
 class SignOutConfirmationSheet extends ConsumerStatefulWidget {
   const SignOutConfirmationSheet({super.key});
 
   @override
-  ConsumerState<SignOutConfirmationSheet> createState() => _SignOutConfirmationSheetState();
+  ConsumerState<SignOutConfirmationSheet> createState() =>
+      _SignOutConfirmationSheetState();
 }
 
-class _SignOutConfirmationSheetState extends ConsumerState<SignOutConfirmationSheet> with SingleTickerProviderStateMixin {
+class _SignOutConfirmationSheetState
+    extends ConsumerState<SignOutConfirmationSheet>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _animController;
   late final List<Animation<double>> _fadeAnimations;
   late final List<Animation<Offset>> _slideAnimations;
@@ -48,10 +52,12 @@ class _SignOutConfirmationSheetState extends ConsumerState<SignOutConfirmationSh
       return Tween<Offset>(
         begin: const Offset(0, 0.25),
         end: Offset.zero,
-      ).animate(CurvedAnimation(
-        parent: _animController,
-        curve: Interval(start, end, curve: AppEasing.emphasized),
-      ));
+      ).animate(
+        CurvedAnimation(
+          parent: _animController,
+          curve: Interval(start, end, curve: AppEasing.emphasized),
+        ),
+      );
     });
 
     _animController.forward();
@@ -68,9 +74,14 @@ class _SignOutConfirmationSheetState extends ConsumerState<SignOutConfirmationSh
     setState(() => _isProcessing = true);
 
     try {
-      // 1. Wipe local cache first completely
-      await ref.read(cacheControllerProvider).clearCache();
-      
+      final clearCache = ref
+          .read(appSettingsControllerProvider)
+          .state
+          .clearCacheOnSignOut;
+      if (clearCache) {
+        await ref.read(cacheControllerProvider).clearCache();
+      }
+
       if (mounted) {
         // 2. Dismiss sheet visually
         Navigator.of(context).pop();
@@ -96,13 +107,22 @@ class _SignOutConfirmationSheetState extends ConsumerState<SignOutConfirmationSh
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final clearCache = ref
+        .watch(appSettingsControllerProvider)
+        .state
+        .clearCacheOnSignOut;
 
     return PopScope(
       canPop: !_isProcessing,
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 8, AppSpacing.lg, AppSpacing.lg),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            8,
+            AppSpacing.lg,
+            AppSpacing.lg,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -194,7 +214,8 @@ class _SignOutConfirmationSheetState extends ConsumerState<SignOutConfirmationSh
                     ),
                     iconBgColor: Colors.transparent,
                     title: 'Telegram Logout',
-                    subtitle: 'Your active session on this device will be revoked and logged out.',
+                    subtitle:
+                        'Your active session on this device will be revoked and logged out.',
                   ),
                 ),
               ),
@@ -214,7 +235,8 @@ class _SignOutConfirmationSheetState extends ConsumerState<SignOutConfirmationSh
                     ),
                     iconBgColor: AppColors.success.withValues(alpha: 0.12),
                     title: 'Cloud Data Safe',
-                    subtitle: 'All your files, folders, and documents remain permanently safe in cloud storage.',
+                    subtitle:
+                        'All your files, folders, and documents remain permanently safe in cloud storage.',
                   ),
                 ),
               ),
@@ -234,7 +256,9 @@ class _SignOutConfirmationSheetState extends ConsumerState<SignOutConfirmationSh
                     ),
                     iconBgColor: AppColors.warning.withValues(alpha: 0.12),
                     title: 'Local Cache Cleared',
-                    subtitle: 'Temporary data, streaming chunks, and previews will be fully wiped to save space.',
+                    subtitle: clearCache
+                        ? 'Temporary data, streaming chunks, and previews will be fully wiped to save space.'
+                        : 'Temporary data, streaming chunks, and previews will stay on this device.',
                   ),
                 ),
               ),
@@ -352,7 +376,8 @@ class _InteractiveConfirmButton extends StatefulWidget {
   });
 
   @override
-  State<_InteractiveConfirmButton> createState() => _InteractiveConfirmButtonState();
+  State<_InteractiveConfirmButton> createState() =>
+      _InteractiveConfirmButtonState();
 }
 
 class _InteractiveConfirmButtonState extends State<_InteractiveConfirmButton> {

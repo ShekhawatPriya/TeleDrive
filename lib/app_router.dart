@@ -18,6 +18,7 @@ import 'features/profile/free_up_space_screen.dart';
 import 'features/profile/my_data_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/settings_screen.dart';
+import 'features/profile/trash_screen.dart';
 import 'features/share/my_shares_screen.dart';
 import 'features/share/share_detail_screen.dart';
 import 'main_shell.dart';
@@ -78,24 +79,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/profile/my-data',
-        pageBuilder: (context, state) => CupertinoPage(
-          key: state.pageKey,
-          child: const MyDataScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            CupertinoPage(key: state.pageKey, child: const MyDataScreen()),
       ),
       GoRoute(
         path: '/profile/free-up-space',
-        pageBuilder: (context, state) => CupertinoPage(
-          key: state.pageKey,
-          child: const FreeUpSpaceScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            CupertinoPage(key: state.pageKey, child: const FreeUpSpaceScreen()),
       ),
       GoRoute(
         path: '/settings',
-        pageBuilder: (context, state) => CupertinoPage(
-          key: state.pageKey,
-          child: const SettingsScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            CupertinoPage(key: state.pageKey, child: const SettingsScreen()),
+      ),
+      GoRoute(
+        path: '/settings/trash',
+        pageBuilder: (context, state) =>
+            CupertinoPage(key: state.pageKey, child: const TrashScreen()),
       ),
       GoRoute(
         path: '/folder/:id',

@@ -21,6 +21,15 @@ extension _UploadTransport on UploadController {
   }
 
   Future<void> _uploadMany(List<UploadItem> batchItems) async {
+    if (await _isBlockedOnMobileData()) {
+      for (final item in batchItems) {
+        _runningLocalIds.remove(item.localId);
+        _setItem(item.localId, status: UploadStatus.waitingForWifi);
+      }
+      _updateUploadingFlag();
+      _notifyListeners();
+      return;
+    }
     if (batchItems.length == 1) {
       await _uploadOne(batchItems.single);
       return;
@@ -57,6 +66,12 @@ extension _UploadTransport on UploadController {
       form.fields.add(
         MapEntry('upload_client_id', uploadSessionId ?? _uuid.v4()),
       );
+      form.fields.add(
+        MapEntry(
+          'auto_rename_duplicates',
+          _settings.state.autoRenameDuplicates.toString(),
+        ),
+      );
 
       final res = await _api.dio.post(
         '/files/upload',
@@ -81,6 +96,7 @@ extension _UploadTransport on UploadController {
         if (current == null || current.cancelRequested) continue;
         _setItem(
           item.localId,
+          name: file['filename'] as String?,
           status: UploadStatus.waitingForServer,
           httpProgress: 1,
           batchId: batchId,
@@ -111,6 +127,13 @@ extension _UploadTransport on UploadController {
   }
 
   Future<void> _uploadOne(UploadItem item) async {
+    if (await _isBlockedOnMobileData()) {
+      _runningLocalIds.remove(item.localId);
+      _setItem(item.localId, status: UploadStatus.waitingForWifi);
+      _updateUploadingFlag();
+      _notifyListeners();
+      return;
+    }
     final token = CancelToken();
     _cancelTokensByLocalId[item.localId] = token;
     _setItem(
@@ -137,6 +160,12 @@ extension _UploadTransport on UploadController {
         form.fields.add(MapEntry('folder_id', activeFolderId!));
       }
       form.fields.add(MapEntry('upload_client_id', item.uploadClientId));
+      form.fields.add(
+        MapEntry(
+          'auto_rename_duplicates',
+          _settings.state.autoRenameDuplicates.toString(),
+        ),
+      );
 
       final res = await _api.dio.post(
         '/files/upload',
@@ -158,6 +187,7 @@ extension _UploadTransport on UploadController {
       );
       _setItem(
         item.localId,
+        name: file['filename'] as String?,
         status: UploadStatus.waitingForServer,
         httpProgress: 1,
         batchId: batchId,

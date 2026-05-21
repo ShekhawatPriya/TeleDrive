@@ -7,6 +7,7 @@ import '../../core/utils/file_type_detector.dart';
 import '../../core/utils/iterable_ext.dart';
 import '../../models/drive_models.dart';
 import '../auth/auth_controller.dart';
+import '../profile/app_settings_controller.dart';
 import 'drive_repository.dart';
 
 part 'drive_controller/drive_mutations.dart';
@@ -22,16 +23,18 @@ final driveControllerProvider = ChangeNotifierProvider<DriveController>((ref) {
   return DriveController(
     ref.watch(driveRepositoryProvider),
     ref.watch(localPreferencesProvider),
+    ref.read(appSettingsControllerProvider),
   );
 });
 
 class DriveController extends ChangeNotifier {
-  DriveController(this._repo, this._prefs) {
+  DriveController(this._repo, this._prefs, this._settings) {
     _loadRecent();
   }
 
   final DriveRepository _repo;
   final LocalPreferences _prefs;
+  final AppSettingsController _settings;
   DriveState state = const DriveState();
   Map<String, String> _recent = {};
   Future<void>? _refreshing;
@@ -239,6 +242,26 @@ class DriveController extends ChangeNotifier {
     List<String> fileIds = const [],
     List<String> folderIds = const [],
   }) => _deleteItems(fileIds: fileIds, folderIds: folderIds);
+
+  Future<void> restoreFile(String id) async {
+    await _repo.restoreFile(id);
+    await refresh(silent: true, force: true);
+  }
+
+  Future<void> restoreFolder(String id) async {
+    await _repo.restoreFolder(id);
+    await refresh(silent: true, force: true);
+  }
+
+  Future<void> purgeFile(String id) async {
+    await _repo.purgeFile(id);
+    await refresh(silent: true, force: true);
+  }
+
+  Future<void> purgeFolder(String id) async {
+    await _repo.purgeFolder(id);
+    await refresh(silent: true, force: true);
+  }
 
   Future<void> toggleStar(String id, {bool folder = false}) =>
       _toggleStar(id, folder: folder);

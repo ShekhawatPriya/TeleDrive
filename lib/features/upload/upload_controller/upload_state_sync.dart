@@ -6,6 +6,7 @@ extension _UploadStateSync on UploadController {
 
   bool _isActive(UploadItem item) => {
     UploadStatus.queued,
+    UploadStatus.waitingForWifi,
     UploadStatus.stagingToBackend,
     UploadStatus.waitingForServer,
     UploadStatus.uploadingToTelegram,
@@ -21,6 +22,7 @@ extension _UploadStateSync on UploadController {
 
   void _setItem(
     String localId, {
+    String? name,
     UploadStatus? status,
     double? httpProgress,
     double? serverProgress,
@@ -37,6 +39,7 @@ extension _UploadStateSync on UploadController {
         .map(
           (i) => i.localId == localId
               ? i.copyWith(
+                  name: name,
                   status: status,
                   httpProgress: httpProgress,
                   serverProgress: serverProgress,
@@ -88,16 +91,23 @@ extension _UploadStateSync on UploadController {
 
   Future<void> _refreshIfSettled() async {
     _updateUploadingFlag();
-    if (uploading || !items.any((i) => i.status == UploadStatus.uploaded)) {
+    if (uploading) {
       return;
     }
+    if (items.every((i) => _isTerminalStatus(i.status))) {
+      unawaited(_notifyUploadSettledIfNeeded());
+    }
+    if (!items.any((i) => i.status == UploadStatus.uploaded)) return;
     final sessionId = uploadSessionId;
     if (sessionId != null && _refreshedUploadSessionId != sessionId) {
       _refreshedUploadSessionId = sessionId;
       await _refreshDrive();
     }
     if (_allItemsCompleted) {
+      unawaited(_notifyUploadSettledIfNeeded());
       _scheduleAutoDismiss();
+    } else if (items.every((i) => _isTerminalStatus(i.status))) {
+      unawaited(_notifyUploadSettledIfNeeded());
     }
   }
 

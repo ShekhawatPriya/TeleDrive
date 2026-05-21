@@ -32,9 +32,13 @@ class DriveFab extends ConsumerWidget {
     );
     if (!context.mounted) return;
     if (action == 'upload') {
-      await ref.read(uploadControllerProvider).pickFiles(folderId: parentId);
+      await ref
+          .read(uploadControllerProvider)
+          .pickFiles(folderId: parentId, context: context);
     } else if (action == 'photo') {
-      await ref.read(uploadControllerProvider).pickPhoto(folderId: parentId);
+      await ref
+          .read(uploadControllerProvider)
+          .pickPhoto(folderId: parentId, context: context);
     } else if (action == 'folder') {
       final name = await promptFolderName(context);
       if (name != null && context.mounted) {

@@ -79,9 +79,9 @@ class DriveSectionHeader extends StatelessWidget {
         child: Text(
           title,
           style: theme.textTheme.titleSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+            color: theme.colorScheme.primary,
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.4,
+            letterSpacing: 0.5,
           ),
         ),
       ),

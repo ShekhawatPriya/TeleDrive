@@ -33,8 +33,9 @@ List<IosMenuSection> buildDriveMenuSections(
       IosMenuItem(
         label: 'Scan Documents',
         leadingIcon: Icons.document_scanner_outlined,
-        onTap: () =>
-            ref.read(uploadControllerProvider).pickPhoto(folderId: folderId),
+        onTap: () => ref
+            .read(uploadControllerProvider)
+            .pickPhoto(folderId: folderId, context: context),
       ),
     ]),
     if (includeLayoutSection) ...buildLayoutMenuSection(ref),

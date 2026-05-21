@@ -4,6 +4,7 @@ import '../../core/utils/file_type_detector.dart';
 enum UploadStatus {
   selected,
   queued,
+  waitingForWifi,
   stagingToBackend,
   waitingForServer,
   uploadingToTelegram,
@@ -14,11 +15,14 @@ enum UploadStatus {
   failed;
 
   static UploadStatus fromBackendStatus(String status) {
-    if (status == 'completed' || status == 'available') return UploadStatus.uploaded;
+    if (status == 'completed' || status == 'available')
+      return UploadStatus.uploaded;
     if (status == 'cancelled') return UploadStatus.cancelled;
     if (status == 'failed') return UploadStatus.failed;
-    if (status == 'uploading' || status == 'uploading_original') return UploadStatus.uploadingToTelegram;
-    if (status.startsWith('processing') || status == 'derivatives') return UploadStatus.processing;
+    if (status == 'uploading' || status == 'uploading_original')
+      return UploadStatus.uploadingToTelegram;
+    if (status.startsWith('processing') || status == 'derivatives')
+      return UploadStatus.processing;
     return UploadStatus.waitingForServer;
   }
 }
@@ -71,6 +75,7 @@ class UploadItem {
         return 1.0;
       case UploadStatus.selected:
       case UploadStatus.queued:
+      case UploadStatus.waitingForWifi:
         return 0.0;
       case UploadStatus.stagingToBackend:
         return (http * 0.4).clamp(0.0, 0.4);
@@ -86,6 +91,7 @@ class UploadItem {
   }
 
   UploadItem copyWith({
+    String? name,
     String? uploadClientId,
     UploadStatus? status,
     double? httpProgress,
@@ -104,7 +110,7 @@ class UploadItem {
     return UploadItem(
       localId: localId,
       uploadClientId: uploadClientId ?? this.uploadClientId,
-      name: name,
+      name: name ?? this.name,
       size: size,
       mimeType: mimeType,
       path: path,
@@ -119,9 +125,7 @@ class UploadItem {
       thumbnailReady: clearThumbnail
           ? false
           : thumbnailReady ?? this.thumbnailReady,
-      thumbnailUrl: clearThumbnail
-          ? null
-          : thumbnailUrl ?? this.thumbnailUrl,
+      thumbnailUrl: clearThumbnail ? null : thumbnailUrl ?? this.thumbnailUrl,
     );
   }
 }
@@ -142,7 +146,9 @@ extension UploadItemMapping on UploadItem {
       uploadStatus: status.name,
       uploadError: error,
       localUri: path,
-      thumbnailUrl: kind == FileKind.image || kind == FileKind.video ? path : null,
+      thumbnailUrl: kind == FileKind.image || kind == FileKind.video
+          ? path
+          : null,
       previewUrl: kind == FileKind.image ? path : null,
       isOptimistic: true,
       localId: localId,

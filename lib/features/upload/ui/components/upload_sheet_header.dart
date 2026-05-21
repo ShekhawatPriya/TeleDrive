@@ -24,7 +24,8 @@ class UploadSheetHeader extends StatelessWidget {
       (s, i) => s + (i.progress * i.size).round(),
     );
 
-    final stillGeneratingThumbs = completed &&
+    final stillGeneratingThumbs =
+        completed &&
         upload.items.any((i) {
           final kind = detectFileKind(i.name, i.mimeType);
           final previewable = kind == FileKind.image || kind == FileKind.video;
@@ -32,33 +33,46 @@ class UploadSheetHeader extends StatelessWidget {
         });
 
     final isFailed = upload.failedCount > 0 && upload.activeCount == 0;
+    final waitingForWifi = upload.waitingForWifi;
 
     final title = completed
         ? 'Uploads complete'
+        : waitingForWifi
+        ? 'Waiting for Wi-Fi'
         : isFailed
-            ? 'Upload failed'
-            : 'Uploading $total ${total == 1 ? 'file' : 'files'}';
+        ? 'Upload failed'
+        : 'Uploading $total ${total == 1 ? 'file' : 'files'}';
 
     final subtitle = stillGeneratingThumbs
         ? 'Generating previews…'
         : completed
-            ? 'All files uploaded successfully · ${formatFileSize(totalBytes)}'
-            : isFailed
-                ? '$done of $total completed · ${upload.failedCount} failed'
-                : '$done of $total completed · ${formatFileSize(completedBytes)} of ${formatFileSize(totalBytes)}';
+        ? 'All files uploaded successfully · ${formatFileSize(totalBytes)}'
+        : waitingForWifi
+        ? 'Mobile data uploads are disabled. Uploads will continue automatically on Wi-Fi.'
+        : isFailed
+        ? '$done of $total completed · ${upload.failedCount} failed'
+        : '$done of $total completed · ${formatFileSize(completedBytes)} of ${formatFileSize(totalBytes)}';
 
-    final showProgress = !completed && upload.activeCount > 0 && totalBytes > 0;
+    final showProgress =
+        !completed &&
+        !waitingForWifi &&
+        upload.activeCount > 0 &&
+        totalBytes > 0;
     final overallProgress = showProgress ? completedBytes / totalBytes : 0.0;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, AppSpacing.md),
+        AppSpacing.lg,
+        AppSpacing.xs,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            title, 
+            title,
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
               color: isFailed ? scheme.error : scheme.onSurface,

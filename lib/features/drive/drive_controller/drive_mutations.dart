@@ -133,7 +133,11 @@ extension _DriveMutations on DriveController {
     _notifyListeners();
     for (final id in fileIds) {
       try {
-        await _repo.deleteFile(id);
+        if (_settings.state.trashEnabled) {
+          await _repo.deleteFile(id);
+        } else {
+          await _repo.purgeFile(id);
+        }
       } catch (_) {
         failed++;
       } finally {
@@ -146,7 +150,11 @@ extension _DriveMutations on DriveController {
     }
     for (final id in folderIds) {
       try {
-        await _repo.deleteFolder(id);
+        if (_settings.state.trashEnabled) {
+          await _repo.deleteFolder(id);
+        } else {
+          await _repo.purgeFolder(id);
+        }
       } catch (_) {
         failed++;
       } finally {

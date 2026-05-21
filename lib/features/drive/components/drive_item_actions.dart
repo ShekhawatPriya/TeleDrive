@@ -7,6 +7,7 @@ import 'drive_bulk_actions.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
+import '../../profile/app_settings_controller.dart';
 import '../drive_controller.dart';
 import '../folder_delete_guard.dart';
 import '../move_destination_sheet.dart';
@@ -67,7 +68,14 @@ class DriveItemActions {
         );
       }
     } else if (action == 'delete') {
-      await controller.deleteItems(fileIds: [file.id]);
+      final trashEnabled = ref
+          .read(appSettingsControllerProvider)
+          .state
+          .trashEnabled;
+      final ok = await confirmDelete(context, 1, trashEnabled: trashEnabled);
+      if (ok && context.mounted) {
+        await controller.deleteItems(fileIds: [file.id]);
+      }
     } else if (action == 'star') {
       await controller.toggleStar(file.id);
     }
@@ -123,15 +131,24 @@ class DriveItemActions {
         );
       }
     } else if (action == 'delete') {
-      final validation = FolderDeleteGuard.validateFolder(
-        controller.state,
-        folder,
-      );
-      if (!validation.canDelete) {
-        showFolderNotEmptyToast(context);
-        return;
+      final trashEnabled = ref
+          .read(appSettingsControllerProvider)
+          .state
+          .trashEnabled;
+      if (!trashEnabled) {
+        final validation = FolderDeleteGuard.validateFolder(
+          controller.state,
+          folder,
+        );
+        if (!validation.canDelete) {
+          showFolderNotEmptyToast(context);
+          return;
+        }
       }
-      await controller.deleteItems(folderIds: [folder.id]);
+      final ok = await confirmDelete(context, 1, trashEnabled: trashEnabled);
+      if (ok && context.mounted) {
+        await controller.deleteItems(folderIds: [folder.id]);
+      }
     } else if (action == 'star') {
       await controller.toggleStar(folder.id, folder: true);
     } else if (action == 'rename' && context.mounted) {

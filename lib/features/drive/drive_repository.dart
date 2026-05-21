@@ -46,6 +46,14 @@ class DriveRepository {
     return all;
   }
 
+  Future<List<DriveFile>> listTrashFiles() async {
+    final res = await api.dio.get('/files/trash');
+    final data = Map<String, dynamic>.from(res.data as Map);
+    return (data['files'] as List? ?? [])
+        .map((e) => _mapFile(Map<String, dynamic>.from(e as Map)))
+        .toList();
+  }
+
   Future<DriveSnapshot> getDriveState() async {
     final res = await api.dio.get('/frontend/drive-state');
     return parseDriveState(Map<String, dynamic>.from(res.data as Map));
@@ -76,6 +84,13 @@ class DriveRepository {
 
   Future<List<DriveFolder>> listFolders() async {
     final res = await api.dio.get('/folders');
+    return (res.data as List? ?? [])
+        .map((e) => _mapFolder(Map<String, dynamic>.from(e as Map)))
+        .toList();
+  }
+
+  Future<List<DriveFolder>> listTrashFolders() async {
+    final res = await api.dio.get('/folders/trash');
     return (res.data as List? ?? [])
         .map((e) => _mapFolder(Map<String, dynamic>.from(e as Map)))
         .toList();
@@ -116,6 +131,14 @@ class DriveRepository {
       api.dio.delete('/files/$id').then((_) {});
   Future<void> deleteFolder(String id) async =>
       api.dio.delete('/folders/$id').then((_) {});
+  Future<void> purgeFile(String id) async =>
+      api.dio.delete('/files/$id/purge').then((_) {});
+  Future<void> purgeFolder(String id) async =>
+      api.dio.delete('/folders/$id/purge').then((_) {});
+  Future<void> restoreFile(String id) async =>
+      api.dio.post('/files/$id/restore').then((_) {});
+  Future<void> restoreFolder(String id) async =>
+      api.dio.post('/folders/$id/restore').then((_) {});
 
   Future<DriveFile> setFileStarred(String id, bool starred) async {
     final res = await api.dio.patch(

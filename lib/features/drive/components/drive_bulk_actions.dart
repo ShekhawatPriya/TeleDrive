@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../models/share_models.dart';
 import '../../../widgets/premium_toast.dart';
 import '../../share/components/create_share_sheet.dart';
+import '../../profile/app_settings_controller.dart';
 import '../drive_controller.dart';
 import '../folder_delete_guard.dart';
 import '../move_destination_sheet.dart';
@@ -89,17 +90,23 @@ class DriveBulkActions {
     required Set<String> folderIds,
   }) async {
     final controller = ref.read(driveControllerProvider);
-    final validation = FolderDeleteGuard.validateFolders(
-      controller.state,
-      folderIds,
-    );
-    if (!validation.canDelete) {
-      showFolderNotEmptyToast(context);
-      return false;
+    final trashEnabled = ref
+        .read(appSettingsControllerProvider)
+        .state
+        .trashEnabled;
+    if (!trashEnabled) {
+      final validation = FolderDeleteGuard.validateFolders(
+        controller.state,
+        folderIds,
+      );
+      if (!validation.canDelete) {
+        showFolderNotEmptyToast(context);
+        return false;
+      }
     }
 
     final total = fileIds.length + folderIds.length;
-    final ok = await confirmDelete(context, total);
+    final ok = await confirmDelete(context, total, trashEnabled: trashEnabled);
     if (!ok || !context.mounted) return false;
     await controller.deleteItems(
       fileIds: fileIds.toList(),

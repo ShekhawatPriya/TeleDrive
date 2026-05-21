@@ -25,6 +25,7 @@ class UploadCollapsedBar extends StatelessWidget {
     final total = upload.items.length;
     final done = upload.uploadedCount;
     final completed = total > 0 && done == total;
+    final waitingForWifi = upload.waitingForWifi;
     final progress = total == 0
         ? 0.0
         : upload.items.fold<double>(0, (s, i) => s + i.progress) / total;
@@ -49,7 +50,11 @@ class UploadCollapsedBar extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.sm, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+                AppSpacing.sm,
+                AppSpacing.sm,
+                AppSpacing.md,
+                AppSpacing.sm,
+              ),
               child: Row(
                 children: [
                   Container(
@@ -63,6 +68,8 @@ class UploadCollapsedBar extends StatelessWidget {
                     child: Icon(
                       completed
                           ? Icons.check_rounded
+                          : waitingForWifi
+                          ? Icons.wifi_rounded
                           : Icons.cloud_upload_outlined,
                       size: 20,
                       color: scheme.onPrimaryContainer,
@@ -77,6 +84,8 @@ class UploadCollapsedBar extends StatelessWidget {
                         Text(
                           completed
                               ? '$total ${total == 1 ? 'file' : 'files'} uploaded'
+                              : waitingForWifi
+                              ? 'Waiting for Wi-Fi'
                               : 'Uploading $total ${total == 1 ? 'file' : 'files'}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

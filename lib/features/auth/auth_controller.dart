@@ -37,6 +37,7 @@ class AuthController extends ChangeNotifier {
   List<CommunityTarget> communityTargets = const [];
   String? error;
   DriveSnapshot? pendingDriveBootstrap;
+  int largeUploadThresholdBytes = 200 * 1024 * 1024;
 
   bool get isAuthenticated => user != null && token != null;
   bool get needsCommunityOnboarding =>
@@ -66,6 +67,9 @@ class AuthController extends ChangeNotifier {
       communityJoinError = bootstrap.communityJoinError;
       communityTargets = bootstrap.communityTargets;
       pendingDriveBootstrap = bootstrap.drive;
+      if (bootstrap.largeUploadThresholdBytes != null) {
+        largeUploadThresholdBytes = bootstrap.largeUploadThresholdBytes!;
+      }
     } catch (err) {
       await _repo.logout();
       token = null;
@@ -100,6 +104,9 @@ class AuthController extends ChangeNotifier {
     communityJoinError = bootstrap.communityJoinError;
     communityTargets = bootstrap.communityTargets;
     pendingDriveBootstrap = bootstrap.drive;
+    if (bootstrap.largeUploadThresholdBytes != null) {
+      largeUploadThresholdBytes = bootstrap.largeUploadThresholdBytes!;
+    }
     notifyListeners();
   }
 

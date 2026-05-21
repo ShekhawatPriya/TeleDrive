@@ -15,6 +15,7 @@ class AuthBootstrapResult {
     this.communityJoinError,
     this.communityTargets = const [],
     this.drive,
+    this.largeUploadThresholdBytes,
   });
 
   final AuthUser user;
@@ -23,6 +24,7 @@ class AuthBootstrapResult {
   final String? communityJoinError;
   final List<CommunityTarget> communityTargets;
   final DriveSnapshot? drive;
+  final int? largeUploadThresholdBytes;
 }
 
 class AuthRepository {
@@ -102,6 +104,12 @@ class AuthRepository {
     final telegram = data['telegram'] is Map
         ? Map<String, dynamic>.from(data['telegram'] as Map)
         : <String, dynamic>{};
+    final uploadLimits = data['uploadLimits'] is Map
+        ? Map<String, dynamic>.from(data['uploadLimits'] as Map)
+        : null;
+    final largeThreshold = uploadLimits != null
+        ? uploadLimits['largeUploadThresholdBytes'] as int?
+        : null;
     final drive = data['drive'] is Map
         ? DriveRepository(
             api,
@@ -114,6 +122,7 @@ class AuthRepository {
       communityJoinError: telegram['communityJoinError'] as String?,
       communityTargets: _communityTargets(telegram['communityTargets']),
       drive: drive,
+      largeUploadThresholdBytes: largeThreshold,
     );
   }
 

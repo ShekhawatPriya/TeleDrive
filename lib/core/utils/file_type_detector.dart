@@ -132,6 +132,7 @@ String formatLabel(DriveFile file) {
 String formatUploadStatus(DriveFile file) {
   return switch (file.uploadStatus) {
     'queued' => 'Queued',
+    'waitingForWifi' => 'Waiting for Wi-Fi',
     'stagingToBackend' => 'Sending to server',
     'waitingForServer' => 'Waiting for server',
     'uploadingToTelegram' => 'Uploading to Telegram',

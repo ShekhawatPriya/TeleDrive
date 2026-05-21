@@ -9,6 +9,8 @@ String uploadStatusLabel(UploadStatus status) {
     case UploadStatus.selected:
     case UploadStatus.queued:
       return 'Waiting';
+    case UploadStatus.waitingForWifi:
+      return 'Waiting for Wi-Fi';
     case UploadStatus.stagingToBackend:
     case UploadStatus.waitingForServer:
     case UploadStatus.uploadingToTelegram:

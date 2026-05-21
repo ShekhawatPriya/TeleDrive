@@ -16,7 +16,8 @@ class UploadSheet extends ConsumerWidget {
     final upload = ref.watch(uploadControllerProvider);
 
     ref.listen<UploadController>(uploadControllerProvider, (previous, next) {
-      if ((!next.sheetVisible || next.items.isEmpty) && Navigator.canPop(context)) {
+      if ((!next.sheetVisible || next.items.isEmpty) &&
+          Navigator.canPop(context)) {
         Navigator.of(context).pop();
       }
     });
@@ -61,18 +62,35 @@ class UploadSheet extends ConsumerWidget {
                   ),
                 ),
                 UploadSheetHeader(upload: upload),
+                if (upload.waitingForWifi)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => ref
+                          .read(uploadControllerProvider)
+                          .enableMobileDataUploads(),
+                      icon: const Icon(Icons.network_cell_rounded),
+                      label: const Text('Enable mobile data uploads'),
+                    ),
+                  ),
                 Expanded(
                   child: ListView.separated(
                     controller: controller,
                     padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.md, AppSpacing.xs,
-                        AppSpacing.md, AppSpacing.lg),
+                      AppSpacing.md,
+                      AppSpacing.xs,
+                      AppSpacing.md,
+                      AppSpacing.lg,
+                    ),
                     itemCount: upload.items.length,
                     separatorBuilder: (_, __) =>
                         const SizedBox(height: AppSpacing.sm),
                     itemBuilder: (_, i) {
                       final item = upload.items[i];
-                      return UploadCard(key: ValueKey(item.localId), item: item);
+                      return UploadCard(
+                        key: ValueKey(item.localId),
+                        item: item,
+                      );
                     },
                   ),
                 ),
