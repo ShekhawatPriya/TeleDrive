@@ -11,6 +11,7 @@ Future<void> openShareFile(BuildContext context, String fileId) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
+    useRootNavigator: true,
     builder: (_) => CreateShareSheet(
       items: [ShareItemRequest(type: ShareItemType.file, id: fileId)],
     ),
@@ -21,6 +22,7 @@ Future<void> openShareFolder(BuildContext context, String folderId) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
+    useRootNavigator: true,
     builder: (_) => CreateShareSheet(
       items: [
         ShareItemRequest(

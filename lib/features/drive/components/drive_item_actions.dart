@@ -63,6 +63,7 @@ class DriveItemActions {
     final action = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       builder: (_) => DriveActionSheet(
         title: file.name,
         subtitle: _fileSubtitle(file),
@@ -81,6 +82,7 @@ class DriveItemActions {
       final targetId = await showModalBottomSheet<String>(
         context: context,
         isScrollControlled: true,
+        useRootNavigator: true,
         builder: (_) => MoveDestinationSheet(
           title: 'Move "${file.name}"',
           currentParentId: file.parentId,
@@ -144,6 +146,7 @@ class DriveItemActions {
     final action = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       builder: (_) => DriveActionSheet(
         title: folder.name,
         subtitle: _folderSubtitle(folder),
@@ -162,6 +165,7 @@ class DriveItemActions {
       final targetId = await showModalBottomSheet<String>(
         context: context,
         isScrollControlled: true,
+        useRootNavigator: true,
         builder: (_) => MoveDestinationSheet(
           title: 'Move "${folder.name}"',
           movingFolderId: folder.id,

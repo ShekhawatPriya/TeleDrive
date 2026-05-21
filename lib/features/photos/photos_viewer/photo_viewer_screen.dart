@@ -156,6 +156,7 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       elevation: 0,
       showDragHandle: false,

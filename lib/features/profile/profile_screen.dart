@@ -36,11 +36,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final used = drive.state.usedStorage;
     final categories = buildStorageCategories(files, scheme);
 
+    final modalRoute = ModalRoute.of(context);
+    final isCurrent = modalRoute?.isCurrent ?? true;
+
     return PopScope(
-      canPop: GoRouter.of(context).canPop(),
+      canPop: !isCurrent || GoRouter.of(context).canPop(),
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        context.go('/drive');
+        if (isCurrent) {
+          context.go('/drive');
+        }
       },
       child: Scaffold(
         body: CustomScrollView(

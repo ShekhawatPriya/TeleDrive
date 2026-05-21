@@ -27,6 +27,7 @@ class DriveFab extends ConsumerWidget {
     final action = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       builder: (_) => const _AddToDriveSheet(),
     );
     if (!context.mounted) return;

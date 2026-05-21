@@ -25,6 +25,7 @@ class UploadOverlay extends ConsumerWidget {
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
+        useRootNavigator: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         showDragHandle: false,

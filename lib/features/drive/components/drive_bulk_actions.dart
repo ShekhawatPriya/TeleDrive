@@ -46,6 +46,7 @@ class DriveBulkActions {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       builder: (_) => CreateShareSheet(items: items),
     );
   }
@@ -63,6 +64,7 @@ class DriveBulkActions {
     final targetId = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       builder: (_) => MoveDestinationSheet(
         title: 'Move ${fileIds.length + folderIds.length} items',
         movingFolderId: movingFolderId,

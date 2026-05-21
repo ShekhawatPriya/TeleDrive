@@ -47,10 +47,16 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
     final allCount = files.length;
     final theme = Theme.of(context);
 
+    final modalRoute = ModalRoute.of(context);
+    final isCurrent = modalRoute?.isCurrent ?? true;
+
     return PopScope(
-      canPop: !selectMode,
+      canPop: !isCurrent || !selectMode,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && selectMode) exitSelect();
+        if (didPop) return;
+        if (isCurrent && selectMode) {
+          exitSelect();
+        }
       },
       child: Scaffold(
         body: Column(
