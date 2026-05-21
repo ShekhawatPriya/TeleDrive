@@ -13,9 +13,9 @@ import 'features/photos/photos_filter.dart';
 import 'features/photos/photos_screen.dart';
 import 'features/photos/photos_viewer/photo_viewer_screen.dart';
 import 'features/profile/legal_screen.dart';
+import 'features/profile/my_data_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/settings_screen.dart';
-import 'features/profile/my_data_screen.dart';
 import 'features/share/my_shares_screen.dart';
 import 'features/share/share_detail_screen.dart';
 import 'main_shell.dart';
@@ -72,12 +72,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: '/settings',
-        builder: (_, __) => const SettingsScreen(),
+        path: '/profile/my-data',
+        builder: (_, __) => const MyDataScreen(),
       ),
       GoRoute(
-        path: '/my-data',
-        builder: (_, __) => const MyDataScreen(),
+        path: '/settings',
+        builder: (_, __) => const SettingsScreen(),
       ),
       GoRoute(
         path: '/folder/:id',

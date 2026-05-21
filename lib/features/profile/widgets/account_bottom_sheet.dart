@@ -197,10 +197,9 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                       Card(
                         elevation: 0,
                         margin: EdgeInsets.zero,
-                        color: scheme.surfaceContainerHigh,
-                        clipBehavior: Clip.antiAlias,
+                        color: scheme.surfaceContainer,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24.0),
+                          borderRadius: AppRadii.lgR,
                         ),
                         child: Column(
                           children: [
@@ -220,7 +219,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                               label: 'My Data in Telegram Drive',
                               onTap: () {
                                 Navigator.of(context).pop();
-                                context.safePush('/my-data');
+                                context.safePush('/profile/my-data');
                               },
                             ),
                             const Divider(height: 1, indent: 56),
@@ -312,10 +311,9 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
-      color: scheme.surfaceContainerHigh,
-      clipBehavior: Clip.antiAlias,
+      color: scheme.surfaceContainer,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24.0),
+        borderRadius: AppRadii.lgR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -516,10 +514,9 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
-      color: scheme.surfaceContainerHigh,
-      clipBehavior: Clip.antiAlias,
+      color: scheme.surfaceContainer,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24.0),
+        borderRadius: AppRadii.lgR,
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
