@@ -240,7 +240,6 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                             icon: Icons.phonelink_erase_rounded,
                             label: 'Free up space on this device',
                             onTap: () {
-                              Navigator.of(context).pop();
                               context.safePush('/profile/free-up-space');
                             },
                           ),
@@ -248,7 +247,6 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                             icon: Icons.settings_outlined,
                             label: 'Settings',
                             onTap: () {
-                              Navigator.of(context).pop();
                               context.safePush('/settings');
                             },
                           ),
@@ -256,7 +254,6 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                             icon: Icons.analytics_outlined,
                             label: 'My Data in Telegram Drive',
                             onTap: () {
-                              Navigator.of(context).pop();
                               context.safePush('/profile/my-data');
                             },
                           ),
@@ -277,7 +274,6 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                         children: [
                           GestureDetector(
                             onTap: () {
-                              Navigator.of(context).pop();
                               context.safePush('/privacy');
                             },
                             child: Text(
@@ -300,7 +296,6 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                           ),
                           GestureDetector(
                             onTap: () {
-                              Navigator.of(context).pop();
                               context.safePush('/terms');
                             },
                             child: Text(
@@ -333,9 +328,10 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
     return _ProfileSheetSection(
       child: InkWell(
         onTap: () {
-          Navigator.of(context).pop();
           context.safePush('/profile?scrollToStorage=true');
         },
+        splashFactory: NoSplash.splashFactory,
+        highlightColor: Colors.transparent,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.lg,
@@ -403,9 +399,11 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    Navigator.of(context).pop();
                     context.safePush('/profile?scrollToStorage=true');
                   },
+                  style: TextButton.styleFrom(
+                    splashFactory: NoSplash.splashFactory,
+                  ),
                   child: const Text('Manage storage'),
                 ),
               ),
@@ -479,6 +477,8 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
+        splashFactory: NoSplash.splashFactory,
+        highlightColor: Colors.transparent,
         child: SizedBox(
           height: _compactActionRowHeight,
           child: Padding(

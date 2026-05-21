@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -66,21 +67,36 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/profile',
-        builder: (_, state) {
+        pageBuilder: (context, state) {
           final scrollToStorage =
               state.uri.queryParameters['scrollToStorage'] == 'true';
-          return ProfileScreen(scrollToStorage: scrollToStorage);
+          return CupertinoPage(
+            key: state.pageKey,
+            child: ProfileScreen(scrollToStorage: scrollToStorage),
+          );
         },
       ),
       GoRoute(
         path: '/profile/my-data',
-        builder: (_, __) => const MyDataScreen(),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: const MyDataScreen(),
+        ),
       ),
       GoRoute(
         path: '/profile/free-up-space',
-        builder: (_, __) => const FreeUpSpaceScreen(),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: const FreeUpSpaceScreen(),
+        ),
       ),
-      GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
+      GoRoute(
+        path: '/settings',
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: const SettingsScreen(),
+        ),
+      ),
       GoRoute(
         path: '/folder/:id',
         builder: (_, state) =>
@@ -105,11 +121,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/privacy',
-        builder: (_, __) => const LegalScreen(kind: LegalKind.privacy),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: const LegalScreen(kind: LegalKind.privacy),
+        ),
       ),
       GoRoute(
         path: '/terms',
-        builder: (_, __) => const LegalScreen(kind: LegalKind.terms),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: const LegalScreen(kind: LegalKind.terms),
+        ),
       ),
     ],
   );
