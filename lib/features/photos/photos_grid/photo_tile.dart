@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
+import '../../../widgets/file_list_tile.dart';
 import '../../../widgets/media_thumb.dart';
 
 class PhotoTile extends StatelessWidget {
@@ -34,23 +35,29 @@ class PhotoTile extends StatelessWidget {
         flightShuttleBuilder: (_, __, ___, ____, _____) {
           return MediaThumb(file: file, fit: BoxFit.cover, radius: 0);
         },
-        child: AnimatedContainer(
-          duration: AppDurations.short3,
-          curve: AppEasing.standardDecelerate,
-          padding: selected ? const EdgeInsets.all(8) : EdgeInsets.zero,
-          color: selected ? selectedWash : Colors.transparent,
-          child: ClipRRect(
-            borderRadius:
-                BorderRadius.circular(selected ? AppRadii.xs : 0),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                _thumb(selectedWash),
-                if (isVideoFile(file)) _videoBadge(),
-                if (selectMode) _selectionMark(context),
-              ],
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            AnimatedContainer(
+              duration: AppDurations.short3,
+              curve: AppEasing.standardDecelerate,
+              padding: selected ? const EdgeInsets.all(8) : EdgeInsets.zero,
+              color: selected ? selectedWash : Colors.transparent,
+              child: ClipRRect(
+                borderRadius:
+                    BorderRadius.circular(selected ? AppRadii.xs : 0),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _thumb(selectedWash),
+                    if (isVideoFile(file)) _videoBadge(),
+                    if (file.shared && !file.isOptimistic) _sharedBadge(),
+                  ],
+                ),
+              ),
             ),
-          ),
+            if (selectMode) _selectionMark(context),
+          ],
         ),
       ),
     );
@@ -62,6 +69,14 @@ class PhotoTile extends StatelessWidget {
     return ColorFiltered(
       colorFilter: ColorFilter.mode(selectedWash, BlendMode.srcATop),
       child: thumb,
+    );
+  }
+
+  Widget _sharedBadge() {
+    return const Positioned(
+      right: 8,
+      bottom: 8,
+      child: SharedBadge(size: 20),
     );
   }
 
@@ -109,8 +124,8 @@ class PhotoTile extends StatelessWidget {
   Widget _selectionMark(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Positioned(
-      top: 8,
-      left: 8,
+      top: 6,
+      left: 6,
       child: AnimatedContainer(
         duration: AppDurations.short3,
         width: 24,

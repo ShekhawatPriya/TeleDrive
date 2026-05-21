@@ -153,6 +153,7 @@ class _PhotoPreviewBody extends StatelessWidget {
                 child: Transform.translate(
                   offset: Offset(0, (1 - t) * 12),
                   child: _PreviewMenuCard(
+                    file: file,
                     onShare: () => _dismiss(context, onShare),
                     onMove: () => _dismiss(context, onMove),
                     onSelect: () => _dismiss(context, onSelect),
@@ -286,11 +287,13 @@ class _PreviewCard extends StatelessWidget {
 
 class _PreviewMenuCard extends StatelessWidget {
   const _PreviewMenuCard({
+    required this.file,
     required this.onShare,
     required this.onMove,
     required this.onSelect,
   });
 
+  final DriveFile file;
   final VoidCallback onShare;
   final VoidCallback onMove;
   final VoidCallback onSelect;
@@ -308,7 +311,11 @@ class _PreviewMenuCard extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _MenuRow(label: 'Share', icon: Icons.ios_share, onTap: onShare),
+              _MenuRow(
+                label: file.shared ? 'Revoke' : 'Share',
+                icon: file.shared ? Icons.link_off : Icons.ios_share,
+                onTap: onShare,
+              ),
               _hairline(scheme),
               _MenuRow(
                 label: 'Move',
