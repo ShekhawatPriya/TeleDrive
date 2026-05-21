@@ -16,12 +16,22 @@ class AccountBottomSheet extends ConsumerStatefulWidget {
   ConsumerState<AccountBottomSheet> createState() => _AccountBottomSheetState();
 }
 
-class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with SingleTickerProviderStateMixin {
+class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
+    with SingleTickerProviderStateMixin {
+  static const _sectionRadius = 40.0;
+  static const _sectionSpacing = 14.0;
+  static const _sheetHorizontalPadding = AppSpacing.lg;
+
   bool _isExpanded = false;
 
-  Future<void> _openTelegramProfile(BuildContext context, String? username) async {
+  Future<void> _openTelegramProfile(
+    BuildContext context,
+    String? username,
+  ) async {
     final name = username?.trim();
-    final uri = Uri.parse(name == null || name.isEmpty ? 'https://t.me' : 'https://t.me/$name');
+    final uri = Uri.parse(
+      name == null || name.isEmpty ? 'https://t.me' : 'https://t.me/$name',
+    );
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -49,17 +59,16 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
       ),
     );
 
-    final otherAccounts = switchState.accounts.where((a) => a.userId != activeAccount.userId).toList();
+    final otherAccounts = switchState.accounts
+        .where((a) => a.userId != activeAccount.userId)
+        .toList();
 
-    final accountLabel = activeAccount.username != null && activeAccount.username!.isNotEmpty
+    final accountLabel =
+        activeAccount.username != null && activeAccount.username!.isNotEmpty
         ? '@${activeAccount.username}'
         : 'ID ${activeAccount.telegramId}';
 
     return Container(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
       ),
@@ -68,50 +77,45 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Top Drag Handle (visual matching)
-            const SizedBox(height: 8),
-            Container(
-              width: 32,
-              height: 4,
-              decoration: BoxDecoration(
-                color: scheme.onSurfaceVariant.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 12),
 
-            // Top Header: Centered account email/username & Close Button
+            // Top Header: Highlighted username tag/pill
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              child: Row(
-                children: [
-                  const SizedBox(width: 48), // Spacer to balance close button
-                  Expanded(
-                    child: Text(
-                      accountLabel,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurface,
-                        fontWeight: FontWeight.w600,
-                      ),
+              padding: const EdgeInsets.only(top: AppSpacing.xxs),
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.xxs,
+                  ),
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: scheme.primary.withValues(alpha: 0.12),
+                      width: 1,
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    tooltip: 'Close',
-                    onPressed: () => Navigator.of(context).pop(),
+                  child: Text(
+                    accountLabel,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: scheme.primary,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                    ),
                   ),
-                ],
+                ),
               ),
             ),
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.md),
 
             // Main sheet contents in a scrollable view
             Flexible(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: _sheetHorizontalPadding,
+                  ),
                   child: Column(
                     children: [
                       // Active Account Avatar with edit overlay
@@ -121,7 +125,9 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: scheme.outlineVariant.withValues(alpha: 0.3),
+                                color: scheme.outlineVariant.withValues(
+                                  alpha: 0.3,
+                                ),
                                 width: 1.5,
                               ),
                             ),
@@ -131,7 +137,10 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                             bottom: 0,
                             right: 0,
                             child: GestureDetector(
-                              onTap: () => _openTelegramProfile(context, activeAccount.username),
+                              onTap: () => _openTelegramProfile(
+                                context,
+                                activeAccount.username,
+                              ),
                               child: Container(
                                 padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(
@@ -139,7 +148,9 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.15),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.15,
+                                      ),
                                       blurRadius: 4,
                                       offset: const Offset(0, 2),
                                     ),
@@ -169,10 +180,16 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
 
                       // Manage Account deep-link button
                       OutlinedButton(
-                        onPressed: () => _openTelegramProfile(context, activeAccount.username),
+                        onPressed: () => _openTelegramProfile(
+                          context,
+                          activeAccount.username,
+                        ),
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(color: scheme.outlineVariant),
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 10,
+                          ),
                           shape: const StadiumBorder(),
                         ),
                         child: Text(
@@ -186,21 +203,19 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                       const SizedBox(height: AppSpacing.lg),
 
                       // Switch Account Card
-                      _buildSwitchAccountCard(context, activeAccount, otherAccounts),
-                      const SizedBox(height: AppSpacing.md),
+                      _buildSwitchAccountCard(
+                        context,
+                        activeAccount,
+                        otherAccounts,
+                      ),
+                      const SizedBox(height: _sectionSpacing),
 
                       // Backup Section
                       _buildBackupCard(context, backupOn),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: _sectionSpacing),
 
                       // Action Items list
-                      Card(
-                        elevation: 0,
-                        margin: EdgeInsets.zero,
-                        color: scheme.surfaceContainer,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: AppRadii.lgR,
-                        ),
+                      _ProfileSheetSection(
                         child: Column(
                           children: [
                             _buildActionRow(
@@ -212,7 +227,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                                 context.safePush('/profile');
                               },
                             ),
-                            const Divider(height: 1, indent: 56),
+                            _buildSectionDivider(context),
                             _buildActionRow(
                               context,
                               icon: Icons.analytics_outlined,
@@ -222,7 +237,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                                 context.safePush('/profile/my-data');
                               },
                             ),
-                            const Divider(height: 1, indent: 56),
+                            _buildSectionDivider(context),
                             _buildActionRow(
                               context,
                               icon: Icons.settings_outlined,
@@ -232,7 +247,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                                 context.safePush('/settings');
                               },
                             ),
-                            const Divider(height: 1, indent: 56),
+                            _buildSectionDivider(context),
                             _buildActionRow(
                               context,
                               icon: Icons.help_outline_rounded,
@@ -264,7 +279,9 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                             ),
                           ),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0,
+                            ),
                             child: Text(
                               '•',
                               style: TextStyle(color: scheme.onSurfaceVariant),
@@ -308,13 +325,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
     final switchState = ref.watch(switchAccountProvider);
     final notifier = ref.read(switchAccountProvider.notifier);
 
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      color: scheme.surfaceContainer,
-      shape: RoundedRectangleBorder(
-        borderRadius: AppRadii.lgR,
-      ),
+    return _ProfileSheetSection(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -330,10 +341,15 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
               });
             },
             borderRadius: _isExpanded
-                ? const BorderRadius.vertical(top: Radius.circular(16))
-                : BorderRadius.circular(16),
+                ? const BorderRadius.vertical(
+                    top: Radius.circular(_sectionRadius),
+                  )
+                : BorderRadius.circular(_sectionRadius),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: 22,
+              ),
               child: Row(
                 children: [
                   Expanded(
@@ -369,7 +385,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
               decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(
-                    color: scheme.outlineVariant.withValues(alpha: 0.4),
+                    color: _profileSectionDividerColor(scheme),
                     width: 0.5,
                   ),
                 ),
@@ -395,7 +411,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                           },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md,
+                              horizontal: AppSpacing.lg,
                               vertical: 10,
                             ),
                             child: Row(
@@ -410,7 +426,10 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                                         top: -6,
                                         left: -6,
                                         child: GestureDetector(
-                                          onTap: () => notifier.removeAccount(context, account),
+                                          onTap: () => notifier.removeAccount(
+                                            context,
+                                            account,
+                                          ),
                                           child: Container(
                                             padding: const EdgeInsets.all(2),
                                             decoration: const BoxDecoration(
@@ -430,22 +449,26 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                                 const SizedBox(width: AppSpacing.md),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         account.displayName,
-                                        style: theme.textTheme.bodyLarge?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          color: scheme.onSurface,
-                                        ),
+                                        style: theme.textTheme.bodyLarge
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                              color: scheme.onSurface,
+                                            ),
                                       ),
                                       Text(
-                                        account.username != null && account.username!.isNotEmpty
+                                        account.username != null &&
+                                                account.username!.isNotEmpty
                                             ? '@${account.username}'
                                             : 'ID ${account.telegramId}',
-                                        style: theme.textTheme.bodyMedium?.copyWith(
-                                          color: scheme.onSurfaceVariant,
-                                        ),
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                              color: scheme.onSurfaceVariant,
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -453,7 +476,10 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                                 if (isActive && !switchState.isRemoveMode) ...[
                                   // Add Sign Out row for the active account inside the expanded switcher
                                   TextButton(
-                                    onPressed: () => notifier.removeAccount(context, account),
+                                    onPressed: () => notifier.removeAccount(
+                                      context,
+                                      account,
+                                    ),
                                     style: TextButton.styleFrom(
                                       foregroundColor: scheme.error,
                                       visualDensity: VisualDensity.compact,
@@ -473,7 +499,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6.0),
                     child: Divider(
-                      color: scheme.outlineVariant.withValues(alpha: 0.4),
+                      color: _profileSectionDividerColor(scheme),
                       height: 1,
                     ),
                   ),
@@ -483,14 +509,22 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                     label: 'Add another account',
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Multiple Telegram account login will be supported soon!')),
+                        const SnackBar(
+                          content: Text(
+                            'Multiple Telegram account login will be supported soon!',
+                          ),
+                        ),
                       );
                     },
                   ),
                   _buildSwitchOptionRow(
                     context,
-                    icon: switchState.isRemoveMode ? Icons.check_circle_outline_rounded : Icons.manage_accounts_outlined,
-                    label: switchState.isRemoveMode ? 'Done removing' : 'Remove account',
+                    icon: switchState.isRemoveMode
+                        ? Icons.check_circle_outline_rounded
+                        : Icons.manage_accounts_outlined,
+                    label: switchState.isRemoveMode
+                        ? 'Done removing'
+                        : 'Remove account',
                     onTap: () {
                       notifier.toggleRemoveMode();
                     },
@@ -498,7 +532,9 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                 ],
               ),
             ),
-            crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            crossFadeState: _isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 250),
           ),
         ],
@@ -511,22 +547,22 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      color: scheme.surfaceContainer,
-      shape: RoundedRectangleBorder(
-        borderRadius: AppRadii.lgR,
-      ),
+    return _ProfileSheetSection(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.md,
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (backupOn ? scheme.primary : scheme.outlineVariant).withValues(alpha: 0.15),
+                color: (backupOn ? scheme.primary : scheme.outlineVariant)
+                    .withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -557,15 +593,20 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                       height: 1.3,
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: AppSpacing.md),
                   Align(
                     alignment: Alignment.centerRight,
                     child: FilledButton.tonal(
                       onPressed: () {
-                        ref.read(mediaBackupProvider.notifier).state = !backupOn;
+                        ref.read(mediaBackupProvider.notifier).state =
+                            !backupOn;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(backupOn ? 'Backup turned off.' : 'Backup enabled!'),
+                            content: Text(
+                              backupOn
+                                  ? 'Backup turned off.'
+                                  : 'Backup enabled!',
+                            ),
                             duration: const Duration(seconds: 2),
                           ),
                         );
@@ -576,7 +617,9 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                           borderRadius: BorderRadius.circular(100),
                         ),
                       ),
-                      child: Text(backupOn ? 'Turn off backup' : 'Turn on backup'),
+                      child: Text(
+                        backupOn ? 'Turn off backup' : 'Turn on backup',
+                      ),
                     ),
                   ),
                 ],
@@ -599,16 +642,12 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
     final scheme = theme.colorScheme;
 
     return ListTile(
-      leading: Container(
-        width: 36,
-        height: 36,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerHigh,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: scheme.onSurfaceVariant, size: 20),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.xs,
       ),
+      minLeadingWidth: 32,
+      leading: Icon(icon, color: scheme.onSurfaceVariant, size: 24),
       title: Text(
         label,
         style: theme.textTheme.bodyLarge?.copyWith(
@@ -617,6 +656,16 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
         ),
       ),
       onTap: onTap,
+    );
+  }
+
+  Widget _buildSectionDivider(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Divider(
+      height: 1,
+      thickness: 0.5,
+      color: _profileSectionDividerColor(scheme),
     );
   }
 
@@ -633,7 +682,10 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: 12,
+        ),
         child: Row(
           children: [
             Container(
@@ -659,7 +711,10 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
   }
 
   // Overlapping thumbnails builder
-  Widget _buildOverlappingAvatars(BuildContext context, List<TelegramAccount> accounts) {
+  Widget _buildOverlappingAvatars(
+    BuildContext context,
+    List<TelegramAccount> accounts,
+  ) {
     final scheme = Theme.of(context).colorScheme;
 
     return SizedBox(
@@ -673,7 +728,10 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: scheme.surfaceContainer, width: 1.5),
+                  border: Border.all(
+                    color: scheme.surfaceContainer,
+                    width: 1.5,
+                  ),
                 ),
                 child: _buildAvatarCircle(accounts[i], size: 22),
               ),
@@ -687,7 +745,10 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                 decoration: BoxDecoration(
                   color: scheme.primaryContainer,
                   shape: BoxShape.circle,
-                  border: Border.all(color: scheme.surfaceContainer, width: 1.5),
+                  border: Border.all(
+                    color: scheme.surfaceContainer,
+                    width: 1.5,
+                  ),
                 ),
                 alignment: Alignment.center,
                 child: Text(
@@ -708,13 +769,17 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
   // Small helper to build the fallback text/image circle for Switcher
   Widget _buildAvatarCircle(TelegramAccount account, {required double size}) {
     final scheme = Theme.of(context).colorScheme;
-    final initial = account.firstName.isNotEmpty ? account.firstName[0].toUpperCase() : '?';
+    final initial = account.firstName.isNotEmpty
+        ? account.firstName[0].toUpperCase()
+        : '?';
 
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: account.isMock ? scheme.secondaryContainer : scheme.primaryContainer,
+        color: account.isMock
+            ? scheme.secondaryContainer
+            : scheme.primaryContainer,
         shape: BoxShape.circle,
       ),
       alignment: Alignment.center,
@@ -723,7 +788,9 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
         style: TextStyle(
           fontSize: size * 0.45,
           fontWeight: FontWeight.bold,
-          color: account.isMock ? scheme.onSecondaryContainer : scheme.onPrimaryContainer,
+          color: account.isMock
+              ? scheme.onSecondaryContainer
+              : scheme.onPrimaryContainer,
         ),
       ),
     );
@@ -761,6 +828,55 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
           ),
         ],
       ),
+    );
+  }
+}
+
+Color _profileSectionColor(ColorScheme scheme) {
+  if (scheme.brightness == Brightness.dark) {
+    return Color.alphaBlend(
+      Colors.black.withValues(alpha: 0.42),
+      scheme.surfaceContainerLow,
+    );
+  }
+
+  return Color.alphaBlend(
+    scheme.onSurface.withValues(alpha: 0.035),
+    scheme.surfaceContainerLow,
+  );
+}
+
+Color _profileSectionDividerColor(ColorScheme scheme) {
+  return scheme.outlineVariant.withValues(
+    alpha: scheme.brightness == Brightness.dark ? 0.18 : 0.42,
+  );
+}
+
+class _ProfileSheetSection extends StatelessWidget {
+  const _ProfileSheetSection({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: _profileSectionColor(scheme),
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(
+          _AccountBottomSheetState._sectionRadius,
+        ),
+        side: scheme.brightness == Brightness.light
+            ? BorderSide(
+                color: scheme.outlineVariant.withValues(alpha: 0.5),
+                width: 0.5,
+              )
+            : BorderSide.none,
+      ),
+      child: child,
     );
   }
 }

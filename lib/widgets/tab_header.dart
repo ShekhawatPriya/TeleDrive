@@ -58,7 +58,7 @@ class TabHeader extends ConsumerWidget {
               context: context,
               isScrollControlled: true,
               useSafeArea: true,
-              backgroundColor: Colors.transparent,
+              useRootNavigator: true,
               builder: (context) => const AccountBottomSheet(),
             );
           },
