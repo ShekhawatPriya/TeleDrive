@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/theme/app_theme.dart';
-import '../core/utils/safe_navigation.dart';
 import '../features/auth/auth_controller.dart';
 import '../features/search/search_controller.dart';
 import 'ios_more_menu.dart';
 import 'profile_avatar.dart';
+import '../features/profile/widgets/account_bottom_sheet.dart';
 
 /// Shared top app bar for the four main-tab surfaces: Drive, Photos,
 /// Starred, Shared. Renders identically on every screen — only the search
@@ -106,7 +106,15 @@ List<Widget> _buildAppBarActions(
         0,
       ),
       child: GestureDetector(
-        onTap: () => context.safePush('/profile'),
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            useSafeArea: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => const AccountBottomSheet(),
+          );
+        },
         child: ProfileAvatar(user: auth.user, size: 36),
       ),
     ),
