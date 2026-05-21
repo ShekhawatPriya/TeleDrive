@@ -4,9 +4,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/file_type_detector.dart';
 import '../../../core/utils/safe_navigation.dart';
 import '../../../widgets/profile_avatar.dart';
 import '../../auth/auth_controller.dart';
+import '../../drive/drive_controller.dart';
 import 'switch_account_provider.dart';
 
 class AccountBottomSheet extends ConsumerStatefulWidget {
@@ -16,11 +18,25 @@ class AccountBottomSheet extends ConsumerStatefulWidget {
   ConsumerState<AccountBottomSheet> createState() => _AccountBottomSheetState();
 }
 
+class _CompactPillAction {
+  const _CompactPillAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+}
+
 class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
     with SingleTickerProviderStateMixin {
-  static const _sectionRadius = 40.0;
+  static const _sectionRadius = 32.0;
   static const _sectionSpacing = 14.0;
   static const _sheetHorizontalPadding = AppSpacing.lg;
+  static const _compactActionRowHeight = 54.0;
+  static const _compactActionDividerHeight = 3.0;
 
   bool _isExpanded = false;
 
@@ -42,6 +58,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final auth = ref.watch(authControllerProvider);
+    final drive = ref.watch(driveControllerProvider);
     final switchState = ref.watch(switchAccountProvider);
     final backupOn = ref.watch(mediaBackupProvider);
     final user = auth.user;
@@ -77,7 +94,6 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-
             // Top Header: Highlighted username tag/pill
             Padding(
               padding: const EdgeInsets.only(top: AppSpacing.xxs),
@@ -214,50 +230,44 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                       _buildBackupCard(context, backupOn),
                       const SizedBox(height: _sectionSpacing),
 
-                      // Action Items list
-                      _ProfileSheetSection(
-                        child: Column(
-                          children: [
-                            _buildActionRow(
-                              context,
-                              icon: Icons.cloud_queue_rounded,
-                              label: 'Storage',
-                              onTap: () {
-                                Navigator.of(context).pop();
-                                context.safePush('/profile');
-                              },
-                            ),
-                            _buildSectionDivider(context),
-                            _buildActionRow(
-                              context,
-                              icon: Icons.analytics_outlined,
-                              label: 'My Data in Telegram Drive',
-                              onTap: () {
-                                Navigator.of(context).pop();
-                                context.safePush('/profile/my-data');
-                              },
-                            ),
-                            _buildSectionDivider(context),
-                            _buildActionRow(
-                              context,
-                              icon: Icons.settings_outlined,
-                              label: 'Settings',
-                              onTap: () {
-                                Navigator.of(context).pop();
-                                context.safePush('/settings');
-                              },
-                            ),
-                            _buildSectionDivider(context),
-                            _buildActionRow(
-                              context,
-                              icon: Icons.help_outline_rounded,
-                              label: 'Help & Feedback',
-                              onTap: () {
-                                _showHelpFeedbackDialog(context);
-                              },
-                            ),
-                          ],
-                        ),
+                      _buildStorageCard(context, drive.state.usedStorage),
+                      const SizedBox(height: _sectionSpacing),
+
+                      _buildCompactActionPill(
+                        context,
+                        actions: [
+                          _CompactPillAction(
+                            icon: Icons.phonelink_erase_rounded,
+                            label: 'Free up space on this device',
+                            onTap: () {
+                              Navigator.of(context).pop();
+                              context.safePush('/profile/free-up-space');
+                            },
+                          ),
+                          _CompactPillAction(
+                            icon: Icons.settings_outlined,
+                            label: 'Settings',
+                            onTap: () {
+                              Navigator.of(context).pop();
+                              context.safePush('/settings');
+                            },
+                          ),
+                          _CompactPillAction(
+                            icon: Icons.analytics_outlined,
+                            label: 'My Data in Telegram Drive',
+                            onTap: () {
+                              Navigator.of(context).pop();
+                              context.safePush('/profile/my-data');
+                            },
+                          ),
+                          _CompactPillAction(
+                            icon: Icons.help_outline_rounded,
+                            label: 'Help & Feedback',
+                            onTap: () {
+                              _showHelpFeedbackDialog(context);
+                            },
+                          ),
+                        ],
                       ),
                       const SizedBox(height: AppSpacing.lg),
 
@@ -274,7 +284,8 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                               'Privacy Policy',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: scheme.onSurfaceVariant,
-                                decoration: TextDecoration.underline,
+                                fontWeight: FontWeight.normal,
+                                decoration: TextDecoration.none,
                               ),
                             ),
                           ),
@@ -296,7 +307,8 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                               'Terms of Service',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: scheme.onSurfaceVariant,
-                                decoration: TextDecoration.underline,
+                                fontWeight: FontWeight.normal,
+                                decoration: TextDecoration.none,
                               ),
                             ),
                           ),
@@ -309,6 +321,190 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStorageCard(BuildContext context, int used) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return _ProfileSheetSection(
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).pop();
+          context.safePush('/profile?scrollToStorage=true');
+        },
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.md,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.cloud_queue_rounded,
+                    size: 28,
+                    color: scheme.primary,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      'Unlimited Telegram Drive storage',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: SizedBox(
+                  height: 6,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ColoredBox(
+                        color: scheme.outlineVariant.withValues(alpha: 0.55),
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: scheme.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                '${formatFileSize(used)} backed up to Telegram Drive',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    context.safePush('/profile?scrollToStorage=true');
+                  },
+                  child: const Text('Manage storage'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactActionPill(
+    BuildContext context, {
+    required List<_CompactPillAction> actions,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: _profileSectionColor(scheme),
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(_sectionRadius),
+        side: scheme.brightness == Brightness.light
+            ? BorderSide(
+                color: scheme.outlineVariant.withValues(alpha: 0.5),
+                width: 0.5,
+              )
+            : BorderSide.none,
+      ),
+      child: SizedBox(
+        height:
+            (_compactActionRowHeight * actions.length) +
+            (_compactActionDividerHeight * (actions.length - 1)),
+        child: Column(
+          children: [
+            for (var i = 0; i < actions.length; i++) ...[
+              _buildCompactPillRow(
+                context,
+                icon: actions[i].icon,
+                label: actions[i].label,
+                onTap: actions[i].onTap,
+              ),
+              if (i != actions.length - 1) _buildCompactPillDivider(context),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactPillDivider(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return SizedBox(
+      height: _compactActionDividerHeight,
+      width: double.infinity,
+      child: ColoredBox(color: scheme.surface),
+    );
+  }
+
+  Widget _buildCompactPillRow(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: _compactActionRowHeight,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 28,
+                  child: Icon(icon, color: scheme.onSurfaceVariant, size: 26),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w500,
+                      height: 1.1,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -571,7 +767,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                 size: 24,
               ),
             ),
-            const SizedBox(width: AppSpacing.md),
+            const SizedBox(width: AppSpacing.xs),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -628,44 +824,6 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
           ],
         ),
       ),
-    );
-  }
-
-  // Action Row Builder
-  Widget _buildActionRow(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.lg,
-        vertical: AppSpacing.xs,
-      ),
-      minLeadingWidth: 32,
-      leading: Icon(icon, color: scheme.onSurfaceVariant, size: 24),
-      title: Text(
-        label,
-        style: theme.textTheme.bodyLarge?.copyWith(
-          color: scheme.onSurface,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      onTap: onTap,
-    );
-  }
-
-  Widget _buildSectionDivider(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Divider(
-      height: 1,
-      thickness: 0.5,
-      color: _profileSectionDividerColor(scheme),
     );
   }
 

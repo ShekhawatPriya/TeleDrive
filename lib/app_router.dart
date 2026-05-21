@@ -13,6 +13,7 @@ import 'features/photos/photos_filter.dart';
 import 'features/photos/photos_screen.dart';
 import 'features/photos/photos_viewer/photo_viewer_screen.dart';
 import 'features/profile/legal_screen.dart';
+import 'features/profile/free_up_space_screen.dart';
 import 'features/profile/my_data_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/settings_screen.dart';
@@ -76,9 +77,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const MyDataScreen(),
       ),
       GoRoute(
-        path: '/settings',
-        builder: (_, __) => const SettingsScreen(),
+        path: '/profile/free-up-space',
+        builder: (_, __) => const FreeUpSpaceScreen(),
       ),
+      GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
       GoRoute(
         path: '/folder/:id',
         builder: (_, state) =>
