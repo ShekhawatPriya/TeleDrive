@@ -119,6 +119,7 @@ List<Widget> _buildAppBarActions(
             isScrollControlled: true,
             useSafeArea: true,
             useRootNavigator: true,
+            showDragHandle: false,
             constraints: BoxConstraints(maxHeight: maxSheetHeight),
             builder: (context) => const AccountBottomSheet(),
           );

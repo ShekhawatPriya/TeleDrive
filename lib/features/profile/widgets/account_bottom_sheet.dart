@@ -8,6 +8,7 @@ import '../../../core/utils/file_type_detector.dart';
 import '../../../core/utils/safe_navigation.dart';
 import '../../../widgets/profile_avatar.dart';
 import '../../../widgets/github_icon.dart';
+import '../../../widgets/sheet/sheet_drag_handle.dart';
 import '../../auth/auth_controller.dart';
 import '../../drive/drive_controller.dart';
 import 'switch_account_provider.dart';
@@ -107,7 +108,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: AppSpacing.md),
+            const SheetDragHandle(),
             Flexible(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
