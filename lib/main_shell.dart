@@ -18,6 +18,7 @@ import 'features/share/share_controller.dart';
 import 'features/upload/ui/components/bottom_action_system.dart';
 import 'widgets/ios_more_menu.dart';
 import 'widgets/main_tab_menu_sections.dart';
+import 'widgets/floating_pill_navigation_bar.dart';
 import 'widgets/teledrive_app_bar.dart';
 
 class MainShell extends ConsumerStatefulWidget {
@@ -79,31 +80,9 @@ class _MainShellState extends ConsumerState<MainShell> {
     return Scaffold(
       body: showingTab ? _buildTabs(routeIndex) : widget.child,
       bottomNavigationBar: showingTab
-          ? NavigationBar(
+          ? FloatingPillNavigationBar(
               selectedIndex: routeIndex.clamp(0, _tabPaths.length - 1),
               onDestinationSelected: _handleDestinationSelected,
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.folder_outlined),
-                  selectedIcon: Icon(Icons.folder),
-                  label: 'Drive',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.photo_library_outlined),
-                  selectedIcon: Icon(Icons.photo_library),
-                  label: 'Photos',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.star_border_rounded),
-                  selectedIcon: Icon(Icons.star_rounded),
-                  label: 'Starred',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.group_outlined),
-                  selectedIcon: Icon(Icons.group),
-                  label: 'Shared',
-                ),
-              ],
             )
           : null,
     );
