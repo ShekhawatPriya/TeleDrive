@@ -197,9 +197,10 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                       Card(
                         elevation: 0,
                         margin: EdgeInsets.zero,
-                        color: scheme.surfaceContainer,
+                        color: scheme.surfaceContainerHigh,
+                        clipBehavior: Clip.antiAlias,
                         shape: RoundedRectangleBorder(
-                          borderRadius: AppRadii.lgR,
+                          borderRadius: BorderRadius.circular(24.0),
                         ),
                         child: Column(
                           children: [
@@ -218,9 +219,8 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
                               icon: Icons.analytics_outlined,
                               label: 'My Data in Telegram Drive',
                               onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Your Telegram Drive data is fully encrypted and synced.')),
-                                );
+                                Navigator.of(context).pop();
+                                context.safePush('/my-data');
                               },
                             ),
                             const Divider(height: 1, indent: 56),
@@ -312,9 +312,10 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
-      color: scheme.surfaceContainer,
+      color: scheme.surfaceContainerHigh,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: AppRadii.lgR,
+        borderRadius: BorderRadius.circular(24.0),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -515,9 +516,10 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet> with Si
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
-      color: scheme.surfaceContainer,
+      color: scheme.surfaceContainerHigh,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: AppRadii.lgR,
+        borderRadius: BorderRadius.circular(24.0),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
