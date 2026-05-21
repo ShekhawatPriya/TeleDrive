@@ -31,7 +31,7 @@ class TeleDriveAppBar extends ConsumerWidget {
       pinned: true,
       automaticallyImplyLeading: false,
       titleSpacing: AppSpacing.sm,
-      leadingWidth: 48,
+      leadingWidth: 54,
       leading: const _LogoLeading(),
       title: _SearchPill(scope: scope),
       actions: _buildAppBarActions(context, ref, menuSections),
@@ -59,7 +59,7 @@ class TeleDriveTopBar extends ConsumerWidget {
             padding: const EdgeInsetsDirectional.only(start: AppSpacing.sm),
             child: Row(
               children: [
-                const SizedBox(width: 48, child: _LogoLeading()),
+                const SizedBox(width: 54, child: _LogoLeading()),
                 Expanded(child: _SearchPill(scope: scope)),
                 ..._buildAppBarActions(context, ref, menuSections),
               ],
@@ -76,9 +76,12 @@ class _LogoLeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Center(
-      child: Icon(Icons.cloud_rounded, color: scheme.primary, size: 26),
+      child: Image.asset(
+        'assets/icon/app_icon.png',
+        width: 28,
+        height: 28,
+      ),
     );
   }
 }

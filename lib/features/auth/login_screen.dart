@@ -156,20 +156,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 88,
-                    height: 88,
-                    decoration: BoxDecoration(
-                      color: scheme.primaryContainer,
-                      borderRadius: AppRadii.xlR,
-                    ),
-                    child: Icon(
-                      Icons.cloud_outlined,
-                      color: scheme.onPrimaryContainer,
-                      size: 40,
-                    ),
+                  const SizedBox(height: AppSpacing.md),
+                  Image.asset(
+                    'assets/icon/app_icon.png',
+                    width: 64,
+                    height: 64,
                   ),
-                  const SizedBox(height: AppSpacing.xl),
+                  const SizedBox(height: AppSpacing.sm),
                   _buildHeader(),
                   const SizedBox(height: AppSpacing.lg),
                   AnimatedSwitcher(

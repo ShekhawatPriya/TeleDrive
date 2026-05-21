@@ -8,25 +8,15 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     return Scaffold(
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: scheme.primaryContainer,
-                borderRadius: AppRadii.lgR,
-              ),
-              alignment: Alignment.center,
-              child: Icon(
-                Icons.cloud_outlined,
-                color: scheme.onPrimaryContainer,
-                size: 36,
-              ),
+            Image.asset(
+              'assets/icon/app_icon.png',
+              width: 80,
+              height: 80,
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(

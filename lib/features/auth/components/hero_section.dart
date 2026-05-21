@@ -16,20 +16,13 @@ class HeroSection extends StatelessWidget {
 
     return Column(
       children: [
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: scheme.primaryContainer.withValues(alpha: 0.4),
-            borderRadius: AppRadii.xlR,
-          ),
-          child: Icon(
-            Icons.cloud_outlined,
-            color: scheme.primary,
-            size: 38,
-          ),
+        const SizedBox(height: AppSpacing.md),
+        Image.asset(
+          'assets/icon/app_icon.png',
+          width: 72,
+          height: 72,
         ),
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: AppSpacing.sm),
         Text(
           'TeleDrive',
           style: theme.textTheme.labelMedium?.copyWith(
