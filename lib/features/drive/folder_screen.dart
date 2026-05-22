@@ -40,11 +40,7 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
     var files = drive.filesInFolder(widget.folderId);
     var folders = drive.foldersInFolder(widget.folderId);
     folders = sortDriveFolders(folders, ascending: prefs.ascending);
-    files = sortDriveFiles(
-      files,
-      sort: prefs.sort,
-      ascending: prefs.ascending,
-    );
+    files = sortDriveFiles(files, sort: prefs.sort, ascending: prefs.ascending);
     final path = drive.folderPath(widget.folderId);
     final grid = prefs.layout == LayoutMode.grid;
 
@@ -57,7 +53,8 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
                 onCancel: exitSelect,
                 onShare: () => bulkShare(context),
                 onStar: bulkStar,
-                onMove: () => bulkMove(context, currentParentId: widget.folderId),
+                onMove: () =>
+                    bulkMove(context, currentParentId: widget.folderId),
                 onDelete: () => bulkDelete(context),
               ),
             )
@@ -99,7 +96,10 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
                   onFolderTap: _onFolderTap,
                   onFolderLongPress: (id) => enterSelect(folderId: id),
                   onFolderMore: (f) => DriveItemActions.openFolder(
-                    context, ref, f, allowRename: false,
+                    context,
+                    ref,
+                    f,
+                    allowRename: false,
                   ),
                 ),
                 DriveFilesSliver(
@@ -127,7 +127,6 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
               ),
             ),
           ),
-
         ],
       ),
     );
@@ -148,8 +147,6 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
     }
     context.safePush('/folder/${folder.id}');
   }
-
-
 }
 
 class _Breadcrumbs extends StatelessWidget {
@@ -166,13 +163,19 @@ class _Breadcrumbs extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         itemCount: path.length,
         separatorBuilder: (_, __) => Center(
-          child: Icon(Icons.chevron_right, size: 18, color: scheme.onSurfaceVariant),
+          child: Icon(
+            Icons.chevron_right,
+            size: 18,
+            color: scheme.onSurfaceVariant,
+          ),
         ),
         itemBuilder: (_, i) {
           final isLast = i == path.length - 1;
           return Center(
             child: TextButton(
-              onPressed: isLast ? null : () => context.safePush('/folder/${path[i].id}'),
+              onPressed: isLast
+                  ? null
+                  : () => context.safePush('/folder/${path[i].id}'),
               style: TextButton.styleFrom(
                 foregroundColor: isLast ? scheme.onSurface : scheme.primary,
               ),

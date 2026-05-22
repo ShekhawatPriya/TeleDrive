@@ -44,8 +44,7 @@ class PhotoTile extends StatelessWidget {
               padding: selected ? const EdgeInsets.all(8) : EdgeInsets.zero,
               color: selected ? selectedWash : Colors.transparent,
               child: ClipRRect(
-                borderRadius:
-                    BorderRadius.circular(selected ? AppRadii.xs : 0),
+                borderRadius: BorderRadius.circular(selected ? AppRadii.xs : 0),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -73,11 +72,7 @@ class PhotoTile extends StatelessWidget {
   }
 
   Widget _sharedBadge() {
-    return const Positioned(
-      right: 8,
-      bottom: 8,
-      child: SharedBadge(size: 20),
-    );
+    return const Positioned(right: 8, bottom: 8, child: SharedBadge(size: 20));
   }
 
   Widget _videoBadge() {
@@ -132,7 +127,9 @@ class PhotoTile extends StatelessWidget {
         height: 24,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: selected ? scheme.primary : Colors.black.withValues(alpha: .25),
+          color: selected
+              ? scheme.primary
+              : Colors.black.withValues(alpha: .25),
           border: Border.all(color: scheme.surface, width: 2),
         ),
         child: selected

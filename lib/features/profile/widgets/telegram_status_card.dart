@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
 class TelegramStatusCard extends StatelessWidget {
-  const TelegramStatusCard({
-    required this.connected,
-    super.key,
-  });
+  const TelegramStatusCard({required this.connected, super.key});
 
   final bool? connected;
 
@@ -28,10 +25,7 @@ class TelegramStatusCard extends StatelessWidget {
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm + 2,
       ),
-      decoration: BoxDecoration(
-        color: container,
-        borderRadius: AppRadii.lgR,
-      ),
+      decoration: BoxDecoration(color: container, borderRadius: AppRadii.lgR),
       child: Row(
         children: [
           Stack(

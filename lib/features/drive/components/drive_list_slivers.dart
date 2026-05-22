@@ -60,8 +60,8 @@ class DriveFolderSliver extends ConsumerWidget {
           onStar: folder.isOptimistic
               ? null
               : () => ref
-                  .read(driveControllerProvider)
-                  .toggleStar(folder.id, folder: true),
+                    .read(driveControllerProvider)
+                    .toggleStar(folder.id, folder: true),
           onMore: folder.isOptimistic ? null : () => onFolderMore(folder),
         );
       },

@@ -130,12 +130,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  0,
-                  AppSpacing.xs,
-                  0,
-                  0,
-                ),
+                padding: const EdgeInsets.fromLTRB(0, AppSpacing.xs, 0, 0),
                 child: DriveQuickActions(
                   onTrashTap: () => context.safePush('/settings/trash'),
                 ),
@@ -208,8 +203,6 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
     }
     context.safePush('/folder/${folder.id}');
   }
-
-
 
   @override
   void dispose() {

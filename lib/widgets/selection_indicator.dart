@@ -56,7 +56,7 @@ class PremiumSelectionIndicator extends StatelessWidget {
                   color: Colors.black.withValues(alpha: 0.15),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
-                )
+                ),
               ]
             : null,
       ),
@@ -65,11 +65,7 @@ class PremiumSelectionIndicator extends StatelessWidget {
         duration: const Duration(milliseconds: 240),
         curve: Curves.easeOutBack,
         child: Center(
-          child: Icon(
-            Icons.check,
-            size: size * 0.65,
-            color: scheme.onPrimary,
-          ),
+          child: Icon(Icons.check, size: size * 0.65, color: scheme.onPrimary),
         ),
       ),
     );

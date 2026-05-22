@@ -34,11 +34,7 @@ class CacheItemRow extends StatelessWidget {
               color: iconColor.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: iconColor,
-            ),
+            child: Icon(icon, size: 18, color: iconColor),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(

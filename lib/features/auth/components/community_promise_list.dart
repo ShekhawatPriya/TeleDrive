@@ -49,7 +49,9 @@ class CommunityPromiseList extends StatelessWidget {
           decoration: BoxDecoration(
             color: scheme.surfaceContainerHighest.withValues(alpha: .24),
             borderRadius: AppRadii.mdR,
-            border: Border.all(color: scheme.outlineVariant.withValues(alpha: .3)),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: .3),
+            ),
           ),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),

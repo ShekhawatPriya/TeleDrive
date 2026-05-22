@@ -76,7 +76,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               sliver: SliverList(
                 delegate: SliverChildListDelegate.fixed([
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xxs,
+                    ),
                     child: Text(
                       'Storage Breakdown',
                       style: theme.textTheme.titleSmall?.copyWith(

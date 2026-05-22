@@ -67,16 +67,15 @@ class _PhotoPanSelectorState extends State<PhotoPanSelector> {
       behavior: HitTestBehavior.translucent,
       gestures: <Type, GestureRecognizerFactory>{
         HorizontalDragGestureRecognizer:
-            GestureRecognizerFactoryWithHandlers<HorizontalDragGestureRecognizer>(
-          () => HorizontalDragGestureRecognizer(),
-          (instance) {
-            instance
-              ..onStart = _handleStart
-              ..onUpdate = _handleUpdate
-              ..onEnd = _handleEnd
-              ..onCancel = () => _handleEnd(null);
-          },
-        ),
+            GestureRecognizerFactoryWithHandlers<
+              HorizontalDragGestureRecognizer
+            >(() => HorizontalDragGestureRecognizer(), (instance) {
+              instance
+                ..onStart = _handleStart
+                ..onUpdate = _handleUpdate
+                ..onEnd = _handleEnd
+                ..onCancel = () => _handleEnd(null);
+            }),
       },
       child: widget.child,
     );

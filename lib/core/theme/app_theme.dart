@@ -79,7 +79,9 @@ ThemeData buildTheme(ColorScheme scheme) {
       hintStyle: textTheme.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
       labelStyle: textTheme.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
       floatingLabelStyle: textTheme.bodySmall?.copyWith(color: scheme.primary),
-      helperStyle: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+      helperStyle: textTheme.bodySmall?.copyWith(
+        color: scheme.onSurfaceVariant,
+      ),
       errorStyle: textTheme.bodySmall?.copyWith(color: scheme.error),
       prefixIconColor: scheme.onSurfaceVariant,
       suffixIconColor: scheme.onSurfaceVariant,
@@ -98,7 +100,9 @@ ThemeData buildTheme(ColorScheme scheme) {
       disabledBorder: OutlineInputBorder(
         borderRadius: AppRadii.xsR,
         borderSide: BorderSide(
-          color: scheme.onSurface.withValues(alpha: AppStateLayer.disabledContainer),
+          color: scheme.onSurface.withValues(
+            alpha: AppStateLayer.disabledContainer,
+          ),
         ),
       ),
       focusedBorder: OutlineInputBorder(
@@ -119,10 +123,12 @@ ThemeData buildTheme(ColorScheme scheme) {
       style: FilledButton.styleFrom(
         backgroundColor: scheme.primary,
         foregroundColor: scheme.onPrimary,
-        disabledBackgroundColor:
-            scheme.onSurface.withValues(alpha: AppStateLayer.disabledContainer),
-        disabledForegroundColor:
-            scheme.onSurface.withValues(alpha: AppStateLayer.disabledContent),
+        disabledBackgroundColor: scheme.onSurface.withValues(
+          alpha: AppStateLayer.disabledContainer,
+        ),
+        disabledForegroundColor: scheme.onSurface.withValues(
+          alpha: AppStateLayer.disabledContent,
+        ),
         minimumSize: const Size(64, 40),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
         shape: const StadiumBorder(),
@@ -155,8 +161,9 @@ ThemeData buildTheme(ColorScheme scheme) {
     iconButtonTheme: IconButtonThemeData(
       style: IconButton.styleFrom(
         foregroundColor: scheme.onSurfaceVariant,
-        disabledForegroundColor:
-            scheme.onSurface.withValues(alpha: AppStateLayer.disabledContent),
+        disabledForegroundColor: scheme.onSurface.withValues(
+          alpha: AppStateLayer.disabledContent,
+        ),
       ),
     ),
 
@@ -190,7 +197,9 @@ ThemeData buildTheme(ColorScheme scheme) {
       iconTheme: WidgetStateProperty.resolveWith((states) {
         final selected = states.contains(WidgetState.selected);
         return IconThemeData(
-          color: selected ? scheme.onSecondaryContainer : scheme.onSurfaceVariant,
+          color: selected
+              ? scheme.onSecondaryContainer
+              : scheme.onSurfaceVariant,
           size: 24,
         );
       }),
@@ -204,8 +213,9 @@ ThemeData buildTheme(ColorScheme scheme) {
       hoverElevation: AppElevation.level4,
       highlightElevation: AppElevation.level3,
       shape: RoundedRectangleBorder(borderRadius: AppRadii.lgR),
-      extendedTextStyle:
-          textTheme.labelLarge?.copyWith(color: scheme.onPrimaryContainer),
+      extendedTextStyle: textTheme.labelLarge?.copyWith(
+        color: scheme.onPrimaryContainer,
+      ),
       iconSize: 24,
     ),
 
@@ -216,9 +226,14 @@ ThemeData buildTheme(ColorScheme scheme) {
       elevation: AppElevation.level3,
       shape: RoundedRectangleBorder(borderRadius: AppRadii.xlR),
       titleTextStyle: textTheme.headlineSmall,
-      contentTextStyle: textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+      contentTextStyle: textTheme.bodyMedium?.copyWith(
+        color: scheme.onSurfaceVariant,
+      ),
       actionsPadding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg,
+        AppSpacing.lg,
+        0,
+        AppSpacing.lg,
+        AppSpacing.lg,
       ),
     ),
 
@@ -237,8 +252,9 @@ ThemeData buildTheme(ColorScheme scheme) {
 
     snackBarTheme: SnackBarThemeData(
       backgroundColor: scheme.inverseSurface,
-      contentTextStyle:
-          textTheme.bodyMedium?.copyWith(color: scheme.onInverseSurface),
+      contentTextStyle: textTheme.bodyMedium?.copyWith(
+        color: scheme.onInverseSurface,
+      ),
       actionTextColor: scheme.inversePrimary,
       behavior: SnackBarBehavior.fixed,
       elevation: AppElevation.level3,
@@ -248,15 +264,20 @@ ThemeData buildTheme(ColorScheme scheme) {
     chipTheme: ChipThemeData(
       backgroundColor: scheme.surfaceContainerLow,
       selectedColor: scheme.secondaryContainer,
-      disabledColor:
-          scheme.onSurface.withValues(alpha: AppStateLayer.disabledContainer),
-      labelStyle: textTheme.labelLarge?.copyWith(color: scheme.onSurfaceVariant),
-      secondaryLabelStyle:
-          textTheme.labelLarge?.copyWith(color: scheme.onSecondaryContainer),
+      disabledColor: scheme.onSurface.withValues(
+        alpha: AppStateLayer.disabledContainer,
+      ),
+      labelStyle: textTheme.labelLarge?.copyWith(
+        color: scheme.onSurfaceVariant,
+      ),
+      secondaryLabelStyle: textTheme.labelLarge?.copyWith(
+        color: scheme.onSecondaryContainer,
+      ),
       side: BorderSide(color: scheme.outline),
       shape: RoundedRectangleBorder(borderRadius: AppRadii.smR),
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm, vertical: AppSpacing.xs / 2,
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs / 2,
       ),
     ),
 
@@ -271,10 +292,14 @@ ThemeData buildTheme(ColorScheme scheme) {
       iconColor: scheme.onSurfaceVariant,
       textColor: scheme.onSurface,
       titleTextStyle: textTheme.bodyLarge?.copyWith(color: scheme.onSurface),
-      subtitleTextStyle:
-          textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+      subtitleTextStyle: textTheme.bodyMedium?.copyWith(
+        color: scheme.onSurfaceVariant,
+      ),
       contentPadding: const EdgeInsetsDirectional.fromSTEB(
-        AppSpacing.md, 0, AppSpacing.lg, 0,
+        AppSpacing.md,
+        0,
+        AppSpacing.lg,
+        0,
       ),
       shape: const RoundedRectangleBorder(),
       tileColor: Colors.transparent,
@@ -291,13 +316,13 @@ ThemeData buildTheme(ColorScheme scheme) {
     ),
 
     checkboxTheme: CheckboxThemeData(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(2),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
       side: BorderSide(color: scheme.onSurfaceVariant, width: 2),
       fillColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.disabled)) {
-          return scheme.onSurface.withValues(alpha: AppStateLayer.disabledContainer);
+          return scheme.onSurface.withValues(
+            alpha: AppStateLayer.disabledContainer,
+          );
         }
         if (states.contains(WidgetState.selected)) return scheme.primary;
         return Colors.transparent;
@@ -327,7 +352,8 @@ ThemeData buildTheme(ColorScheme scheme) {
       ),
       textStyle: textTheme.bodySmall?.copyWith(color: scheme.onInverseSurface),
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.xs, vertical: AppSpacing.xxs,
+        horizontal: AppSpacing.xs,
+        vertical: AppSpacing.xxs,
       ),
       preferBelow: true,
       verticalOffset: 24,
@@ -362,9 +388,7 @@ ThemeData buildTheme(ColorScheme scheme) {
       elevation: WidgetStateProperty.all(AppElevation.level0),
       shadowColor: WidgetStateProperty.all(Colors.transparent),
       surfaceTintColor: WidgetStateProperty.all(scheme.surfaceTint),
-      shape: WidgetStateProperty.all(
-        const StadiumBorder(),
-      ),
+      shape: WidgetStateProperty.all(const StadiumBorder()),
       padding: WidgetStateProperty.all(
         const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       ),
@@ -379,8 +403,9 @@ ThemeData buildTheme(ColorScheme scheme) {
       backgroundColor: scheme.surface,
       surfaceTintColor: scheme.surfaceTint,
       elevation: AppElevation.level3,
-      headerHintStyle:
-          textTheme.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+      headerHintStyle: textTheme.bodyLarge?.copyWith(
+        color: scheme.onSurfaceVariant,
+      ),
       headerTextStyle: textTheme.bodyLarge,
       shape: RoundedRectangleBorder(borderRadius: AppRadii.xsR),
       dividerColor: scheme.outlineVariant,
@@ -444,6 +469,7 @@ class _IsDarkBackdrop extends ThemeExtension<_IsDarkBackdrop> {
       _IsDarkBackdrop(isDark ?? this.isDark);
   @override
   ThemeExtension<_IsDarkBackdrop> lerp(
-          ThemeExtension<_IsDarkBackdrop>? other, double t) =>
-      this;
+    ThemeExtension<_IsDarkBackdrop>? other,
+    double t,
+  ) => this;
 }

@@ -24,17 +24,19 @@ final driveControllerProvider = ChangeNotifierProvider<DriveController>((ref) {
     ref.watch(driveRepositoryProvider),
     ref.watch(localPreferencesProvider),
     ref.read(appSettingsControllerProvider),
+    ref.read(authControllerProvider),
   );
 });
 
 class DriveController extends ChangeNotifier {
-  DriveController(this._repo, this._prefs, this._settings) {
+  DriveController(this._repo, this._prefs, this._settings, this._auth) {
     _loadRecent();
   }
 
   final DriveRepository _repo;
   final LocalPreferences _prefs;
   final AppSettingsController _settings;
+  final AuthController _auth;
   DriveState state = const DriveState();
   Map<String, String> _recent = {};
   Future<void>? _refreshing;
@@ -49,6 +51,16 @@ class DriveController extends ChangeNotifier {
     if (_staleFolderIds.contains(folderId)) {
       refresh(silent: true, force: true);
     }
+  }
+
+  Future<void> resetForAccountSwitch() async {
+    state = const DriveState(loading: true);
+    _recent = {};
+    _refreshing = null;
+    _lastRefreshCompletedAt = null;
+    _staleFolderIds.clear();
+    notifyListeners();
+    await _loadRecent();
   }
 
   List<DriveFile> get files => state.files
@@ -273,7 +285,7 @@ class DriveController extends ChangeNotifier {
 
   Future<void> markAccessed(String id) async {
     _recent = {..._recent, id: DateTime.now().toIso8601String()};
-    await _prefs.setRecentAccess(_recent);
+    await _prefs.setRecentAccess(_recent, userId: _auth.activeAccount?.userId);
     notifyListeners();
   }
 

@@ -125,7 +125,8 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final empty = !_loading && _error == null && _totalCount == 0;
-    final showDeleteAll = !selectMode && !_loading && _error == null && _totalCount > 0;
+    final showDeleteAll =
+        !selectMode && !_loading && _error == null && _totalCount > 0;
 
     return Scaffold(
       appBar: selectMode
@@ -168,9 +169,7 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
         icon: const Icon(Icons.close_rounded),
         onPressed: exitSelect,
       ),
-      title: Text(
-        hasSelection ? '$selectedCount selected' : 'Select items',
-      ),
+      title: Text(hasSelection ? '$selectedCount selected' : 'Select items'),
       actions: [
         IconButton(
           tooltip: 'Restore',
@@ -199,9 +198,7 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
     if (_error != null) {
       return ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
-        children: [
-          Text(_error!, style: TextStyle(color: scheme.error)),
-        ],
+        children: [Text(_error!, style: TextStyle(color: scheme.error))],
       );
     }
     if (empty) {
@@ -225,11 +222,11 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
     final tiles = <Widget>[];
 
     Widget divider() => Divider(
-          color: dividerColor,
-          height: 1,
-          thickness: 1,
-          indent: AppSpacing.md + 36,
-        );
+      color: dividerColor,
+      height: 1,
+      thickness: 1,
+      indent: AppSpacing.md + 36,
+    );
 
     for (var i = 0; i < _folders.length; i++) {
       final folder = _folders[i];
@@ -352,11 +349,7 @@ class _TrashTile extends StatelessWidget {
                         ),
                       )
                     : Center(
-                        child: Icon(
-                          icon,
-                          color: scheme.primary,
-                          size: 24,
-                        ),
+                        child: Icon(icon, color: scheme.primary, size: 24),
                       ),
               ),
               const SizedBox(width: AppSpacing.md),

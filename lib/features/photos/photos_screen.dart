@@ -157,10 +157,20 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
         if (file.shared) {
           revokeFileShares(context, ref, file);
         } else {
-          DriveBulkActions.share(context, ref, fileIds: {fileId}, folderIds: const {});
+          DriveBulkActions.share(
+            context,
+            ref,
+            fileIds: {fileId},
+            folderIds: const {},
+          );
         }
       },
-      onMove: () => DriveBulkActions.move(context, ref, fileIds: {fileId}, folderIds: const {}),
+      onMove: () => DriveBulkActions.move(
+        context,
+        ref,
+        fileIds: {fileId},
+        folderIds: const {},
+      ),
       onSelect: () => enterSelect(fileId: fileId),
     );
   }
@@ -179,4 +189,3 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
     super.dispose();
   }
 }
-

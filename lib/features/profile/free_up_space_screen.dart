@@ -136,7 +136,8 @@ class _FreeUpSpaceScreenState extends ConsumerState<FreeUpSpaceScreen> {
                     ),
                     children: [
                       const TextSpan(
-                        text: 'These items are already safely backed up in your chosen quality. ',
+                        text:
+                            'These items are already safely backed up in your chosen quality. ',
                       ),
                       TextSpan(
                         text: 'Learn more',
@@ -237,9 +238,7 @@ class _FreeUpSpaceScreenState extends ConsumerState<FreeUpSpaceScreen> {
                   ],
                 )
               : Text(
-                  totalSize == 0
-                      ? 'Space is already free'
-                      : 'Free up $canFree',
+                  totalSize == 0 ? 'Space is already free' : 'Free up $canFree',
                 ),
         ),
       ),
@@ -263,15 +262,9 @@ class _FreeUpInfoRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            color: scheme.primary,
-            size: 26,
-          ),
+          Icon(icon, color: scheme.primary, size: 26),
           const SizedBox(width: AppSpacing.lg),
-          Expanded(
-            child: titleWidget,
-          ),
+          Expanded(child: titleWidget),
         ],
       ),
     );

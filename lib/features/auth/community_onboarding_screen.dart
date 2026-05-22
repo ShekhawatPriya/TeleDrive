@@ -117,18 +117,16 @@ class _ConnectedHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Image.asset(
-          'assets/icon/telegram.png',
-          width: 74,
-          height: 74,
-        ),
+        Image.asset('assets/icon/telegram.png', width: 74, height: 74),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           child: Text(
             '· · · ·',
             style: TextStyle(
               fontSize: 24,
-              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
               fontWeight: FontWeight.w900,
               letterSpacing: 2.0,
             ),
@@ -142,20 +140,16 @@ class _ConnectedHeader extends StatelessWidget {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Theme.of(context)
-                    .colorScheme
-                    .primaryContainer
-                    .withValues(alpha: .28),
+                color: Theme.of(
+                  context,
+                ).colorScheme.primaryContainer.withValues(alpha: .28),
                 blurRadius: 22,
                 spreadRadius: 2,
               ),
             ],
           ),
           child: ClipOval(
-            child: Image.asset(
-              'assets/icon/devsdocode.png',
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset('assets/icon/devsdocode.png', fit: BoxFit.cover),
           ),
         ),
       ],

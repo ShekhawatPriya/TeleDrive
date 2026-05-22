@@ -94,15 +94,15 @@ class GoogleDriveIcon extends StatelessWidget {
 
   static Color _colorForKind(FileKind kind, ColorScheme scheme) {
     return switch (kind) {
-      FileKind.doc => const Color(0xFF1A73E8),    // Google Blue
-      FileKind.sheet => const Color(0xFF1E8E3E),  // Google Green
+      FileKind.doc => const Color(0xFF1A73E8), // Google Blue
+      FileKind.sheet => const Color(0xFF1E8E3E), // Google Green
       FileKind.slides => const Color(0xFFF9A825), // Google Yellow/Amber
-      FileKind.audio => const Color(0xFF5C6BC0),  // Indigo / Purple
-      FileKind.video => const Color(0xFF00BCD4),  // Cyan / Teal
-      FileKind.zip => const Color(0xFF8D6E63),    // Brown / Gold
-      FileKind.code => const Color(0xFF455A64),   // Slate Slate Grey
-      FileKind.text => const Color(0xFF757575),   // Silver / Dark Grey
-      _ => const Color(0xFF9E9E9E),               // Medium Grey fallback
+      FileKind.audio => const Color(0xFF5C6BC0), // Indigo / Purple
+      FileKind.video => const Color(0xFF00BCD4), // Cyan / Teal
+      FileKind.zip => const Color(0xFF8D6E63), // Brown / Gold
+      FileKind.code => const Color(0xFF455A64), // Slate Slate Grey
+      FileKind.text => const Color(0xFF757575), // Silver / Dark Grey
+      _ => const Color(0xFF9E9E9E), // Medium Grey fallback
     };
   }
 }
@@ -154,10 +154,7 @@ class _PdfBadge extends StatelessWidget {
 /// A high-fidelity painter for drawing a page with a folded top-right corner.
 /// Includes dynamic vector drawing for multiple internal file structures.
 class _DocumentPagePainter extends CustomPainter {
-  _DocumentPagePainter({
-    required this.kind,
-    required this.color,
-  });
+  _DocumentPagePainter({required this.kind, required this.color});
 
   final FileKind kind;
   final Color color;
@@ -308,7 +305,12 @@ class _DocumentPagePainter extends CustomPainter {
         // Title box
         canvas.drawRRect(
           RRect.fromRectAndRadius(
-            Rect.fromLTRB(left + gridW * 0.15, top + gridH * 0.2, right - gridW * 0.15, top + gridH * 0.38),
+            Rect.fromLTRB(
+              left + gridW * 0.15,
+              top + gridH * 0.2,
+              right - gridW * 0.15,
+              top + gridH * 0.38,
+            ),
             Radius.circular(w * 0.01),
           ),
           miniTextPaint,
@@ -317,7 +319,12 @@ class _DocumentPagePainter extends CustomPainter {
         // Body lines
         canvas.drawRRect(
           RRect.fromRectAndRadius(
-            Rect.fromLTRB(left + gridW * 0.25, top + gridH * 0.55, right - gridW * 0.25, top + gridH * 0.65),
+            Rect.fromLTRB(
+              left + gridW * 0.25,
+              top + gridH * 0.55,
+              right - gridW * 0.25,
+              top + gridH * 0.65,
+            ),
             Radius.circular(w * 0.01),
           ),
           miniTextPaint,
@@ -344,12 +351,21 @@ class _DocumentPagePainter extends CustomPainter {
         final stemX = headX + noteHeadRadius - (w * 0.02);
 
         // Vertical stem line
-        canvas.drawLine(Offset(stemX, headY), Offset(stemX, stemTopY), stemPaint);
+        canvas.drawLine(
+          Offset(stemX, headY),
+          Offset(stemX, stemTopY),
+          stemPaint,
+        );
 
         // Slanted music note flag
         final flagPath = Path()
           ..moveTo(stemX, stemTopY)
-          ..quadraticBezierTo(stemX + w * 0.12, stemTopY + h * 0.04, stemX + w * 0.22, stemTopY + h * 0.08);
+          ..quadraticBezierTo(
+            stemX + w * 0.12,
+            stemTopY + h * 0.04,
+            stemX + w * 0.22,
+            stemTopY + h * 0.08,
+          );
         canvas.drawPath(flagPath, stemPaint);
         break;
 
@@ -390,7 +406,11 @@ class _DocumentPagePainter extends CustomPainter {
           ..strokeWidth = w * 0.04;
 
         // Vertical guide line
-        canvas.drawLine(Offset(trackX, startY), Offset(trackX, endY), linePaint);
+        canvas.drawLine(
+          Offset(trackX, startY),
+          Offset(trackX, endY),
+          linePaint,
+        );
 
         // Horizontal teeth alternating
         int i = 0;
@@ -472,20 +492,14 @@ class _FolderIcon extends StatelessWidget {
       width: size,
       height: size,
       child: CustomPaint(
-        painter: _FolderPainter(
-          isShared: isShared,
-          color: color,
-        ),
+        painter: _FolderPainter(isShared: isShared, color: color),
       ),
     );
   }
 }
 
 class _FolderPainter extends CustomPainter {
-  _FolderPainter({
-    required this.isShared,
-    required this.color,
-  });
+  _FolderPainter({required this.isShared, required this.color});
 
   final bool isShared;
   final Color color;
@@ -503,7 +517,12 @@ class _FolderPainter extends CustomPainter {
     final backPath = Path()
       ..moveTo(r, 0)
       ..lineTo(tabW - r, 0)
-      ..quadraticBezierTo(tabW, 0, tabW + (w * 0.05), tabH) // smooth transition down
+      ..quadraticBezierTo(
+        tabW,
+        0,
+        tabW + (w * 0.05),
+        tabH,
+      ) // smooth transition down
       ..lineTo(w - r, tabH)
       ..arcToPoint(Offset(w, tabH + r), radius: Radius.circular(r))
       ..lineTo(w, h - r)
@@ -515,7 +534,10 @@ class _FolderPainter extends CustomPainter {
       ..close();
 
     final backPaint = Paint()
-      ..color = color.withValues(alpha: 0.72) // 3D background shading (darker tab background)
+      ..color = color
+          .withValues(
+            alpha: 0.72,
+          ) // 3D background shading (darker tab background)
       ..style = PaintingStyle.fill;
     canvas.drawPath(backPath, backPaint);
 
@@ -532,7 +554,8 @@ class _FolderPainter extends CustomPainter {
       ..close();
 
     final frontPaint = Paint()
-      ..color = color // Crisp foreground layer
+      ..color =
+          color // Crisp foreground layer
       ..style = PaintingStyle.fill;
     canvas.drawPath(frontPath, frontPaint);
 
@@ -541,7 +564,11 @@ class _FolderPainter extends CustomPainter {
       ..color = Colors.black.withValues(alpha: 0.12)
       ..style = PaintingStyle.stroke
       ..strokeWidth = w * 0.04;
-    canvas.drawLine(Offset(r, pocketTop), Offset(w - r, pocketTop), borderPaint);
+    canvas.drawLine(
+      Offset(r, pocketTop),
+      Offset(w - r, pocketTop),
+      borderPaint,
+    );
 
     // 4. Draw shared folder visual occupant (silhouetted person in center)
     if (isShared) {
@@ -561,7 +588,10 @@ class _FolderPainter extends CustomPainter {
       final bodyW = pocketH * 0.50;
       final bodyH = pocketH * 0.28;
       final bodyRect = Rect.fromCenter(
-        center: Offset(headCX, headCY + headRadius + bodyH / 2 + (pocketH * 0.03)),
+        center: Offset(
+          headCX,
+          headCY + headRadius + bodyH / 2 + (pocketH * 0.03),
+        ),
         width: bodyW,
         height: bodyH,
       );

@@ -48,10 +48,7 @@ class IosMenuOverlayRoute extends PopupRoute<void> {
     Widget child,
   ) {
     return FadeTransition(
-      opacity: CurvedAnimation(
-        parent: animation,
-        curve: AppEasing.emphasized,
-      ),
+      opacity: CurvedAnimation(parent: animation, curve: AppEasing.emphasized),
       child: child,
     );
   }
@@ -244,10 +241,7 @@ class _MenuRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.xs),
-            SizedBox(
-              width: 24,
-              child: _trailing(scheme, iconColor),
-            ),
+            SizedBox(width: 24, child: _trailing(scheme, iconColor)),
           ],
         ),
       ),

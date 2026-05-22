@@ -14,7 +14,7 @@ List<IosMenuSection> buildPhotosMenuSections(
   // smaller tiles. We surface the user-facing labels so the menu reads
   // naturally.
   final atSmallest = density.columns >= density.max; // smallest tiles
-  final atLargest = density.columns <= density.min;  // largest tiles
+  final atLargest = density.columns <= density.min; // largest tiles
 
   return [
     IosMenuSection([

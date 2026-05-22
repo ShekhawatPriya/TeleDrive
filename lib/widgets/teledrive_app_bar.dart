@@ -77,11 +77,7 @@ class _LogoLeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Image.asset(
-        'assets/icon/app_icon.png',
-        width: 28,
-        height: 28,
-      ),
+      child: Image.asset('assets/icon/app_icon.png', width: 28, height: 28),
     );
   }
 }
@@ -94,10 +90,7 @@ List<Widget> _buildAppBarActions(
   final auth = ref.watch(authControllerProvider);
   return [
     if (menuSections != null)
-      IosMoreButton(
-        sectionsBuilder: menuSections,
-        alignToScreenEdge: true,
-      ),
+      IosMoreButton(sectionsBuilder: menuSections, alignToScreenEdge: true),
     Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(
         AppSpacing.xxs,
@@ -112,7 +105,8 @@ List<Widget> _buildAppBarActions(
           final notchHeight = topPadding > 0.0
               ? topPadding
               : MediaQueryData.fromView(View.of(context)).padding.top;
-          final maxSheetHeight = (screenHeight - (notchHeight + 64.0 + 12.0)).clamp(0.0, double.infinity);
+          final maxSheetHeight = (screenHeight - (notchHeight + 64.0 + 12.0))
+              .clamp(0.0, double.infinity);
 
           showModalBottomSheet(
             context: context,
@@ -275,7 +269,9 @@ class _RotatingHint extends ConsumerWidget {
         // - Outgoing completes its exit (1.0 -> 0.0) from t = 0.0 to 0.5.
         // - Incoming completes its entry (0.0 -> 1.0) from t = 0.5 to 1.0.
         final sequencedAnimation = animation.drive(
-          CurveTween(curve: const Interval(0.5, 1.0, curve: Curves.easeInOutCubic)),
+          CurveTween(
+            curve: const Interval(0.5, 1.0, curve: Curves.easeInOutCubic),
+          ),
         );
 
         final slide = Tween<Offset>(
@@ -286,10 +282,7 @@ class _RotatingHint extends ConsumerWidget {
         return ClipRect(
           child: FadeTransition(
             opacity: sequencedAnimation,
-            child: SlideTransition(
-              position: slide,
-              child: child,
-            ),
+            child: SlideTransition(position: slide, child: child),
           ),
         );
       },

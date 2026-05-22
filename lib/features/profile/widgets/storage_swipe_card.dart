@@ -32,11 +32,7 @@ class MeasureSizeRenderObject extends RenderProxyBox {
 class MeasureSize extends SingleChildRenderObjectWidget {
   final OnWidgetSizeChange onChange;
 
-  const MeasureSize({
-    required this.onChange,
-    required super.child,
-    super.key,
-  });
+  const MeasureSize({required this.onChange, required super.child, super.key});
 
   @override
   RenderObject createRenderObject(BuildContext context) {
@@ -101,10 +97,11 @@ class _StorageSwipeCardState extends ConsumerState<StorageSwipeCard> {
   void _onSizeChanged(int index, Size size) {
     if (!mounted) return;
     final oldHeight = _heights[index];
-    if (oldHeight == size.height) return; // Skip redundant updates if height is unchanged
-    
+    if (oldHeight == size.height)
+      return; // Skip redundant updates if height is unchanged
+
     _heights[index] = size.height;
-    
+
     // Trigger height adjustment rebuild if this page size is finalized
     if (index == _activeIndex || oldHeight == null) {
       setState(() {});
@@ -125,16 +122,15 @@ class _StorageSwipeCardState extends ConsumerState<StorageSwipeCard> {
     final scheme = theme.colorScheme;
 
     // Use sensible defaults on first frame if sizes are not yet measured
-    final targetHeight = _heights[_activeIndex] ?? (_activeIndex == 0 ? 340.0 : 500.0);
+    final targetHeight =
+        _heights[_activeIndex] ?? (_activeIndex == 0 ? 340.0 : 500.0);
 
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: AppRadii.mdR,
-        side: BorderSide(
-          color: scheme.outlineVariant.withValues(alpha: 0.5),
-        ),
+        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -152,7 +148,7 @@ class _StorageSwipeCardState extends ConsumerState<StorageSwipeCard> {
               onTabSelected: _navigateToPage,
             ),
           ),
-          
+
           const SizedBox(height: AppSpacing.sm),
 
           // Scrollable content area with smooth threshold-based height transitions
@@ -182,15 +178,13 @@ class _StorageSwipeCardState extends ConsumerState<StorageSwipeCard> {
                   alignment: Alignment.topCenter,
                   child: MeasureSize(
                     onChange: (size) => _onSizeChanged(1, size),
-                    child: LocalCacheCard(
-                      embed: true,
-                    ),
+                    child: LocalCacheCard(embed: true),
                   ),
                 ),
               ],
             ),
           ),
-          
+
           const SizedBox(height: AppSpacing.md),
         ],
       ),
@@ -219,9 +213,7 @@ class SlidingSegmentedTab extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {

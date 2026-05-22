@@ -7,10 +7,7 @@ import '../cache_controller.dart';
 import 'cache_item_row.dart';
 
 class LocalCacheCard extends ConsumerWidget {
-  const LocalCacheCard({
-    this.embed = false,
-    super.key,
-  });
+  const LocalCacheCard({this.embed = false, super.key});
 
   final bool embed;
 
@@ -37,8 +34,9 @@ class LocalCacheCard extends ConsumerWidget {
       statusBgColor = isDark
           ? Colors.orange.withValues(alpha: 0.2)
           : Colors.orange.withValues(alpha: 0.1);
-      statusTextColor =
-          isDark ? Colors.orange.shade300 : Colors.orange.shade800;
+      statusTextColor = isDark
+          ? Colors.orange.shade300
+          : Colors.orange.shade800;
     }
 
     final content = Column(
@@ -159,11 +157,7 @@ class LocalCacheCard extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  Icon(
-                    Icons.shield_outlined,
-                    size: 16,
-                    color: scheme.primary,
-                  ),
+                  Icon(Icons.shield_outlined, size: 16, color: scheme.primary),
                   const SizedBox(width: AppSpacing.xs),
                   Text(
                     '100% Safe to Clear',
@@ -185,11 +179,7 @@ class LocalCacheCard extends ConsumerWidget {
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
-                  Icon(
-                    Icons.speed_outlined,
-                    size: 16,
-                    color: scheme.secondary,
-                  ),
+                  Icon(Icons.speed_outlined, size: 16, color: scheme.secondary),
                   const SizedBox(width: AppSpacing.xs),
                   Text(
                     'Cache Benefits',
@@ -280,16 +270,13 @@ class LocalCacheCard extends ConsumerWidget {
               IconButton.filledTonal(
                 onPressed: state.isLoading
                     ? null
-                    : () => ref
-                        .read(cacheControllerProvider)
-                        .refreshCacheStats(),
+                    : () =>
+                          ref.read(cacheControllerProvider).refreshCacheStats(),
                 icon: state.isLoading
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.refresh_rounded, size: 18),
                 tooltip: 'Scan / Refresh Cache',

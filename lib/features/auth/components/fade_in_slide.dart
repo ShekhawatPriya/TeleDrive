@@ -35,12 +35,13 @@ class _FadeInSlideState extends State<FadeInSlide>
         curve: const Interval(0.0, 0.85, curve: Curves.easeOut),
       ),
     );
-    _slide = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: AppEasing.emphasizedDecelerate,
-      ),
-    );
+    _slide = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: AppEasing.emphasizedDecelerate,
+          ),
+        );
 
     Future.delayed(widget.delay, () {
       if (mounted) _controller.forward();
@@ -60,10 +61,7 @@ class _FadeInSlideState extends State<FadeInSlide>
       builder: (context, child) {
         return Opacity(
           opacity: _opacity.value,
-          child: SlideTransition(
-            position: _slide,
-            child: child,
-          ),
+          child: SlideTransition(position: _slide, child: child),
         );
       },
       child: widget.child,

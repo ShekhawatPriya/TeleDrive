@@ -61,12 +61,20 @@ class MoveDestinationSheet extends ConsumerWidget {
                         : () => Navigator.pop(context, rootMoveDestination),
                   ),
                   Divider(
-                    height: 1, color: scheme.outlineVariant,
-                    indent: AppSpacing.md, endIndent: AppSpacing.md,
+                    height: 1,
+                    color: scheme.outlineVariant,
+                    indent: AppSpacing.md,
+                    endIndent: AppSpacing.md,
                   ),
                   for (final folder in roots)
-                    ..._folderRows(context, scheme, drive.folders, folder,
-                        excluded, 0),
+                    ..._folderRows(
+                      context,
+                      scheme,
+                      drive.folders,
+                      folder,
+                      excluded,
+                      0,
+                    ),
                 ],
               ),
             ),
@@ -107,10 +115,7 @@ class MoveDestinationSheet extends ConsumerWidget {
           start: AppSpacing.md + depth * 20,
           end: AppSpacing.md,
         ),
-        leading: Icon(
-          Icons.folder_outlined,
-          color: scheme.onSurfaceVariant,
-        ),
+        leading: Icon(Icons.folder_outlined, color: scheme.onSurfaceVariant),
         title: Text(folder.name, maxLines: 1, overflow: TextOverflow.ellipsis),
         enabled: currentParentId != folder.id,
         onTap: currentParentId == folder.id

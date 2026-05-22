@@ -33,7 +33,8 @@ class ViewPreferencesController extends ChangeNotifier {
     return switch (field) {
       SortField.name => ascending ? 'A to Z' : 'Z to A',
       SortField.kind => ascending ? 'A to Z' : 'Z to A',
-      SortField.size => ascending ? 'Smallest to Largest' : 'Largest to Smallest',
+      SortField.size =>
+        ascending ? 'Smallest to Largest' : 'Largest to Smallest',
       SortField.date => ascending ? 'Oldest to Newest' : 'Newest to Oldest',
     };
   }

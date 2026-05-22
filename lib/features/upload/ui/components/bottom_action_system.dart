@@ -13,11 +13,7 @@ import '../upload_sheet.dart';
 /// visual plane with consistent spacing, shadow depth, and border radii.
 /// Animates dynamically and transitions smoothly across screens.
 class BottomActionSystem extends ConsumerWidget {
-  const BottomActionSystem({
-    required this.showFab,
-    this.parentId,
-    super.key,
-  });
+  const BottomActionSystem({required this.showFab, this.parentId, super.key});
 
   final bool showFab;
   final String? parentId;
@@ -44,48 +40,47 @@ class BottomActionSystem extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.end,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-            if (showProgress)
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: AppDurations.medium3,
-                  switchInCurve: AppEasing.emphasizedDecelerate,
-                  switchOutCurve: AppEasing.emphasizedAccelerate,
-                  transitionBuilder: (child, animation) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(-0.05, 0),
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: child,
+              if (showProgress)
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: AppDurations.medium3,
+                    switchInCurve: AppEasing.emphasizedDecelerate,
+                    switchOutCurve: AppEasing.emphasizedAccelerate,
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(-0.05, 0),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: UploadCollapsedBar(
+                      key: const ValueKey('upload_progress_collapsed_bar'),
+                      upload: upload,
+                      onTap: () => showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        useSafeArea: true,
+                        useRootNavigator: true,
+                        backgroundColor: Colors.transparent,
+                        elevation: 0,
+                        showDragHandle: false,
+                        barrierColor: Colors.black.withValues(alpha: .35),
+                        builder: (_) => const UploadSheet(),
                       ),
-                    );
-                  },
-                  child: UploadCollapsedBar(
-                    key: const ValueKey('upload_progress_collapsed_bar'),
-                    upload: upload,
-                    onTap: () => showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      useSafeArea: true,
-                      useRootNavigator: true,
-                      backgroundColor: Colors.transparent,
-                      elevation: 0,
-                      showDragHandle: false,
-                      barrierColor: Colors.black.withValues(alpha: .35),
-                      builder: (_) => const UploadSheet(),
                     ),
                   ),
                 ),
-              ),
-            if (showProgress && showFab)
-              const SizedBox(width: AppSpacing.sm),
-            if (showFab)
-              DriveFab(parentId: parentId),
-          ],
+              if (showProgress && showFab) const SizedBox(width: AppSpacing.sm),
+              if (showFab) DriveFab(parentId: parentId),
+            ],
+          ),
         ),
       ),
-    ),);
+    );
   }
 }

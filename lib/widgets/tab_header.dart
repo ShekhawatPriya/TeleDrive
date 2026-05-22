@@ -59,7 +59,8 @@ class TabHeader extends ConsumerWidget {
             final notchHeight = topPadding > 0.0
                 ? topPadding
                 : MediaQueryData.fromView(View.of(context)).padding.top;
-            final maxSheetHeight = (screenHeight - (notchHeight + 64.0 + 12.0)).clamp(0.0, double.infinity);
+            final maxSheetHeight = (screenHeight - (notchHeight + 64.0 + 12.0))
+                .clamp(0.0, double.infinity);
 
             showModalBottomSheet(
               context: context,

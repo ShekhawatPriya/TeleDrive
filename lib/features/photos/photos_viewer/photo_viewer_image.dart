@@ -10,11 +10,7 @@ import '../../../models/drive_models.dart';
 import '../../profile/cache_controller.dart';
 
 class PhotoViewerImage extends ConsumerStatefulWidget {
-  const PhotoViewerImage({
-    required this.file,
-    required this.onTap,
-    super.key,
-  });
+  const PhotoViewerImage({required this.file, required this.onTap, super.key});
 
   final DriveFile file;
   final VoidCallback onTap;
@@ -95,7 +91,8 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
     final url = widget.file.previewUrl ?? widget.file.thumbnailUrl;
     if (url == null) return _fallback(context);
 
-    final imageProvider = _currentImageProvider ??
+    final imageProvider =
+        _currentImageProvider ??
         (url.startsWith('/') || url.contains(':\\')
             ? FileImage(File(url)) as ImageProvider
             : CachedNetworkImageProvider(
@@ -127,10 +124,12 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
       onTap: widget.onTap,
       behavior: HitTestBehavior.opaque,
       child: const Center(
-        child: Icon(Icons.broken_image_outlined,
-            color: Colors.white54, size: 64),
+        child: Icon(
+          Icons.broken_image_outlined,
+          color: Colors.white54,
+          size: 64,
+        ),
       ),
     );
   }
 }
-

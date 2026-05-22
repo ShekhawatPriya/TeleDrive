@@ -68,8 +68,8 @@ class _LegendRow extends StatelessWidget {
     final pctLabel = pct == 0
         ? '0%'
         : pct < 0.001
-            ? '<0.1%'
-            : '${(pct * 100).toStringAsFixed(pct < 0.1 ? 1 : 0)}%';
+        ? '<0.1%'
+        : '${(pct * 100).toStringAsFixed(pct < 0.1 ? 1 : 0)}%';
 
     return Row(
       children: [

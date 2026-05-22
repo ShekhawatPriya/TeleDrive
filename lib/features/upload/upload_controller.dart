@@ -86,6 +86,17 @@ class UploadController extends ChangeNotifier {
   int get activeCount => items.where(_isActive).length;
   bool get waitingForWifi =>
       items.any((i) => i.status == UploadStatus.waitingForWifi);
+  bool get hasBlockingUploads =>
+      uploading ||
+      activeCount > 0 ||
+      items.any(
+        (i) => {
+          UploadStatus.queued,
+          UploadStatus.waitingForWifi,
+          UploadStatus.processing,
+          UploadStatus.cancelling,
+        }.contains(i.status),
+      );
 
   Future<void> pickFiles({String? folderId, BuildContext? context}) async {
     activeFolderId = folderId;
@@ -274,6 +285,24 @@ class UploadController extends ChangeNotifier {
     _notifyListeners();
   }
 
+  void resetTerminalForAccountSwitch() {
+    if (hasBlockingUploads) return;
+    for (final timer in _pollTimersByBatchId.values) {
+      timer.cancel();
+    }
+    _pollTimersByBatchId.clear();
+    _pollingBatchIds.clear();
+    _cancelCompletionTimers();
+    items = [];
+    sheetVisible = false;
+    uploadSessionId = null;
+    activeFolderId = null;
+    error = null;
+    uploading = false;
+    _syncOptimistic();
+    _notifyListeners();
+  }
+
   Future<void> enableMobileDataUploads() async {
     await _settings.setUploadOnMobileData(true);
     items = items
@@ -290,12 +319,11 @@ class UploadController extends ChangeNotifier {
   Future<bool> _confirmLargeUploadsIfNeeded(BuildContext? context) async {
     if (!_settings.state.askBeforeLargeUploads || context == null) return true;
     final threshold = _auth.largeUploadThresholdBytes;
-    final large = items
-        .where((i) => i.size > threshold)
-        .toList();
+    final large = items.where((i) => i.size > threshold).toList();
     if (large.isEmpty) return true;
     final totalBytes = large.fold<int>(0, (sum, item) => sum + item.size);
-    final thresholdMbStr = '${(threshold / (1024 * 1024)).toStringAsFixed(0)} MB';
+    final thresholdMbStr =
+        '${(threshold / (1024 * 1024)).toStringAsFixed(0)} MB';
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

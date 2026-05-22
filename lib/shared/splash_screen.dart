@@ -13,16 +13,9 @@ class SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset(
-              'assets/icon/app_icon.png',
-              width: 80,
-              height: 80,
-            ),
+            Image.asset('assets/icon/app_icon.png', width: 80, height: 80),
             const SizedBox(height: AppSpacing.lg),
-            Text(
-              'TeleDrive',
-              style: theme.textTheme.titleLarge,
-            ),
+            Text('TeleDrive', style: theme.textTheme.titleLarge),
             const SizedBox(height: AppSpacing.lg),
             const SizedBox(
               width: 24,

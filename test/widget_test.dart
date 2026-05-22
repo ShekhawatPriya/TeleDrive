@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_m_fsdk/features/drive/components/drive_header_widgets.dart';
 
 void main() {
-  testWidgets('DriveTrashEntry renders successfully inside SliverToBoxAdapter', (WidgetTester tester) async {
+  testWidgets('DriveQuickActions renders trash action successfully', (
+    WidgetTester tester,
+  ) async {
     var tapped = false;
     await tester.pumpWidget(
       MaterialApp(
@@ -11,7 +13,7 @@ void main() {
           body: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
-                child: DriveTrashEntry(onTap: () => tapped = true),
+                child: DriveQuickActions(onTrashTap: () => tapped = true),
               ),
             ],
           ),
@@ -21,8 +23,6 @@ void main() {
 
     expect(find.text('Trash'), findsOneWidget);
     expect(find.byIcon(Icons.delete_outline_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
-
     await tester.tap(find.text('Trash'));
     await tester.pump();
     expect(tapped, isTrue);

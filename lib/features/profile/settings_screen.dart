@@ -46,10 +46,7 @@ class SettingsScreen extends ConsumerWidget {
       ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.only(
-          top: 8,
-          bottom: AppSpacing.xxl,
-        ),
+        padding: const EdgeInsets.only(top: 8, bottom: AppSpacing.xxl),
         children: [
           _settingsSectionHeader('Categories'),
           _SettingsTile(
@@ -67,9 +64,13 @@ class SettingsScreen extends ConsumerWidget {
             iconColor: const Color(0xFFDCA15D),
             title: 'Cache & Storage Settings',
             subtitle: 'Reclaim phone storage and clean local file cache',
-            statusText: cache.isLoading ? 'Scanning...' : _formatBytes(cache.totalSize),
+            statusText: cache.isLoading
+                ? 'Scanning...'
+                : _formatBytes(cache.totalSize),
             onTap: () => Navigator.of(context).push(
-              CupertinoPageRoute(builder: (_) => const CacheStorageSettingsScreen()),
+              CupertinoPageRoute(
+                builder: (_) => const CacheStorageSettingsScreen(),
+              ),
             ),
           ),
           const _SettingsDivider(),
@@ -77,9 +78,12 @@ class SettingsScreen extends ConsumerWidget {
             icon: Icons.shield_outlined,
             iconColor: const Color(0xFF8BA698),
             title: 'Privacy & Security Settings',
-            subtitle: 'Configure trash bin, share link permissions, & sign out cache',
+            subtitle:
+                'Configure trash bin, share link permissions, & sign out cache',
             onTap: () => Navigator.of(context).push(
-              CupertinoPageRoute(builder: (_) => const PrivacySecuritySettingsScreen()),
+              CupertinoPageRoute(
+                builder: (_) => const PrivacySecuritySettingsScreen(),
+              ),
             ),
           ),
           const _SettingsDivider(),
@@ -89,7 +93,9 @@ class SettingsScreen extends ConsumerWidget {
             title: 'Notifications Settings',
             subtitle: 'Set up push alerts for completed or failed uploads',
             onTap: () => Navigator.of(context).push(
-              CupertinoPageRoute(builder: (_) => const NotificationsSettingsScreen()),
+              CupertinoPageRoute(
+                builder: (_) => const NotificationsSettingsScreen(),
+              ),
             ),
           ),
           const _SettingsDivider(),
@@ -110,9 +116,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: TelegramStatusCard(
-              connected: auth.telegramConnected,
-            ),
+            child: TelegramStatusCard(connected: auth.telegramConnected),
           ),
           const SizedBox(height: 28),
 
@@ -211,7 +215,8 @@ class UploadSettingsScreen extends ConsumerWidget {
     final auth = ref.watch(authControllerProvider);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final thresholdMbStr = '${(auth.largeUploadThresholdBytes / (1024 * 1024)).toStringAsFixed(0)} MB';
+    final thresholdMbStr =
+        '${(auth.largeUploadThresholdBytes / (1024 * 1024)).toStringAsFixed(0)} MB';
 
     return Scaffold(
       appBar: AppBar(
@@ -243,9 +248,12 @@ class UploadSettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.xs),
           _FlatSwitchTile(
             title: 'Ask Before Large Uploads',
-            subtitle: 'Request confirmation when uploading files that exceed $thresholdMbStr.',
+            subtitle:
+                'Request confirmation when uploading files that exceed $thresholdMbStr.',
             value: settings.askBeforeLargeUploads,
-            onChanged: ref.read(appSettingsControllerProvider).setAskBeforeLargeUploads,
+            onChanged: ref
+                .read(appSettingsControllerProvider)
+                .setAskBeforeLargeUploads,
           ),
           Divider(
             color: scheme.outlineVariant.withValues(alpha: 0.35),
@@ -255,9 +263,12 @@ class UploadSettingsScreen extends ConsumerWidget {
           ),
           _FlatSwitchTile(
             title: 'Upload on Mobile Data',
-            subtitle: 'Allow uploads over cellular data networks. When disabled, waits for Wi-Fi connection.',
+            subtitle:
+                'Allow uploads over cellular data networks. When disabled, waits for Wi-Fi connection.',
             value: settings.uploadOnMobileData,
-            onChanged: ref.read(appSettingsControllerProvider).setUploadOnMobileData,
+            onChanged: ref
+                .read(appSettingsControllerProvider)
+                .setUploadOnMobileData,
           ),
 
           const SizedBox(height: AppSpacing.xl),
@@ -275,9 +286,12 @@ class UploadSettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.xs),
           _FlatSwitchTile(
             title: 'Auto-Rename Duplicate Files',
-            subtitle: 'Avoid overwriting existing files by appending a unique number (e.g., File (1).ext).',
+            subtitle:
+                'Avoid overwriting existing files by appending a unique number (e.g., File (1).ext).',
             value: settings.autoRenameDuplicates,
-            onChanged: ref.read(appSettingsControllerProvider).setAutoRenameDuplicates,
+            onChanged: ref
+                .read(appSettingsControllerProvider)
+                .setAutoRenameDuplicates,
           ),
         ],
       ),
@@ -358,7 +372,9 @@ class CacheStorageSettingsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    cache.isLoading ? 'Scanning...' : _formatBytes(cache.totalSize),
+                    cache.isLoading
+                        ? 'Scanning...'
+                        : _formatBytes(cache.totalSize),
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: scheme.onSurface,
@@ -438,7 +454,9 @@ class PrivacySecuritySettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.xs),
           _FlatSwitchTile(
             title: 'Trash / safer delete',
-            subtitle: settings.trashEnabled ? 'Deletes move to Trash first.' : 'Deletes are permanent immediately.',
+            subtitle: settings.trashEnabled
+                ? 'Deletes move to Trash first.'
+                : 'Deletes are permanent immediately.',
             value: settings.trashEnabled,
             onChanged: ref.read(appSettingsControllerProvider).setTrashEnabled,
           ),
@@ -471,7 +489,9 @@ class PrivacySecuritySettingsScreen extends ConsumerWidget {
             title: 'Confirm public share links',
             subtitle: 'Ask before creating links anyone can open.',
             value: settings.confirmPublicShares,
-            onChanged: ref.read(appSettingsControllerProvider).setConfirmPublicShares,
+            onChanged: ref
+                .read(appSettingsControllerProvider)
+                .setConfirmPublicShares,
           ),
 
           const SizedBox(height: AppSpacing.xl),
@@ -491,7 +511,9 @@ class PrivacySecuritySettingsScreen extends ConsumerWidget {
             title: 'Clear local cache on sign out',
             subtitle: 'Keeps Telegram files safe; only local cache is cleared.',
             value: settings.clearCacheOnSignOut,
-            onChanged: ref.read(appSettingsControllerProvider).setClearCacheOnSignOut,
+            onChanged: ref
+                .read(appSettingsControllerProvider)
+                .setClearCacheOnSignOut,
           ),
         ],
       ),
@@ -509,7 +531,9 @@ class NotificationsSettingsScreen extends ConsumerWidget {
     bool? failed,
   }) async {
     if (complete == true || failed == true) {
-      final ok = await ref.read(uploadNotificationServiceProvider).requestPermission();
+      final ok = await ref
+          .read(uploadNotificationServiceProvider)
+          .requestPermission();
       if (!ok && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Notifications are disabled.')),
@@ -563,7 +587,8 @@ class NotificationsSettingsScreen extends ConsumerWidget {
             title: 'Upload completed alerts',
             subtitle: 'Show a local alert when uploads finish.',
             value: settings.uploadCompletedAlerts,
-            onChanged: (value) => _setNotificationToggle(context, ref, complete: value),
+            onChanged: (value) =>
+                _setNotificationToggle(context, ref, complete: value),
           ),
           Divider(
             color: scheme.outlineVariant.withValues(alpha: 0.35),
@@ -575,7 +600,8 @@ class NotificationsSettingsScreen extends ConsumerWidget {
             title: 'Upload failed alerts',
             subtitle: 'Show a local alert when uploads fail.',
             value: settings.uploadFailedAlerts,
-            onChanged: (value) => _setNotificationToggle(context, ref, failed: value),
+            onChanged: (value) =>
+                _setNotificationToggle(context, ref, failed: value),
           ),
         ],
       ),
@@ -613,11 +639,7 @@ class _SettingsTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: iconColor,
-              size: 24,
-            ),
+            Icon(icon, color: iconColor, size: 24),
             const SizedBox(width: 20),
             Expanded(
               child: Column(
@@ -729,7 +751,9 @@ class _FlatSwitchTile extends StatelessWidget {
                       Text(
                         subtitle,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
+                          color: scheme.onSurfaceVariant.withValues(
+                            alpha: 0.75,
+                          ),
                           height: 1.35,
                         ),
                       ),
@@ -738,10 +762,7 @@ class _FlatSwitchTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
-              Switch(
-                value: value,
-                onChanged: onChanged,
-              ),
+              Switch(value: value, onChanged: onChanged),
             ],
           ),
         ),
@@ -794,7 +815,9 @@ class _FlatActionTile extends StatelessWidget {
                       Text(
                         subtitle,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
+                          color: scheme.onSurfaceVariant.withValues(
+                            alpha: 0.75,
+                          ),
                           height: 1.35,
                         ),
                       ),
@@ -838,11 +861,7 @@ class _InfoCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: Center(child: iconWidget),
-            ),
+            SizedBox(width: 24, height: 24, child: Center(child: iconWidget)),
             const SizedBox(width: 20),
             Expanded(
               child: Column(

@@ -18,10 +18,14 @@ class FloatingPillNavigationBar extends StatelessWidget {
     final scheme = theme.colorScheme;
 
     // Theme-correct dynamic Material 3 colors with elegant opacity
-    final Color pillBgColor = scheme.surfaceContainerHigh.withValues(alpha: isDark ? 0.82 : 0.90);
+    final Color pillBgColor = scheme.surfaceContainerHigh.withValues(
+      alpha: isDark ? 0.82 : 0.90,
+    );
     final Color activeBgColor = scheme.secondaryContainer;
     final Color activeContentColor = scheme.onSecondaryContainer;
-    final Color inactiveTextColor = scheme.onSurfaceVariant.withValues(alpha: 0.85);
+    final Color inactiveTextColor = scheme.onSurfaceVariant.withValues(
+      alpha: 0.85,
+    );
 
     final bool isLeftActive = selectedIndex >= 0 && selectedIndex < 3;
 
@@ -87,7 +91,11 @@ class FloatingPillNavigationBar extends StatelessWidget {
                             AnimatedAlign(
                               duration: const Duration(milliseconds: 280),
                               curve: transitionCurve,
-                              alignment: Alignment(-1.0 + (isLeftActive ? selectedIndex * 1.0 : 0.0), 0.0),
+                              alignment: Alignment(
+                                -1.0 +
+                                    (isLeftActive ? selectedIndex * 1.0 : 0.0),
+                                0.0,
+                              ),
                               child: FractionallySizedBox(
                                 widthFactor: 1 / 3,
                                 child: AnimatedScale(
@@ -171,13 +179,19 @@ class FloatingPillNavigationBar extends StatelessWidget {
                             decoration: ShapeDecoration(
                               shape: StadiumBorder(side: microBorderSide),
                               color: selectedIndex == 3
-                                  ? activeBgColor.withValues(alpha: isDark ? 0.85 : 0.95)
+                                  ? activeBgColor.withValues(
+                                      alpha: isDark ? 0.85 : 0.95,
+                                    )
                                   : pillBgColor,
                             ),
                             child: Center(
                               child: Icon(
-                                selectedIndex == 3 ? Icons.group : Icons.group_outlined,
-                                color: selectedIndex == 3 ? activeContentColor : inactiveTextColor,
+                                selectedIndex == 3
+                                    ? Icons.group
+                                    : Icons.group_outlined,
+                                color: selectedIndex == 3
+                                    ? activeContentColor
+                                    : inactiveTextColor,
                                 size: 21,
                               ),
                             ),

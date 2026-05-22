@@ -29,7 +29,12 @@ TextTheme buildAppTextTheme(ColorScheme scheme) {
   }
 
   return base.copyWith(
-    displayLarge: s(size: 57, height: 64, weight: FontWeight.w400, letter: -0.25),
+    displayLarge: s(
+      size: 57,
+      height: 64,
+      weight: FontWeight.w400,
+      letter: -0.25,
+    ),
     displayMedium: s(size: 45, height: 52, weight: FontWeight.w400, letter: 0),
     displaySmall: s(size: 36, height: 44, weight: FontWeight.w400, letter: 0),
     headlineLarge: s(size: 32, height: 40, weight: FontWeight.w400, letter: 0),
@@ -39,11 +44,29 @@ TextTheme buildAppTextTheme(ColorScheme scheme) {
     titleMedium: s(size: 16, height: 24, weight: FontWeight.w500, letter: 0.15),
     titleSmall: s(size: 14, height: 20, weight: FontWeight.w500, letter: 0.10),
     bodyLarge: s(size: 16, height: 24, weight: FontWeight.w400, letter: 0.50),
-    bodyMedium: s(size: 14, height: 20, weight: FontWeight.w400, letter: 0.25, color: onSurfaceVariant),
-    bodySmall: s(size: 12, height: 16, weight: FontWeight.w400, letter: 0.40, color: onSurfaceVariant),
+    bodyMedium: s(
+      size: 14,
+      height: 20,
+      weight: FontWeight.w400,
+      letter: 0.25,
+      color: onSurfaceVariant,
+    ),
+    bodySmall: s(
+      size: 12,
+      height: 16,
+      weight: FontWeight.w400,
+      letter: 0.40,
+      color: onSurfaceVariant,
+    ),
     labelLarge: s(size: 14, height: 20, weight: FontWeight.w500, letter: 0.10),
     labelMedium: s(size: 12, height: 16, weight: FontWeight.w500, letter: 0.50),
-    labelSmall: s(size: 11, height: 16, weight: FontWeight.w500, letter: 0.50, color: onSurfaceVariant),
+    labelSmall: s(
+      size: 11,
+      height: 16,
+      weight: FontWeight.w500,
+      letter: 0.50,
+      color: onSurfaceVariant,
+    ),
   );
 }
 

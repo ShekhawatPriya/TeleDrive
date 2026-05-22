@@ -21,7 +21,8 @@ class UploadCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    final isQueued = item.status == UploadStatus.selected ||
+    final isQueued =
+        item.status == UploadStatus.selected ||
         item.status == UploadStatus.queued;
     final isActive = uploadIsActive(item.status);
     final isUploaded = item.status == UploadStatus.uploaded;
@@ -30,7 +31,10 @@ class UploadCard extends ConsumerWidget {
     // Elegant Material 3 outlines to distinguish states
     final border = isActive
         ? Border.all(color: scheme.primary.withValues(alpha: 0.5), width: 1.5)
-        : Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3), width: 1);
+        : Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.3),
+            width: 1,
+          );
 
     return Opacity(
       opacity: isQueued ? 0.75 : 1.0,
@@ -95,8 +99,8 @@ class UploadCard extends ConsumerWidget {
                                 color: isFailed
                                     ? scheme.error
                                     : (isUploaded
-                                        ? scheme.primary
-                                        : scheme.onSurfaceVariant),
+                                          ? scheme.primary
+                                          : scheme.onSurfaceVariant),
                                 fontWeight: isUploaded
                                     ? FontWeight.w600
                                     : FontWeight.normal,
@@ -125,10 +129,12 @@ class UploadCard extends ConsumerWidget {
                     children: [
                       IconButton(
                         visualDensity: VisualDensity.compact,
-                        onPressed: () => ref
-                            .read(uploadControllerProvider)
-                            .confirmUpload(),
-                        icon: Icon(Icons.refresh_rounded, color: scheme.primary),
+                        onPressed: () =>
+                            ref.read(uploadControllerProvider).confirmUpload(),
+                        icon: Icon(
+                          Icons.refresh_rounded,
+                          color: scheme.primary,
+                        ),
                         tooltip: 'Retry',
                       ),
                       IconButton(
@@ -156,7 +162,10 @@ class UploadCard extends ConsumerWidget {
                     onPressed: () => ref
                         .read(uploadControllerProvider)
                         .cancelItem(item.localId),
-                    icon: Icon(Icons.close_rounded, color: scheme.onSurfaceVariant),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: scheme.onSurfaceVariant,
+                    ),
                     tooltip: 'Cancel',
                   ),
               ],

@@ -4,11 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 
 class FaqTile extends StatefulWidget {
-  const FaqTile({
-    required this.question,
-    required this.answer,
-    super.key,
-  });
+  const FaqTile({required this.question, required this.answer, super.key});
 
   final String question;
   final String answer;
@@ -71,7 +67,9 @@ class _FaqTileState extends State<FaqTile> {
                     curve: AppEasing.emphasized,
                     child: Icon(
                       Icons.keyboard_arrow_down_rounded,
-                      color: _expanded ? scheme.primary : scheme.onSurfaceVariant,
+                      color: _expanded
+                          ? scheme.primary
+                          : scheme.onSurfaceVariant,
                     ),
                   ),
                 ],

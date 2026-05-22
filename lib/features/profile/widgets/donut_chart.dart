@@ -6,11 +6,7 @@ import '../../../core/utils/file_type_detector.dart';
 import 'storage_donut_card.dart';
 
 class DonutChart extends StatelessWidget {
-  const DonutChart({
-    required this.used,
-    required this.categories,
-    super.key,
-  });
+  const DonutChart({required this.used, required this.categories, super.key});
 
   final int used;
   final List<StorageCategory> categories;

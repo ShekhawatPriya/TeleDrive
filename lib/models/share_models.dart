@@ -75,9 +75,8 @@ class ShareItemSummary {
   final String? previewUrl;
   final String? downloadUrl;
 
-  FileKind get fileKind => kind == ShareItemType.folder
-      ? FileKind.folder
-      : FileKind.other;
+  FileKind get fileKind =>
+      kind == ShareItemType.folder ? FileKind.folder : FileKind.other;
 
   factory ShareItemSummary.fromJson(Map<String, dynamic> json) {
     return ShareItemSummary(

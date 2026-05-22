@@ -25,6 +25,5 @@ class IosMenuSection {
   final List<IosMenuItem> items;
 }
 
-typedef IosMenuSectionsBuilder = List<IosMenuSection> Function(
-  BuildContext context,
-);
+typedef IosMenuSectionsBuilder =
+    List<IosMenuSection> Function(BuildContext context);

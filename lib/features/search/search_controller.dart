@@ -56,8 +56,8 @@ class SearchQueryController extends ChangeNotifier {
 
 final searchQueryProvider =
     ChangeNotifierProvider.family<SearchQueryController, SearchScope>(
-  (ref, scope) => SearchQueryController(),
-);
+      (ref, scope) => SearchQueryController(),
+    );
 
 class RotatingPlaceholderController extends ChangeNotifier {
   RotatingPlaceholderController() {
@@ -97,5 +97,5 @@ class RotatingPlaceholderController extends ChangeNotifier {
 
 final rotatingPlaceholderProvider =
     ChangeNotifierProvider.autoDispose<RotatingPlaceholderController>((ref) {
-  return RotatingPlaceholderController();
-});
+      return RotatingPlaceholderController();
+    });

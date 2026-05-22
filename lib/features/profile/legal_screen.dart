@@ -75,10 +75,7 @@ class _LegalScreenState extends State<LegalScreen> {
         : 'Terms of Service';
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: Text(title), elevation: 0),
       body: Column(
         children: [
           const SizedBox(height: AppSpacing.sm),
@@ -117,7 +114,10 @@ class _LegalScreenState extends State<LegalScreen> {
                     ),
                     label: const Text(
                       'Open Source Project',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     onPressed: () => AppConfig.openRepository(),
                   ),
@@ -188,18 +188,23 @@ class _LegalSectionCard extends StatelessWidget {
       if (t.contains('not')) return Icons.gpp_good_outlined;
       return Icons.analytics_outlined;
     }
-    if (t.contains('security') || t.contains('keychain')) return Icons.vpn_key_outlined;
-    if (t.contains('cache') || t.contains('performance')) return Icons.speed_rounded;
-    if (t.contains('permission') || t.contains('media')) return Icons.photo_library_outlined;
+    if (t.contains('security') || t.contains('keychain'))
+      return Icons.vpn_key_outlined;
+    if (t.contains('cache') || t.contains('performance'))
+      return Icons.speed_rounded;
+    if (t.contains('permission') || t.contains('media'))
+      return Icons.photo_library_outlined;
     if (t.contains('store')) return Icons.cloud_done_outlined;
-    if (t.contains('transparency') || t.contains('license')) return Icons.code_rounded;
+    if (t.contains('transparency') || t.contains('license'))
+      return Icons.code_rounded;
     if (t.contains('control')) return Icons.tune_rounded;
     if (t.contains('contact')) return Icons.mail_outline_rounded;
     if (t.contains('acceptance')) return Icons.assignment_turned_in_outlined;
     if (t.contains('description')) return Icons.dashboard_customize_outlined;
     if (t.contains('account')) return Icons.person_outline_rounded;
     if (t.contains('limit') || t.contains('api')) return Icons.gavel_rounded;
-    if (t.contains('warranty') || t.contains('backup')) return Icons.backup_outlined;
+    if (t.contains('warranty') || t.contains('backup'))
+      return Icons.backup_outlined;
     if (t.contains('change')) return Icons.update_rounded;
     if (t.contains('termination')) return Icons.cancel_presentation_rounded;
     return Icons.description_outlined;
@@ -216,9 +221,7 @@ class _LegalSectionCard extends StatelessWidget {
       color: scheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: scheme.outlineVariant.withValues(alpha: 0.6),
-        ),
+        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.6)),
       ),
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Padding(
@@ -235,15 +238,8 @@ class _LegalSectionCard extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: section.title.toLowerCase().contains('open source')
-                      ? GitHubIcon(
-                          size: 20,
-                          color: scheme.primary,
-                        )
-                      : Icon(
-                          sectionIcon,
-                          size: 20,
-                          color: scheme.primary,
-                        ),
+                      ? GitHubIcon(size: 20, color: scheme.primary)
+                      : Icon(sectionIcon, size: 20, color: scheme.primary),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(

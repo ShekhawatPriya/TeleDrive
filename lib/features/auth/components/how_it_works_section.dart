@@ -15,9 +15,7 @@ class HowItWorksSection extends StatelessWidget {
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: AppRadii.mdR,
-        side: BorderSide(
-          color: scheme.outlineVariant.withValues(alpha: 0.5),
-        ),
+        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
@@ -45,7 +43,8 @@ class HowItWorksSection extends StatelessWidget {
               icon: Icons.phone_iphone_rounded,
               iconColor: scheme.primary,
               title: 'Your Phone / App',
-              description: 'Acts as the control interface to explore files, play videos, and manage directories.',
+              description:
+                  'Acts as the control interface to explore files, play videos, and manage directories.',
               isFirst: true,
             ),
             _buildFlowStep(
@@ -53,14 +52,16 @@ class HowItWorksSection extends StatelessWidget {
               icon: Icons.dns_outlined,
               iconColor: scheme.secondary,
               title: 'Backend Metadata Layer',
-              description: 'Stores folder organization, permissions, names, and sharing status (no actual file contents).',
+              description:
+                  'Stores folder organization, permissions, names, and sharing status (no actual file contents).',
             ),
             _buildFlowStep(
               context: context,
               icon: Icons.cloud_done_outlined,
               iconColor: scheme.tertiary,
               title: 'Telegram Storage Layer',
-              description: 'Hosts the original uploaded binaries permanently and securely inside your Telegram files ecosystem.',
+              description:
+                  'Hosts the original uploaded binaries permanently and securely inside your Telegram files ecosystem.',
               isLast: true,
             ),
             const Padding(

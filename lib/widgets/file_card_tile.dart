@@ -35,14 +35,15 @@ class FileCardTile extends StatelessWidget {
     final inSelectMode = selected != null;
     final isSelected = selected == true;
     final status = file.uploadStatus;
-    final isFailed = file.isOptimistic && (status == 'failed' || status == 'cancelled');
+    final isFailed =
+        file.isOptimistic && (status == 'failed' || status == 'cancelled');
     final isUploading = file.isOptimistic && !isFailed && status != 'uploaded';
 
     final borderSide = isSelected
         ? BorderSide(color: scheme.primary, width: 2)
         : isFailed
-            ? BorderSide(color: scheme.error, width: 1.5)
-            : BorderSide.none;
+        ? BorderSide(color: scheme.error, width: 1.5)
+        : BorderSide.none;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -80,9 +81,7 @@ class FileCardTile extends StatelessWidget {
                     Positioned(
                       left: 8,
                       bottom: 8,
-                      child: _StatusChip(
-                        label: formatUploadStatus(file),
-                      ),
+                      child: _StatusChip(label: formatUploadStatus(file)),
                     ),
                   if (isFailed)
                     Positioned.fill(
@@ -145,7 +144,9 @@ class FileCardTile extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.bodyLarge?.copyWith(
                                     fontWeight: FontWeight.w500,
-                                    color: isFailed ? scheme.error : scheme.onSurface,
+                                    color: isFailed
+                                        ? scheme.error
+                                        : scheme.onSurface,
                                   ),
                                 ),
                               ),
@@ -159,7 +160,9 @@ class FileCardTile extends StatelessWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: theme.textTheme.bodySmall?.copyWith(
-                                      color: isFailed ? scheme.error : scheme.onSurfaceVariant,
+                                      color: isFailed
+                                          ? scheme.error
+                                          : scheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ),
@@ -194,7 +197,9 @@ class FileCardTile extends StatelessWidget {
                                       child: SizedBox(
                                         width: 16,
                                         height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
                                       ),
                                     )
                                   else

@@ -54,7 +54,11 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg, 0, AppSpacing.xs, 0),
+              AppSpacing.lg,
+              0,
+              AppSpacing.xs,
+              0,
+            ),
             child: Row(
               children: [
                 Expanded(
@@ -73,8 +77,11 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md, AppSpacing.sm,
-                AppSpacing.md, AppSpacing.sm),
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              AppSpacing.sm,
+            ),
             child: SearchBar(
               controller: _searchController,
               hintText: 'Search country or code',
@@ -107,8 +114,10 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                     itemBuilder: (_, i) {
                       final c = _filtered[i];
                       return ListTile(
-                        leading:
-                            Text(c.flag, style: const TextStyle(fontSize: 24)),
+                        leading: Text(
+                          c.flag,
+                          style: const TextStyle(fontSize: 24),
+                        ),
                         title: Text(c.name),
                         trailing: Text(
                           c.dialCode,

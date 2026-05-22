@@ -38,9 +38,7 @@ class FinalCtaAndFooter extends StatelessWidget {
             HapticFeedback.mediumImpact();
             context.safePush('/login');
           },
-          style: FilledButton.styleFrom(
-            minimumSize: const Size(200, 44),
-          ),
+          style: FilledButton.styleFrom(minimumSize: const Size(200, 44)),
           child: const Text('Get Started'),
         ),
         const SizedBox(height: AppSpacing.xl),

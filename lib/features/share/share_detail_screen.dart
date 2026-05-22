@@ -102,8 +102,7 @@ class _ShareDetailScreenState extends ConsumerState<ShareDetailScreen> {
     final ok = await confirmAction(
       context,
       title: 'Revoke share?',
-      message:
-          'The link will stop working immediately and cannot be restored.',
+      message: 'The link will stop working immediately and cannot be restored.',
       confirmLabel: 'Revoke',
     );
     if (!ok || !mounted) return;

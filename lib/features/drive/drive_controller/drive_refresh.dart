@@ -77,7 +77,7 @@ extension _DriveRefresh on DriveController {
   }
 
   Future<void> _loadRecent() async {
-    _recent = await _prefs.recentAccess();
+    _recent = await _prefs.recentAccess(userId: _auth.activeAccount?.userId);
     _notifyListeners();
   }
 

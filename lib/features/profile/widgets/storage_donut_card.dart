@@ -116,14 +116,8 @@ class StorageDonutCard extends StatelessWidget {
         LayoutBuilder(
           builder: (context, constraints) {
             final stack = constraints.maxWidth < 360;
-            final donut = DonutChart(
-              used: used,
-              categories: categories,
-            );
-            final legend = StorageLegend(
-              used: used,
-              categories: categories,
-            );
+            final donut = DonutChart(used: used, categories: categories);
+            final legend = StorageLegend(used: used, categories: categories);
             if (stack) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

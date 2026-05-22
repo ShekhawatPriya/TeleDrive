@@ -7,7 +7,6 @@ import 'media_thumb.dart';
 import 'selection_indicator.dart';
 import 'uploading_shimmer.dart';
 
-
 class FileListTile extends StatelessWidget {
   const FileListTile({
     required this.name,
@@ -50,7 +49,8 @@ class FileListTile extends StatelessWidget {
     final isShared = shared || (file?.shared ?? false);
     final isSelected = selected == true;
     final status = file?.uploadStatus;
-    final isFailed = isOptimistic && (status == 'failed' || status == 'cancelled');
+    final isFailed =
+        isOptimistic && (status == 'failed' || status == 'cancelled');
     final isUploading = isOptimistic && !isFailed && status != 'uploaded';
 
     final tile = ListTile(
@@ -136,50 +136,50 @@ class FileListTile extends StatelessWidget {
               child: PremiumSelectionIndicator(isSelected: isSelected),
             )
           : isFailed
-              ? Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      onPressed: onRetry,
-                      icon: const Icon(Icons.refresh_rounded),
-                      color: scheme.error,
-                      tooltip: 'Retry',
-                    ),
-                    IconButton(
-                      onPressed: onRemove,
-                      icon: const Icon(Icons.close_rounded),
-                      color: scheme.error,
-                      tooltip: 'Remove',
-                    ),
-                  ],
-                )
-              : isUploading
-                  ? const Padding(
-                      padding: EdgeInsetsDirectional.only(end: AppSpacing.sm),
-                      child: SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          onPressed: onStar,
-                          icon: Icon(
-                            starred ? Icons.star_rounded : Icons.star_border_rounded,
-                            color: starred ? scheme.primary : scheme.onSurfaceVariant,
-                          ),
-                          tooltip: 'Star',
-                        ),
-                        IconButton(
-                          onPressed: onMore,
-                          icon: const Icon(Icons.more_vert),
-                          tooltip: 'More',
-                        ),
-                      ],
-                    ),
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh_rounded),
+                  color: scheme.error,
+                  tooltip: 'Retry',
+                ),
+                IconButton(
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.close_rounded),
+                  color: scheme.error,
+                  tooltip: 'Remove',
+                ),
+              ],
+            )
+          : isUploading
+          ? const Padding(
+              padding: EdgeInsetsDirectional.only(end: AppSpacing.sm),
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed: onStar,
+                  icon: Icon(
+                    starred ? Icons.star_rounded : Icons.star_border_rounded,
+                    color: starred ? scheme.primary : scheme.onSurfaceVariant,
+                  ),
+                  tooltip: 'Star',
+                ),
+                IconButton(
+                  onPressed: onMore,
+                  icon: const Icon(Icons.more_vert),
+                  tooltip: 'More',
+                ),
+              ],
+            ),
     );
 
     return Padding(

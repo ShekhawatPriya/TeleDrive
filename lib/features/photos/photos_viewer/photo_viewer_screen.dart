@@ -60,7 +60,8 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
     if (files.isEmpty) {
       return _emptyScaffold(context, 'No media to display.');
     }
-    final initialIndex = _currentIndex ??
+    final initialIndex =
+        _currentIndex ??
         () {
           final idx = files.indexWhere((f) => f.id == widget.startId);
           return idx < 0 ? 0 : idx;
@@ -90,9 +91,8 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
               file: current,
               visible: _chromeVisible,
               onBack: () => context.pop(),
-              onStar: () => ref
-                  .read(driveControllerProvider)
-                  .toggleStar(current.id),
+              onStar: () =>
+                  ref.read(driveControllerProvider).toggleStar(current.id),
               onInfo: () => _openInfo(context, current),
               onDownload: () => _download(context, current),
               onMore: () => _openMore(context, current),
@@ -129,12 +129,18 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
                       child: const Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.keyboard_arrow_up,
-                              color: Colors.white70, size: 20),
+                          Icon(
+                            Icons.keyboard_arrow_up,
+                            color: Colors.white70,
+                            size: 20,
+                          ),
                           SizedBox(height: 2),
                           Text(
                             'Swipe up for details',
-                            style: TextStyle(color: Colors.white70, fontSize: 12),
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),
@@ -179,9 +185,7 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
     if (url == null) return;
     final messenger = ScaffoldMessenger.of(context);
     try {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Downloading...')),
-      );
+      messenger.showSnackBar(const SnackBar(content: Text('Downloading...')));
       final api = ref.read(apiClientProvider);
       final dir = await getTemporaryDirectory();
       final safeName = file.name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');

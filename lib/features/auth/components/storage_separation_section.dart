@@ -101,8 +101,14 @@ class StorageSeparationSection extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xs),
-                      _buildBulletItem(context, 'No permanent phone storage consumed'),
-                      _buildBulletItem(context, 'Safe if app is uninstalled or device is changed'),
+                      _buildBulletItem(
+                        context,
+                        'No permanent phone storage consumed',
+                      ),
+                      _buildBulletItem(
+                        context,
+                        'Safe if app is uninstalled or device is changed',
+                      ),
                     ],
                   ),
                 ),
@@ -182,8 +188,14 @@ class StorageSeparationSection extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xs),
-                      _buildBulletItem(context, 'Clearing cache will NOT delete original cloud files'),
-                      _buildBulletItem(context, 'Automatically recycled for smooth operation'),
+                      _buildBulletItem(
+                        context,
+                        'Clearing cache will NOT delete original cloud files',
+                      ),
+                      _buildBulletItem(
+                        context,
+                        'Automatically recycled for smooth operation',
+                      ),
                     ],
                   ),
                 ),

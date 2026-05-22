@@ -127,7 +127,11 @@ class CacheController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _scanDirectory(Directory dir, String tempPath, Map<String, int> stats) async {
+  Future<void> _scanDirectory(
+    Directory dir,
+    String tempPath,
+    Map<String, int> stats,
+  ) async {
     try {
       final stream = dir.list(recursive: false, followLinks: false);
       await for (final entity in stream.handleError((err) {
@@ -143,7 +147,8 @@ class CacheController extends ChangeNotifier {
             final parentPath = entity.parent.path;
 
             // 1. Thumbnail Cache: inside teledriveThumbnailCache or libCachedImageData
-            if (path.contains('teledrivethumbnailcache') || path.contains('libcachedimagedata')) {
+            if (path.contains('teledrivethumbnailcache') ||
+                path.contains('libcachedimagedata')) {
               stats['thumbnail'] = stats['thumbnail']! + size;
             }
             // 2. Upload Staging / Picker temporary files: contains file_picker, image_picker or ends with .tmp / .bin

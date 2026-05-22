@@ -126,9 +126,7 @@ class ShareCardTile extends StatelessWidget {
               Expanded(
                 child: Stack(
                   children: [
-                    Positioned.fill(
-                      child: _Thumb(share: share, expand: true),
-                    ),
+                    Positioned.fill(child: _Thumb(share: share, expand: true)),
                     Positioned(
                       top: 8,
                       right: 8,
@@ -154,7 +152,10 @@ class ShareCardTile extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -207,46 +208,34 @@ class _Thumb extends StatelessWidget {
     final url = share.coverThumbnailUrl;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    
+
     // Guess file type based on primary name
     final name = share.primaryName?.toLowerCase() ?? '';
     final hasExt = name.contains('.') && !name.endsWith('.');
     final isFolder = !hasExt;
-    
+
     // Determine gradient colors and modern icon depending on predicted mime-type/folder
     List<Color> gradientColors;
     IconData iconData;
-    
+
     if (isFolder) {
-      gradientColors = [
-        Colors.amber.shade400,
-        Colors.orange.shade700,
-      ];
+      gradientColors = [Colors.amber.shade400, Colors.orange.shade700];
       iconData = Icons.folder_open_rounded;
     } else if (name.endsWith('.pdf')) {
-      gradientColors = [
-        Colors.red.shade400,
-        Colors.red.shade700,
-      ];
+      gradientColors = [Colors.red.shade400, Colors.red.shade700];
       iconData = Icons.picture_as_pdf_outlined;
     } else if (name.endsWith('.png') ||
         name.endsWith('.jpg') ||
         name.endsWith('.jpeg') ||
         name.endsWith('.heic') ||
         name.endsWith('.webp')) {
-      gradientColors = [
-        Colors.purple.shade300,
-        Colors.indigo.shade500,
-      ];
+      gradientColors = [Colors.purple.shade300, Colors.indigo.shade500];
       iconData = Icons.image_outlined;
     } else if (name.endsWith('.mp4') ||
         name.endsWith('.mov') ||
         name.endsWith('.avi') ||
         name.endsWith('.mkv')) {
-      gradientColors = [
-        Colors.teal.shade300,
-        Colors.cyan.shade600,
-      ];
+      gradientColors = [Colors.teal.shade300, Colors.cyan.shade600];
       iconData = Icons.play_circle_outline_rounded;
     } else {
       gradientColors = [
@@ -268,11 +257,7 @@ class _Thumb extends StatelessWidget {
         borderRadius: expand ? BorderRadius.zero : AppRadii.smR,
       ),
       child: Center(
-        child: Icon(
-          iconData,
-          size: expand ? 36 : 24,
-          color: Colors.white,
-        ),
+        child: Icon(iconData, size: expand ? 36 : 24, color: Colors.white),
       ),
     );
 

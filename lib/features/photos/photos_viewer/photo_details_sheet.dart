@@ -48,7 +48,11 @@ class PhotoDetailsSheet extends StatelessWidget {
             child: ListView(
               controller: scrollController,
               padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, AppSpacing.xl),
+                AppSpacing.lg,
+                AppSpacing.xs,
+                AppSpacing.lg,
+                AppSpacing.xl,
+              ),
               children: [
                 Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -187,7 +191,8 @@ class _DetailRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 36, height: 36,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: scheme.secondaryContainer,
               shape: BoxShape.circle,

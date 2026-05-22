@@ -6,14 +6,10 @@ class ShareRepository {
 
   final ApiClient api;
 
-  Future<Share> createShare({
-    required List<ShareItemRequest> items,
-  }) async {
+  Future<Share> createShare({required List<ShareItemRequest> items}) async {
     final res = await api.dio.post(
       '/shares',
-      data: {
-        'items': items.map((i) => i.toJson()).toList(),
-      },
+      data: {'items': items.map((i) => i.toJson()).toList()},
     );
     return Share.fromJson(Map<String, dynamic>.from(res.data as Map));
   }

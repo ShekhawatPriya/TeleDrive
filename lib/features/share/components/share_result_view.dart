@@ -30,14 +30,18 @@ class ShareResultView extends StatelessWidget {
         Row(
           children: [
             Container(
-              width: 44, height: 44,
+              width: 44,
+              height: 44,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: scheme.primaryContainer,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.link_rounded,
-                  size: 22, color: scheme.onPrimaryContainer),
+              child: Icon(
+                Icons.link_rounded,
+                size: 22,
+                color: scheme.onPrimaryContainer,
+              ),
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
@@ -63,7 +67,11 @@ class ShareResultView extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         Container(
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md, AppSpacing.xs, AppSpacing.xs, AppSpacing.xs),
+            AppSpacing.md,
+            AppSpacing.xs,
+            AppSpacing.xs,
+            AppSpacing.xs,
+          ),
           decoration: BoxDecoration(
             color: scheme.surfaceContainerHighest,
             borderRadius: AppRadii.smR,
@@ -90,16 +98,14 @@ class ShareResultView extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         FilledButton.icon(
           onPressed: onShare,
-          style:
-              FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
           icon: const Icon(Icons.share_outlined),
           label: const Text('Share link'),
         ),
         const SizedBox(height: AppSpacing.xxs),
         TextButton(
           onPressed: onDone,
-          style:
-              TextButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+          style: TextButton.styleFrom(minimumSize: const Size.fromHeight(44)),
           child: const Text('Done'),
         ),
       ],

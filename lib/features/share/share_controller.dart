@@ -33,6 +33,14 @@ class ShareController extends ChangeNotifier {
   bool get loading => _loading;
   String? get error => _error;
 
+  void resetForAccountSwitch() {
+    _shares = const [];
+    _loading = false;
+    _error = null;
+    _refreshing = null;
+    notifyListeners();
+  }
+
   Future<void> refresh({bool silent = false}) async {
     final inFlight = _refreshing;
     if (inFlight != null) return inFlight;
@@ -62,9 +70,7 @@ class ShareController extends ChangeNotifier {
     }
   }
 
-  Future<Share> createShare({
-    required List<ShareItemRequest> items,
-  }) async {
+  Future<Share> createShare({required List<ShareItemRequest> items}) async {
     final created = await _repo.createShare(items: items);
     _shares = [created, ..._shares];
     final fileIds = items

@@ -77,10 +77,7 @@ class ProfileHero extends ConsumerWidget {
                 child: Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: scheme.surface,
-                      width: 3,
-                    ),
+                    border: Border.all(color: scheme.surface, width: 3),
                   ),
                   child: ProfileAvatar(user: user, size: 96),
                 ),

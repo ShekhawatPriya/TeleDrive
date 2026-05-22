@@ -97,19 +97,20 @@ class _PhotoViewerVideoState extends State<PhotoViewerVideo> {
         color: Colors.black,
         child: Center(
           child: _error != null
-              ? const Icon(Icons.error_outline,
-                  color: Colors.white54, size: 48)
+              ? const Icon(Icons.error_outline, color: Colors.white54, size: 48)
               : chewie == null
-                  ? const SizedBox(
-                      width: 32,
-                      height: 32,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : Hero(
-                      tag: 'photo-${widget.file.id}',
-                      child: Chewie(controller: chewie),
-                    ),
+              ? const SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Hero(
+                  tag: 'photo-${widget.file.id}',
+                  child: Chewie(controller: chewie),
+                ),
         ),
       ),
     );

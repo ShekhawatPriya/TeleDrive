@@ -17,11 +17,7 @@ class HeroSection extends StatelessWidget {
     return Column(
       children: [
         const SizedBox(height: AppSpacing.md),
-        Image.asset(
-          'assets/icon/app_icon.png',
-          width: 72,
-          height: 72,
-        ),
+        Image.asset('assets/icon/app_icon.png', width: 72, height: 72),
         const SizedBox(height: AppSpacing.sm),
         Text(
           'TeleDrive',

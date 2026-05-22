@@ -19,9 +19,7 @@ class OpenSourceSection extends StatelessWidget {
       color: scheme.surfaceContainerHighest.withValues(alpha: 0.25),
       shape: RoundedRectangleBorder(
         borderRadius: AppRadii.mdR,
-        side: BorderSide(
-          color: scheme.outlineVariant.withValues(alpha: 0.3),
-        ),
+        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.3)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -36,10 +34,7 @@ class OpenSourceSection extends StatelessWidget {
                     color: scheme.onSurface.withValues(alpha: 0.07),
                     shape: BoxShape.circle,
                   ),
-                  child: GitHubIcon(
-                    size: 28,
-                    color: scheme.onSurface,
-                  ),
+                  child: GitHubIcon(size: 28, color: scheme.onSurface),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Text(

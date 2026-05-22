@@ -44,10 +44,7 @@ class _LandingScreenState extends State<LandingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // 1. Hero Section
-                  FadeInSlide(
-                    delay: Duration.zero,
-                    child: HeroSection(),
-                  ),
+                  FadeInSlide(delay: Duration.zero, child: HeroSection()),
                   SizedBox(height: AppSpacing.xxl),
 
                   // 2. How it works Section

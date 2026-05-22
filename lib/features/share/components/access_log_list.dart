@@ -74,9 +74,7 @@ class ShareAccessLogList extends StatelessWidget {
                     ? const SizedBox(
                         width: 14,
                         height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.arrow_downward_rounded, size: 16),
                 label: Text(loading ? 'Loading…' : 'Load more'),
@@ -186,10 +184,14 @@ class _Row extends StatelessWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: scheme.secondaryContainer.withValues(alpha: 0.4),
+                            color: scheme.secondaryContainer.withValues(
+                              alpha: 0.4,
+                            ),
                             borderRadius: AppRadii.smR,
                             border: Border.all(
-                              color: scheme.outlineVariant.withValues(alpha: 0.6),
+                              color: scheme.outlineVariant.withValues(
+                                alpha: 0.6,
+                              ),
                               width: 0.6,
                             ),
                           ),
@@ -221,10 +223,10 @@ class _Row extends StatelessWidget {
   }
 
   IconData _iconFor(String action) => switch (action) {
-        'download' => Icons.download_outlined,
-        'preview' => Icons.visibility_outlined,
-        _ => Icons.open_in_new,
-      };
+    'download' => Icons.download_outlined,
+    'preview' => Icons.visibility_outlined,
+    _ => Icons.open_in_new,
+  };
 
   String _label(ShareAccess access) {
     final base = switch (access.action) {

@@ -103,8 +103,12 @@ class RecentFileCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                fileColor.withValues(alpha: isDark ? 0.08 : 0.06),
-                                fileColor.withValues(alpha: isDark ? 0.15 : 0.12),
+                                fileColor.withValues(
+                                  alpha: isDark ? 0.08 : 0.06,
+                                ),
+                                fileColor.withValues(
+                                  alpha: isDark ? 0.15 : 0.12,
+                                ),
                               ],
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
@@ -124,17 +128,16 @@ class RecentFileCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(6),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
+                                    color: Colors.black.withValues(
+                                      alpha: isDark ? 0.25 : 0.08,
+                                    ),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   ),
                                 ],
                               ),
                               child: Center(
-                                child: GoogleDriveIcon.file(
-                                  file,
-                                  size: 26,
-                                ),
+                                child: GoogleDriveIcon.file(file, size: 26),
                               ),
                             ),
                           ),
@@ -142,7 +145,10 @@ class RecentFileCard extends StatelessWidget {
                 ),
                 // Details Area
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   child: Row(
                     children: [
                       Expanded(

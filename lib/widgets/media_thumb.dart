@@ -32,10 +32,7 @@ class MediaThumb extends StatelessWidget {
       if (showBackground) {
         return ClipRRect(
           borderRadius: BorderRadius.circular(radius),
-          child: ColoredBox(
-            color: bg,
-            child: fallbackWidget,
-          ),
+          child: ColoredBox(color: bg, child: fallbackWidget),
         );
       } else {
         return fallbackWidget;
@@ -82,10 +79,7 @@ class MediaThumb extends StatelessWidget {
         return Center(
           child: Padding(
             padding: EdgeInsets.all(iconSize * 0.08),
-            child: GoogleDriveIcon.file(
-              file,
-              size: targetSize,
-            ),
+            child: GoogleDriveIcon.file(file, size: targetSize),
           ),
         );
       },

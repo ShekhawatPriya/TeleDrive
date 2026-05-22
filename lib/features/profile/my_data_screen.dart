@@ -41,9 +41,7 @@ class MyDataScreen extends StatelessWidget {
               children: [
                 // Centered vibrant Telegram Shield
                 const SizedBox(height: AppSpacing.md),
-                const Center(
-                  child: TelegramDataShield(size: 130),
-                ),
+                const Center(child: TelegramDataShield(size: 130)),
                 const SizedBox(height: AppSpacing.xl + 8),
 
                 // Headline
@@ -61,19 +59,22 @@ class MyDataScreen extends StatelessWidget {
                 _buildBulletRow(
                   context,
                   icon: Icons.lock_outline_rounded,
-                  text: "We secure your files using Telegram's distributed cloud infrastructure and local encryption to protect what you back up or share.",
+                  text:
+                      "We secure your files using Telegram's distributed cloud infrastructure and local encryption to protect what you back up or share.",
                 ),
                 const SizedBox(height: AppSpacing.lg + 4),
                 _buildBulletRow(
                   context,
                   icon: Icons.visibility_off_outlined,
-                  text: "We never sell your photos or videos, and we don't use your personal data for advertising or ad-targeting.",
+                  text:
+                      "We never sell your photos or videos, and we don't use your personal data for advertising or ad-targeting.",
                 ),
                 const SizedBox(height: AppSpacing.lg + 4),
                 _buildBulletRow(
                   context,
                   icon: Icons.info_outline,
-                  text: "You remain in complete control of how you share your files and who can access them.",
+                  text:
+                      "You remain in complete control of how you share your files and who can access them.",
                 ),
                 const SizedBox(height: AppSpacing.xxl + 8),
 
@@ -97,7 +98,8 @@ class MyDataScreen extends StatelessWidget {
                           ..onTap = _launchTelegramPrivacy,
                       ),
                       const TextSpan(
-                        text: " to discover all the ways that TeleDrive keeps your files and memories safe.",
+                        text:
+                            " to discover all the ways that TeleDrive keeps your files and memories safe.",
                       ),
                     ],
                   ),
@@ -122,11 +124,7 @@ class MyDataScreen extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          size: 24,
-          color: scheme.onSurfaceVariant,
-        ),
+        Icon(icon, size: 24, color: scheme.onSurfaceVariant),
         const SizedBox(width: AppSpacing.md + 4),
         Expanded(
           child: Text(
@@ -153,8 +151,12 @@ class TelegramDataShield extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     // Harmonious blue/cyan shade matching Telegram identity
-    final Color leftColor = isDark ? const Color(0xFF54B4E6) : const Color(0xFF35A3E6);
-    final Color rightColor = isDark ? const Color(0xFF229ED9) : const Color(0xFF1B82B5);
+    final Color leftColor = isDark
+        ? const Color(0xFF54B4E6)
+        : const Color(0xFF35A3E6);
+    final Color rightColor = isDark
+        ? const Color(0xFF229ED9)
+        : const Color(0xFF1B82B5);
 
     return SizedBox(
       width: size,

@@ -33,7 +33,8 @@ class UploadPickerHelper {
       final usableFiles = result.files.where((f) => f.path != null).toList();
       if (usableFiles.isEmpty) {
         return UploadPickerResult(
-          error: 'The selected file did not expose a local path. Try picking from device storage or Downloads.',
+          error:
+              'The selected file did not expose a local path. Try picking from device storage or Downloads.',
         );
       }
       final sessionId = _uuid.v4();

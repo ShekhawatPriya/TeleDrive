@@ -72,8 +72,10 @@ class AppColors {
 /// for screens that haven't migrated to theme-default elevation. New code
 /// should rely on the `Card` / `Dialog` / `BottomSheet` theme defaults
 /// instead.
-@Deprecated('Use Card / Dialog / BottomSheet theme defaults, '
-    'or AppElevation.shadowFor(level, brightness)')
+@Deprecated(
+  'Use Card / Dialog / BottomSheet theme defaults, '
+  'or AppElevation.shadowFor(level, brightness)',
+)
 class AppShadows {
   static List<BoxShadow> card(Brightness brightness) =>
       AppElevation.shadowFor(AppElevation.level1, brightness);

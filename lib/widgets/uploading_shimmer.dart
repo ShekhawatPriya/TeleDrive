@@ -17,7 +17,8 @@ class UploadingShimmer extends StatefulWidget {
   State<UploadingShimmer> createState() => _UploadingShimmerState();
 }
 
-class _UploadingShimmerState extends State<UploadingShimmer> with SingleTickerProviderStateMixin {
+class _UploadingShimmerState extends State<UploadingShimmer>
+    with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
@@ -30,10 +31,7 @@ class _UploadingShimmerState extends State<UploadingShimmer> with SingleTickerPr
     );
 
     _pulseAnimation = Tween<double>(begin: 0.3, end: 0.75).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: Curves.easeInOutSine,
-      ),
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutSine),
     );
 
     if (widget.enabled) {
@@ -80,9 +78,7 @@ class _UploadingShimmerState extends State<UploadingShimmer> with SingleTickerPr
                     baseColor: scheme.primaryContainer.withValues(alpha: .35),
                     highlightColor: scheme.primary.withValues(alpha: .75),
                     period: const Duration(milliseconds: 1200),
-                    child: const ColoredBox(
-                      color: Colors.white,
-                    ),
+                    child: const ColoredBox(color: Colors.white),
                   ),
                 ),
               );

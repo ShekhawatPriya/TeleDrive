@@ -143,7 +143,8 @@ class ShareDetailBody extends StatelessWidget {
             ),
             child: Column(
               children: [
-                for (final entry in byCountry.entries.toList().asMap().entries) ...[
+                for (final entry
+                    in byCountry.entries.toList().asMap().entries) ...[
                   if (entry.key > 0)
                     Divider(
                       height: 1,
@@ -209,7 +210,11 @@ class ShareDetailBody extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
+  Widget _buildSectionHeader(
+    BuildContext context,
+    String title,
+    IconData icon,
+  ) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return Padding(
@@ -312,10 +317,7 @@ class _Counter extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: bgColor,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
               child: Icon(icon, size: 18, color: iconColor),
             ),
             const SizedBox(height: 10),

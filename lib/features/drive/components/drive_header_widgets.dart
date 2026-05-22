@@ -52,11 +52,7 @@ class DriveQuickActions extends StatelessWidget {
 }
 
 class _QuickActionPill extends StatelessWidget {
-  const _QuickActionPill({
-    required this.icon,
-    required this.label,
-    this.onTap,
-  });
+  const _QuickActionPill({required this.icon, required this.label, this.onTap});
 
   final IconData icon;
   final String label;
@@ -70,9 +66,7 @@ class _QuickActionPill extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       shape: StadiumBorder(
-        side: BorderSide(
-          color: scheme.outlineVariant.withValues(alpha: 0.6),
-        ),
+        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.6)),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -85,11 +79,7 @@ class _QuickActionPill extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                size: 18,
-                color: scheme.onSurfaceVariant,
-              ),
+              Icon(icon, size: 18, color: scheme.onSurfaceVariant),
               const SizedBox(width: AppSpacing.xs),
               Text(
                 label,
@@ -124,10 +114,11 @@ class DriveSectionHeader extends StatelessWidget {
     return SliverToBoxAdapter(
       child: Padding(
         padding: EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            topPadding ?? AppSpacing.lg,
-            AppSpacing.md,
-            bottomPadding ?? AppSpacing.xs),
+          AppSpacing.md,
+          topPadding ?? AppSpacing.lg,
+          AppSpacing.md,
+          bottomPadding ?? AppSpacing.xs,
+        ),
         child: Text(
           title,
           style: theme.textTheme.titleSmall?.copyWith(

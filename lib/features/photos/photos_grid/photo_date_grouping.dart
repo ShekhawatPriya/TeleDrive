@@ -20,7 +20,9 @@ List<PhotoDateSection> groupByDate(List<DriveFile> files) {
 
   for (final file in files) {
     final date = DateTime.tryParse(file.modifiedAt)?.toLocal();
-    final day = date == null ? today : DateTime(date.year, date.month, date.day);
+    final day = date == null
+        ? today
+        : DateTime(date.year, date.month, date.day);
     final String label;
     if (date == null || day == today) {
       label = 'Today';
