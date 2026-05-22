@@ -111,7 +111,7 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
   }
 
   Future<void> addAnotherAccount(BuildContext context) async {
-    if (_uploadsBlocked(context)) return;
+    if (checkUploadsBlocked(context)) return;
     final auth = _ref.read(authControllerProvider);
     if (auth.vault.accounts.length >= auth.vault.maxSavedAccounts) {
       showAppPremiumToast(
@@ -130,7 +130,7 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
     BuildContext context,
     SavedAccount account,
   ) async {
-    if (_uploadsBlocked(context)) return;
+    if (checkUploadsBlocked(context)) return;
     Navigator.of(context, rootNavigator: true).maybePop();
     final returnTo = Uri.encodeComponent('/drive');
     context.safePush(
@@ -143,7 +143,7 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
     SavedAccount account,
   ) async {
     if (account.userId == state.activeUserId) return;
-    if (_uploadsBlocked(context)) return;
+    if (checkUploadsBlocked(context)) return;
     if (account.tokenStatus != TokenStatus.valid) {
       showAppPremiumToast(
         message: 'Log in again to use ${account.displayName}.',
@@ -183,7 +183,7 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
   }
 
   Future<void> removeAccount(BuildContext context, SavedAccount account) async {
-    if (_uploadsBlocked(context)) return;
+    if (checkUploadsBlocked(context)) return;
     final confirmed = await _confirmRemove(context, account);
     if (confirmed != true) return;
 
@@ -229,14 +229,34 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
     }
   }
 
-  bool _uploadsBlocked(BuildContext context) {
+  bool checkUploadsBlocked(BuildContext context) {
     final upload = _ref.read(uploadControllerProvider);
+    debugPrint('[DEBUG] checkUploadsBlocked: hasBlockingUploads = ${upload.hasBlockingUploads}, uploading = ${upload.uploading}, activeCount = ${upload.activeCount}, itemsLength = ${upload.items.length}');
+    for (var i = 0; i < upload.items.length; i++) {
+      final item = upload.items[i];
+      debugPrint('[DEBUG] Item $i: name = ${item.name}, status = ${item.status}, localId = ${item.localId}');
+    }
     if (!upload.hasBlockingUploads) return false;
-    showAppPremiumToast(
-      message: 'Finish or cancel uploads first.',
-      icon: Icons.cloud_upload_outlined,
-    );
+    _showUploadInProgressDialog(context);
     return true;
+  }
+
+  Future<void> _showUploadInProgressDialog(BuildContext context) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Upload in Progress'),
+        content: const Text(
+          'An upload is currently in progress. Please wait for the upload to complete or cancel it before switching accounts or accessing account options.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _resetAccountScopedState() async {

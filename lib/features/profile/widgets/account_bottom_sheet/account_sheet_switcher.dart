@@ -16,7 +16,12 @@ extension _AccountSheetSwitcher on _AccountBottomSheetState {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           InkWell(
-            onTap: () => _toggleSwitchAccountCard(notifier),
+            onTap: () {
+              if (!_isExpanded && notifier.checkUploadsBlocked(context)) {
+                return;
+              }
+              _toggleSwitchAccountCard(notifier);
+            },
             borderRadius: _isExpanded
                 ? const BorderRadius.vertical(
                     top: Radius.circular(
