@@ -110,6 +110,51 @@ void main() {
 
     expect(parsed.photoUrl, saved.photoUrl);
     expect(parsed.localPhotoPath, saved.localPhotoPath);
-    expect(parsed.toAuthUser().photoUrl, saved.localPhotoPath);
+    expect(parsed.toAuthUser().photoUrl, saved.photoUrl);
+  });
+
+  test('remote profile photo takes priority over local cache', () {
+    final saved = account(userId: 1, telegramId: 10, token: 'one').copyWith(
+      photoUrl: 'https://example.test/users/1/photo.jpg',
+      localPhotoPath: '/data/user/0/app/profile_photos/1_10_123.jpg',
+    );
+
+    expect(saved.resolvedPhotoUrl, saved.photoUrl);
+    expect(saved.toAuthUser().photoUrl, saved.photoUrl);
+  });
+
+  test(
+    'valid local profile photo path is used when remote photo is missing',
+    () {
+      final saved = account(userId: 1, telegramId: 10, token: 'one').copyWith(
+        localPhotoPath: '/data/user/0/app/profile_photos/1_10_123.jpg',
+      );
+
+      expect(saved.resolvedPhotoUrl, saved.localPhotoPath);
+      expect(saved.toAuthUser().photoUrl, saved.localPhotoPath);
+    },
+  );
+
+  test('mismatched local profile photo path falls back to remote photo', () {
+    final saved = account(userId: 1, telegramId: 10, token: 'one').copyWith(
+      photoUrl: 'https://example.test/users/1/photo.jpg',
+      localPhotoPath: '/data/user/0/app/profile_photos/2_20_123.jpg',
+    );
+
+    expect(saved.resolvedPhotoUrl, saved.photoUrl);
+    expect(saved.toAuthUser().photoUrl, saved.photoUrl);
+  });
+
+  test('accountByUserId returns exact match independent of list order', () {
+    final first = account(userId: 1, telegramId: 10, token: 'one');
+    final second = account(userId: 2, telegramId: 20, token: 'two');
+    final vault = AccountVault(
+      accounts: [second, first],
+      activeUserId: first.userId,
+    );
+
+    expect(vault.accountByUserId(1), same(first));
+    expect(vault.accountByUserId(2), same(second));
+    expect(vault.accountByUserId(3), isNull);
   });
 }

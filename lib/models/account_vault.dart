@@ -56,13 +56,26 @@ class SavedAccount {
   bool get hasUsableToken =>
       token.isNotEmpty && tokenStatus == TokenStatus.valid;
 
+  String? get resolvedPhotoUrl {
+    final remote = photoUrl?.trim();
+    if (remote != null && remote.isNotEmpty) return remote;
+
+    final local = localPhotoPath?.trim();
+    if (local != null &&
+        local.isNotEmpty &&
+        _localPhotoBelongsToAccount(local)) {
+      return local;
+    }
+    return null;
+  }
+
   AuthUser toAuthUser() => AuthUser(
     userId: userId,
     telegramId: telegramId,
     firstName: firstName,
     lastName: lastName,
     username: username,
-    photoUrl: localPhotoPath ?? photoUrl,
+    photoUrl: resolvedPhotoUrl,
   );
 
   SavedAccount copyWith({
@@ -158,6 +171,15 @@ class SavedAccount {
     final trimmed = value.trim();
     return trimmed.isEmpty ? null : trimmed;
   }
+
+  bool _localPhotoBelongsToAccount(String value) {
+    final path = value.startsWith('file://')
+        ? (Uri.tryParse(value)?.toFilePath() ?? value)
+        : value;
+    final parts = path.split(RegExp(r'[\\/]')).where((part) => part.isNotEmpty);
+    final fileName = parts.isEmpty ? path : parts.last;
+    return fileName == '$userId.jpg' || fileName.startsWith('${userId}_');
+  }
 }
 
 class AccountVault {
@@ -179,8 +201,12 @@ class AccountVault {
   SavedAccount? get activeAccount {
     final id = activeUserId;
     if (id == null) return null;
+    return accountByUserId(id);
+  }
+
+  SavedAccount? accountByUserId(int userId) {
     for (final account in accounts) {
-      if (account.userId == id) return account;
+      if (account.userId == userId) return account;
     }
     return null;
   }

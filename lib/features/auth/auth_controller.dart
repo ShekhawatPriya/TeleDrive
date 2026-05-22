@@ -47,7 +47,14 @@ class AuthController extends ChangeNotifier {
   int largeUploadThresholdBytes = 200 * 1024 * 1024;
 
   bool get isAuthenticated => user != null && token != null;
-  SavedAccount? get activeAccount => vault.activeAccount;
+  SavedAccount? get activeAccount {
+    final activeUser = user;
+    if (activeUser != null) {
+      return vault.accountByUserId(activeUser.userId) ?? vault.activeAccount;
+    }
+    return vault.activeAccount;
+  }
+
   bool get needsCommunityOnboarding =>
       isAuthenticated &&
       telegramConnected == true &&
@@ -141,6 +148,11 @@ class AuthController extends ChangeNotifier {
           account.token,
           includeDrive: true,
         );
+        if (!_bootstrapMatchesAccount(account, bootstrap)) {
+          vault = vault.markTokenStatus(account.userId, TokenStatus.needsLogin);
+          await _repo.saveVault(vault);
+          continue;
+        }
         await _commitActiveAccount(account.token, bootstrap, existing: account);
         return;
       } on DioException catch (err) {
@@ -169,9 +181,15 @@ class AuthController extends ChangeNotifier {
           account.token,
           includeDrive: false,
         );
+        if (!_bootstrapMatchesAccount(account, bootstrap)) {
+          vault = vault.markTokenStatus(account.userId, TokenStatus.needsLogin);
+          await _repo.saveVault(vault);
+          notifyListeners();
+          continue;
+        }
         final localPhotoPath =
             await _repo.cacheProfilePhoto(bootstrap.user) ??
-            account.localPhotoPath;
+            _trustedLocalPhotoPath(account);
         final updated = _accountFromBootstrap(
           account.token,
           bootstrap,
@@ -225,6 +243,11 @@ class AuthController extends ChangeNotifier {
         selected.token,
         includeDrive: true,
       );
+      if (!_bootstrapMatchesAccount(selected, bootstrap)) {
+        vault = vault.markTokenStatus(selected.userId, TokenStatus.needsLogin);
+        await _repo.saveVault(vault);
+        throw Exception('Session expired. Please log in again.');
+      }
       await _commitActiveAccount(selected.token, bootstrap, existing: selected);
     } on DioException catch (err) {
       if (err.response?.statusCode == 401) {
@@ -285,7 +308,7 @@ class AuthController extends ChangeNotifier {
   }) async {
     final localPhotoPath =
         await _repo.cacheProfilePhoto(bootstrap.user) ??
-        existing?.localPhotoPath;
+        _trustedLocalPhotoPath(existing);
     final account = _accountFromBootstrap(
       nextToken,
       bootstrap,
@@ -328,7 +351,7 @@ class AuthController extends ChangeNotifier {
       username: bootstrap.user.username,
       phoneNumber: bootstrap.phoneNumber ?? existing?.phoneNumber,
       photoUrl: bootstrap.user.photoUrl,
-      localPhotoPath: localPhotoPath ?? existing?.localPhotoPath,
+      localPhotoPath: localPhotoPath,
       token: nextToken,
       addedAt: existing?.addedAt ?? now,
       lastUsedAt: now,
@@ -370,7 +393,8 @@ class AuthController extends ChangeNotifier {
       final active = activeAccount;
       if (user != null && active != null) {
         final localPhotoPath =
-            await _repo.cacheProfilePhoto(user!) ?? active.localPhotoPath;
+            await _repo.cacheProfilePhoto(user!) ??
+            _trustedLocalPhotoPath(active);
         final updated = active.copyWith(
           firstName: user!.firstName,
           lastName: user!.lastName,
@@ -407,5 +431,28 @@ class AuthController extends ChangeNotifier {
     communityJoinStatus = null;
     communityJoinError = null;
     notifyListeners();
+  }
+
+  bool _bootstrapMatchesAccount(
+    SavedAccount account,
+    AuthBootstrapResult bootstrap,
+  ) {
+    if (bootstrap.user.userId == account.userId) return true;
+    final telegramId = _bootstrapTelegramId(bootstrap);
+    return account.telegramId != 0 &&
+        telegramId != 0 &&
+        account.telegramId == telegramId;
+  }
+
+  int _bootstrapTelegramId(AuthBootstrapResult bootstrap) {
+    if (bootstrap.user.telegramId != 0) return bootstrap.user.telegramId;
+    return bootstrap.telegramUserId ?? 0;
+  }
+
+  String? _trustedLocalPhotoPath(SavedAccount? account) {
+    if (account == null) return null;
+    return account.localPhotoPath == account.resolvedPhotoUrl
+        ? account.localPhotoPath
+        : null;
   }
 }

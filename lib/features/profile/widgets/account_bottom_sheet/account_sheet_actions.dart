@@ -157,7 +157,13 @@ extension _AccountSheetActions on _AccountBottomSheetState {
   }
 
   Widget _buildAvatarWidget(SavedAccount account, {required double size}) {
-    return ProfileAvatar(user: account.toAuthUser(), size: size);
+    return ProfileAvatar(
+      key: ValueKey(
+        'account-avatar-${account.userId}-${account.resolvedPhotoUrl ?? 'fallback'}',
+      ),
+      user: account.toAuthUser(),
+      size: size,
+    );
   }
 
   void _showHelpFeedbackDialog(BuildContext context) {

@@ -9,6 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../../../core/utils/safe_navigation.dart';
 import '../../../models/account_vault.dart';
+import '../../../models/auth_user.dart';
 import '../../../widgets/profile_avatar.dart';
 import '../../../widgets/github_icon.dart';
 import '../../../widgets/sheet/sheet_drag_handle.dart';
@@ -91,21 +92,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
     final backupOn = ref.watch(mediaBackupProvider);
     final user = auth.user;
 
-    final activeAccount =
-        auth.activeAccount ??
-        (user == null
-            ? null
-            : SavedAccount(
-                userId: user.userId,
-                telegramId: user.telegramId,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                username: user.username,
-                photoUrl: user.photoUrl,
-                token: auth.token ?? '',
-                addedAt: DateTime.now(),
-                lastUsedAt: DateTime.now(),
-              ));
+    final activeAccount = _activeAccountSnapshot(auth.activeAccount, user);
 
     final switchState = ref.watch(switchAccountProvider);
     final otherAccounts = activeAccount == null
@@ -206,6 +193,27 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
       ),
     );
   }
+}
+
+SavedAccount? _activeAccountSnapshot(SavedAccount? saved, AuthUser? user) {
+  if (user == null) return saved;
+  final now = DateTime.now();
+  return SavedAccount(
+    userId: user.userId,
+    telegramId: user.telegramId != 0 ? user.telegramId : saved?.telegramId ?? 0,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    username: user.username,
+    phoneNumber: saved?.phoneNumber,
+    photoUrl: user.photoUrl,
+    localPhotoPath: saved?.localPhotoPath,
+    token: saved?.token ?? '',
+    addedAt: saved?.addedAt ?? now,
+    lastUsedAt: saved?.lastUsedAt ?? now,
+    tokenStatus: saved?.tokenStatus ?? TokenStatus.valid,
+    sessionStatus: saved?.sessionStatus,
+    requiresReconnect: saved?.requiresReconnect ?? false,
+  );
 }
 
 Color _profileSectionColor(ColorScheme scheme) {

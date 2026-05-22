@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/utils/safe_navigation.dart';
 import '../../../models/account_vault.dart';
+import '../../../models/auth_user.dart';
 import '../../../widgets/premium_toast.dart';
 import '../../auth/auth_controller.dart';
 import '../../drive/drive_controller.dart';
@@ -64,17 +65,40 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
 
   void _syncFromAuth() {
     final auth = _ref.read(authControllerProvider);
-    final activeId = auth.activeAccount?.userId;
-    final accounts = [...auth.vault.accounts]
-      ..sort((a, b) {
-        if (a.userId == activeId) return -1;
-        if (b.userId == activeId) return 1;
-        return b.lastUsedAt.compareTo(a.lastUsedAt);
-      });
+    final activeId = auth.user?.userId ?? auth.activeAccount?.userId;
+    final accounts =
+        auth.vault.accounts
+            .map(
+              (account) => _accountWithActiveUserSnapshot(account, auth.user),
+            )
+            .toList()
+          ..sort((a, b) {
+            if (a.userId == activeId) return -1;
+            if (b.userId == activeId) return 1;
+            return b.lastUsedAt.compareTo(a.lastUsedAt);
+          });
     state = state.copyWith(
       accounts: accounts,
       activeUserId: activeId,
       clearActiveUserId: activeId == null,
+    );
+  }
+
+  SavedAccount _accountWithActiveUserSnapshot(
+    SavedAccount account,
+    AuthUser? activeUser,
+  ) {
+    if (activeUser == null || account.userId != activeUser.userId) {
+      return account;
+    }
+    return account.copyWith(
+      telegramId: activeUser.telegramId != 0
+          ? activeUser.telegramId
+          : account.telegramId,
+      firstName: activeUser.firstName,
+      lastName: activeUser.lastName,
+      username: activeUser.username,
+      photoUrl: activeUser.photoUrl,
     );
   }
 

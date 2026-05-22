@@ -84,6 +84,9 @@ extension _AccountSheetSwitcher on _AccountBottomSheetState {
                         final isBusy = account.userId == switchState.busyUserId;
 
                         return InkWell(
+                          key: ValueKey(
+                            'switch-account-${account.userId}-${account.resolvedPhotoUrl ?? 'fallback'}',
+                          ),
                           onTap: () {
                             if (switchState.isRemoveMode || isActive) return;
                             notifier.switchActiveAccount(context, account);
