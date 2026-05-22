@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 export 'drive_bulk_actions.dart';
 import 'drive_bulk_actions.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
 import '../../profile/app_settings_controller.dart';
@@ -45,8 +44,7 @@ class DriveItemActions {
       context,
       title: file.name,
       subtitle: _fileSubtitle(file),
-      leadingIcon: _iconForKind(file.kind),
-      leadingAccent: _accentForKind(file.kind),
+      file: file,
       actions: actions,
     );
     if (!context.mounted) return;
@@ -107,8 +105,7 @@ class DriveItemActions {
       context,
       title: folder.name,
       subtitle: _folderSubtitle(folder),
-      leadingIcon: Icons.folder_outlined,
-      leadingAccent: AppColors.warning,
+      folder: folder,
       actions: actions,
     );
     if (!context.mounted) return;
@@ -198,8 +195,8 @@ Future<String?> _showActions(
   BuildContext context, {
   required String title,
   required String subtitle,
-  required IconData leadingIcon,
-  required Color leadingAccent,
+  DriveFile? file,
+  DriveFolder? folder,
   required List<SheetActionItem> actions,
 }) {
   return showModalBottomSheet<String>(
@@ -209,8 +206,8 @@ Future<String?> _showActions(
     builder: (_) => DriveActionSheet(
       title: title,
       subtitle: subtitle,
-      leadingIcon: leadingIcon,
-      leadingAccent: leadingAccent,
+      file: file,
+      folder: folder,
       actions: actions,
     ),
   );
@@ -240,7 +237,7 @@ String _fileSubtitle(DriveFile file) {
     formatFileSize(file.size),
     if (formatDate(file.modifiedAt).isNotEmpty) formatDate(file.modifiedAt),
   ];
-  return parts.join(' · ');
+  return parts.join(' • ');
 }
 
 String _folderSubtitle(DriveFolder folder) {
@@ -254,63 +251,7 @@ String _folderSubtitle(DriveFolder folder) {
   if (folder.recursiveSize > 0) {
     parts.add(formatFileSize(folder.recursiveSize));
   }
-  return parts.join(' · ');
+  return parts.join(' • ');
 }
 
-IconData _iconForKind(FileKind kind) {
-  switch (kind) {
-    case FileKind.folder:
-      return Icons.folder_outlined;
-    case FileKind.pdf:
-      return Icons.picture_as_pdf;
-    case FileKind.image:
-      return Icons.image_outlined;
-    case FileKind.video:
-      return Icons.play_circle_outline;
-    case FileKind.doc:
-      return Icons.description_outlined;
-    case FileKind.sheet:
-      return Icons.table_chart_outlined;
-    case FileKind.slides:
-      return Icons.slideshow_outlined;
-    case FileKind.audio:
-      return Icons.audiotrack;
-    case FileKind.zip:
-      return Icons.folder_zip_outlined;
-    case FileKind.code:
-      return Icons.code;
-    case FileKind.text:
-      return Icons.notes;
-    case FileKind.other:
-      return Icons.insert_drive_file_outlined;
-  }
-}
 
-Color _accentForKind(FileKind kind) {
-  switch (kind) {
-    case FileKind.folder:
-      return AppColors.warning;
-    case FileKind.pdf:
-      return const Color(0xFFC5221F);
-    case FileKind.image:
-      return const Color(0xFFD81B60);
-    case FileKind.video:
-      return const Color(0xFF7B1FA2);
-    case FileKind.doc:
-      return const Color(0xFF1A73E8);
-    case FileKind.sheet:
-      return AppColors.success;
-    case FileKind.slides:
-      return AppColors.warning;
-    case FileKind.audio:
-      return const Color(0xFF00ACC1);
-    case FileKind.zip:
-      return AppColors.warning;
-    case FileKind.code:
-      return const Color(0xFF0B57D0);
-    case FileKind.text:
-      return const Color(0xFF6F6F6F);
-    case FileKind.other:
-      return const Color(0xFF424242);
-  }
-}

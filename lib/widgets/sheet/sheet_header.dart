@@ -4,6 +4,7 @@ class SheetHeader extends StatelessWidget {
   const SheetHeader({
     required this.title,
     this.subtitle,
+    this.leading,
     this.leadingIcon,
     this.leadingAccent,
     this.trailing,
@@ -12,6 +13,7 @@ class SheetHeader extends StatelessWidget {
 
   final String title;
   final String? subtitle;
+  final Widget? leading;
   final IconData? leadingIcon;
   final Color? leadingAccent;
   final Widget? trailing;
@@ -31,7 +33,10 @@ class SheetHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          if (leadingIcon != null) ...[
+          if (leading != null) ...[
+            leading!,
+            const SizedBox(width: 16),
+          ] else if (leadingIcon != null) ...[
             Container(
               width: 44,
               height: 44,
@@ -55,6 +60,7 @@ class SheetHeader extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleLarge?.copyWith(
                     color: scheme.onSurface,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 if (subtitle != null && subtitle!.isNotEmpty) ...[
