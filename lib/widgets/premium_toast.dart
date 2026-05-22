@@ -3,26 +3,36 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../core/theme/app_theme.dart';
+import '../models/auth_user.dart';
+import 'fab_anchor.dart';
+import 'profile_avatar.dart';
+
+const double _kFabSize = 56;
+const double _kAvatarSize = 36;
 
 OverlayEntry? _activePremiumToast;
 
 void showPremiumToast(
   BuildContext context, {
-  required String title,
   required String message,
-  IconData icon = Icons.info_outline_rounded,
+  IconData? icon,
+  AuthUser? avatarUser,
   Duration duration = const Duration(milliseconds: 3500),
 }) {
-  final overlay = Overlay.maybeOf(context);
+  assert(
+    icon != null || avatarUser != null,
+    'showPremiumToast needs either an icon or an avatarUser.',
+  );
+  final overlay = Overlay.maybeOf(context, rootOverlay: true);
   if (overlay == null) return;
 
   _activePremiumToast?.remove();
   late final OverlayEntry entry;
   entry = OverlayEntry(
     builder: (_) => _PremiumToastOverlay(
-      title: title,
       message: message,
       icon: icon,
+      avatarUser: avatarUser,
       duration: duration,
       onDismissed: () {
         if (identical(_activePremiumToast, entry)) {
@@ -38,16 +48,16 @@ void showPremiumToast(
 
 class _PremiumToastOverlay extends StatefulWidget {
   const _PremiumToastOverlay({
-    required this.title,
     required this.message,
     required this.icon,
+    required this.avatarUser,
     required this.duration,
     required this.onDismissed,
   });
 
-  final String title;
   final String message;
-  final IconData icon;
+  final IconData? icon;
+  final AuthUser? avatarUser;
   final Duration duration;
   final VoidCallback onDismissed;
 
@@ -80,7 +90,7 @@ class _PremiumToastOverlayState extends State<_PremiumToastOverlay>
     _opacity = curved;
     _scale = Tween<double>(begin: .96, end: 1).animate(curved);
     _offset = Tween<Offset>(
-      begin: const Offset(0, -.16),
+      begin: const Offset(0, .18),
       end: Offset.zero,
     ).animate(curved);
 
@@ -104,28 +114,97 @@ class _PremiumToastOverlayState extends State<_PremiumToastOverlay>
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      top: 0,
-      left: AppSpacing.md,
-      right: AppSpacing.md,
-      child: SafeArea(
-        bottom: false,
-        child: IgnorePointer(
-          child: Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.sm),
+    return ValueListenableBuilder<double>(
+      valueListenable: fabAnchorBottom,
+      builder: (context, anchor, _) {
+        final fallback =
+            MediaQuery.paddingOf(context).bottom + AppSpacing.md;
+        final bottom = anchor > 0 ? anchor : fallback;
+        return Positioned(
+          bottom: bottom,
+          left: AppSpacing.md,
+          right: AppSpacing.md + _kFabSize + AppSpacing.sm,
+          child: IgnorePointer(
             child: FadeTransition(
               opacity: _opacity,
               child: SlideTransition(
                 position: _offset,
                 child: ScaleTransition(
                   scale: _scale,
+                  alignment: Alignment.bottomLeft,
                   child: _PremiumToastCard(
-                    title: widget.title,
                     message: widget.message,
                     icon: widget.icon,
+                    avatarUser: widget.avatarUser,
                   ),
                 ),
               ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PremiumToastCard extends StatelessWidget {
+  const _PremiumToastCard({
+    required this.message,
+    required this.icon,
+    required this.avatarUser,
+  });
+
+  final String message;
+  final IconData? icon;
+  final AuthUser? avatarUser;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final brightness = theme.brightness;
+
+    return Material(
+      color: scheme.surfaceContainerHigh,
+      surfaceTintColor: scheme.surfaceTint,
+      shadowColor: scheme.shadow,
+      elevation: AppElevation.level3,
+      borderRadius: AppRadii.lgR,
+      clipBehavior: Clip.antiAlias,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: AppRadii.lgR,
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: .64),
+          ),
+          boxShadow: AppElevation.shadowFor(AppElevation.level3, brightness),
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: _kFabSize),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xs,
+              vertical: AppSpacing.xs,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _Leading(icon: icon, avatarUser: avatarUser),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    message,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w500,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+              ],
             ),
           ),
         ),
@@ -134,99 +213,27 @@ class _PremiumToastOverlayState extends State<_PremiumToastOverlay>
   }
 }
 
-class _PremiumToastCard extends StatelessWidget {
-  const _PremiumToastCard({
-    required this.title,
-    required this.message,
-    required this.icon,
-  });
+class _Leading extends StatelessWidget {
+  const _Leading({required this.icon, required this.avatarUser});
 
-  final String title;
-  final String message;
-  final IconData icon;
+  final IconData? icon;
+  final AuthUser? avatarUser;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final brightness = theme.brightness;
-
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: Material(
-          color: scheme.surfaceContainerHigh,
-          surfaceTintColor: scheme.surfaceTint,
-          shadowColor: scheme.shadow,
-          elevation: AppElevation.level3,
-          borderRadius: AppRadii.lgR,
-          clipBehavior: Clip.antiAlias,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: AppRadii.lgR,
-              border: Border.all(
-                color: scheme.outlineVariant.withValues(alpha: .64),
-              ),
-              boxShadow: AppElevation.shadowFor(
-                AppElevation.level3,
-                brightness,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.sm,
-                AppSpacing.md,
-                AppSpacing.sm,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: AppColors.warning.withValues(alpha: .16),
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: Icon(icon, color: AppColors.warning, size: 20),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: scheme.onSurface,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          message,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+    if (avatarUser != null) {
+      return ProfileAvatar(user: avatarUser, size: _kAvatarSize);
+    }
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: _kAvatarSize,
+      height: _kAvatarSize,
+      decoration: BoxDecoration(
+        color: scheme.secondaryContainer,
+        shape: BoxShape.circle,
       ),
+      alignment: Alignment.center,
+      child: Icon(icon, color: scheme.onSecondaryContainer, size: 20),
     );
   }
 }

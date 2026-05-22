@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../widgets/premium_toast.dart';
 import '../drive/drive_controller.dart';
 import '../drive/drive_tab_commands.dart';
 import '../search/search_controller.dart';
@@ -153,12 +154,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _loading = true;
       _error = null;
     });
+    final rootContext = Navigator.of(context, rootNavigator: true).context;
     try {
       await ref
           .read(authControllerProvider)
           .login(token, authPayload: authPayload);
       await _resetForCommittedAccount();
-      if (mounted) context.go(_authenticatedDestination());
+      if (!mounted) return;
+      final destination = _authenticatedDestination();
+      final newActive = ref.read(authControllerProvider).activeAccount;
+      // ignore: use_build_context_synchronously
+      context.go(destination);
+      if (newActive != null && rootContext.mounted) {
+        showPremiumToast(
+          // ignore: use_build_context_synchronously
+          rootContext,
+          message: 'Switched to ${newActive.displayName}.',
+          avatarUser: newActive.toAuthUser(),
+        );
+      }
     } catch (err) {
       final repo = ref.read(authRepositoryProvider);
       if (mounted) setState(() => _error = repo.api.errorMessage(err));

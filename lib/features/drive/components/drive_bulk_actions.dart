@@ -119,9 +119,7 @@ class DriveBulkActions {
 void showFolderNotEmptyToast(BuildContext context) {
   showPremiumToast(
     context,
-    title: 'Folder isn’t empty',
-    message:
-        'Move or delete the files and subfolders inside this folder before deleting it.',
-    icon: Icons.info_outline_rounded,
+    message: 'Folder must be empty before deleting.',
+    icon: Icons.folder_off_outlined,
   );
 }

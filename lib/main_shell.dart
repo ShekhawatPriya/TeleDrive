@@ -18,6 +18,7 @@ import 'features/share/share_controller.dart';
 import 'features/upload/ui/components/bottom_action_system.dart';
 import 'widgets/ios_more_menu.dart';
 import 'widgets/main_tab_menu_sections.dart';
+import 'widgets/fab_anchor.dart';
 import 'widgets/floating_pill_navigation_bar.dart';
 import 'widgets/teledrive_app_bar.dart';
 
@@ -125,9 +126,11 @@ class _MainShellState extends ConsumerState<MainShell> {
                 left: AppSpacing.md,
                 right: AppSpacing.md,
                 bottom: AppSpacing.md,
-                child: BottomActionSystem(
-                  showFab: routeIndex == 0,
-                  parentId: null,
+                child: FabAnchorPublisher(
+                  child: BottomActionSystem(
+                    showFab: routeIndex == 0,
+                    parentId: null,
+                  ),
                 ),
               ),
             ],

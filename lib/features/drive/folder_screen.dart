@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/safe_navigation.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/fab_anchor.dart';
 import '../../widgets/ios_more_menu.dart';
 
 import '../upload/ui/components/bottom_action_system.dart';
@@ -121,9 +122,11 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
             bottom: 16,
             child: SafeArea(
               top: false,
-              child: BottomActionSystem(
-                showFab: !selectMode,
-                parentId: widget.folderId,
+              child: FabAnchorPublisher(
+                child: BottomActionSystem(
+                  showFab: !selectMode,
+                  parentId: widget.folderId,
+                ),
               ),
             ),
           ),

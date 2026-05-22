@@ -116,9 +116,8 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
     if (auth.vault.accounts.length >= auth.vault.maxSavedAccounts) {
       showPremiumToast(
         context,
-        title: 'Account limit reached',
         message:
-            'You can keep up to ${auth.vault.maxSavedAccounts} accounts on this device.',
+            'Reached the ${auth.vault.maxSavedAccounts}-account limit on this device.',
         icon: Icons.person_add_disabled_outlined,
       );
       return;
@@ -149,7 +148,6 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
     if (account.tokenStatus != TokenStatus.valid) {
       showPremiumToast(
         context,
-        title: 'Session expired',
         message: 'Log in again to use ${account.displayName}.',
         icon: Icons.lock_clock_outlined,
       );
@@ -162,24 +160,27 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
       await _ref.read(authControllerProvider).switchToAccount(account.userId);
       await _resetAccountScopedState();
       if (context.mounted) {
+        final rootContext = Navigator.of(
+          context,
+          rootNavigator: true,
+        ).context;
         Navigator.of(context).maybePop();
         context.go('/drive');
-        showPremiumToast(
-          context,
-          title: 'Account switched',
-          message: 'Now using ${account.displayName}.',
-          icon: Icons.account_circle_outlined,
-        );
+        final newActive = _ref.read(authControllerProvider).activeAccount;
+        if (newActive != null) {
+          showPremiumToast(
+            rootContext,
+            message: 'Switched to ${newActive.displayName}.',
+            avatarUser: newActive.toAuthUser(),
+          );
+        }
       }
     } catch (err) {
       if (context.mounted) {
         showPremiumToast(
           context,
-          title: 'Could not switch account',
-          message: _ref
-              .read(authRepositoryProvider)
-              .api
-              .errorMessage(err, 'Please try again.'),
+          message:
+              "Couldn't switch: ${_ref.read(authRepositoryProvider).api.errorMessage(err, 'Please try again.')}",
           icon: Icons.error_outline_rounded,
         );
       }
@@ -203,26 +204,38 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
         await _resetAccountScopedState();
       }
       if (context.mounted) {
+        final rootContext = Navigator.of(
+          context,
+          rootNavigator: true,
+        ).context;
         Navigator.of(context).maybePop();
         context.go(stillAuthenticated ? '/drive' : '/welcome');
-        showPremiumToast(
-          context,
-          title: stillAuthenticated ? 'Account removed' : 'Signed out',
-          message: stillAuthenticated
-              ? 'Removed ${account.displayName} from this device.'
-              : 'No saved accounts remain on this device.',
-          icon: Icons.person_remove_outlined,
-        );
+        if (stillAuthenticated) {
+          final newActive = _ref.read(authControllerProvider).activeAccount;
+          if (wasActive && newActive != null) {
+            showPremiumToast(
+              rootContext,
+              message: 'Switched to ${newActive.displayName}.',
+              avatarUser: newActive.toAuthUser(),
+            );
+          } else if (!wasActive) {
+            showPremiumToast(
+              rootContext,
+              message: 'Removed ${account.displayName}.',
+              avatarUser: newActive?.toAuthUser(),
+              icon: newActive == null
+                  ? Icons.person_remove_outlined
+                  : null,
+            );
+          }
+        }
       }
     } catch (err) {
       if (context.mounted) {
         showPremiumToast(
           context,
-          title: 'Remove failed',
-          message: _ref
-              .read(authRepositoryProvider)
-              .api
-              .errorMessage(err, 'Please try again.'),
+          message:
+              "Couldn't remove: ${_ref.read(authRepositoryProvider).api.errorMessage(err, 'Please try again.')}",
           icon: Icons.error_outline_rounded,
         );
       }
@@ -236,9 +249,7 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
     if (!upload.hasBlockingUploads) return false;
     showPremiumToast(
       context,
-      title: 'Uploads still running',
-      message:
-          'Please wait for current uploads to finish or cancel them before switching accounts.',
+      message: 'Finish or cancel uploads first.',
       icon: Icons.cloud_upload_outlined,
     );
     return true;
