@@ -237,13 +237,31 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
       debugPrint('[DEBUG] Item $i: name = ${item.name}, status = ${item.status}, localId = ${item.localId}');
     }
     if (!upload.hasBlockingUploads) return false;
-    _showUploadInProgressDialog(context);
+    
+    try {
+      _showUploadInProgressDialog(context).catchError((Object err, StackTrace stack) {
+        debugPrint('[ERROR] checkUploadsBlocked dialog async error: $err\n$stack');
+        _showFallbackToast();
+      });
+    } catch (err, stack) {
+      debugPrint('[ERROR] checkUploadsBlocked dialog sync error: $err\n$stack');
+      _showFallbackToast();
+    }
+    
     return true;
+  }
+
+  void _showFallbackToast() {
+    showAppPremiumToast(
+      message: 'Finish or cancel uploads first.',
+      icon: Icons.cloud_upload_outlined,
+    );
   }
 
   Future<void> _showUploadInProgressDialog(BuildContext context) {
     return showDialog<void>(
       context: context,
+      useRootNavigator: true,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Upload in Progress'),
         content: const Text(
