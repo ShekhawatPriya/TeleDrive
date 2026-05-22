@@ -91,7 +91,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                   child: CustomScrollView(
                     slivers: [
                       if (folders.isNotEmpty)
-                        const DriveSectionHeader('Folders'),
+                        const DriveSectionHeader('Folders', bottomPadding: 0),
                       DriveFolderSliver(
                         folders: folders,
                         selectMode: true,
@@ -101,7 +101,8 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                         onFolderMore: (folder) =>
                             DriveItemActions.openFolder(context, ref, folder),
                       ),
-                      if (files.isNotEmpty) const DriveSectionHeader('Files'),
+                      if (files.isNotEmpty)
+                        const DriveSectionHeader('Files', bottomPadding: 0),
                       DriveFilesSliver(
                         files: files,
                         grid: grid,
@@ -133,10 +134,10 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                   0,
                   AppSpacing.xs,
                   0,
-                  AppSpacing.xs,
+                  0,
                 ),
-                child: DriveTrashEntry(
-                  onTap: () => context.safePush('/settings/trash'),
+                child: DriveQuickActions(
+                  onTrashTap: () => context.safePush('/settings/trash'),
                 ),
               ),
             ),
@@ -144,7 +145,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
               const SliverFillRemaining(child: SkeletonList()),
             if (state.error != null) _ErrorBanner(state.error!),
             if (recent.isNotEmpty && query.isEmpty) ...[
-              const DriveSectionHeader('Recent'),
+              const DriveSectionHeader('Recent', topPadding: AppSpacing.sm),
               SliverToBoxAdapter(
                 child: DriveRecentsStrip(
                   files: recent,
@@ -163,7 +164,8 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                       : 'Try a different file or folder name.',
                 ),
               ),
-            if (folders.isNotEmpty) const DriveSectionHeader('Folders'),
+            if (folders.isNotEmpty)
+              const DriveSectionHeader('Folders', bottomPadding: 0),
             DriveFolderSliver(
               folders: folders,
               selectMode: false,
@@ -173,7 +175,8 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
               onFolderMore: (folder) =>
                   DriveItemActions.openFolder(context, ref, folder),
             ),
-            if (files.isNotEmpty) const DriveSectionHeader('Files'),
+            if (files.isNotEmpty)
+              const DriveSectionHeader('Files', bottomPadding: 0),
             DriveFilesSliver(
               files: files,
               grid: grid,
