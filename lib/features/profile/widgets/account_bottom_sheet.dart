@@ -63,12 +63,9 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
     });
   }
 
-  void _toggleSwitchAccountCard(SwitchAccountNotifier notifier) {
+  void _toggleSwitchAccountCard() {
     setState(() {
       _isExpanded = !_isExpanded;
-      if (!_isExpanded) {
-        notifier.setRemoveMode(false);
-      }
     });
   }
 

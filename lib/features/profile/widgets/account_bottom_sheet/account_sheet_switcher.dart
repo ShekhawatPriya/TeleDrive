@@ -20,7 +20,7 @@ extension _AccountSheetSwitcher on _AccountBottomSheetState {
               if (!_isExpanded && notifier.checkUploadsBlocked(context)) {
                 return;
               }
-              _toggleSwitchAccountCard(notifier);
+              _toggleSwitchAccountCard();
             },
             borderRadius: _isExpanded
                 ? const BorderRadius.vertical(
@@ -93,7 +93,7 @@ extension _AccountSheetSwitcher on _AccountBottomSheetState {
                             'switch-account-${account.userId}-${account.resolvedPhotoUrl ?? 'fallback'}',
                           ),
                           onTap: () {
-                            if (switchState.isRemoveMode || isActive) return;
+                            if (isActive) return;
                             notifier.switchActiveAccount(context, account);
                           },
                           child: Padding(
@@ -103,35 +103,7 @@ extension _AccountSheetSwitcher on _AccountBottomSheetState {
                             ),
                             child: Row(
                               children: [
-                                Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    _buildAvatarWidget(account, size: 40),
-                                    if (switchState.isRemoveMode)
-                                      Positioned(
-                                        top: -6,
-                                        left: -6,
-                                        child: GestureDetector(
-                                          onTap: () => notifier.removeAccount(
-                                            context,
-                                            account,
-                                          ),
-                                          child: Container(
-                                            padding: const EdgeInsets.all(2),
-                                            decoration: const BoxDecoration(
-                                              color: Colors.red,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(
-                                              Icons.close_rounded,
-                                              size: 12,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
+                                _buildAvatarWidget(account, size: 40),
                                 const SizedBox(width: AppSpacing.md),
                                 Expanded(
                                   child: Column(
@@ -168,7 +140,7 @@ extension _AccountSheetSwitcher on _AccountBottomSheetState {
                                       color: scheme.primary,
                                     ),
                                   )
-                                else if (isActive && !switchState.isRemoveMode)
+                                else if (isActive)
                                   TextButton(
                                     onPressed: () => notifier.removeAccount(
                                       context,
@@ -199,16 +171,6 @@ extension _AccountSheetSwitcher on _AccountBottomSheetState {
                     icon: Icons.person_add_alt_1_outlined,
                     label: 'Add another account',
                     onTap: () => notifier.addAnotherAccount(context),
-                  ),
-                  _buildSwitchOptionRow(
-                    context,
-                    icon: switchState.isRemoveMode
-                        ? Icons.check_circle_outline_rounded
-                        : Icons.manage_accounts_outlined,
-                    label: switchState.isRemoveMode
-                        ? 'Done removing'
-                        : 'Remove account',
-                    onTap: notifier.toggleRemoveMode,
                   ),
                 ],
               ),

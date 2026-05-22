@@ -17,20 +17,17 @@ import '../../upload/upload_controller.dart';
 class SwitchAccountState {
   final List<SavedAccount> accounts;
   final int? activeUserId;
-  final bool isRemoveMode;
   final int? busyUserId;
 
   const SwitchAccountState({
     required this.accounts,
     required this.activeUserId,
-    required this.isRemoveMode,
     this.busyUserId,
   });
 
   SwitchAccountState copyWith({
     List<SavedAccount>? accounts,
     int? activeUserId,
-    bool? isRemoveMode,
     int? busyUserId,
     bool clearBusyUserId = false,
     bool clearActiveUserId = false,
@@ -40,7 +37,6 @@ class SwitchAccountState {
       activeUserId: clearActiveUserId
           ? null
           : (activeUserId ?? this.activeUserId),
-      isRemoveMode: isRemoveMode ?? this.isRemoveMode,
       busyUserId: clearBusyUserId ? null : (busyUserId ?? this.busyUserId),
     );
   }
@@ -52,7 +48,6 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
         const SwitchAccountState(
           accounts: [],
           activeUserId: null,
-          isRemoveMode: false,
         ),
       ) {
     _syncFromAuth();
@@ -102,13 +97,7 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
     );
   }
 
-  void toggleRemoveMode() {
-    state = state.copyWith(isRemoveMode: !state.isRemoveMode);
-  }
 
-  void setRemoveMode(bool isRemove) {
-    state = state.copyWith(isRemoveMode: isRemove);
-  }
 
   Future<void> addAnotherAccount(BuildContext context) async {
     if (checkUploadsBlocked(context)) return;
