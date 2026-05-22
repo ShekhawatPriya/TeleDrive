@@ -140,6 +140,16 @@ class DriveRepository {
   Future<void> restoreFolder(String id) async =>
       api.dio.post('/folders/$id/restore').then((_) {});
 
+  Future<void> purgeAllTrash() async {
+    final results = await Future.wait([listTrashFiles(), listTrashFolders()]);
+    final files = results[0] as List<DriveFile>;
+    final folders = results[1] as List<DriveFolder>;
+    await Future.wait([
+      ...folders.map((f) => purgeFolder(f.id)),
+      ...files.map((f) => purgeFile(f.id)),
+    ]);
+  }
+
   Future<DriveFile> setFileStarred(String id, bool starred) async {
     final res = await api.dio.patch(
       '/files/$id',

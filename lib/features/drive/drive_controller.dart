@@ -263,6 +263,11 @@ class DriveController extends ChangeNotifier {
     await refresh(silent: true, force: true);
   }
 
+  Future<void> purgeAllTrash() async {
+    await _repo.purgeAllTrash();
+    await refresh(silent: true, force: true);
+  }
+
   Future<void> toggleStar(String id, {bool folder = false}) =>
       _toggleStar(id, folder: folder);
 

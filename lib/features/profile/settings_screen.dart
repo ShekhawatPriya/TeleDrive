@@ -25,41 +25,46 @@ class SettingsScreen extends ConsumerWidget {
     final scheme = theme.colorScheme;
 
     return Scaffold(
+      backgroundColor: const Color(0xFF131417),
       appBar: AppBar(
+        backgroundColor: const Color(0xFF131417),
+        elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           tooltip: 'Back',
           onPressed: () => context.pop(),
         ),
-        title: const Text('Settings'),
+        title: const Text(
+          'Settings',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.xxl,
+        padding: const EdgeInsets.only(
+          top: 8,
+          bottom: AppSpacing.xxl,
         ),
         children: [
-          // Section header/title
-          _settingsSectionLabel(context, 'Categories'),
-
-          // Upload Settings Category Card
-          _CategoryNavCard(
-            icon: Icons.cloud_upload_outlined,
-            iconColor: Colors.indigo,
+          _settingsSectionHeader('Categories'),
+          _SettingsTile(
+            icon: Icons.cloud_outlined,
+            iconColor: const Color(0xFF6E7C97),
             title: 'Upload Settings',
             subtitle: 'Manage upload limits, mobile network usage, & renaming',
             onTap: () => Navigator.of(context).push(
               CupertinoPageRoute(builder: (_) => const UploadSettingsScreen()),
             ),
           ),
-
-          // Cache & Storage Category Card
-          _CategoryNavCard(
-            icon: Icons.cleaning_services_rounded,
-            iconColor: Colors.amber[700]!,
+          const _SettingsDivider(),
+          _SettingsTile(
+            icon: Icons.cleaning_services_outlined,
+            iconColor: const Color(0xFFDCA15D),
             title: 'Cache & Storage Settings',
             subtitle: 'Reclaim phone storage and clean local file cache',
             statusText: cache.isLoading ? 'Scanning...' : _formatBytes(cache.totalSize),
@@ -67,55 +72,53 @@ class SettingsScreen extends ConsumerWidget {
               CupertinoPageRoute(builder: (_) => const CacheStorageSettingsScreen()),
             ),
           ),
-
-          // Privacy & Security Category Card
-          _CategoryNavCard(
-            icon: Icons.security_rounded,
-            iconColor: Colors.teal,
+          const _SettingsDivider(),
+          _SettingsTile(
+            icon: Icons.shield_outlined,
+            iconColor: const Color(0xFF8BA698),
             title: 'Privacy & Security Settings',
             subtitle: 'Configure trash bin, share link permissions, & sign out cache',
             onTap: () => Navigator.of(context).push(
               CupertinoPageRoute(builder: (_) => const PrivacySecuritySettingsScreen()),
             ),
           ),
-
-          // Notifications Category Card
-          _CategoryNavCard(
-            icon: Icons.notifications_none_rounded,
-            iconColor: Colors.purple,
+          const _SettingsDivider(),
+          _SettingsTile(
+            icon: Icons.notifications_none_outlined,
+            iconColor: const Color(0xFFC393B5),
             title: 'Notifications Settings',
             subtitle: 'Set up push alerts for completed or failed uploads',
             onTap: () => Navigator.of(context).push(
               CupertinoPageRoute(builder: (_) => const NotificationsSettingsScreen()),
             ),
           ),
+          const _SettingsDivider(),
+          const SizedBox(height: 24),
 
-          const SizedBox(height: AppSpacing.md),
-
-          // Appearance Section (Flat Entry)
-          _settingsSectionLabel(context, 'Appearance'),
-          const SizedBox(height: AppSpacing.xs),
-          ThemePickerCards(
-            mode: ref.watch(themeControllerProvider).mode,
-            onChanged: ref.read(themeControllerProvider).setMode,
+          _settingsSectionHeader('Appearance'),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: ThemePickerCards(
+              mode: ref.watch(themeControllerProvider).mode,
+              onChanged: ref.read(themeControllerProvider).setMode,
+            ),
           ),
+          const SizedBox(height: 28),
 
-          const SizedBox(height: AppSpacing.lg),
-
-          // Telegram Integration Section (Flat Entry)
-          _settingsSectionLabel(context, 'Telegram Integration'),
-          const SizedBox(height: AppSpacing.xs),
-          TelegramStatusCard(
-            connected: auth.telegramConnected,
+          _settingsSectionHeader('Telegram Integration'),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: TelegramStatusCard(
+              connected: auth.telegramConnected,
+            ),
           ),
+          const SizedBox(height: 28),
 
-          const SizedBox(height: AppSpacing.lg),
-
-          // About Section (Flat Entry)
-          _settingsSectionLabel(context, 'About Drive'),
-          const SizedBox(height: AppSpacing.xs),
+          _settingsSectionHeader('About Drive'),
           _InfoCard(
-            iconWidget: GitHubIcon(size: 18, color: scheme.onSurface),
+            iconWidget: GitHubIcon(size: 24, color: const Color(0xFF6E7C97)),
             title: 'GitHub',
             subtitle: 'Open Source Project',
             onTap: AppConfig.openRepository,
@@ -134,6 +137,21 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+Widget _settingsSectionHeader(String label) {
+  return Padding(
+    padding: const EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 8),
+    child: Text(
+      label,
+      style: const TextStyle(
+        color: Color(0xFF6D7F99),
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.3,
+      ),
+    ),
+  );
 }
 
 // ==========================================
@@ -569,8 +587,8 @@ class NotificationsSettingsScreen extends ConsumerWidget {
 // Reusable Premium Design UI Components
 // ==========================================
 
-class _CategoryNavCard extends StatelessWidget {
-  const _CategoryNavCard({
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({
     required this.icon,
     required this.iconColor,
     required this.title,
@@ -588,109 +606,79 @@ class _CategoryNavCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: AppRadii.lgR,
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.35),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: AppRadii.lgR,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: AppRadii.lgR,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: AppSpacing.sm,
-              horizontal: AppSpacing.md,
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: iconColor,
+              size: 24,
             ),
-            child: Row(
-              children: [
-                // Left Icon with soft tinted circle background
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.08),
-                    borderRadius: AppRadii.smR,
-                  ),
-                  child: Icon(
-                    icon,
-                    color: iconColor,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                // Title & Subtitle Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: scheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                // Optional Status Text/Badge
-                if (statusText != null) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: scheme.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      statusText!,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: scheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.xs),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.55),
+                      fontSize: 13,
+                      height: 1.3,
+                    ),
+                  ),
                 ],
-                // Chevron icon
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: scheme.onSurfaceVariant.withValues(alpha: 0.4),
-                  size: 24,
-                ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(width: 12),
+            if (statusText != null) ...[
+              Text(
+                statusText!,
+                style: const TextStyle(
+                  color: Color(0xFF6D7F99),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFF5E626B),
+              size: 20,
+            ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+class _SettingsDivider extends StatelessWidget {
+  const _SettingsDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Divider(
+      color: Colors.white.withValues(alpha: 0.06),
+      height: 1,
+      thickness: 1,
+      indent: 64, // Align with the start of title/subtitle text
+      endIndent: 0,
     );
   }
 }
@@ -843,68 +831,47 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final content = Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: AppSpacing.sm + 4,
-        horizontal: AppSpacing.md,
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: scheme.onSurface.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Center(child: iconWidget),
             ),
-            child: iconWidget,
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: scheme.onSurface,
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
-                ),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.55),
+                      fontSize: 13,
+                      height: 1.3,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    );
-
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      color: scheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: AppRadii.mdR,
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
-      ),
-      child: onTap == null
-          ? content
-          : InkWell(
-              onTap: onTap,
-              borderRadius: AppRadii.mdR,
-              child: content,
-            ),
     );
   }
 }

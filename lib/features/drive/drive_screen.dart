@@ -130,14 +130,13 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.sm,
-                  AppSpacing.md,
+                  0,
+                  AppSpacing.xs,
+                  0,
                   AppSpacing.xs,
                 ),
-                child: DriveStoragePill(
-                  used: state.usedStorage,
-                  onTap: () => context.safePush('/profile?scrollToStorage=true'),
+                child: DriveTrashEntry(
+                  onTap: () => context.safePush('/settings/trash'),
                 ),
               ),
             ),

@@ -1,61 +1,51 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/file_type_detector.dart';
 
-/// Storage usage card. Renders an M3 outlined card with the bytes used and a
-/// 4dp linear progress indicator beneath, sized to share its row with a
-/// trailing action via [Expanded].
-class DriveStoragePill extends StatelessWidget {
-  const DriveStoragePill({required this.used, this.onTap, super.key});
-  final int used;
+/// Flat row that opens the Trash screen. Replaces the storage usage card on the
+/// home screen — visually mirrors `_FlatActionTile` from the settings UI so
+/// the surface feels continuous with the rest of the app.
+class DriveTrashEntry extends StatelessWidget {
+  const DriveTrashEntry({this.onTap, super.key});
+
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    return Card(
-      margin: EdgeInsets.zero,
-      color: scheme.surfaceContainerLow,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: AppRadii.mdR,
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
-      clipBehavior: Clip.antiAlias,
+
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.sm,
+            horizontal: AppSpacing.md,
+          ),
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.cloud_outlined,
-                    size: 18,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Text(
-                    '${formatFileSize(used)} used',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                ],
+              Icon(
+                Icons.delete_outline_rounded,
+                size: 22,
+                color: scheme.onSurfaceVariant,
               ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(2),
-                child: LinearProgressIndicator(
-                  value: used > 0 ? 1 : 0,
-                  minHeight: 4,
-                  backgroundColor: scheme.surfaceContainerHighest,
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  'Trash',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface,
+                    height: 1.2,
+                  ),
                 ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.4),
+                size: 22,
               ),
             ],
           ),
