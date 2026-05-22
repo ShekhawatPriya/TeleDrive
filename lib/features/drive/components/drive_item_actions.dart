@@ -37,6 +37,8 @@ class DriveItemActions {
         label: 'Move',
         icon: Icons.drive_file_move_outline,
       ),
+      _lockAction,
+      _archiveAction,
       _starAction(file.starred),
       _deleteAction,
     ];
@@ -76,6 +78,8 @@ class DriveItemActions {
       }
     } else if (action == 'star') {
       await controller.toggleStar(file.id);
+    } else if (action == 'lock' || action == 'archive') {
+      return;
     }
   }
 
@@ -98,6 +102,8 @@ class DriveItemActions {
         label: 'Move',
         icon: Icons.drive_file_move_outline,
       ),
+      _lockAction,
+      _archiveAction,
       _starAction(folder.starred),
       _deleteAction,
     ];
@@ -148,6 +154,8 @@ class DriveItemActions {
       }
     } else if (action == 'star') {
       await controller.toggleStar(folder.id, folder: true);
+    } else if (action == 'lock' || action == 'archive') {
+      return;
     } else if (action == 'rename' && context.mounted) {
       final name = await promptFolderName(
         context,
@@ -167,6 +175,18 @@ const _deleteAction = SheetActionItem(
   label: 'Delete',
   icon: Icons.delete_outline,
   destructive: true,
+);
+
+const _lockAction = SheetActionItem(
+  id: 'lock',
+  label: 'Lock',
+  icon: Icons.lock_outline,
+);
+
+const _archiveAction = SheetActionItem(
+  id: 'archive',
+  label: 'Archive',
+  icon: Icons.archive_outlined,
 );
 
 SheetActionItem _shareAction(bool shared) {
@@ -253,5 +273,3 @@ String _folderSubtitle(DriveFolder folder) {
   }
   return parts.join(' • ');
 }
-
-

@@ -63,9 +63,19 @@ class DriveActionSheet extends StatelessWidget {
     }
 
     // Categorize actions: horizontal quick actions vs vertical list actions
-    final quickActionIds = {'share', 'revoke_share', 'download', 'star', 'unstar'};
-    final quickActions = actions.where((a) => quickActionIds.contains(a.id)).toList();
-    final otherActions = actions.where((a) => !quickActionIds.contains(a.id) && !a.destructive).toList();
+    final quickActionIds = {
+      'share',
+      'revoke_share',
+      'download',
+      'star',
+      'unstar',
+    };
+    final quickActions = actions
+        .where((a) => quickActionIds.contains(a.id))
+        .toList();
+    final otherActions = actions
+        .where((a) => !quickActionIds.contains(a.id) && !a.destructive)
+        .toList();
     final destructiveActions = actions.where((a) => a.destructive).toList();
 
     return SafeArea(
@@ -82,7 +92,7 @@ class DriveActionSheet extends StatelessWidget {
             leadingIcon: leadingIcon,
             leadingAccent: leadingAccent,
           ),
-          
+
           // Horizontal Quick Actions Row
           if (quickActions.isNotEmpty) ...[
             Padding(
@@ -104,29 +114,32 @@ class DriveActionSheet extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
-          
+
           // Vertical actions (e.g., Move, Rename)
           for (final action in otherActions)
             SheetActionTile(
               label: action.label,
               icon: action.icon,
               destructive: action.destructive,
+              compact: true,
               onTap: () => Navigator.pop(context, action.id),
             ),
-          
+
           // Divider before destructive actions (e.g. Delete)
-          if (destructiveActions.isNotEmpty && (quickActions.isNotEmpty || otherActions.isNotEmpty))
-            const Divider(height: 16, indent: 24, endIndent: 24),
-          
+          if (destructiveActions.isNotEmpty &&
+              (quickActions.isNotEmpty || otherActions.isNotEmpty))
+            const Divider(height: 8, indent: 24, endIndent: 24),
+
           // Destructive actions
           for (final action in destructiveActions)
             SheetActionTile(
               label: action.label,
               icon: action.icon,
               destructive: action.destructive,
+              compact: true,
               onTap: () => Navigator.pop(context, action.id),
             ),
-            
+
           const SizedBox(height: 8),
         ],
       ),
@@ -166,11 +179,7 @@ class QuickActionButton extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
-              child: Icon(
-                action.icon,
-                color: scheme.onSurface,
-                size: 26,
-              ),
+              child: Icon(action.icon, color: scheme.onSurface, size: 26),
             ),
             const SizedBox(height: 8),
             Text(

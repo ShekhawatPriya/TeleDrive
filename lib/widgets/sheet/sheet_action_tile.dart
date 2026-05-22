@@ -7,6 +7,7 @@ class SheetActionTile extends StatelessWidget {
     required this.onTap,
     this.subtitle,
     this.destructive = false,
+    this.compact = false,
     super.key,
   });
 
@@ -15,6 +16,7 @@ class SheetActionTile extends StatelessWidget {
   final VoidCallback onTap;
   final String? subtitle;
   final bool destructive;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +40,8 @@ class SheetActionTile extends StatelessWidget {
           ? null
           : Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis),
       contentPadding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
+      dense: compact,
+      visualDensity: compact ? const VisualDensity(vertical: -2) : null,
       minLeadingWidth: 24,
       horizontalTitleGap: 16,
     );
