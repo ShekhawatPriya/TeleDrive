@@ -25,30 +25,21 @@ class SettingsScreen extends ConsumerWidget {
     final scheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF131417),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF131417),
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back),
           tooltip: 'Back',
           onPressed: () => context.pop(),
         ),
-        title: const Text(
-          'Settings',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        title: const Text('Settings'),
       ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.only(top: 8, bottom: AppSpacing.xxl),
         children: [
-          _settingsSectionHeader('Categories'),
+          _settingsSectionHeader(context, 'Categories'),
           _SettingsTile(
             icon: Icons.cloud_outlined,
             iconColor: const Color(0xFF6E7C97),
@@ -101,7 +92,7 @@ class SettingsScreen extends ConsumerWidget {
           const _SettingsDivider(),
           const SizedBox(height: 24),
 
-          _settingsSectionHeader('Appearance'),
+          _settingsSectionHeader(context, 'Appearance'),
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -112,7 +103,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 28),
 
-          _settingsSectionHeader('Telegram Integration'),
+          _settingsSectionHeader(context, 'Telegram Integration'),
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -120,9 +111,9 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 28),
 
-          _settingsSectionHeader('About Drive'),
+          _settingsSectionHeader(context, 'About Drive'),
           _InfoCard(
-            iconWidget: GitHubIcon(size: 24, color: const Color(0xFF6E7C97)),
+            iconWidget: GitHubIcon(size: 24, color: scheme.onSurfaceVariant),
             title: 'GitHub',
             subtitle: 'Open Source Project',
             onTap: AppConfig.openRepository,
@@ -143,16 +134,17 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-Widget _settingsSectionHeader(String label) {
+Widget _settingsSectionHeader(BuildContext context, String label) {
+  final theme = Theme.of(context);
+  final scheme = theme.colorScheme;
+
   return Padding(
     padding: const EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 8),
     child: Text(
       label,
-      style: const TextStyle(
-        color: Color(0xFF6D7F99),
-        fontSize: 13,
+      style: theme.textTheme.labelMedium?.copyWith(
+        color: scheme.primary,
         fontWeight: FontWeight.w600,
-        letterSpacing: 0.3,
       ),
     ),
   );
@@ -178,7 +170,6 @@ Widget _settingsSectionLabel(BuildContext context, String label) {
       style: theme.textTheme.titleSmall?.copyWith(
         color: theme.colorScheme.primary,
         fontWeight: FontWeight.w600,
-        letterSpacing: 0.5,
       ),
     ),
   );
@@ -632,6 +623,9 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -648,18 +642,16 @@ class _SettingsTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      fontSize: 13,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
                       height: 1.3,
                     ),
                   ),
@@ -670,17 +662,16 @@ class _SettingsTile extends StatelessWidget {
             if (statusText != null) ...[
               Text(
                 statusText!,
-                style: const TextStyle(
-                  color: Color(0xFF6D7F99),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(width: 8),
             ],
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
-              color: Color(0xFF5E626B),
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
               size: 20,
             ),
           ],
@@ -695,8 +686,12 @@ class _SettingsDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Divider(
-      color: Colors.white.withValues(alpha: 0.06),
+      color: scheme.outlineVariant.withValues(
+        alpha: scheme.brightness == Brightness.dark ? 0.18 : 0.5,
+      ),
       height: 1,
       thickness: 1,
       indent: 64, // Align with the start of title/subtitle text
@@ -854,6 +849,9 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -870,18 +868,16 @@ class _InfoCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      fontSize: 13,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
                       height: 1.3,
                     ),
                   ),
