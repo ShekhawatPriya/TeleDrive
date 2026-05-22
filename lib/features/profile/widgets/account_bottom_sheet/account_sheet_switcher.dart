@@ -3,8 +3,8 @@ part of '../account_bottom_sheet.dart';
 extension _AccountSheetSwitcher on _AccountBottomSheetState {
   Widget _buildSwitchAccountCard(
     BuildContext context,
-    TelegramAccount activeAccount,
-    List<TelegramAccount> otherAccounts,
+    SavedAccount activeAccount,
+    List<SavedAccount> otherAccounts,
   ) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
@@ -79,12 +79,14 @@ extension _AccountSheetSwitcher on _AccountBottomSheetState {
                       itemCount: switchState.accounts.length,
                       itemBuilder: (context, index) {
                         final account = switchState.accounts[index];
-                        final isActive = !account.isMock;
+                        final isActive =
+                            account.userId == switchState.activeUserId;
+                        final isBusy = account.userId == switchState.busyUserId;
 
                         return InkWell(
                           onTap: () {
                             if (switchState.isRemoveMode || isActive) return;
-                            notifier.switchActiveAccount(account);
+                            notifier.switchActiveAccount(context, account);
                           },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
@@ -149,7 +151,16 @@ extension _AccountSheetSwitcher on _AccountBottomSheetState {
                                     ],
                                   ),
                                 ),
-                                if (isActive && !switchState.isRemoveMode)
+                                if (isBusy)
+                                  SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: scheme.primary,
+                                    ),
+                                  )
+                                else if (isActive && !switchState.isRemoveMode)
                                   TextButton(
                                     onPressed: () => notifier.removeAccount(
                                       context,
@@ -159,7 +170,7 @@ extension _AccountSheetSwitcher on _AccountBottomSheetState {
                                       foregroundColor: scheme.error,
                                       visualDensity: VisualDensity.compact,
                                     ),
-                                    child: const Text('Sign Out'),
+                                    child: const Text('Remove'),
                                   ),
                               ],
                             ),
@@ -179,15 +190,7 @@ extension _AccountSheetSwitcher on _AccountBottomSheetState {
                     context,
                     icon: Icons.person_add_alt_1_outlined,
                     label: 'Add another account',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Multiple Telegram account login will be supported soon!',
-                          ),
-                        ),
-                      );
-                    },
+                    onTap: () => notifier.addAnotherAccount(context),
                   ),
                   _buildSwitchOptionRow(
                     context,

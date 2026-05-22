@@ -34,11 +34,17 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       const allowedUnauthRoutes = ['/welcome', '/login', '/privacy', '/terms'];
       final currentRoute = state.matchedLocation;
+      final loginMode = LoginModeX.fromQuery(state.uri.queryParameters['mode']);
+      final isAccountLoginMode =
+          loginMode == LoginMode.addAccount ||
+          loginMode == LoginMode.reauthenticateAccount;
 
       if (!auth.isAuthenticated) {
         if (allowedUnauthRoutes.contains(currentRoute)) return null;
         return '/welcome';
       }
+
+      if (currentRoute == '/login' && isAccountLoginMode) return null;
 
       if (auth.needsCommunityOnboarding) {
         return currentRoute == '/community-setup' ? null : '/community-setup';
@@ -51,7 +57,16 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/', builder: (_, __) => const SplashScreen()),
-      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(
+        path: '/login',
+        builder: (_, state) => LoginScreen(
+          mode: LoginModeX.fromQuery(state.uri.queryParameters['mode']),
+          returnTo: state.uri.queryParameters['returnTo'],
+          targetUserId: int.tryParse(
+            state.uri.queryParameters['targetUserId'] ?? '',
+          ),
+        ),
+      ),
       GoRoute(path: '/welcome', builder: (_, __) => const LandingScreen()),
       GoRoute(
         path: '/community-setup',

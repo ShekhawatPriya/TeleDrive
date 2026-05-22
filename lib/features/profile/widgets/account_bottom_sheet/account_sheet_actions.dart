@@ -103,7 +103,7 @@ extension _AccountSheetActions on _AccountBottomSheetState {
 
   Widget _buildOverlappingAvatars(
     BuildContext context,
-    List<TelegramAccount> accounts,
+    List<SavedAccount> accounts,
   ) {
     final scheme = Theme.of(context).colorScheme;
 
@@ -156,7 +156,7 @@ extension _AccountSheetActions on _AccountBottomSheetState {
     );
   }
 
-  Widget _buildAvatarCircle(TelegramAccount account, {required double size}) {
+  Widget _buildAvatarCircle(SavedAccount account, {required double size}) {
     final scheme = Theme.of(context).colorScheme;
     final initial = account.firstName.isNotEmpty
         ? account.firstName[0].toUpperCase()
@@ -166,9 +166,11 @@ extension _AccountSheetActions on _AccountBottomSheetState {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: account.isMock
-            ? scheme.secondaryContainer
-            : scheme.primaryContainer,
+        color:
+            account.userId ==
+                ref.read(authControllerProvider).activeAccount?.userId
+            ? scheme.primaryContainer
+            : scheme.secondaryContainer,
         shape: BoxShape.circle,
       ),
       alignment: Alignment.center,
@@ -177,20 +179,18 @@ extension _AccountSheetActions on _AccountBottomSheetState {
         style: TextStyle(
           fontSize: size * 0.45,
           fontWeight: FontWeight.bold,
-          color: account.isMock
-              ? scheme.onSecondaryContainer
-              : scheme.onPrimaryContainer,
+          color:
+              account.userId ==
+                  ref.read(authControllerProvider).activeAccount?.userId
+              ? scheme.onPrimaryContainer
+              : scheme.onSecondaryContainer,
         ),
       ),
     );
   }
 
-  Widget _buildAvatarWidget(TelegramAccount account, {required double size}) {
-    if (account.isMock) {
-      return _buildAvatarCircle(account, size: size);
-    }
-    final auth = ref.watch(authControllerProvider);
-    return ProfileAvatar(user: auth.user, size: size);
+  Widget _buildAvatarWidget(SavedAccount account, {required double size}) {
+    return ProfileAvatar(user: account.toAuthUser(), size: size);
   }
 
   void _showHelpFeedbackDialog(BuildContext context) {

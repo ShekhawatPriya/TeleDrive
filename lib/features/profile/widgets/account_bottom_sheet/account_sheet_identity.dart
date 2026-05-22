@@ -3,7 +3,7 @@ part of '../account_bottom_sheet.dart';
 extension _AccountSheetIdentity on _AccountBottomSheetState {
   Widget _buildAccountIdentity(
     BuildContext context,
-    TelegramAccount activeAccount,
+    SavedAccount activeAccount,
     String accountLabel,
   ) {
     final theme = Theme.of(context);
@@ -34,8 +34,10 @@ extension _AccountSheetIdentity on _AccountBottomSheetState {
                       bottom: 0,
                       right: 0,
                       child: GestureDetector(
-                        onTap: () =>
-                            _openTelegramProfile(context, activeAccount.username),
+                        onTap: () => _openTelegramProfile(
+                          context,
+                          activeAccount.username,
+                        ),
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
@@ -81,7 +83,10 @@ extension _AccountSheetIdentity on _AccountBottomSheetState {
                       _openTelegramProfile(context, activeAccount.username),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: scheme.outlineVariant),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
                     shape: const StadiumBorder(),
                   ),
                   child: Text(
@@ -150,10 +155,7 @@ extension _AccountSheetIdentity on _AccountBottomSheetState {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        GitHubIcon(
-                          size: 24,
-                          color: scheme.onSurface,
-                        ),
+                        GitHubIcon(size: 24, color: scheme.onSurface),
                         const SizedBox(width: AppSpacing.sm),
                         Text(
                           'Open Source\nProject',

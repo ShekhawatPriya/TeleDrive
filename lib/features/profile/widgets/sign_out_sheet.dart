@@ -5,6 +5,11 @@ import '../../../core/theme/app_theme.dart';
 import '../cache_controller.dart';
 import '../app_settings_controller.dart';
 import '../../auth/auth_controller.dart';
+import '../../drive/drive_controller.dart';
+import '../../drive/drive_tab_commands.dart';
+import '../../search/search_controller.dart';
+import '../../share/share_controller.dart';
+import '../../upload/upload_controller.dart';
 
 class SignOutConfirmationSheet extends ConsumerStatefulWidget {
   const SignOutConfirmationSheet({super.key});
@@ -71,6 +76,17 @@ class _SignOutConfirmationSheetState
 
   Future<void> _handleSignOut() async {
     if (_isProcessing) return;
+    final upload = ref.read(uploadControllerProvider);
+    if (upload.hasBlockingUploads) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please wait for current uploads to finish or cancel them before signing out.',
+          ),
+        ),
+      );
+      return;
+    }
     setState(() => _isProcessing = true);
 
     try {
@@ -82,13 +98,13 @@ class _SignOutConfirmationSheetState
         await ref.read(cacheControllerProvider).clearCache();
       }
 
+      // 2. Clear all saved local accounts, causing GoRouter to redirect.
+      await ref.read(authControllerProvider).signOutAll();
+      await _resetLocalStateAfterSignOut();
+
       if (mounted) {
-        // 2. Dismiss sheet visually
         Navigator.of(context).pop();
       }
-
-      // 3. Clear auth token & state, causing GoRouter to redirect to /welcome
-      await ref.read(authControllerProvider).logout();
     } catch (e) {
       debugPrint('Error during sign-out process: $e');
       if (mounted) {
@@ -100,6 +116,17 @@ class _SignOutConfirmationSheetState
           ),
         );
       }
+    }
+  }
+
+  Future<void> _resetLocalStateAfterSignOut() async {
+    ref.read(uploadControllerProvider).resetTerminalForAccountSwitch();
+    await ref.read(driveControllerProvider).resetForAccountSwitch();
+    ref.read(shareControllerProvider).resetForAccountSwitch();
+    ref.read(selectionModeStateProvider).setDriveSelectMode(false);
+    ref.read(selectionModeStateProvider).setPhotosSelectMode(false);
+    for (final scope in SearchScope.values) {
+      ref.read(searchQueryProvider(scope)).clear();
     }
   }
 
@@ -213,9 +240,9 @@ class _SignOutConfirmationSheetState
                       height: 26,
                     ),
                     iconBgColor: Colors.transparent,
-                    title: 'Telegram Logout',
+                    title: 'Local Account Sign Out',
                     subtitle:
-                        'Your active session on this device will be revoked and logged out.',
+                        'Saved accounts on this device will be removed. Telegram sessions are not disconnected.',
                   ),
                 ),
               ),

@@ -1,7 +1,11 @@
 part of '../account_bottom_sheet.dart';
 
 extension _AccountSheetCards on _AccountBottomSheetState {
-  Widget _buildStorageCard(BuildContext context, int used, List<DriveFile> files) {
+  Widget _buildStorageCard(
+    BuildContext context,
+    int used,
+    List<DriveFile> files,
+  ) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
@@ -11,7 +15,8 @@ extension _AccountSheetCards on _AccountBottomSheetState {
     int othersSize = 0;
 
     for (final file in files) {
-      final isAvailable = file.uploadStatus == null || file.uploadStatus == 'available';
+      final isAvailable =
+          file.uploadStatus == null || file.uploadStatus == 'available';
       if (!isAvailable) continue;
       final size = file.size;
       switch (file.kind) {
@@ -43,7 +48,10 @@ extension _AccountSheetCards on _AccountBottomSheetState {
     ];
 
     final activeCategories = categories.where((c) => c.size > 0).toList();
-    final totalCategorizedSize = activeCategories.fold<int>(0, (sum, c) => sum + c.size);
+    final totalCategorizedSize = activeCategories.fold<int>(
+      0,
+      (sum, c) => sum + c.size,
+    );
 
     return _ProfileSheetSection(
       child: InkWell(
@@ -91,10 +99,10 @@ extension _AccountSheetCards on _AccountBottomSheetState {
                       : Row(
                           children: activeCategories.map((cat) {
                             return Expanded(
-                              flex: (cat.size / totalCategorizedSize * 10000).clamp(1, 10000).toInt(),
-                              child: Container(
-                                color: cat.color,
-                              ),
+                              flex: (cat.size / totalCategorizedSize * 10000)
+                                  .clamp(1, 10000)
+                                  .toInt(),
+                              child: Container(color: cat.color),
                             );
                           }).toList(),
                         ),
@@ -253,4 +261,3 @@ class _StorageCategory {
 
   const _StorageCategory(this.name, this.size, this.color);
 }
-

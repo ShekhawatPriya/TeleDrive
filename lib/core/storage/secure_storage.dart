@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../models/account_vault.dart';
 import '../../models/auth_user.dart';
 
 class SecureStorageService {
@@ -9,6 +10,7 @@ class SecureStorageService {
 
   static const _tokenKey = 'teledrive_auth_token';
   static const _userKey = 'teledrive_auth_user';
+  static const _accountVaultKey = 'teledrive_account_vault_v1';
   final _storage = const FlutterSecureStorage();
 
   Future<String?> readToken() => _storage.read(key: _tokenKey);
@@ -29,6 +31,29 @@ class SecureStorageService {
 
   Future<void> saveUser(AuthUser user) {
     return _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
+  }
+
+  Future<AccountVault> readAccountVault() async {
+    final value = await _storage.read(key: _accountVaultKey);
+    if (value == null || value.isEmpty) return const AccountVault.empty();
+    try {
+      final json = jsonDecode(value);
+      if (json is! Map) return const AccountVault.empty();
+      return AccountVault.fromJson(Map<String, dynamic>.from(json));
+    } catch (_) {
+      return const AccountVault.empty();
+    }
+  }
+
+  Future<void> saveAccountVault(AccountVault vault) {
+    return _storage.write(
+      key: _accountVaultKey,
+      value: jsonEncode(vault.toJson()),
+    );
+  }
+
+  Future<void> clearAccountVault() async {
+    await _storage.delete(key: _accountVaultKey);
   }
 
   Future<void> clearToken() async {

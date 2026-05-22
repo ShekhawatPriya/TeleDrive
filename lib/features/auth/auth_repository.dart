@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../core/utils/jwt.dart';
+import '../../models/account_vault.dart';
 import '../../models/auth_user.dart';
 import '../../models/drive_models.dart';
 import '../drive/drive_repository.dart';
@@ -16,6 +17,10 @@ class AuthBootstrapResult {
     this.communityTargets = const [],
     this.drive,
     this.largeUploadThresholdBytes,
+    this.phoneNumber,
+    this.telegramUserId,
+    this.sessionStatus,
+    this.requiresReconnect = false,
   });
 
   final AuthUser user;
@@ -25,6 +30,10 @@ class AuthBootstrapResult {
   final List<CommunityTarget> communityTargets;
   final DriveSnapshot? drive;
   final int? largeUploadThresholdBytes;
+  final String? phoneNumber;
+  final int? telegramUserId;
+  final String? sessionStatus;
+  final bool requiresReconnect;
 }
 
 class AuthRepository {
@@ -35,6 +44,8 @@ class AuthRepository {
 
   Future<String?> storedToken() => storage.readToken();
   Future<AuthUser?> storedUser() => storage.readUser();
+  Future<AccountVault> storedVault() => storage.readAccountVault();
+  Future<void> saveVault(AccountVault vault) => storage.saveAccountVault(vault);
 
   bool isExpired(String token) => isJwtExpired(token);
   AuthUser? decode(String token) => decodeJwtUser(token);
@@ -86,7 +97,10 @@ class AuthRepository {
     }
   }
 
-  Future<AuthBootstrapResult> bootstrap({bool includeDrive = true}) async {
+  Future<AuthBootstrapResult> bootstrap({
+    bool includeDrive = true,
+    bool persistUser = true,
+  }) async {
     final res = await api.dio.get(
       '/frontend/bootstrap',
       queryParameters: {
@@ -100,7 +114,7 @@ class AuthRepository {
         Map<String, dynamic>.from(data['currentUser'] as Map),
       ),
     );
-    await storage.saveUser(user);
+    if (persistUser) await storage.saveUser(user);
     final telegram = data['telegram'] is Map
         ? Map<String, dynamic>.from(data['telegram'] as Map)
         : <String, dynamic>{};
@@ -123,7 +137,24 @@ class AuthRepository {
       communityTargets: _communityTargets(telegram['communityTargets']),
       drive: drive,
       largeUploadThresholdBytes: largeThreshold,
+      phoneNumber: telegram['phoneNumber'] as String?,
+      telegramUserId: (telegram['telegramUserId'] as num?)?.toInt(),
+      sessionStatus: telegram['status'] as String?,
+      requiresReconnect: telegram['requiresReconnect'] == true,
     );
+  }
+
+  Future<AuthBootstrapResult> bootstrapWithToken(
+    String token, {
+    bool includeDrive = true,
+  }) async {
+    final previous = api.token;
+    api.setToken(token);
+    try {
+      return await bootstrap(includeDrive: includeDrive, persistUser: false);
+    } finally {
+      api.setToken(previous);
+    }
   }
 
   Future<AuthUser> fetchProfile({AuthUser? current}) async {
@@ -152,8 +183,18 @@ class AuthRepository {
     await storage.saveToken(token);
   }
 
+  void setApiToken(String? token) => api.setToken(token);
+
+  Future<void> saveActiveUser(AuthUser user) => storage.saveUser(user);
+
   Future<void> logout() async {
     api.setToken(null);
+    await storage.clearToken();
+  }
+
+  Future<void> clearAllAuthStorage() async {
+    api.setToken(null);
+    await storage.clearAccountVault();
     await storage.clearToken();
   }
 

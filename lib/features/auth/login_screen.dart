@@ -4,16 +4,41 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../drive/drive_controller.dart';
+import '../drive/drive_tab_commands.dart';
+import '../search/search_controller.dart';
+import '../share/share_controller.dart';
+import '../upload/upload_controller.dart';
 import 'auth_controller.dart';
 import 'components/login_error_banner.dart';
 import 'components/login_step_indicator.dart';
 import 'country_data.dart';
 import 'country_picker.dart';
 
+enum LoginMode { normalLogin, addAccount, reauthenticateAccount }
+
+extension LoginModeX on LoginMode {
+  static LoginMode fromQuery(String? value) {
+    return LoginMode.values.firstWhere(
+      (mode) => mode.name == value,
+      orElse: () => LoginMode.normalLogin,
+    );
+  }
+}
+
 enum _Step { phone, code, password }
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({
+    this.mode = LoginMode.normalLogin,
+    this.returnTo,
+    this.targetUserId,
+    super.key,
+  });
+
+  final LoginMode mode;
+  final String? returnTo;
+  final int? targetUserId;
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -72,9 +97,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
     try {
-      final data = await _call(() => ref
-          .read(authRepositoryProvider)
-          .start('${_selectedCountry.dialCode}$local'));
+      final data = await _call(
+        () => ref
+            .read(authRepositoryProvider)
+            .start('${_selectedCountry.dialCode}$local'),
+      );
       _attemptId = (data['attempt_id'] as num).toInt();
       _setStep(_Step.code);
     } catch (_) {}
@@ -87,9 +114,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
     try {
-      final data = await _call(() => ref
-          .read(authRepositoryProvider)
-          .verifyCode(_attemptId!, _code.text.trim()));
+      final data = await _call(
+        () => ref
+            .read(authRepositoryProvider)
+            .verifyCode(_attemptId!, _code.text.trim()),
+      );
       if (data['status'] == 'requires_2fa') {
         _setStep(_Step.password);
       } else if (data['token'] != null) {
@@ -105,9 +134,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
     try {
-      final data = await _call(() => ref
-          .read(authRepositoryProvider)
-          .verifyPassword(_attemptId!, _password.text.trim()));
+      final data = await _call(
+        () => ref
+            .read(authRepositoryProvider)
+            .verifyPassword(_attemptId!, _password.text.trim()),
+      );
       if (data['token'] != null) {
         await _completeLogin('${data['token']}', data);
       }
@@ -126,7 +157,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await ref
           .read(authControllerProvider)
           .login(token, authPayload: authPayload);
-      if (mounted) context.go('/drive');
+      await _resetForCommittedAccount();
+      if (mounted) context.go(_authenticatedDestination());
     } catch (err) {
       final repo = ref.read(authRepositoryProvider);
       if (mounted) setState(() => _error = repo.api.errorMessage(err));
@@ -145,54 +177,63 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg, vertical: AppSpacing.xl),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: AppSpacing.md),
-                  Image.asset(
-                    'assets/icon/app_icon.png',
-                    width: 64,
-                    height: 64,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  _buildHeader(),
-                  const SizedBox(height: AppSpacing.lg),
-                  AnimatedSwitcher(
-                    duration: AppDurations.medium2,
-                    switchInCurve: AppEasing.emphasizedDecelerate,
-                    switchOutCurve: AppEasing.emphasizedAccelerate,
-                    transitionBuilder: (child, anim) => FadeTransition(
-                      opacity: anim,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0, .04),
-                          end: Offset.zero,
-                        ).animate(anim),
-                        child: child,
+    return PopScope(
+      canPop: widget.mode == LoginMode.normalLogin,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || widget.mode == LoginMode.normalLogin) return;
+        context.go(_cancelDestination());
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.xl,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: AppSpacing.md),
+                    Image.asset(
+                      'assets/icon/app_icon.png',
+                      width: 64,
+                      height: 64,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _buildHeader(),
+                    const SizedBox(height: AppSpacing.lg),
+                    AnimatedSwitcher(
+                      duration: AppDurations.medium2,
+                      switchInCurve: AppEasing.emphasizedDecelerate,
+                      switchOutCurve: AppEasing.emphasizedAccelerate,
+                      transitionBuilder: (child, anim) => FadeTransition(
+                        opacity: anim,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, .04),
+                            end: Offset.zero,
+                          ).animate(anim),
+                          child: child,
+                        ),
+                      ),
+                      child: KeyedSubtree(
+                        key: ValueKey(_step),
+                        child: _buildFormCard(),
                       ),
                     ),
-                    child: KeyedSubtree(
-                      key: ValueKey(_step),
-                      child: _buildFormCard(),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'Your data is stored securely on Telegram servers.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Text(
-                    'Your data is stored securely on Telegram servers.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -201,22 +242,56 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
+  Future<void> _resetForCommittedAccount() async {
+    final upload = ref.read(uploadControllerProvider);
+    if (!upload.hasBlockingUploads) {
+      upload.resetTerminalForAccountSwitch();
+    }
+    await ref.read(driveControllerProvider).resetForAccountSwitch();
+    final bootstrap = ref
+        .read(authControllerProvider)
+        .takePendingDriveBootstrap();
+    if (bootstrap != null) {
+      ref.read(driveControllerProvider).applyDriveState(bootstrap);
+    } else {
+      await ref.read(driveControllerProvider).refresh(force: true);
+    }
+    ref.read(shareControllerProvider).resetForAccountSwitch();
+    ref.read(selectionModeStateProvider).setDriveSelectMode(false);
+    ref.read(selectionModeStateProvider).setPhotosSelectMode(false);
+    for (final scope in SearchScope.values) {
+      ref.read(searchQueryProvider(scope)).clear();
+    }
+  }
+
+  String _authenticatedDestination() {
+    final target = widget.returnTo;
+    if (target == null || target.isEmpty || target == '/login') return '/drive';
+    return target;
+  }
+
+  String _cancelDestination() {
+    final auth = ref.read(authControllerProvider);
+    if (!auth.isAuthenticated) return '/welcome';
+    return _authenticatedDestination();
+  }
+
   Widget _buildHeader() {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final (title, subtitle) = switch (_step) {
       _Step.phone => (
-          'Sign in to TeleDrive',
-          'Enter your phone number to connect your Telegram account.'
-        ),
+        'Sign in to TeleDrive',
+        'Enter your phone number to connect your Telegram account.',
+      ),
       _Step.code => (
-          'Verification code',
-          'We sent a code to your Telegram app. Enter it below.'
-        ),
+        'Verification code',
+        'We sent a code to your Telegram app. Enter it below.',
+      ),
       _Step.password => (
-          'Two-factor authentication',
-          'Your account has 2FA enabled. Enter your cloud password.'
-        ),
+        'Two-factor authentication',
+        'Your account has 2FA enabled. Enter your cloud password.',
+      ),
     };
 
     return Column(
@@ -277,12 +352,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               labelText: 'Country',
               prefixIcon: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-                child: Text(_selectedCountry.flag,
-                    style: const TextStyle(fontSize: 22)),
+                child: Text(
+                  _selectedCountry.flag,
+                  style: const TextStyle(fontSize: 22),
+                ),
               ),
               prefixIconConstraints: const BoxConstraints(minWidth: 44),
-              suffixIcon: Icon(Icons.arrow_drop_down_rounded,
-                  color: scheme.onSurfaceVariant),
+              suffixIcon: Icon(
+                Icons.arrow_drop_down_rounded,
+                color: scheme.onSurfaceVariant,
+              ),
             ),
             child: Text(
               '${_selectedCountry.name} (${_selectedCountry.dialCode})',
@@ -311,8 +390,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
           child: _loading
               ? const SizedBox(
-                  width: 22, height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2.5))
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                )
               : const Text('Continue'),
         ),
       ],
@@ -347,8 +428,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
           child: _loading
               ? const SizedBox(
-                  width: 22, height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2.5))
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                )
               : const Text('Verify'),
         ),
         const SizedBox(height: AppSpacing.xs),
@@ -377,9 +460,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             labelText: 'Cloud password',
             prefixIcon: const Icon(Icons.lock_outline_rounded),
             suffixIcon: IconButton(
-              icon: Icon(_obscurePassword
-                  ? Icons.visibility_off_outlined
-                  : Icons.visibility_outlined),
+              icon: Icon(
+                _obscurePassword
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+              ),
               onPressed: () =>
                   setState(() => _obscurePassword = !_obscurePassword),
             ),
@@ -392,8 +477,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
           child: _loading
               ? const SizedBox(
-                  width: 22, height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2.5))
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                )
               : const Text('Sign in'),
         ),
         const SizedBox(height: AppSpacing.xs),
@@ -406,5 +493,3 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 }
-
-

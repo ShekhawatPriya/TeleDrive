@@ -6,6 +6,7 @@ import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../../../core/utils/safe_navigation.dart';
+import '../../../models/account_vault.dart';
 import '../../../widgets/profile_avatar.dart';
 import '../../../widgets/github_icon.dart';
 import '../../../widgets/sheet/sheet_drag_handle.dart';
@@ -74,31 +75,36 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
     final drive = ref.watch(driveControllerProvider);
-    final switchState = ref.watch(switchAccountProvider);
     final backupOn = ref.watch(mediaBackupProvider);
     final user = auth.user;
 
-    final activeAccount = switchState.accounts.firstWhere(
-      (a) => !a.isMock,
-      orElse: () => TelegramAccount(
-        userId: user?.userId ?? 0,
-        telegramId: user?.telegramId ?? 0,
-        firstName: user?.firstName ?? 'Anonymous',
-        lastName: user?.lastName,
-        username: user?.username,
-        photoUrl: user?.photoUrl,
-        isMock: false,
-      ),
-    );
+    final activeAccount =
+        auth.activeAccount ??
+        (user == null
+            ? null
+            : SavedAccount(
+                userId: user.userId,
+                telegramId: user.telegramId,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                username: user.username,
+                photoUrl: user.photoUrl,
+                token: auth.token ?? '',
+                addedAt: DateTime.now(),
+                lastUsedAt: DateTime.now(),
+              ));
 
-    final otherAccounts = switchState.accounts
-        .where((a) => a.userId != activeAccount.userId)
-        .toList();
+    final switchState = ref.watch(switchAccountProvider);
+    final otherAccounts = activeAccount == null
+        ? <SavedAccount>[]
+        : switchState.accounts
+              .where((a) => a.userId != activeAccount.userId)
+              .toList();
 
     final accountLabel =
-        activeAccount.username != null && activeAccount.username!.isNotEmpty
+        activeAccount?.username != null && activeAccount!.username!.isNotEmpty
         ? '@${activeAccount.username}'
-        : 'ID ${activeAccount.telegramId}';
+        : 'ID ${activeAccount?.telegramId ?? 0}';
 
     return Container(
       padding: EdgeInsets.only(
@@ -119,17 +125,27 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                   ),
                   child: Column(
                     children: [
-                      _buildAccountIdentity(context, activeAccount, accountLabel),
+                      if (activeAccount != null)
+                        _buildAccountIdentity(
+                          context,
+                          activeAccount,
+                          accountLabel,
+                        ),
                       const SizedBox(height: AppSpacing.lg),
-                      _buildSwitchAccountCard(
-                        context,
-                        activeAccount,
-                        otherAccounts,
-                      ),
+                      if (activeAccount != null)
+                        _buildSwitchAccountCard(
+                          context,
+                          activeAccount,
+                          otherAccounts,
+                        ),
                       const SizedBox(height: _sectionSpacing),
                       _buildBackupCard(context, backupOn),
                       const SizedBox(height: _sectionSpacing),
-                      _buildStorageCard(context, drive.state.usedStorage, drive.files),
+                      _buildStorageCard(
+                        context,
+                        drive.state.usedStorage,
+                        drive.files,
+                      ),
                       const SizedBox(height: _sectionSpacing),
                       _buildCompactActionPill(
                         context,

@@ -7,6 +7,9 @@ class LocalPreferences {
   static const _sortKey = 'teledrive_sort';
   static const _recentKey = 'teledrive_recent_access';
 
+  String _recentKeyFor(int? userId) =>
+      userId == null ? _recentKey : '${_recentKey}_$userId';
+
   Future<String> themeMode() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_themeKey) ?? 'system';
@@ -32,16 +35,16 @@ class LocalPreferences {
     );
   }
 
-  Future<Map<String, String>> recentAccess() async {
+  Future<Map<String, String>> recentAccess({int? userId}) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_recentKey);
+    final raw = prefs.getString(_recentKeyFor(userId));
     if (raw == null) return {};
     final parsed = jsonDecode(raw) as Map<String, dynamic>;
     return parsed.map((key, value) => MapEntry(key, '$value'));
   }
 
-  Future<void> setRecentAccess(Map<String, String> value) async {
+  Future<void> setRecentAccess(Map<String, String> value, {int? userId}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_recentKey, jsonEncode(value));
+    await prefs.setString(_recentKeyFor(userId), jsonEncode(value));
   }
 }

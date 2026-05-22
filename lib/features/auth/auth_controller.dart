@@ -1,9 +1,12 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
+import '../../core/utils/iterable_ext.dart';
+import '../../models/account_vault.dart';
 import '../../models/auth_user.dart';
 import '../../models/drive_models.dart';
 import 'auth_repository.dart';
@@ -31,15 +34,18 @@ class AuthController extends ChangeNotifier {
   AuthUser? user;
   String? token;
   bool loading = true;
+  bool switchingAccount = false;
   bool? telegramConnected;
   String? communityJoinStatus;
   String? communityJoinError;
   List<CommunityTarget> communityTargets = const [];
+  AccountVault vault = const AccountVault.empty();
   String? error;
   DriveSnapshot? pendingDriveBootstrap;
   int largeUploadThresholdBytes = 200 * 1024 * 1024;
 
   bool get isAuthenticated => user != null && token != null;
+  SavedAccount? get activeAccount => vault.activeAccount;
   bool get needsCommunityOnboarding =>
       isAuthenticated &&
       telegramConnected == true &&
@@ -50,40 +56,102 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
     try {
       error = null;
-      final stored = await _repo.storedToken();
-      if (stored == null) return;
-      if (_repo.isExpired(stored)) {
-        await _repo.logout();
+      vault = await _loadVaultWithLegacyMigration();
+      if (vault.accounts.isEmpty) {
+        _repo.setApiToken(null);
+        _clearSessionState(clearVault: false);
         return;
       }
-      token = stored;
-      await _repo.saveToken(stored);
-      user = await _repo.storedUser() ?? _repo.decode(stored);
-      notifyListeners();
-      final bootstrap = await _repo.bootstrap(includeDrive: true);
-      user = bootstrap.user;
-      telegramConnected = bootstrap.telegramConnected;
-      communityJoinStatus = bootstrap.communityJoinStatus;
-      communityJoinError = bootstrap.communityJoinError;
-      communityTargets = bootstrap.communityTargets;
-      pendingDriveBootstrap = bootstrap.drive;
-      if (bootstrap.largeUploadThresholdBytes != null) {
-        largeUploadThresholdBytes = bootstrap.largeUploadThresholdBytes!;
-      }
+      await _restoreBestAccount();
     } catch (err) {
-      await _repo.logout();
-      token = null;
-      user = null;
-      telegramConnected = null;
-      communityJoinStatus = null;
-      communityJoinError = null;
-      communityTargets = const [];
-      pendingDriveBootstrap = null;
+      _repo.setApiToken(null);
+      _clearSessionState(clearVault: false);
       error = _repo.api.errorMessage(err, 'Auth bootstrap failed.');
     } finally {
       loading = false;
       notifyListeners();
     }
+  }
+
+  Future<AccountVault> _loadVaultWithLegacyMigration() async {
+    var loaded = await _repo.storedVault();
+    loaded = _markLocallyExpired(loaded);
+    if (loaded.accounts.isNotEmpty) return loaded;
+
+    final legacyToken = await _repo.storedToken();
+    if (legacyToken == null || legacyToken.isEmpty) return loaded;
+    if (_repo.isExpired(legacyToken)) return loaded;
+
+    final bootstrap = await _repo.bootstrapWithToken(
+      legacyToken,
+      includeDrive: true,
+    );
+    final migrated = _accountFromBootstrap(legacyToken, bootstrap);
+    loaded = const AccountVault.empty().upsert(migrated, makeActive: true);
+    await _repo.saveVault(loaded);
+    return loaded;
+  }
+
+  AccountVault _markLocallyExpired(AccountVault current) {
+    var updated = current;
+    for (final account in current.accounts) {
+      if (_repo.isExpired(account.token) &&
+          account.tokenStatus != TokenStatus.expired) {
+        updated = updated.markTokenStatus(account.userId, TokenStatus.expired);
+      }
+    }
+    if (!_sameVault(updated, current)) {
+      _repo.saveVault(updated);
+    }
+    return updated;
+  }
+
+  bool _sameVault(AccountVault a, AccountVault b) {
+    if (a.activeUserId != b.activeUserId ||
+        a.accounts.length != b.accounts.length) {
+      return false;
+    }
+    for (var i = 0; i < a.accounts.length; i++) {
+      if (a.accounts[i].tokenStatus != b.accounts[i].tokenStatus) return false;
+    }
+    return true;
+  }
+
+  Future<void> _restoreBestAccount() async {
+    final active = vault.activeAccount;
+    final candidates = <SavedAccount>[
+      if (active != null) active,
+      ...vault.validAccountsByRecent().where((a) => a.userId != active?.userId),
+    ];
+
+    for (final account in candidates) {
+      if (account.tokenStatus != TokenStatus.valid) {
+        continue;
+      }
+      if (_repo.isExpired(account.token)) {
+        vault = vault.markTokenStatus(account.userId, TokenStatus.expired);
+        await _repo.saveVault(vault);
+        continue;
+      }
+      try {
+        final bootstrap = await _repo.bootstrapWithToken(
+          account.token,
+          includeDrive: true,
+        );
+        await _commitActiveAccount(account.token, bootstrap, existing: account);
+        return;
+      } on DioException catch (err) {
+        if (err.response?.statusCode == 401) {
+          vault = vault.markTokenStatus(account.userId, TokenStatus.needsLogin);
+          await _repo.saveVault(vault);
+          continue;
+        }
+        rethrow;
+      }
+    }
+
+    _repo.setApiToken(null);
+    _clearSessionState(clearVault: false);
   }
 
   Future<void> login(
@@ -92,13 +160,97 @@ class AuthController extends ChangeNotifier {
   }) async {
     error = null;
     if (_repo.isExpired(nextToken)) throw Exception('Invalid token received.');
+    final bootstrap = await _repo.bootstrapWithToken(
+      nextToken,
+      includeDrive: true,
+    );
+    await _commitActiveAccount(nextToken, bootstrap);
+    notifyListeners();
+  }
+
+  Future<void> switchToAccount(int userId) async {
+    final selected = vault.accounts
+        .where((account) => account.userId == userId)
+        .firstOrNull;
+    if (selected == null || selected.userId == activeAccount?.userId) return;
+    if (selected.tokenStatus != TokenStatus.valid ||
+        _repo.isExpired(selected.token)) {
+      vault = vault.markTokenStatus(selected.userId, TokenStatus.needsLogin);
+      await _repo.saveVault(vault);
+      notifyListeners();
+      throw Exception('Session expired. Please log in again.');
+    }
+
+    switchingAccount = true;
+    notifyListeners();
+    try {
+      final bootstrap = await _repo.bootstrapWithToken(
+        selected.token,
+        includeDrive: true,
+      );
+      await _commitActiveAccount(selected.token, bootstrap, existing: selected);
+    } on DioException catch (err) {
+      if (err.response?.statusCode == 401) {
+        vault = vault.markTokenStatus(selected.userId, TokenStatus.needsLogin);
+        await _repo.saveVault(vault);
+        throw Exception('Session expired. Please log in again.');
+      }
+      rethrow;
+    } finally {
+      switchingAccount = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> removeAccountFromDevice(int userId) async {
+    final wasActive = activeAccount?.userId == userId;
+    vault = vault.remove(userId);
+    await _repo.saveVault(vault);
+    if (!wasActive) {
+      notifyListeners();
+      return isAuthenticated;
+    }
+
+    final candidates = vault.validAccountsByRecent();
+    for (final candidate in candidates) {
+      try {
+        await switchToAccount(candidate.userId);
+        return true;
+      } catch (_) {
+        vault = vault.markTokenStatus(candidate.userId, TokenStatus.needsLogin);
+        await _repo.saveVault(vault);
+      }
+    }
+    await signOutAll();
+    return false;
+  }
+
+  Future<void> signOutAll() async {
+    await _repo.clearAllAuthStorage();
+    _clearSessionState();
+    notifyListeners();
+  }
+
+  Future<void> markAccountNeedsLogin(int userId) async {
+    vault = vault.markTokenStatus(userId, TokenStatus.needsLogin);
+    await _repo.saveVault(vault);
+    notifyListeners();
+  }
+
+  Future<void> _commitActiveAccount(
+    String nextToken,
+    AuthBootstrapResult bootstrap, {
+    SavedAccount? existing,
+  }) async {
+    final account = _accountFromBootstrap(nextToken, bootstrap, existing);
+    vault = vault
+        .upsert(account, makeActive: true)
+        .touchActive(account.userId, DateTime.now());
+    await _repo.saveVault(vault);
+    _repo.setApiToken(nextToken);
     token = nextToken;
-    user =
-        (authPayload == null ? null : _repo.userFromAuthPayload(authPayload)) ??
-        _repo.decode(nextToken);
-    await _repo.saveToken(nextToken);
-    final bootstrap = await _repo.bootstrap(includeDrive: true);
     user = bootstrap.user;
+    await _repo.saveActiveUser(bootstrap.user);
     telegramConnected = bootstrap.telegramConnected;
     communityJoinStatus = bootstrap.communityJoinStatus;
     communityJoinError = bootstrap.communityJoinError;
@@ -107,7 +259,32 @@ class AuthController extends ChangeNotifier {
     if (bootstrap.largeUploadThresholdBytes != null) {
       largeUploadThresholdBytes = bootstrap.largeUploadThresholdBytes!;
     }
-    notifyListeners();
+  }
+
+  SavedAccount _accountFromBootstrap(
+    String nextToken,
+    AuthBootstrapResult bootstrap, [
+    SavedAccount? existing,
+  ]) {
+    final now = DateTime.now();
+    final telegramId = bootstrap.user.telegramId != 0
+        ? bootstrap.user.telegramId
+        : (bootstrap.telegramUserId ?? existing?.telegramId ?? 0);
+    return SavedAccount(
+      userId: bootstrap.user.userId,
+      telegramId: telegramId,
+      firstName: bootstrap.user.firstName,
+      lastName: bootstrap.user.lastName,
+      username: bootstrap.user.username,
+      phoneNumber: bootstrap.phoneNumber ?? existing?.phoneNumber,
+      photoUrl: bootstrap.user.photoUrl,
+      token: nextToken,
+      addedAt: existing?.addedAt ?? now,
+      lastUsedAt: now,
+      tokenStatus: TokenStatus.valid,
+      sessionStatus: bootstrap.sessionStatus,
+      requiresReconnect: bootstrap.requiresReconnect,
+    );
   }
 
   Future<void> completeCommunityOnboarding() async {
@@ -139,12 +316,26 @@ class AuthController extends ChangeNotifier {
   Future<void> refreshProfile() async {
     try {
       user = await _repo.fetchProfile(current: user);
+      final active = activeAccount;
+      if (user != null && active != null) {
+        final updated = active.copyWith(
+          firstName: user!.firstName,
+          lastName: user!.lastName,
+          username: user!.username,
+          photoUrl: user!.photoUrl,
+        );
+        vault = vault.upsert(updated, makeActive: true);
+        await _repo.saveVault(vault);
+      }
       notifyListeners();
     } catch (_) {}
   }
 
   Future<void> logout() async {
-    await _repo.logout();
+    await signOutAll();
+  }
+
+  void _clearSessionState({bool clearVault = true}) {
     token = null;
     user = null;
     telegramConnected = null;
@@ -153,7 +344,7 @@ class AuthController extends ChangeNotifier {
     communityTargets = const [];
     pendingDriveBootstrap = null;
     error = null;
-    notifyListeners();
+    if (clearVault) vault = const AccountVault.empty();
   }
 
   Future<void> disconnectTelegram() async {
