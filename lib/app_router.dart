@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'core/navigation/root_navigator.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/community_onboarding_screen.dart';
 import 'features/auth/landing_screen.dart';
@@ -27,6 +28,7 @@ import 'shared/splash_screen.dart';
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.read(authControllerProvider);
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/',
     refreshListenable: auth,
     redirect: (context, state) {

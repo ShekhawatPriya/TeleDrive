@@ -114,15 +114,14 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
     if (_uploadsBlocked(context)) return;
     final auth = _ref.read(authControllerProvider);
     if (auth.vault.accounts.length >= auth.vault.maxSavedAccounts) {
-      showPremiumToast(
-        context,
+      showAppPremiumToast(
         message:
             'Reached the ${auth.vault.maxSavedAccounts}-account limit on this device.',
         icon: Icons.person_add_disabled_outlined,
       );
       return;
     }
-    Navigator.of(context).maybePop();
+    Navigator.of(context, rootNavigator: true).maybePop();
     final returnTo = Uri.encodeComponent('/drive');
     context.safePush('/login?mode=addAccount&returnTo=$returnTo');
   }
@@ -132,7 +131,7 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
     SavedAccount account,
   ) async {
     if (_uploadsBlocked(context)) return;
-    Navigator.of(context).maybePop();
+    Navigator.of(context, rootNavigator: true).maybePop();
     final returnTo = Uri.encodeComponent('/drive');
     context.safePush(
       '/login?mode=reauthenticateAccount&targetUserId=${account.userId}&returnTo=$returnTo',
@@ -146,8 +145,7 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
     if (account.userId == state.activeUserId) return;
     if (_uploadsBlocked(context)) return;
     if (account.tokenStatus != TokenStatus.valid) {
-      showPremiumToast(
-        context,
+      showAppPremiumToast(
         message: 'Log in again to use ${account.displayName}.',
         icon: Icons.lock_clock_outlined,
       );
@@ -160,30 +158,25 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
       await _ref.read(authControllerProvider).switchToAccount(account.userId);
       await _resetAccountScopedState();
       if (context.mounted) {
-        final rootContext = Navigator.of(
-          context,
-          rootNavigator: true,
-        ).context;
-        Navigator.of(context).maybePop();
-        context.go('/drive');
         final newActive = _ref.read(authControllerProvider).activeAccount;
+
+        Navigator.of(context, rootNavigator: true).maybePop();
+        context.go('/drive');
+
         if (newActive != null) {
-          showPremiumToast(
-            rootContext,
+          showAppPremiumToast(
             message: 'Switched to ${newActive.displayName}.',
             avatarUser: newActive.toAuthUser(),
+            afterNavigation: true,
           );
         }
       }
     } catch (err) {
-      if (context.mounted) {
-        showPremiumToast(
-          context,
-          message:
-              "Couldn't switch: ${_ref.read(authRepositoryProvider).api.errorMessage(err, 'Please try again.')}",
-          icon: Icons.error_outline_rounded,
-        );
-      }
+      showAppPremiumToast(
+        message:
+            "Couldn't switch: ${_ref.read(authRepositoryProvider).api.errorMessage(err, 'Please try again.')}",
+        icon: Icons.error_outline_rounded,
+      );
     } finally {
       state = state.copyWith(clearBusyUserId: true);
     }
@@ -204,41 +197,33 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
         await _resetAccountScopedState();
       }
       if (context.mounted) {
-        final rootContext = Navigator.of(
-          context,
-          rootNavigator: true,
-        ).context;
-        Navigator.of(context).maybePop();
+        final newActive = _ref.read(authControllerProvider).activeAccount;
+
+        Navigator.of(context, rootNavigator: true).maybePop();
         context.go(stillAuthenticated ? '/drive' : '/welcome');
+
         if (stillAuthenticated) {
-          final newActive = _ref.read(authControllerProvider).activeAccount;
           if (wasActive && newActive != null) {
-            showPremiumToast(
-              rootContext,
+            showAppPremiumToast(
               message: 'Switched to ${newActive.displayName}.',
               avatarUser: newActive.toAuthUser(),
+              afterNavigation: true,
             );
           } else if (!wasActive) {
-            showPremiumToast(
-              rootContext,
+            showAppPremiumToast(
               message: 'Removed ${account.displayName}.',
-              avatarUser: newActive?.toAuthUser(),
-              icon: newActive == null
-                  ? Icons.person_remove_outlined
-                  : null,
+              icon: Icons.person_remove_outlined,
+              afterNavigation: true,
             );
           }
         }
       }
     } catch (err) {
-      if (context.mounted) {
-        showPremiumToast(
-          context,
-          message:
-              "Couldn't remove: ${_ref.read(authRepositoryProvider).api.errorMessage(err, 'Please try again.')}",
-          icon: Icons.error_outline_rounded,
-        );
-      }
+      showAppPremiumToast(
+        message:
+            "Couldn't remove: ${_ref.read(authRepositoryProvider).api.errorMessage(err, 'Please try again.')}",
+        icon: Icons.error_outline_rounded,
+      );
     } finally {
       state = state.copyWith(clearBusyUserId: true);
     }
@@ -247,8 +232,7 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
   bool _uploadsBlocked(BuildContext context) {
     final upload = _ref.read(uploadControllerProvider);
     if (!upload.hasBlockingUploads) return false;
-    showPremiumToast(
-      context,
+    showAppPremiumToast(
       message: 'Finish or cancel uploads first.',
       icon: Icons.cloud_upload_outlined,
     );

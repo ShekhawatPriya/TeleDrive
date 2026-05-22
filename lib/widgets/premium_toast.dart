@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../core/navigation/root_navigator.dart';
 import '../core/theme/app_theme.dart';
 import '../models/auth_user.dart';
 import 'fab_anchor.dart';
@@ -23,10 +24,66 @@ void showPremiumToast(
     icon != null || avatarUser != null,
     'showPremiumToast needs either an icon or an avatarUser.',
   );
-  final overlay = Overlay.maybeOf(context, rootOverlay: true);
-  if (overlay == null) return;
 
+  final overlay = Overlay.maybeOf(context, rootOverlay: true);
+  if (overlay == null) {
+    debugPrint('[PremiumToast] No Overlay found for provided BuildContext.');
+    return;
+  }
+
+  _insertPremiumToast(
+    overlay,
+    message: message,
+    icon: icon,
+    avatarUser: avatarUser,
+    duration: duration,
+  );
+}
+
+void showAppPremiumToast({
+  required String message,
+  IconData? icon,
+  AuthUser? avatarUser,
+  Duration duration = const Duration(milliseconds: 3500),
+  bool afterNavigation = false,
+}) {
+  assert(
+    icon != null || avatarUser != null,
+    'showAppPremiumToast needs either an icon or an avatarUser.',
+  );
+
+  void run() {
+    final overlay = rootNavigatorKey.currentState?.overlay;
+    if (overlay == null) {
+      debugPrint('[PremiumToast] rootNavigatorKey.currentState?.overlay is null.');
+      return;
+    }
+
+    _insertPremiumToast(
+      overlay,
+      message: message,
+      icon: icon,
+      avatarUser: avatarUser,
+      duration: duration,
+    );
+  }
+
+  if (afterNavigation) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => run());
+  } else {
+    run();
+  }
+}
+
+void _insertPremiumToast(
+  OverlayState overlay, {
+  required String message,
+  IconData? icon,
+  AuthUser? avatarUser,
+  required Duration duration,
+}) {
   _activePremiumToast?.remove();
+
   late final OverlayEntry entry;
   entry = OverlayEntry(
     builder: (_) => _PremiumToastOverlay(
@@ -42,6 +99,7 @@ void showPremiumToast(
       },
     ),
   );
+
   _activePremiumToast = entry;
   overlay.insert(entry);
 }

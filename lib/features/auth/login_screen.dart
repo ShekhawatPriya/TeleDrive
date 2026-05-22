@@ -154,23 +154,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _loading = true;
       _error = null;
     });
-    final rootContext = Navigator.of(context, rootNavigator: true).context;
     try {
-      await ref
-          .read(authControllerProvider)
-          .login(token, authPayload: authPayload);
+      final auth = ref.read(authControllerProvider);
+      await auth.login(token, authPayload: authPayload);
       await _resetForCommittedAccount();
       if (!mounted) return;
+
+      final needsOnboarding = auth.needsCommunityOnboarding;
       final destination = _authenticatedDestination();
-      final newActive = ref.read(authControllerProvider).activeAccount;
-      // ignore: use_build_context_synchronously
+      final newActive = auth.activeAccount;
+      final displayName = newActive?.displayName;
+      final avatarUser = newActive?.toAuthUser();
+      final mode = widget.mode;
+
       context.go(destination);
-      if (newActive != null && rootContext.mounted) {
-        showPremiumToast(
-          // ignore: use_build_context_synchronously
-          rootContext,
-          message: 'Switched to ${newActive.displayName}.',
-          avatarUser: newActive.toAuthUser(),
+
+      if (newActive != null && !needsOnboarding && displayName != null) {
+        String? message;
+        if (mode == LoginMode.addAccount) {
+          message = 'Added $displayName.';
+        } else if (mode == LoginMode.reauthenticateAccount) {
+          message = 'Reconnected $displayName.';
+        } else {
+          message = 'Switched to $displayName.';
+        }
+
+        showAppPremiumToast(
+          message: message,
+          avatarUser: avatarUser,
+          afterNavigation: true,
         );
       }
     } catch (err) {
