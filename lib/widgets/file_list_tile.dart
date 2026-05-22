@@ -60,7 +60,7 @@ class FileListTile extends StatelessWidget {
       selectedTileColor: scheme.secondaryContainer.withValues(alpha: .35),
       contentPadding: const EdgeInsetsDirectional.fromSTEB(
         AppSpacing.md,
-        AppSpacing.xs,
+        AppSpacing.xxs,
         AppSpacing.xs,
         AppSpacing.xs,
       ),
