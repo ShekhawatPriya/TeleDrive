@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -40,7 +41,20 @@ class ProfileAvatar extends StatelessWidget {
     if (photoUrl == null || photoUrl.isEmpty) return fallback();
 
     Widget image;
-    if (photoUrl.startsWith('data:image')) {
+    if (_isLocalPath(photoUrl)) {
+      final path = photoUrl.startsWith('file://')
+          ? Uri.parse(photoUrl).toFilePath()
+          : photoUrl;
+      image = Image.file(
+        File(path),
+        key: ValueKey('profile-avatar-${user?.userId ?? 'anon'}-$path'),
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+        errorBuilder: (_, __, ___) => fallback(),
+      );
+    } else if (photoUrl.startsWith('data:image')) {
       final comma = photoUrl.indexOf(',');
       final payload = comma == -1 ? '' : photoUrl.substring(comma + 1);
       try {
@@ -68,6 +82,13 @@ class ProfileAvatar extends StatelessWidget {
     }
 
     return ClipOval(child: image);
+  }
+
+  bool _isLocalPath(String value) {
+    if (value.startsWith('file://')) return true;
+    final uri = Uri.tryParse(value);
+    if (uri != null && uri.scheme.isNotEmpty) return false;
+    return value.startsWith('/') || RegExp(r'^[A-Za-z]:\\').hasMatch(value);
   }
 
   String _cacheKey(String photoUrl) {

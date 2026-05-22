@@ -99,4 +99,17 @@ void main() {
     expect(vault.remove(2).activeUserId, 1);
     expect(vault.remove(1).activeUserId, isNull);
   });
+
+  test('serializes local profile photo path', () {
+    final saved = account(userId: 1, telegramId: 10, token: 'one').copyWith(
+      photoUrl: 'https://example.test/photo.jpg?token=secret',
+      localPhotoPath: '/data/user/0/app/profile_photos/1.jpg',
+    );
+
+    final parsed = SavedAccount.fromJson(saved.toJson());
+
+    expect(parsed.photoUrl, saved.photoUrl);
+    expect(parsed.localPhotoPath, saved.localPhotoPath);
+    expect(parsed.toAuthUser().photoUrl, saved.localPhotoPath);
+  });
 }

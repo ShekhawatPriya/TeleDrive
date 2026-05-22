@@ -1,4 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
+
 import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../core/utils/jwt.dart';
@@ -187,6 +192,45 @@ class AuthRepository {
 
   Future<void> saveActiveUser(AuthUser user) => storage.saveUser(user);
 
+  Future<String?> cacheProfilePhoto(AuthUser user) async {
+    final source = user.photoUrl?.trim();
+    if (source == null || source.isEmpty) return null;
+    if (_isLocalPath(source)) {
+      return source.startsWith('file://')
+          ? Uri.parse(source).toFilePath()
+          : source;
+    }
+    try {
+      final bytes = source.startsWith('data:image')
+          ? _decodeDataImage(source)
+          : await _downloadProfilePhoto(source);
+      if (bytes == null || bytes.isEmpty) return null;
+      final dir = await _profilePhotoDir();
+      await _deleteCachedProfilePhotoFiles(user.userId);
+      final stamp = DateTime.now().millisecondsSinceEpoch;
+      final file = File(
+        '${dir.path}${Platform.pathSeparator}${user.userId}_${user.telegramId}_$stamp.jpg',
+      );
+      await file.writeAsBytes(bytes, flush: true);
+      return file.path;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> deleteCachedProfilePhoto(int userId) async {
+    try {
+      await _deleteCachedProfilePhotoFiles(userId);
+    } catch (_) {}
+  }
+
+  Future<void> clearCachedProfilePhotos() async {
+    try {
+      final dir = await _profilePhotoDir();
+      if (await dir.exists()) await dir.delete(recursive: true);
+    } catch (_) {}
+  }
+
   Future<void> logout() async {
     api.setToken(null);
     await storage.clearToken();
@@ -196,6 +240,7 @@ class AuthRepository {
     api.setToken(null);
     await storage.clearAccountVault();
     await storage.clearToken();
+    await clearCachedProfilePhotos();
   }
 
   Future<void> disconnectTelegram() =>
@@ -223,5 +268,51 @@ class AuthRepository {
           (item) => CommunityTarget.fromJson(Map<String, dynamic>.from(item)),
         )
         .toList();
+  }
+
+  Future<Directory> _profilePhotoDir() async {
+    final root = await getApplicationSupportDirectory();
+    final dir = Directory(
+      '${root.path}${Platform.pathSeparator}teledrive${Platform.pathSeparator}profile_photos',
+    );
+    if (!await dir.exists()) await dir.create(recursive: true);
+    return dir;
+  }
+
+  List<int>? _decodeDataImage(String source) {
+    final comma = source.indexOf(',');
+    if (comma == -1) return null;
+    return base64Decode(source.substring(comma + 1));
+  }
+
+  Future<List<int>?> _downloadProfilePhoto(String source) async {
+    final response = await Dio().get<List<int>>(
+      source,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return response.data;
+  }
+
+  Future<void> _deleteCachedProfilePhotoFiles(int userId) async {
+    final dir = await _profilePhotoDir();
+    if (!await dir.exists()) return;
+    await for (final entity in dir.list(followLinks: false)) {
+      if (entity is! File) continue;
+      final name = entity.uri.pathSegments.isEmpty
+          ? entity.path
+          : entity.uri.pathSegments.last;
+      if (name == '$userId.jpg' || name.startsWith('${userId}_')) {
+        try {
+          await entity.delete();
+        } catch (_) {}
+      }
+    }
+  }
+
+  bool _isLocalPath(String value) {
+    if (value.startsWith('file://')) return true;
+    final uri = Uri.tryParse(value);
+    if (uri != null && uri.scheme.isNotEmpty) return false;
+    return value.startsWith('/') || RegExp(r'^[A-Za-z]:\\').hasMatch(value);
   }
 }

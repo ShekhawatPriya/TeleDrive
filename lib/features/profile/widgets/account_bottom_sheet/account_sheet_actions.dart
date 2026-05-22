@@ -123,7 +123,7 @@ extension _AccountSheetActions on _AccountBottomSheetState {
                     width: 1.5,
                   ),
                 ),
-                child: _buildAvatarCircle(accounts[i], size: 22),
+                child: _buildAvatarWidget(accounts[i], size: 22),
               ),
             ),
           if (accounts.length > 2)
@@ -152,39 +152,6 @@ extension _AccountSheetActions on _AccountBottomSheetState {
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildAvatarCircle(SavedAccount account, {required double size}) {
-    final scheme = Theme.of(context).colorScheme;
-    final initial = account.firstName.isNotEmpty
-        ? account.firstName[0].toUpperCase()
-        : '?';
-
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color:
-            account.userId ==
-                ref.read(authControllerProvider).activeAccount?.userId
-            ? scheme.primaryContainer
-            : scheme.secondaryContainer,
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        initial,
-        style: TextStyle(
-          fontSize: size * 0.45,
-          fontWeight: FontWeight.bold,
-          color:
-              account.userId ==
-                  ref.read(authControllerProvider).activeAccount?.userId
-              ? scheme.onPrimaryContainer
-              : scheme.onSecondaryContainer,
-        ),
       ),
     );
   }

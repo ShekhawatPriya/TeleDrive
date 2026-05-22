@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -63,6 +65,7 @@ class AuthController extends ChangeNotifier {
         return;
       }
       await _restoreBestAccount();
+      unawaited(_refreshSavedAccountSnapshots());
     } catch (err) {
       _repo.setApiToken(null);
       _clearSessionState(clearVault: false);
@@ -154,6 +157,40 @@ class AuthController extends ChangeNotifier {
     _clearSessionState(clearVault: false);
   }
 
+  Future<void> _refreshSavedAccountSnapshots() async {
+    for (final account in [...vault.accounts]) {
+      if (account.userId == activeAccount?.userId) continue;
+      if (account.tokenStatus != TokenStatus.valid ||
+          _repo.isExpired(account.token)) {
+        continue;
+      }
+      try {
+        final bootstrap = await _repo.bootstrapWithToken(
+          account.token,
+          includeDrive: false,
+        );
+        final localPhotoPath =
+            await _repo.cacheProfilePhoto(bootstrap.user) ??
+            account.localPhotoPath;
+        final updated = _accountFromBootstrap(
+          account.token,
+          bootstrap,
+          existing: account,
+          localPhotoPath: localPhotoPath,
+        );
+        vault = vault.upsert(updated, makeActive: false);
+        await _repo.saveVault(vault);
+        notifyListeners();
+      } on DioException catch (err) {
+        if (err.response?.statusCode == 401) {
+          vault = vault.markTokenStatus(account.userId, TokenStatus.needsLogin);
+          await _repo.saveVault(vault);
+          notifyListeners();
+        }
+      } catch (_) {}
+    }
+  }
+
   Future<void> login(
     String nextToken, {
     Map<String, dynamic>? authPayload,
@@ -206,6 +243,7 @@ class AuthController extends ChangeNotifier {
     final wasActive = activeAccount?.userId == userId;
     vault = vault.remove(userId);
     await _repo.saveVault(vault);
+    await _repo.deleteCachedProfilePhoto(userId);
     if (!wasActive) {
       notifyListeners();
       return isAuthenticated;
@@ -237,12 +275,23 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> refreshSavedAccountSnapshots() =>
+      _refreshSavedAccountSnapshots();
+
   Future<void> _commitActiveAccount(
     String nextToken,
     AuthBootstrapResult bootstrap, {
     SavedAccount? existing,
   }) async {
-    final account = _accountFromBootstrap(nextToken, bootstrap, existing);
+    final localPhotoPath =
+        await _repo.cacheProfilePhoto(bootstrap.user) ??
+        existing?.localPhotoPath;
+    final account = _accountFromBootstrap(
+      nextToken,
+      bootstrap,
+      existing: existing,
+      localPhotoPath: localPhotoPath,
+    );
     vault = vault
         .upsert(account, makeActive: true)
         .touchActive(account.userId, DateTime.now());
@@ -263,9 +312,10 @@ class AuthController extends ChangeNotifier {
 
   SavedAccount _accountFromBootstrap(
     String nextToken,
-    AuthBootstrapResult bootstrap, [
+    AuthBootstrapResult bootstrap, {
     SavedAccount? existing,
-  ]) {
+    String? localPhotoPath,
+  }) {
     final now = DateTime.now();
     final telegramId = bootstrap.user.telegramId != 0
         ? bootstrap.user.telegramId
@@ -278,6 +328,7 @@ class AuthController extends ChangeNotifier {
       username: bootstrap.user.username,
       phoneNumber: bootstrap.phoneNumber ?? existing?.phoneNumber,
       photoUrl: bootstrap.user.photoUrl,
+      localPhotoPath: localPhotoPath ?? existing?.localPhotoPath,
       token: nextToken,
       addedAt: existing?.addedAt ?? now,
       lastUsedAt: now,
@@ -318,11 +369,14 @@ class AuthController extends ChangeNotifier {
       user = await _repo.fetchProfile(current: user);
       final active = activeAccount;
       if (user != null && active != null) {
+        final localPhotoPath =
+            await _repo.cacheProfilePhoto(user!) ?? active.localPhotoPath;
         final updated = active.copyWith(
           firstName: user!.firstName,
           lastName: user!.lastName,
           username: user!.username,
           photoUrl: user!.photoUrl,
+          localPhotoPath: localPhotoPath,
         );
         vault = vault.upsert(updated, makeActive: true);
         await _repo.saveVault(vault);

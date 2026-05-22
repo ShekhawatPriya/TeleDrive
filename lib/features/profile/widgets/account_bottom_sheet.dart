@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -48,6 +50,17 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
   static const _compactActionDividerHeight = 3.0;
 
   bool _isExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final auth = ref.read(authControllerProvider);
+      unawaited(auth.refreshProfile());
+      unawaited(auth.refreshSavedAccountSnapshots());
+    });
+  }
 
   void _toggleSwitchAccountCard(SwitchAccountNotifier notifier) {
     setState(() {

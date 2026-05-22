@@ -98,7 +98,7 @@ extension _AccountSheetSwitcher on _AccountBottomSheetState {
                                 Stack(
                                   clipBehavior: Clip.none,
                                   children: [
-                                    _buildAvatarCircle(account, size: 40),
+                                    _buildAvatarWidget(account, size: 40),
                                     if (switchState.isRemoveMode)
                                       Positioned(
                                         top: -6,

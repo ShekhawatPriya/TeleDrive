@@ -27,6 +27,7 @@ class SavedAccount {
     this.username,
     this.phoneNumber,
     this.photoUrl,
+    this.localPhotoPath,
     this.tokenStatus = TokenStatus.valid,
     this.sessionStatus,
     this.requiresReconnect = false,
@@ -39,6 +40,7 @@ class SavedAccount {
   final String? username;
   final String? phoneNumber;
   final String? photoUrl;
+  final String? localPhotoPath;
   final String token;
   final DateTime addedAt;
   final DateTime lastUsedAt;
@@ -60,7 +62,7 @@ class SavedAccount {
     firstName: firstName,
     lastName: lastName,
     username: username,
-    photoUrl: photoUrl,
+    photoUrl: localPhotoPath ?? photoUrl,
   );
 
   SavedAccount copyWith({
@@ -71,6 +73,7 @@ class SavedAccount {
     String? username,
     String? phoneNumber,
     String? photoUrl,
+    String? localPhotoPath,
     String? token,
     DateTime? addedAt,
     DateTime? lastUsedAt,
@@ -81,6 +84,7 @@ class SavedAccount {
     bool clearUsername = false,
     bool clearPhoneNumber = false,
     bool clearPhotoUrl = false,
+    bool clearLocalPhotoPath = false,
     bool clearSessionStatus = false,
   }) {
     return SavedAccount(
@@ -91,6 +95,9 @@ class SavedAccount {
       username: clearUsername ? null : (username ?? this.username),
       phoneNumber: clearPhoneNumber ? null : (phoneNumber ?? this.phoneNumber),
       photoUrl: clearPhotoUrl ? null : (photoUrl ?? this.photoUrl),
+      localPhotoPath: clearLocalPhotoPath
+          ? null
+          : (localPhotoPath ?? this.localPhotoPath),
       token: token ?? this.token,
       addedAt: addedAt ?? this.addedAt,
       lastUsedAt: lastUsedAt ?? this.lastUsedAt,
@@ -110,6 +117,7 @@ class SavedAccount {
     'username': username,
     'phoneNumber': phoneNumber,
     'photoUrl': photoUrl,
+    'localPhotoPath': localPhotoPath,
     'token': token,
     'addedAt': addedAt.toIso8601String(),
     'lastUsedAt': lastUsedAt.toIso8601String(),
@@ -133,6 +141,9 @@ class SavedAccount {
       username: _string(json['username']),
       phoneNumber: _string(json['phoneNumber'] ?? json['phone_number']),
       photoUrl: _string(json['photoUrl'] ?? json['photo_url']),
+      localPhotoPath: _string(
+        json['localPhotoPath'] ?? json['local_photo_path'],
+      ),
       token: '${json['token'] ?? ''}',
       addedAt: DateTime.tryParse('${json['addedAt'] ?? ''}') ?? now,
       lastUsedAt: DateTime.tryParse('${json['lastUsedAt'] ?? ''}') ?? now,
