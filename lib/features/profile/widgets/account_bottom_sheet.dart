@@ -11,7 +11,7 @@ import '../../../core/utils/safe_navigation.dart';
 import '../../../models/account_vault.dart';
 import '../../../models/auth_user.dart';
 import '../../../widgets/profile_avatar.dart';
-import '../../../widgets/github_icon.dart';
+import '../../../widgets/social_icons.dart';
 import '../../../widgets/sheet/sheet_drag_handle.dart';
 import '../../auth/auth_controller.dart';
 import '../../drive/drive_controller.dart';

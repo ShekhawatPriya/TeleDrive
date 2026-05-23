@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/config/app_config.dart';
 import '../../core/notifications/upload_notification_service.dart';
 import '../../core/theme/app_theme.dart';
-import '../../widgets/github_icon.dart';
+import '../../widgets/social_icons.dart';
 import '../auth/auth_controller.dart';
 import 'app_settings_controller.dart';
 import 'cache_controller.dart';

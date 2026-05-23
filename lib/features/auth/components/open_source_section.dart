@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../widgets/github_icon.dart';
+import '../../../widgets/social_icons.dart';
 
 class OpenSourceSection extends StatelessWidget {
   const OpenSourceSection({super.key});

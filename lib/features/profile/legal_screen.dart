@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
-import '../../widgets/github_icon.dart';
+import '../../widgets/social_icons.dart';
 import 'legal_data.dart';
 
 enum LegalKind { privacy, terms }

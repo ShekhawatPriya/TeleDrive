@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/safe_navigation.dart';
-import '../../../widgets/github_icon.dart';
+import '../../../widgets/social_icons.dart';
 
 class HeroSection extends StatelessWidget {
   const HeroSection({super.key});

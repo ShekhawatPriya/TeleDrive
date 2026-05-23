@@ -149,30 +149,60 @@ extension _AccountSheetIdentity on _AccountBottomSheetState {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md + 4),
-                  InkWell(
-                    onTap: AppConfig.openRepository,
-                    borderRadius: BorderRadius.circular(4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        GitHubIcon(size: 24, color: scheme.onSurface),
-                        const SizedBox(width: AppSpacing.sm),
-                        Text(
-                          'Open Source\nProject',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurface,
-                            fontWeight: FontWeight.bold,
-                            height: 1.2,
-                          ),
-                        ),
-                      ],
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildSocialIconButton(
+                        context,
+                        icon: GitHubIcon(size: 22, color: scheme.onSurface),
+                        onTap: AppConfig.openRepository,
+                      ),
+                      const SizedBox(width: AppSpacing.xxs),
+                      _buildSocialIconButton(
+                        context,
+                        icon: InstagramIcon(size: 22, color: scheme.onSurface),
+                        onTap: AppConfig.openInstagram,
+                      ),
+                      const SizedBox(width: AppSpacing.xxs),
+                      _buildSocialIconButton(
+                        context,
+                        icon: XIcon(size: 22, color: scheme.onSurface),
+                        onTap: AppConfig.openTwitter,
+                      ),
+                      const SizedBox(width: AppSpacing.xxs),
+                      _buildSocialIconButton(
+                        context,
+                        icon: YouTubeIcon(size: 22, color: scheme.onSurface),
+                        onTap: AppConfig.openYouTube,
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSocialIconButton(
+    BuildContext context, {
+    required Widget icon,
+    required VoidCallback onTap,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        splashColor: scheme.primary.withValues(alpha: 0.12),
+        highlightColor: scheme.primary.withValues(alpha: 0.06),
+        child: Padding(
+          padding: const EdgeInsets.all(6.0),
+          child: icon,
+        ),
       ),
     );
   }
