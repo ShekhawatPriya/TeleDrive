@@ -12,6 +12,7 @@
 .swiftpm/
 migrate_working_dir/
 .bin/
+.docs/
 .rules/
 
 # IntelliJ related
@@ -51,7 +52,3 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Runtime debug artifacts and test fixtures
-runtime-*
-runtime-batch-fixtures/
-teledrive_*
