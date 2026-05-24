@@ -285,6 +285,18 @@ class DriveController extends ChangeNotifier {
     await refresh(silent: true, force: true);
   }
 
+  Future<void> archiveFile(String id) =>
+      _moveToShelf(id, kind: _ShelfKind.archive, archive: true);
+
+  Future<void> unarchiveFile(String id) =>
+      _moveToShelf(id, kind: _ShelfKind.archive, archive: false);
+
+  Future<void> lockFile(String id) =>
+      _moveToShelf(id, kind: _ShelfKind.locked, archive: true);
+
+  Future<void> unlockFile(String id) =>
+      _moveToShelf(id, kind: _ShelfKind.locked, archive: false);
+
   Future<void> toggleStar(String id, {bool folder = false}) =>
       _toggleStar(id, folder: folder);
 

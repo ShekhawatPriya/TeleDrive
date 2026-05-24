@@ -16,8 +16,10 @@ import 'features/file_viewer/file_viewer_screen.dart';
 import 'features/photos/photos_filter.dart';
 import 'features/photos/photos_screen.dart';
 import 'features/photos/photos_viewer/photo_viewer_screen.dart';
+import 'features/profile/archive_screen.dart';
 import 'features/profile/legal_screen.dart';
 import 'features/profile/free_up_space_screen.dart';
+import 'features/profile/locked_screen.dart';
 import 'features/profile/my_data_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/settings_screen.dart';
@@ -152,6 +154,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings/trash',
         pageBuilder: (context, state) =>
             CupertinoPage(key: state.pageKey, child: const TrashScreen()),
+      ),
+      GoRoute(
+        path: '/settings/archive',
+        pageBuilder: (context, state) =>
+            CupertinoPage(key: state.pageKey, child: const ArchiveScreen()),
+      ),
+      GoRoute(
+        path: '/settings/locked',
+        pageBuilder: (context, state) =>
+            CupertinoPage(key: state.pageKey, child: const LockedScreen()),
       ),
       GoRoute(
         path: '/folder/:id',

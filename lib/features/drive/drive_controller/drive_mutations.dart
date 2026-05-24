@@ -1,5 +1,7 @@
 part of '../drive_controller.dart';
 
+enum _ShelfKind { archive, locked }
+
 extension _DriveMutations on DriveController {
   Future<DriveFolder> _createFolder(String name, String? parentId) async {
     final tempId = 'local:${DateTime.now().microsecondsSinceEpoch}';
@@ -258,6 +260,78 @@ extension _DriveMutations on DriveController {
         error: _repo.api.errorMessage(err, 'Could not update star.'),
       );
     }
+    _notifyListeners();
+  }
+
+  Future<void> _moveToShelf(
+    String id, {
+    required _ShelfKind kind,
+    required bool archive,
+  }) async {
+    final previousFiles = state.files;
+    final previousMedia = state.mediaFiles;
+    if (archive) {
+      // Optimistically remove from the active sets so the home/folder/photos
+      // views update immediately.
+      state = state.copyWith(
+        files: state.files.where((f) => f.id != id).toList(),
+        mediaFiles: state.mediaFiles.where((f) => f.id != id).toList(),
+        clearError: true,
+      );
+      _notifyListeners();
+    } else {
+      state = state.copyWith(clearError: true);
+    }
+    try {
+      switch ((kind, archive)) {
+        case (_ShelfKind.archive, true):
+          await _repo.archiveFile(id);
+        case (_ShelfKind.archive, false):
+          await _repo.unarchiveFile(id);
+        case (_ShelfKind.locked, true):
+          await _repo.lockFile(id);
+        case (_ShelfKind.locked, false):
+          await _repo.unlockFile(id);
+      }
+      _bumpShelfRevision(kind);
+      _markActiveAndAncestorsStale();
+      await refresh(silent: true, force: true);
+    } catch (err) {
+      if (archive) {
+        state = state.copyWith(
+          files: previousFiles,
+          mediaFiles: previousMedia,
+          error: _repo.api.errorMessage(
+            err,
+            kind == _ShelfKind.archive
+                ? 'Could not archive file.'
+                : 'Could not lock file.',
+          ),
+        );
+      } else {
+        state = state.copyWith(
+          error: _repo.api.errorMessage(
+            err,
+            kind == _ShelfKind.archive
+                ? 'Could not unarchive file.'
+                : 'Could not unlock file.',
+          ),
+        );
+      }
+      _notifyListeners();
+      rethrow;
+    }
+  }
+
+  void _bumpShelfRevision(_ShelfKind kind) {
+    state = switch (kind) {
+      _ShelfKind.archive => state.copyWith(
+        archiveRevision: state.archiveRevision + 1,
+      ),
+      _ShelfKind.locked => state.copyWith(
+        lockedRevision: state.lockedRevision + 1,
+      ),
+    };
     _notifyListeners();
   }
 }

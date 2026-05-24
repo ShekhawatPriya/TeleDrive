@@ -204,6 +204,8 @@ class DriveState {
     this.deleteProgress,
     this.activeFolderId,
     this.trashRevision = 0,
+    this.archiveRevision = 0,
+    this.lockedRevision = 0,
   });
 
   final List<DriveFile> files;
@@ -216,6 +218,8 @@ class DriveState {
   final ({int completed, int failed, int total})? deleteProgress;
   final String? activeFolderId;
   final int trashRevision;
+  final int archiveRevision;
+  final int lockedRevision;
 
   int get usedStorage => files
       .where((f) => f.uploadStatus == null || f.uploadStatus == 'available')
@@ -234,6 +238,8 @@ class DriveState {
     bool clearDeleteProgress = false,
     Object? activeFolderId = _unset,
     int? trashRevision,
+    int? archiveRevision,
+    int? lockedRevision,
   }) {
     return DriveState(
       files: files ?? this.files,
@@ -252,6 +258,8 @@ class DriveState {
           ? this.activeFolderId
           : activeFolderId as String?,
       trashRevision: trashRevision ?? this.trashRevision,
+      archiveRevision: archiveRevision ?? this.archiveRevision,
+      lockedRevision: lockedRevision ?? this.lockedRevision,
     );
   }
 }

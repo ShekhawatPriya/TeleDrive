@@ -56,6 +56,24 @@ class DriveRepository {
         .toList();
   }
 
+  Future<List<DriveFile>> listArchiveFiles() async {
+    final res = await api.dio.get('/files/archive');
+    final raw = res.data;
+    final files = raw is Map ? raw['files'] : raw;
+    return (files as List? ?? [])
+        .map((e) => _mapFile(Map<String, dynamic>.from(e as Map)))
+        .toList();
+  }
+
+  Future<List<DriveFile>> listLockedFiles() async {
+    final res = await api.dio.get('/files/locked');
+    final raw = res.data;
+    final files = raw is Map ? raw['files'] : raw;
+    return (files as List? ?? [])
+        .map((e) => _mapFile(Map<String, dynamic>.from(e as Map)))
+        .toList();
+  }
+
   Future<DriveSnapshot> getDriveState() async {
     final res = await api.dio.get('/frontend/drive-state');
     return parseDriveState(Map<String, dynamic>.from(res.data as Map));
@@ -170,6 +188,15 @@ class DriveRepository {
       api.dio.post('/files/$id/restore').then((_) {});
   Future<void> restoreFolder(String id) async =>
       api.dio.post('/folders/$id/restore').then((_) {});
+
+  Future<void> archiveFile(String id) async =>
+      api.dio.post('/files/$id/archive').then((_) {});
+  Future<void> unarchiveFile(String id) async =>
+      api.dio.post('/files/$id/unarchive').then((_) {});
+  Future<void> lockFile(String id) async =>
+      api.dio.post('/files/$id/lock').then((_) {});
+  Future<void> unlockFile(String id) async =>
+      api.dio.post('/files/$id/unlock').then((_) {});
 
   Future<void> purgeAllTrash() async {
     final results = await Future.wait([listTrashFiles(), listTrashFolders()]);

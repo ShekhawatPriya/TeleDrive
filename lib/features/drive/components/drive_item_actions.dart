@@ -78,8 +78,28 @@ class DriveItemActions {
       }
     } else if (action == 'star') {
       await controller.toggleStar(file.id);
-    } else if (action == 'lock' || action == 'archive') {
-      return;
+    } else if (action == 'lock') {
+      try {
+        await controller.lockFile(file.id);
+        if (context.mounted) {
+          _showShelfSnackBar(context, 'Moved to Locked');
+        }
+      } catch (_) {
+        if (context.mounted) {
+          _showShelfSnackBar(context, 'Could not lock file.');
+        }
+      }
+    } else if (action == 'archive') {
+      try {
+        await controller.archiveFile(file.id);
+        if (context.mounted) {
+          _showShelfSnackBar(context, 'Moved to Archive');
+        }
+      } catch (_) {
+        if (context.mounted) {
+          _showShelfSnackBar(context, 'Could not archive file.');
+        }
+      }
     }
   }
 
@@ -102,8 +122,6 @@ class DriveItemActions {
         label: 'Move',
         icon: Icons.drive_file_move_outline,
       ),
-      _lockAction,
-      _archiveAction,
       _starAction(folder.starred),
       _deleteAction,
     ];
@@ -152,8 +170,6 @@ class DriveItemActions {
       }
     } else if (action == 'star') {
       await controller.toggleStar(folder.id, folder: true);
-    } else if (action == 'lock' || action == 'archive') {
-      return;
     } else if (action == 'rename' && context.mounted) {
       final name = await promptFolderName(
         context,
@@ -270,4 +286,12 @@ String _folderSubtitle(DriveFolder folder) {
     parts.add(formatFileSize(folder.recursiveSize));
   }
   return parts.join(' • ');
+}
+
+void _showShelfSnackBar(BuildContext context, String message) {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  if (messenger == null) return;
+  messenger.showSnackBar(
+    SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+  );
 }

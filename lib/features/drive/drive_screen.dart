@@ -133,6 +133,8 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                 padding: const EdgeInsets.fromLTRB(0, AppSpacing.xs, 0, 0),
                 child: DriveQuickActions(
                   onTrashTap: () => context.safePush('/settings/trash'),
+                  onArchiveTap: () => context.safePush('/settings/archive'),
+                  onLockedTap: () => context.safePush('/settings/locked'),
                 ),
               ),
             ),
