@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,6 +25,7 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
   List<DriveFile> _files = const [];
   List<DriveFolder> _folders = const [];
   String? _error;
+  Future<void>? _loadFuture;
 
   @override
   void initState() {
@@ -30,11 +33,28 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
+  Future<void> _load({bool showSpinner = true}) {
+    final inFlight = _loadFuture;
+    if (inFlight != null) return inFlight;
+    final future = _loadTrash(showSpinner: showSpinner);
+    _loadFuture = future;
+    future.whenComplete(() {
+      if (identical(_loadFuture, future)) {
+        _loadFuture = null;
+      }
     });
+    return future;
+  }
+
+  Future<void> _loadTrash({required bool showSpinner}) async {
+    if (showSpinner) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    } else if (_error != null) {
+      setState(() => _error = null);
+    }
     try {
       final repo = ref.read(driveRepositoryProvider);
       final results = await Future.wait([
@@ -122,6 +142,11 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<DriveController>(driveControllerProvider, (previous, next) {
+      if (previous?.state.trashRevision == next.state.trashRevision) return;
+      unawaited(_load(showSpinner: false));
+    });
+
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final empty = !_loading && _error == null && _totalCount == 0;

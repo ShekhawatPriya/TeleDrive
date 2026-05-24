@@ -203,6 +203,7 @@ class DriveState {
     this.loadingMoreMedia = false,
     this.deleteProgress,
     this.activeFolderId,
+    this.trashRevision = 0,
   });
 
   final List<DriveFile> files;
@@ -214,6 +215,7 @@ class DriveState {
   final bool loadingMoreMedia;
   final ({int completed, int failed, int total})? deleteProgress;
   final String? activeFolderId;
+  final int trashRevision;
 
   int get usedStorage => files
       .where((f) => f.uploadStatus == null || f.uploadStatus == 'available')
@@ -231,6 +233,7 @@ class DriveState {
     bool clearError = false,
     bool clearDeleteProgress = false,
     Object? activeFolderId = _unset,
+    int? trashRevision,
   }) {
     return DriveState(
       files: files ?? this.files,
@@ -248,6 +251,7 @@ class DriveState {
       activeFolderId: activeFolderId == _unset
           ? this.activeFolderId
           : activeFolderId as String?,
+      trashRevision: trashRevision ?? this.trashRevision,
     );
   }
 }

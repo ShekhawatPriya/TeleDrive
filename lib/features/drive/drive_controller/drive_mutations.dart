@@ -182,6 +182,7 @@ extension _DriveMutations on DriveController {
       );
     } else {
       _markActiveAndAncestorsStale();
+      _bumpTrashRevision();
       refresh(silent: true, force: true);
     }
     Future<void>.delayed(Duration(milliseconds: failed > 0 ? 2200 : 900), () {

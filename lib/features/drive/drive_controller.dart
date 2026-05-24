@@ -257,26 +257,31 @@ class DriveController extends ChangeNotifier {
 
   Future<void> restoreFile(String id) async {
     await _repo.restoreFile(id);
+    _bumpTrashRevision();
     await refresh(silent: true, force: true);
   }
 
   Future<void> restoreFolder(String id) async {
     await _repo.restoreFolder(id);
+    _bumpTrashRevision();
     await refresh(silent: true, force: true);
   }
 
   Future<void> purgeFile(String id) async {
     await _repo.purgeFile(id);
+    _bumpTrashRevision();
     await refresh(silent: true, force: true);
   }
 
   Future<void> purgeFolder(String id) async {
     await _repo.purgeFolder(id);
+    _bumpTrashRevision();
     await refresh(silent: true, force: true);
   }
 
   Future<void> purgeAllTrash() async {
     await _repo.purgeAllTrash();
+    _bumpTrashRevision();
     await refresh(silent: true, force: true);
   }
 
@@ -311,6 +316,11 @@ class DriveController extends ChangeNotifier {
     );
 
     state = state.copyWith(files: updatedFiles, mediaFiles: updatedMedia);
+    notifyListeners();
+  }
+
+  void _bumpTrashRevision() {
+    state = state.copyWith(trashRevision: state.trashRevision + 1);
     notifyListeners();
   }
 

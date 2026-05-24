@@ -49,8 +49,9 @@ class DriveRepository {
 
   Future<List<DriveFile>> listTrashFiles() async {
     final res = await api.dio.get('/files/trash');
-    final data = Map<String, dynamic>.from(res.data as Map);
-    return (data['files'] as List? ?? [])
+    final raw = res.data;
+    final files = raw is Map ? raw['files'] : raw;
+    return (files as List? ?? [])
         .map((e) => _mapFile(Map<String, dynamic>.from(e as Map)))
         .toList();
   }
@@ -109,7 +110,9 @@ class DriveRepository {
 
   Future<List<DriveFolder>> listTrashFolders() async {
     final res = await api.dio.get('/folders/trash');
-    return (res.data as List? ?? [])
+    final raw = res.data;
+    final folders = raw is Map ? raw['folders'] : raw;
+    return (folders as List? ?? [])
         .map((e) => _mapFolder(Map<String, dynamic>.from(e as Map)))
         .toList();
   }
