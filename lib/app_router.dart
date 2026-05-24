@@ -128,6 +128,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           final scrollToStorage =
               state.uri.queryParameters['scrollToStorage'] == 'true';
           return CupertinoPage(
+            key: state.pageKey,
             child: ProfileScreen(scrollToStorage: scrollToStorage),
           );
         },
@@ -135,22 +136,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile/my-data',
         pageBuilder: (context, state) =>
-            const CupertinoPage(child: MyDataScreen()),
+            CupertinoPage(key: state.pageKey, child: const MyDataScreen()),
       ),
       GoRoute(
         path: '/profile/free-up-space',
         pageBuilder: (context, state) =>
-            const CupertinoPage(child: FreeUpSpaceScreen()),
+            CupertinoPage(key: state.pageKey, child: const FreeUpSpaceScreen()),
       ),
       GoRoute(
         path: '/settings',
         pageBuilder: (context, state) =>
-            const CupertinoPage(child: SettingsScreen()),
+            CupertinoPage(key: state.pageKey, child: const SettingsScreen()),
       ),
       GoRoute(
         path: '/settings/trash',
         pageBuilder: (context, state) =>
-            const CupertinoPage(child: TrashScreen()),
+            CupertinoPage(key: state.pageKey, child: const TrashScreen()),
       ),
       GoRoute(
         path: '/folder/:id',
@@ -176,14 +177,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/privacy',
-        pageBuilder: (context, state) => const CupertinoPage(
-          child: LegalScreen(kind: LegalKind.privacy),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: const LegalScreen(kind: LegalKind.privacy),
         ),
       ),
       GoRoute(
         path: '/terms',
-        pageBuilder: (context, state) => const CupertinoPage(
-          child: LegalScreen(kind: LegalKind.terms),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: const LegalScreen(kind: LegalKind.terms),
         ),
       ),
     ],

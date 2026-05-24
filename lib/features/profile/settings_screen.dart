@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/navigation/root_navigator.dart';
 import '../../core/notifications/upload_notification_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/social_icons.dart';
@@ -308,13 +309,21 @@ class UploadSettingsScreen extends ConsumerWidget {
               title: 'Repair device Telegram session',
               subtitle:
                   'TeleDrive requires local TDLib file transfer. Use this if uploads or private downloads ask you to reconnect.',
-              onTap: () => context.push('/tdlib-session?returnTo=/settings'),
+              onTap: () => _openTdlibRepair(context),
             ),
           ],
         ],
       ),
     );
   }
+}
+
+void _openTdlibRepair(BuildContext context) {
+  final router = GoRouter.of(context);
+  rootNavigatorKey.currentState?.popUntil((route) => route.isFirst);
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    router.go('/tdlib-session?returnTo=/settings');
+  });
 }
 
 class BackupSettingsScreen extends ConsumerWidget {
