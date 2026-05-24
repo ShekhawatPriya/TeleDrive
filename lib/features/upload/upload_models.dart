@@ -5,9 +5,16 @@ enum UploadStatus {
   selected,
   queued,
   waitingForWifi,
+  preparingMetadata,
+  creatingThumbnail,
+  creatingPreview,
   stagingToBackend,
   waitingForServer,
   uploadingToTelegram,
+  uploadingOriginalToTelegram,
+  uploadingThumbnailToTelegram,
+  uploadingPreviewToTelegram,
+  committingMetadata,
   processing,
   uploaded,
   cancelling,
@@ -19,6 +26,10 @@ enum UploadStatus {
       return UploadStatus.uploaded;
     if (status == 'cancelled') return UploadStatus.cancelled;
     if (status == 'failed') return UploadStatus.failed;
+    if (status == 'client_uploading')
+      return UploadStatus.uploadingOriginalToTelegram;
+    if (status == 'pending_client_upload')
+      return UploadStatus.preparingMetadata;
     if (status == 'uploading' || status == 'uploading_original')
       return UploadStatus.uploadingToTelegram;
     if (status.startsWith('processing') || status == 'derivatives')
@@ -36,6 +47,11 @@ class UploadItem {
     required this.mimeType,
     required this.path,
     required this.status,
+    this.clientSource = 'manual_picker',
+    this.deleteLocalOnComplete = true,
+    this.localModifiedAt,
+    this.relativePath,
+    this.durationMs,
     this.httpProgress = 0,
     this.serverProgress = 0,
     this.batchId,
@@ -54,6 +70,11 @@ class UploadItem {
   final String mimeType;
   final String path;
   final UploadStatus status;
+  final String clientSource;
+  final bool deleteLocalOnComplete;
+  final DateTime? localModifiedAt;
+  final String? relativePath;
+  final int? durationMs;
   final double httpProgress;
   final double serverProgress;
   final double progress;
@@ -77,6 +98,18 @@ class UploadItem {
       case UploadStatus.queued:
       case UploadStatus.waitingForWifi:
         return 0.0;
+      case UploadStatus.preparingMetadata:
+        return 0.05;
+      case UploadStatus.creatingThumbnail:
+      case UploadStatus.creatingPreview:
+        return 0.10;
+      case UploadStatus.uploadingOriginalToTelegram:
+        return (0.10 + server * 0.75).clamp(0.10, 0.85);
+      case UploadStatus.uploadingThumbnailToTelegram:
+      case UploadStatus.uploadingPreviewToTelegram:
+        return (0.85 + server * 0.10).clamp(0.85, 0.95);
+      case UploadStatus.committingMetadata:
+        return 0.96;
       case UploadStatus.stagingToBackend:
         return (http * 0.4).clamp(0.0, 0.4);
       case UploadStatus.waitingForServer:
@@ -102,6 +135,11 @@ class UploadItem {
     String? error,
     bool clearError = false,
     bool? cancelRequested,
+    String? clientSource,
+    bool? deleteLocalOnComplete,
+    DateTime? localModifiedAt,
+    String? relativePath,
+    int? durationMs,
     bool resetServerIds = false,
     bool? thumbnailReady,
     String? thumbnailUrl,
@@ -115,6 +153,12 @@ class UploadItem {
       mimeType: mimeType,
       path: path,
       status: status ?? this.status,
+      clientSource: clientSource ?? this.clientSource,
+      deleteLocalOnComplete:
+          deleteLocalOnComplete ?? this.deleteLocalOnComplete,
+      localModifiedAt: localModifiedAt ?? this.localModifiedAt,
+      relativePath: relativePath ?? this.relativePath,
+      durationMs: durationMs ?? this.durationMs,
       httpProgress: httpProgress ?? this.httpProgress,
       serverProgress: serverProgress ?? this.serverProgress,
       batchId: resetServerIds ? null : batchId ?? this.batchId,

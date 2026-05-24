@@ -13,6 +13,39 @@ import '../../models/drive_models.dart';
 import '../drive/drive_repository.dart';
 import 'models/community_onboarding.dart';
 
+class BackendFeatureFlags {
+  const BackendFeatureFlags({
+    this.directTelegramUploadEnabled = false,
+    this.directTelegramDownloadEnabled = false,
+    this.clientDerivativeGenerationEnabled = false,
+    this.legacyBackendUploadFallbackEnabled = true,
+    this.galleryBackupEnabled = false,
+    this.publicProxyEnabled = true,
+  });
+
+  final bool directTelegramUploadEnabled;
+  final bool directTelegramDownloadEnabled;
+  final bool clientDerivativeGenerationEnabled;
+  final bool legacyBackendUploadFallbackEnabled;
+  final bool galleryBackupEnabled;
+  final bool publicProxyEnabled;
+
+  factory BackendFeatureFlags.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const BackendFeatureFlags();
+    return BackendFeatureFlags(
+      directTelegramUploadEnabled: json['directTelegramUploadEnabled'] == true,
+      directTelegramDownloadEnabled:
+          json['directTelegramDownloadEnabled'] == true,
+      clientDerivativeGenerationEnabled:
+          json['clientDerivativeGenerationEnabled'] == true,
+      legacyBackendUploadFallbackEnabled:
+          json['legacyBackendUploadFallbackEnabled'] != false,
+      galleryBackupEnabled: json['galleryBackupEnabled'] == true,
+      publicProxyEnabled: json['publicProxyEnabled'] != false,
+    );
+  }
+}
+
 class AuthBootstrapResult {
   const AuthBootstrapResult({
     required this.user,
@@ -26,6 +59,7 @@ class AuthBootstrapResult {
     this.telegramUserId,
     this.sessionStatus,
     this.requiresReconnect = false,
+    this.featureFlags = const BackendFeatureFlags(),
   });
 
   final AuthUser user;
@@ -39,6 +73,7 @@ class AuthBootstrapResult {
   final int? telegramUserId;
   final String? sessionStatus;
   final bool requiresReconnect;
+  final BackendFeatureFlags featureFlags;
 }
 
 class AuthRepository {
@@ -126,6 +161,9 @@ class AuthRepository {
     final uploadLimits = data['uploadLimits'] is Map
         ? Map<String, dynamic>.from(data['uploadLimits'] as Map)
         : null;
+    final featureFlags = data['featureFlags'] is Map
+        ? Map<String, dynamic>.from(data['featureFlags'] as Map)
+        : null;
     final largeThreshold = uploadLimits != null
         ? uploadLimits['largeUploadThresholdBytes'] as int?
         : null;
@@ -143,10 +181,18 @@ class AuthRepository {
       drive: drive,
       largeUploadThresholdBytes: largeThreshold,
       phoneNumber: telegram['phoneNumber'] as String?,
-      telegramUserId: (telegram['telegramUserId'] as num?)?.toInt(),
+      telegramUserId: _intish(telegram['telegramUserId']),
       sessionStatus: telegram['status'] as String?,
       requiresReconnect: telegram['requiresReconnect'] == true,
+      featureFlags: BackendFeatureFlags.fromJson(featureFlags),
     );
+  }
+
+  int? _intish(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 
   Future<AuthBootstrapResult> bootstrapWithToken(

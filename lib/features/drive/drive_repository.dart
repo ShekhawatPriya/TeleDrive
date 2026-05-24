@@ -1,4 +1,5 @@
 import '../../core/network/api_client.dart';
+import '../../core/telegram/telegram_client_models.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../models/drive_models.dart';
 
@@ -80,6 +81,23 @@ class DriveRepository {
   Future<DriveFile> getFile(String id) async {
     final res = await api.dio.get('/files/$id');
     return _mapFile(Map<String, dynamic>.from(res.data as Map));
+  }
+
+  Future<({TelegramMediaRef? ref, String? fallbackUrl, String cacheKey})>
+  mediaRef(String id, {String variant = 'original'}) async {
+    final res = await api.dio.get(
+      '/files/$id/media-ref',
+      queryParameters: {'variant': variant},
+    );
+    final data = Map<String, dynamic>.from(res.data as Map);
+    final rawRef = data['telegramRef'];
+    return (
+      ref: rawRef is Map
+          ? TelegramMediaRef.fromJson(Map<String, dynamic>.from(rawRef))
+          : null,
+      fallbackUrl: data['fallbackUrl'] as String?,
+      cacheKey: '${data['cacheKey'] ?? '$id:$variant'}',
+    );
   }
 
   Future<List<DriveFolder>> listFolders() async {
@@ -172,6 +190,8 @@ class DriveRepository {
     final mime = json['mimeType'] as String?;
     final kind = detectFileKind(name, mime);
     final uploadStatus = '${json['uploadStatus'] ?? 'available'}';
+    final storageMode = '${json['storageMode'] ?? 'legacy_server_managed'}';
+    final mediaAccessMode = '${json['mediaAccessMode'] ?? 'server_proxy'}';
     final thumbnailStatus = '${json['thumbnailStatus'] ?? ''}';
     final previewStatus = '${json['previewStatus'] ?? ''}';
     final thumbnailVersion = (json['thumbnailVersion'] as num?)?.toInt();
@@ -185,12 +205,21 @@ class DriveRepository {
             (kind == FileKind.video && thumbnailStatus == 'available') ||
             (media && thumbnailStatus == 'available'));
     final previewOk = kind == FileKind.image && previewStatus == 'available';
-    final thumb = thumbnailOk
-        ? api.mediaUrl('/files/$id/thumbnail', params: {'v': thumbnailVersion})
-        : null;
-    final preview = previewOk
-        ? api.mediaUrl('/files/$id/preview', params: {'v': previewVersion})
-        : null;
+    final serverProxy =
+        mediaAccessMode == 'server_proxy' && storageMode != 'client_managed';
+    final thumb =
+        json['thumbnailUrl'] as String? ??
+        (thumbnailOk && serverProxy
+            ? api.mediaUrl(
+                '/files/$id/thumbnail',
+                params: {'v': thumbnailVersion},
+              )
+            : null);
+    final preview =
+        json['previewUrl'] as String? ??
+        (previewOk && serverProxy
+            ? api.mediaUrl('/files/$id/preview', params: {'v': previewVersion})
+            : null);
     return DriveFile(
       id: id,
       name: name,
@@ -204,6 +233,14 @@ class DriveRepository {
       mimeType: mime,
       uploadStatus: uploadStatus,
       uploadError: json['uploadError'] as String?,
+      storageMode: storageMode,
+      uploadOrigin: '${json['uploadOrigin'] ?? 'backend_multipart'}',
+      publicProxyStatus: json['publicProxyStatus'] as String?,
+      verificationStatus: json['verificationStatus'] as String?,
+      mediaAccessMode: mediaAccessMode,
+      originalRefAvailable: json['originalRefAvailable'] == true,
+      thumbnailRefAvailable: json['thumbnailRefAvailable'] == true,
+      previewRefAvailable: json['previewRefAvailable'] == true,
       thumbnailStatus: thumbnailStatus,
       previewStatus: previewStatus,
       thumbnailVersion: thumbnailVersion,
@@ -213,8 +250,12 @@ class DriveRepository {
       duration: (json['durationSeconds'] as num?)?.toInt(),
       thumbnailUrl: thumb ?? preview,
       previewUrl: preview ?? thumb,
-      streamUrl: media ? api.mediaUrl('/files/$id/stream') : null,
-      downloadUrl: api.mediaUrl('/files/$id/download'),
+      streamUrl:
+          json['streamUrl'] as String? ??
+          (media && serverProxy ? api.mediaUrl('/files/$id/stream') : null),
+      downloadUrl:
+          json['downloadUrl'] as String? ??
+          (serverProxy ? api.mediaUrl('/files/$id/download') : null),
     );
   }
 

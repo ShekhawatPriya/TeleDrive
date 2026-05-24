@@ -29,6 +29,14 @@ class DriveFile {
     this.mimeType,
     this.uploadStatus,
     this.uploadError,
+    this.storageMode = 'legacy_server_managed',
+    this.uploadOrigin = 'backend_multipart',
+    this.publicProxyStatus,
+    this.verificationStatus,
+    this.mediaAccessMode = 'server_proxy',
+    this.originalRefAvailable = false,
+    this.thumbnailRefAvailable = false,
+    this.previewRefAvailable = false,
     this.thumbnailStatus,
     this.previewStatus,
     this.thumbnailVersion,
@@ -58,6 +66,14 @@ class DriveFile {
   final String? mimeType;
   final String? uploadStatus;
   final String? uploadError;
+  final String storageMode;
+  final String uploadOrigin;
+  final String? publicProxyStatus;
+  final String? verificationStatus;
+  final String mediaAccessMode;
+  final bool originalRefAvailable;
+  final bool thumbnailRefAvailable;
+  final bool previewRefAvailable;
   final String? thumbnailStatus;
   final String? previewStatus;
   final int? thumbnailVersion;
@@ -97,6 +113,14 @@ class DriveFile {
       mimeType: mimeType,
       uploadStatus: uploadStatus ?? this.uploadStatus,
       uploadError: uploadError ?? this.uploadError,
+      storageMode: storageMode,
+      uploadOrigin: uploadOrigin,
+      publicProxyStatus: publicProxyStatus,
+      verificationStatus: verificationStatus,
+      mediaAccessMode: mediaAccessMode,
+      originalRefAvailable: originalRefAvailable,
+      thumbnailRefAvailable: thumbnailRefAvailable,
+      previewRefAvailable: previewRefAvailable,
       thumbnailStatus: thumbnailStatus,
       previewStatus: previewStatus,
       thumbnailVersion: thumbnailVersion,

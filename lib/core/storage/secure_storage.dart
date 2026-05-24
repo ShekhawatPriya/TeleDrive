@@ -11,6 +11,9 @@ class SecureStorageService {
   static const _tokenKey = 'teledrive_auth_token';
   static const _userKey = 'teledrive_auth_user';
   static const _accountVaultKey = 'teledrive_account_vault_v1';
+  static const _tdlibKeyPrefix = 'teledrive_tdlib_key_v1';
+  static const _pendingTelegramCommitsPrefix =
+      'teledrive_pending_tdlib_commits_v1';
   final _storage = const FlutterSecureStorage();
 
   Future<String?> readToken() => _storage.read(key: _tokenKey);
@@ -60,4 +63,22 @@ class SecureStorageService {
     await _storage.delete(key: _tokenKey);
     await _storage.delete(key: _userKey);
   }
+
+  Future<String?> readTdlibKey(String scope) =>
+      _storage.read(key: '${_tdlibKeyPrefix}_$scope');
+
+  Future<void> saveTdlibKey(String scope, String value) =>
+      _storage.write(key: '${_tdlibKeyPrefix}_$scope', value: value);
+
+  Future<String?> readPendingTelegramCommits(String scope) =>
+      _storage.read(key: '${_pendingTelegramCommitsPrefix}_$scope');
+
+  Future<void> savePendingTelegramCommits(String scope, String value) =>
+      _storage.write(
+        key: '${_pendingTelegramCommitsPrefix}_$scope',
+        value: value,
+      );
+
+  Future<void> clearPendingTelegramCommits(String scope) =>
+      _storage.delete(key: '${_pendingTelegramCommitsPrefix}_$scope');
 }

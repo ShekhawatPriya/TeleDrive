@@ -12,6 +12,7 @@ import 'features/drive/starred_screen.dart';
 import 'features/photos/components/photos_menu_builder.dart';
 import 'features/photos/photos_grid/photo_grid_density.dart';
 import 'features/photos/photos_screen.dart';
+import 'features/profile/gallery_backup_controller.dart';
 import 'features/search/search_controller.dart';
 import 'features/share/my_shares_screen.dart';
 import 'features/share/share_controller.dart';
@@ -66,6 +67,7 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(galleryBackupControllerProvider);
     final location = GoRouterState.of(context).matchedLocation;
     final routeIndex = _tabIndexFor(location);
     final showingTab = routeIndex >= 0;

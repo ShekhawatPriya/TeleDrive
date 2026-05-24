@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/notifications/upload_notification_service.dart';
+import '../../core/telegram/telegram_auth_bridge.dart';
+import '../../core/telegram/telegram_transfer_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/social_icons.dart';
 import '../auth/auth_controller.dart';
@@ -284,10 +286,251 @@ class UploadSettingsScreen extends ConsumerWidget {
                 .read(appSettingsControllerProvider)
                 .setAutoRenameDuplicates,
           ),
+          if (auth.directTelegramUploadEnabled ||
+              auth.directTelegramDownloadEnabled) ...[
+            const SizedBox(height: AppSpacing.xl),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: _settingsSectionLabel(context, 'Direct Telegram'),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            _FlatActionTile(
+              title: 'Device Telegram Session',
+              subtitle:
+                  'Authorize TDLib on this device for direct private media transfer.',
+              onTap: () => _openDirectTelegramDialog(context, ref),
+            ),
+          ],
+          if (auth.galleryBackupEnabled) ...[
+            const SizedBox(height: AppSpacing.xl),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: _settingsSectionLabel(context, 'Gallery Backup'),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: _settingsSectionIntro(
+                context,
+                'Backups are opt-in. TeleDrive scans local media only after permission and follows your network preferences.',
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            _FlatSwitchTile(
+              title: 'Gallery Backup',
+              subtitle:
+                  'Automatically queue selected photos and videos for direct Telegram upload.',
+              value: settings.galleryBackupEnabled,
+              onChanged: ref
+                  .read(appSettingsControllerProvider)
+                  .setGalleryBackupEnabled,
+            ),
+            Divider(
+              color: scheme.outlineVariant.withValues(alpha: 0.35),
+              height: 1,
+              thickness: 1,
+              indent: AppSpacing.md,
+            ),
+            _FlatSwitchTile(
+              title: 'Backup on Wi-Fi Only',
+              subtitle:
+                  'Pause gallery backup on cellular data unless you explicitly allow it.',
+              value: settings.galleryBackupWifiOnly,
+              onChanged: ref
+                  .read(appSettingsControllerProvider)
+                  .setGalleryBackupWifiOnly,
+            ),
+          ],
         ],
       ),
     );
   }
+}
+
+Future<void> _openDirectTelegramDialog(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final auth = ref.read(authControllerProvider);
+  final user = auth.user;
+  if (user == null || user.telegramId == 0) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Connect Telegram before enabling direct media.'),
+      ),
+    );
+    return;
+  }
+  final phoneController = TextEditingController(
+    text: auth.activeAccount?.phoneNumber ?? '',
+  );
+  final codeController = TextEditingController();
+  final passwordController = TextEditingController();
+  var step = 'checking';
+  var loading = false;
+  String? error;
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) {
+      Future<void> configure(StateSetter setState) async {
+        setState(() {
+          loading = true;
+          error = null;
+        });
+        try {
+          final telegram = ref.read(telegramTransferServiceProvider);
+          await telegram.configure(
+            backendUserId: '${user.userId}',
+            telegramUserId: user.telegramId,
+          );
+          final health = await telegram.health();
+          final state = '${health['authorizationState'] ?? ''}';
+          setState(() {
+            step = health['authorized'] == true
+                ? 'ready'
+                : state == 'authorizationStateWaitCode'
+                ? 'code'
+                : state == 'authorizationStateWaitPassword'
+                ? 'password'
+                : 'phone';
+          });
+        } catch (err) {
+          setState(() {
+            step = 'phone';
+            error = ref
+                .read(apiClientProvider)
+                .errorMessage(err, 'TDLib is unavailable.');
+          });
+        } finally {
+          setState(() => loading = false);
+        }
+      }
+
+      Future<void> submit(StateSetter setState) async {
+        setState(() {
+          loading = true;
+          error = null;
+        });
+        try {
+          final bridge = TelegramAuthBridge();
+          Map<String, dynamic> health;
+          if (step == 'phone') {
+            health = await bridge.setPhoneNumber(phoneController.text.trim());
+          } else if (step == 'code') {
+            health = await bridge.checkCode(codeController.text.trim());
+          } else {
+            health = await bridge.checkPassword(passwordController.text);
+          }
+          final state = '${health['authorizationState'] ?? ''}';
+          setState(() {
+            step = health['authorized'] == true
+                ? 'ready'
+                : state == 'authorizationStateWaitPassword'
+                ? 'password'
+                : state == 'authorizationStateWaitCode'
+                ? 'code'
+                : 'phone';
+          });
+        } catch (err) {
+          setState(() {
+            error = ref
+                .read(apiClientProvider)
+                .errorMessage(err, 'Telegram authorization failed.');
+          });
+        } finally {
+          setState(() => loading = false);
+        }
+      }
+
+      return StatefulBuilder(
+        builder: (context, setState) {
+          if (step == 'checking' && !loading) {
+            Future.microtask(() => configure(setState));
+          }
+          final title = step == 'ready'
+              ? 'Direct Telegram Ready'
+              : 'Authorize Device Telegram';
+          return AlertDialog(
+            title: Text(title),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (step == 'checking' || loading)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: AppSpacing.md),
+                    child: LinearProgressIndicator(),
+                  ),
+                if (error != null) ...[
+                  Text(
+                    error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
+                if (step == 'ready')
+                  const Text(
+                    'This device is authorized for direct media transfer.',
+                  ),
+                if (step == 'phone')
+                  TextField(
+                    key: const ValueKey('tdlib-phone-field'),
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'Phone number',
+                    ),
+                  ),
+                if (step == 'code')
+                  TextField(
+                    key: const ValueKey('tdlib-code-field'),
+                    controller: codeController,
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    decoration: const InputDecoration(
+                      labelText: 'Verification code',
+                    ),
+                  ),
+                if (step == 'password')
+                  TextField(
+                    key: const ValueKey('tdlib-password-field'),
+                    controller: passwordController,
+                    keyboardType: TextInputType.visiblePassword,
+                    textInputAction: TextInputAction.done,
+                    obscureText: true,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    textCapitalization: TextCapitalization.none,
+                    decoration: const InputDecoration(
+                      labelText: 'Cloud password',
+                    ),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: loading
+                    ? null
+                    : () => Navigator.of(dialogContext).pop(),
+                child: const Text('Close'),
+              ),
+              if (step != 'ready' && step != 'checking')
+                FilledButton(
+                  onPressed: loading ? null : () => submit(setState),
+                  child: Text(step == 'phone' ? 'Send Code' : 'Continue'),
+                ),
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  phoneController.dispose();
+  codeController.dispose();
+  passwordController.dispose();
 }
 
 class CacheStorageSettingsScreen extends ConsumerWidget {

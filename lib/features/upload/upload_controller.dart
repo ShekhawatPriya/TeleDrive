@@ -10,6 +10,12 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/notifications/upload_notification_service.dart';
 import '../../core/network/api_client.dart';
+import '../../core/config/app_config.dart';
+import '../../core/media/client_derivative_generator.dart';
+import '../../core/telegram/pending_telegram_commit_queue.dart';
+import '../../core/telegram/telegram_client_exceptions.dart';
+import '../../core/telegram/telegram_client_models.dart';
+import '../../core/telegram/telegram_transfer_service.dart';
 import '../auth/auth_controller.dart';
 import '../drive/drive_controller.dart';
 import '../profile/app_settings_controller.dart';
@@ -30,6 +36,7 @@ final uploadControllerProvider = ChangeNotifierProvider<UploadController>((
     ref.read(appSettingsControllerProvider),
     ref.read(uploadNotificationServiceProvider),
     ref.read(authControllerProvider),
+    ref.read(telegramTransferServiceProvider),
   );
 });
 
@@ -40,6 +47,7 @@ class UploadController extends ChangeNotifier {
     this._settings,
     this._notifications,
     this._auth,
+    this._telegram,
   ) {
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
       _handleConnectivityChanged,
@@ -54,6 +62,11 @@ class UploadController extends ChangeNotifier {
   final AppSettingsController _settings;
   final UploadNotificationService _notifications;
   final AuthController _auth;
+  final TelegramTransferService _telegram;
+  final ClientDerivativeGenerator _derivatives =
+      const ClientDerivativeGenerator();
+  final PendingTelegramCommitQueue _pendingCommits =
+      PendingTelegramCommitQueue();
   final _uuid = const Uuid();
   final Map<String, CancelToken> _cancelTokensByLocalId = {};
   final Map<int, Timer> _pollTimersByBatchId = {};
@@ -93,6 +106,13 @@ class UploadController extends ChangeNotifier {
         (i) => {
           UploadStatus.queued,
           UploadStatus.waitingForWifi,
+          UploadStatus.preparingMetadata,
+          UploadStatus.creatingThumbnail,
+          UploadStatus.creatingPreview,
+          UploadStatus.uploadingOriginalToTelegram,
+          UploadStatus.uploadingThumbnailToTelegram,
+          UploadStatus.uploadingPreviewToTelegram,
+          UploadStatus.committingMetadata,
           UploadStatus.processing,
           UploadStatus.cancelling,
         }.contains(i.status),
@@ -187,11 +207,40 @@ class UploadController extends ChangeNotifier {
     _pumpQueue();
   }
 
+  Future<void> enqueueGalleryBackupItems(List<UploadItem> backupItems) async {
+    if (backupItems.isEmpty) return;
+    _cancelCompletionTimers();
+    uploadSessionId ??= _uuid.v4();
+    uploading = true;
+    error = null;
+    sheetVisible = true;
+    items = [
+      ...items,
+      ...backupItems.map(
+        (item) => item.copyWith(
+          uploadClientId: _uuid.v4(),
+          status: UploadStatus.queued,
+          httpProgress: 0,
+          serverProgress: 0,
+          clearError: true,
+          cancelRequested: false,
+          resetServerIds: true,
+          clearThumbnail: true,
+          clientSource: 'gallery_backup',
+        ),
+      ),
+    ];
+    _syncOptimistic();
+    _notifyListeners();
+    _pumpQueue();
+  }
+
   Future<void> cancelItem(String localId) async {
     final item = _findItem(localId);
     if (item == null || _isTerminalStatus(item.status)) return;
     _setItem(localId, status: UploadStatus.cancelling, cancelRequested: true);
     _cancelTokensByLocalId[localId]?.cancel('Upload cancelled.');
+    unawaited(_telegram.cancelTransfer(item.uploadClientId));
 
     if (item.batchId != null) {
       final endpoint = item.uploadJobId == null
@@ -212,7 +261,9 @@ class UploadController extends ChangeNotifier {
     if (item.batchId != null) _stopPollingBatch(item.batchId!);
     _runningLocalIds.remove(localId);
     _setItem(localId, status: UploadStatus.cancelled);
-    unawaited(_safeDeleteLocalFile(item.path));
+    if (item.deleteLocalOnComplete) {
+      unawaited(_safeDeleteLocalFile(item.path));
+    }
     _syncOptimistic();
     _pumpQueue();
   }
@@ -257,7 +308,9 @@ class UploadController extends ChangeNotifier {
         item.status != UploadStatus.cancelled) {
       return;
     }
-    unawaited(_safeDeleteLocalFile(item.path));
+    if (item.deleteLocalOnComplete) {
+      unawaited(_safeDeleteLocalFile(item.path));
+    }
     items = items.where((i) => i.localId != localId).toList();
     if (items.isEmpty) {
       sheetVisible = false;
@@ -275,7 +328,9 @@ class UploadController extends ChangeNotifier {
     }
     _pollTimersByBatchId.clear();
     for (final item in items) {
-      _safeDeleteLocalFile(item.path);
+      if (item.deleteLocalOnComplete) {
+        _safeDeleteLocalFile(item.path);
+      }
     }
     items = [];
     sheetVisible = false;

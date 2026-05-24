@@ -7,9 +7,16 @@ extension _UploadStateSync on UploadController {
   bool _isActive(UploadItem item) => {
     UploadStatus.queued,
     UploadStatus.waitingForWifi,
+    UploadStatus.preparingMetadata,
+    UploadStatus.creatingThumbnail,
+    UploadStatus.creatingPreview,
     UploadStatus.stagingToBackend,
     UploadStatus.waitingForServer,
     UploadStatus.uploadingToTelegram,
+    UploadStatus.uploadingOriginalToTelegram,
+    UploadStatus.uploadingThumbnailToTelegram,
+    UploadStatus.uploadingPreviewToTelegram,
+    UploadStatus.committingMetadata,
     UploadStatus.processing,
     UploadStatus.cancelling,
   }.contains(item.status);
@@ -118,7 +125,9 @@ extension _UploadStateSync on UploadController {
       if (_disposed || uploadSessionId != sessionId || uploading) return;
       if (!_allItemsCompleted) return;
       for (final item in items) {
-        _safeDeleteLocalFile(item.path);
+        if (item.deleteLocalOnComplete) {
+          _safeDeleteLocalFile(item.path);
+        }
       }
       items = [];
       sheetVisible = false;

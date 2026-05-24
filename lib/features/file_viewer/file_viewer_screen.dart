@@ -7,6 +7,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/telegram/telegram_transfer_service.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
@@ -111,7 +112,6 @@ class FileViewerScreen extends ConsumerWidget {
     DriveFile file,
   ) async {
     final url = file.downloadUrl;
-    if (url == null) return;
     final messenger = ScaffoldMessenger.of(context);
     try {
       messenger.showSnackBar(
@@ -124,6 +124,35 @@ class FileViewerScreen extends ConsumerWidget {
       final dir = await getTemporaryDirectory();
       final safeName = file.name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
       final path = '${dir.path}/$safeName';
+      if (url == null && file.storageMode == 'client_managed') {
+        final media = await ref
+            .read(driveRepositoryProvider)
+            .mediaRef(file.id, variant: 'original');
+        final telegramRef = media.ref;
+        if (telegramRef == null) {
+          throw Exception('Telegram media reference is unavailable.');
+        }
+        final telegram = ref.read(telegramTransferServiceProvider);
+        final user = ref.read(authControllerProvider).user;
+        if (user == null || user.telegramId == 0) {
+          throw Exception('Connect Telegram before opening this file.');
+        }
+        await telegram.configure(
+          backendUserId: '${user.userId}',
+          telegramUserId: user.telegramId,
+        );
+        if (!await telegram.isAuthorized) {
+          throw Exception('Local Telegram session is not authorized.');
+        }
+        final result = await telegram.downloadToCache(
+          telegramRef,
+          filename: file.name,
+          cacheKey: media.cacheKey,
+        );
+        await OpenFilex.open(result.file.path);
+        return;
+      }
+      if (url == null) return;
       if (!await File(path).exists()) {
         await api.dio.download(url, path);
       }

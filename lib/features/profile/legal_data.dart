@@ -40,7 +40,7 @@ const privacySections = [
   SectionContent(
     title: 'On-Demand Media Access',
     paragraph:
-        'TeleDrive requests access to your photos, camera, or file directories (using file_picker and image_picker) only when you explicitly tap to upload files. There is no automated, passive, or background scanning of your device\'s local storage.',
+        'TeleDrive requests access to your photos, camera, or file directories only when you choose an upload or enable an opt-in backup feature. Gallery backup scans selected media after permission and setting enablement, follows your Wi-Fi/mobile-data preferences, and stores only local queue/cache data needed to finish transfers.',
   ),
   SectionContent(
     title: 'What We Do Not Collect',

@@ -12,6 +12,8 @@ class AppSettingsState {
     this.clearCacheOnSignOut = true,
     this.uploadCompletedAlerts = false,
     this.uploadFailedAlerts = false,
+    this.galleryBackupEnabled = false,
+    this.galleryBackupWifiOnly = true,
     this.loaded = false,
   });
 
@@ -23,6 +25,8 @@ class AppSettingsState {
   final bool clearCacheOnSignOut;
   final bool uploadCompletedAlerts;
   final bool uploadFailedAlerts;
+  final bool galleryBackupEnabled;
+  final bool galleryBackupWifiOnly;
   final bool loaded;
 
   AppSettingsState copyWith({
@@ -34,6 +38,8 @@ class AppSettingsState {
     bool? clearCacheOnSignOut,
     bool? uploadCompletedAlerts,
     bool? uploadFailedAlerts,
+    bool? galleryBackupEnabled,
+    bool? galleryBackupWifiOnly,
     bool? loaded,
   }) {
     return AppSettingsState(
@@ -47,6 +53,9 @@ class AppSettingsState {
       uploadCompletedAlerts:
           uploadCompletedAlerts ?? this.uploadCompletedAlerts,
       uploadFailedAlerts: uploadFailedAlerts ?? this.uploadFailedAlerts,
+      galleryBackupEnabled: galleryBackupEnabled ?? this.galleryBackupEnabled,
+      galleryBackupWifiOnly:
+          galleryBackupWifiOnly ?? this.galleryBackupWifiOnly,
       loaded: loaded ?? this.loaded,
     );
   }
@@ -66,6 +75,8 @@ class AppSettingsController extends ChangeNotifier {
   static const _clearCacheSignOutKey = 'settings_clear_cache_sign_out';
   static const _uploadCompleteAlertsKey = 'settings_upload_complete_alerts';
   static const _uploadFailedAlertsKey = 'settings_upload_failed_alerts';
+  static const _galleryBackupEnabledKey = 'settings_gallery_backup_enabled';
+  static const _galleryBackupWifiOnlyKey = 'settings_gallery_backup_wifi_only';
 
   AppSettingsState state = const AppSettingsState();
 
@@ -80,6 +91,8 @@ class AppSettingsController extends ChangeNotifier {
       clearCacheOnSignOut: prefs.getBool(_clearCacheSignOutKey) ?? true,
       uploadCompletedAlerts: prefs.getBool(_uploadCompleteAlertsKey) ?? false,
       uploadFailedAlerts: prefs.getBool(_uploadFailedAlertsKey) ?? false,
+      galleryBackupEnabled: prefs.getBool(_galleryBackupEnabledKey) ?? false,
+      galleryBackupWifiOnly: prefs.getBool(_galleryBackupWifiOnlyKey) ?? true,
       loaded: true,
     );
     notifyListeners();
@@ -111,6 +124,16 @@ class AppSettingsController extends ChangeNotifier {
   Future<void> setUploadFailedAlerts(bool value) =>
       _set(_uploadFailedAlertsKey, state.copyWith(uploadFailedAlerts: value));
 
+  Future<void> setGalleryBackupEnabled(bool value) => _set(
+    _galleryBackupEnabledKey,
+    state.copyWith(galleryBackupEnabled: value),
+  );
+
+  Future<void> setGalleryBackupWifiOnly(bool value) => _set(
+    _galleryBackupWifiOnlyKey,
+    state.copyWith(galleryBackupWifiOnly: value),
+  );
+
   Future<void> _set(String key, AppSettingsState next) async {
     state = next;
     notifyListeners();
@@ -124,6 +147,8 @@ class AppSettingsController extends ChangeNotifier {
       _clearCacheSignOutKey => next.clearCacheOnSignOut,
       _uploadCompleteAlertsKey => next.uploadCompletedAlerts,
       _uploadFailedAlertsKey => next.uploadFailedAlerts,
+      _galleryBackupEnabledKey => next.galleryBackupEnabled,
+      _galleryBackupWifiOnlyKey => next.galleryBackupWifiOnly,
       _ => false,
     };
     await prefs.setBool(key, value);

@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/legacy.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/storage/secure_storage.dart';
+import '../../core/config/app_config.dart';
+import '../../core/telegram/pending_telegram_commit_queue.dart';
 import '../../core/utils/iterable_ext.dart';
 import '../../models/account_vault.dart';
 import '../../models/auth_user.dart';
@@ -33,11 +35,14 @@ class AuthController extends ChangeNotifier {
   AuthController(this._repo);
 
   final AuthRepository _repo;
+  final PendingTelegramCommitQueue _pendingCommits =
+      PendingTelegramCommitQueue();
   AuthUser? user;
   String? token;
   bool loading = true;
   bool switchingAccount = false;
   bool? telegramConnected;
+  BackendFeatureFlags featureFlags = const BackendFeatureFlags();
   String? communityJoinStatus;
   String? communityJoinError;
   List<CommunityTarget> communityTargets = const [];
@@ -45,8 +50,25 @@ class AuthController extends ChangeNotifier {
   String? error;
   DriveSnapshot? pendingDriveBootstrap;
   int largeUploadThresholdBytes = 200 * 1024 * 1024;
+  int pendingDirectCommitCount = 0;
+  String? pendingDirectCommitError;
 
   bool get isAuthenticated => user != null && token != null;
+  bool get directTelegramUploadEnabled =>
+      AppConfig.directTelegramUploadEnabled &&
+      featureFlags.directTelegramUploadEnabled;
+  bool get directTelegramDownloadEnabled =>
+      AppConfig.directTelegramDownloadEnabled &&
+      featureFlags.directTelegramDownloadEnabled;
+  bool get clientDerivativeGenerationEnabled =>
+      AppConfig.clientDerivativeGenerationEnabled &&
+      featureFlags.clientDerivativeGenerationEnabled;
+  bool get legacyBackendUploadFallbackEnabled =>
+      AppConfig.legacyBackendUploadFallbackEnabled &&
+      featureFlags.legacyBackendUploadFallbackEnabled;
+  bool get galleryBackupEnabled =>
+      AppConfig.galleryBackupEnabled && featureFlags.galleryBackupEnabled;
+  bool get hasPendingDirectCommits => pendingDirectCommitCount > 0;
   SavedAccount? get activeAccount {
     final activeUser = user;
     if (activeUser != null) {
@@ -301,6 +323,26 @@ class AuthController extends ChangeNotifier {
   Future<void> refreshSavedAccountSnapshots() =>
       _refreshSavedAccountSnapshots();
 
+  Future<void> refreshPendingDirectCommitCount() async {
+    final activeUser = user;
+    if (activeUser == null) {
+      pendingDirectCommitCount = 0;
+      pendingDirectCommitError = null;
+      notifyListeners();
+      return;
+    }
+    final telegramId = activeUser.telegramId != 0
+        ? activeUser.telegramId
+        : activeAccount?.telegramId ?? 0;
+    if (telegramId == 0) return;
+    pendingDirectCommitCount = await _pendingCommits.pendingCount(
+      backendUserId: activeUser.userId,
+      telegramUserId: telegramId,
+    );
+    if (pendingDirectCommitCount == 0) pendingDirectCommitError = null;
+    notifyListeners();
+  }
+
   Future<void> _commitActiveAccount(
     String nextToken,
     AuthBootstrapResult bootstrap, {
@@ -330,6 +372,61 @@ class AuthController extends ChangeNotifier {
     pendingDriveBootstrap = bootstrap.drive;
     if (bootstrap.largeUploadThresholdBytes != null) {
       largeUploadThresholdBytes = bootstrap.largeUploadThresholdBytes!;
+    }
+    featureFlags = bootstrap.featureFlags;
+    unawaited(_retryPendingDirectCommitsForActiveAccount());
+  }
+
+  Future<void> _retryPendingDirectCommitsForActiveAccount() async {
+    final activeUser = user;
+    if (activeUser == null) return;
+    final telegramId = activeUser.telegramId != 0
+        ? activeUser.telegramId
+        : activeAccount?.telegramId ?? 0;
+    if (telegramId == 0) return;
+    try {
+      final before = await _pendingCommits.pendingCount(
+        backendUserId: activeUser.userId,
+        telegramUserId: telegramId,
+      );
+      if (before == 0) {
+        pendingDirectCommitCount = 0;
+        pendingDirectCommitError = null;
+        notifyListeners();
+        return;
+      }
+      debugPrint('TDLIB_E2E_PENDING_COMMIT_RETRY before=$before');
+      pendingDirectCommitCount = before;
+      pendingDirectCommitError = null;
+      notifyListeners();
+      final result = await _pendingCommits.retryPending(
+        api: _repo.api,
+        backendUserId: activeUser.userId,
+        telegramUserId: telegramId,
+      );
+      debugPrint(
+        'TDLIB_E2E_PENDING_COMMIT_RETRY_RESULT '
+        'attempted=${result.attempted} committed=${result.committed} '
+        'failed=${result.failed}',
+      );
+      pendingDirectCommitCount = await _pendingCommits.pendingCount(
+        backendUserId: activeUser.userId,
+        telegramUserId: telegramId,
+      );
+      pendingDirectCommitError = result.lastError;
+      if (result.committed > 0) {
+        try {
+          final refreshed = await _repo.bootstrap(includeDrive: true);
+          pendingDriveBootstrap = refreshed.drive;
+        } catch (_) {}
+      }
+      notifyListeners();
+    } catch (err) {
+      pendingDirectCommitError = _repo.api.errorMessage(
+        err,
+        'Pending Telegram commit retry failed.',
+      );
+      notifyListeners();
     }
   }
 
@@ -422,6 +519,9 @@ class AuthController extends ChangeNotifier {
     communityTargets = const [];
     pendingDriveBootstrap = null;
     error = null;
+    featureFlags = const BackendFeatureFlags();
+    pendingDirectCommitCount = 0;
+    pendingDirectCommitError = null;
     if (clearVault) vault = const AccountVault.empty();
   }
 
