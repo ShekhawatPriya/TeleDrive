@@ -31,7 +31,7 @@ class HowItWorksSection extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'TeleDrive bridges your device, metadata configuration, and Telegram storage layers securely.',
+              'TeleDrive combines local TDLib transfer, backend metadata, and Telegram storage without routing private file bytes through the backend.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: scheme.onSurfaceVariant,
                 height: 1.35,
@@ -44,7 +44,7 @@ class HowItWorksSection extends StatelessWidget {
               iconColor: scheme.primary,
               title: 'Your Phone / App',
               description:
-                  'Acts as the control interface to explore files, play videos, and manage directories.',
+                  'Reads selected files locally, transfers them through TDLib, and lets you explore files, media, and folders.',
               isFirst: true,
             ),
             _buildFlowStep(
@@ -53,7 +53,7 @@ class HowItWorksSection extends StatelessWidget {
               iconColor: scheme.secondary,
               title: 'Backend Metadata Layer',
               description:
-                  'Stores folder organization, permissions, names, and sharing status (no actual file contents).',
+                  'Stores folder structure, names, shares, upload state, backup fingerprints, and Telegram references. Private file bytes are not uploaded here.',
             ),
             _buildFlowStep(
               context: context,
@@ -61,7 +61,7 @@ class HowItWorksSection extends StatelessWidget {
               iconColor: scheme.tertiary,
               title: 'Telegram Storage Layer',
               description:
-                  'Hosts the original uploaded binaries permanently and securely inside your Telegram files ecosystem.',
+                  'Hosts the transferred file objects referenced by TeleDrive metadata.',
               isLast: true,
             ),
             const Padding(
@@ -89,7 +89,7 @@ class HowItWorksSection extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Direct Local Cache (Separate Concept)',
+                        'Local Cache And TDLib',
                         style: theme.textTheme.labelMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Colors.orange.shade800,
@@ -97,7 +97,7 @@ class HowItWorksSection extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Temporary copies, thumbnails, and preview structures live locally on your phone solely for speed. You can wipe this cache whenever you want without risk.',
+                        'Temporary previews and downloaded files live locally for speed. Upload and private download actions require the local TDLib session to stay connected.',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
                           height: 1.35,

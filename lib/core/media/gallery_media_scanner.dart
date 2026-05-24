@@ -13,6 +13,8 @@ class GalleryMediaAsset {
     required this.mimeType,
     required this.mediaType,
     required this.modifiedAtMillis,
+    required this.addedAtMillis,
+    required this.sourceKind,
     this.path,
     this.relativePath,
     this.durationMs,
@@ -25,11 +27,66 @@ class GalleryMediaAsset {
   final String mimeType;
   final String mediaType;
   final int modifiedAtMillis;
+  final int addedAtMillis;
+  final String sourceKind;
   final String? path;
   final String? relativePath;
   final int? durationMs;
 
-  String get stableKey => '$id:$sizeBytes:$modifiedAtMillis';
+  int get recencyMillis {
+    if (modifiedAtMillis <= 0) return addedAtMillis;
+    if (addedAtMillis <= 0) return modifiedAtMillis;
+    return modifiedAtMillis > addedAtMillis ? modifiedAtMillis : addedAtMillis;
+  }
+
+  String get stableKey => fingerprint;
+
+  String get fingerprint {
+    final normalizedPath = _normalizePath(path);
+    if (sourceKind == 'path' && normalizedPath != null) {
+      return [
+        'path',
+        normalizedPath,
+        mediaType,
+        mimeType,
+        sizeBytes,
+        modifiedAtMillis,
+      ].join('|');
+    }
+    return [
+      'mediastore',
+      mediaType,
+      id,
+      contentUri,
+      sizeBytes,
+      modifiedAtMillis,
+      addedAtMillis,
+      relativePath ?? '',
+      name,
+    ].join('|');
+  }
+
+  String get physicalKey {
+    final normalizedPath = _normalizePath(path);
+    if (normalizedPath != null) {
+      return 'path|$normalizedPath|$sizeBytes|$modifiedAtMillis';
+    }
+    if (relativePath != null && relativePath!.trim().isNotEmpty) {
+      return [
+        'relative',
+        relativePath!.trim().toLowerCase(),
+        name.trim().toLowerCase(),
+        sizeBytes,
+      ].join('|');
+    }
+    return 'content|$contentUri|$sizeBytes|$modifiedAtMillis';
+  }
+
+  GalleryMediaAsset mergeWith(GalleryMediaAsset other) {
+    if (sourceKind == 'mediastore') return this;
+    if (other.sourceKind == 'mediastore') return other;
+    return recencyMillis >= other.recencyMillis ? this : other;
+  }
 
   factory GalleryMediaAsset.fromJson(Map<String, dynamic> json) {
     return GalleryMediaAsset(
@@ -40,11 +97,39 @@ class GalleryMediaAsset {
       mimeType: '${json['mimeType'] ?? 'application/octet-stream'}',
       mediaType: '${json['mediaType'] ?? 'image'}',
       modifiedAtMillis: (json['modifiedAtMillis'] as num?)?.toInt() ?? 0,
+      addedAtMillis: (json['addedAtMillis'] as num?)?.toInt() ?? 0,
+      sourceKind: '${json['sourceKind'] ?? 'mediastore'}',
       path: json['path'] as String?,
       relativePath: json['relativePath'] as String?,
       durationMs: (json['durationMs'] as num?)?.toInt(),
     );
   }
+
+  static String? _normalizePath(String? value) {
+    final path = value?.trim();
+    if (path == null || path.isEmpty) return null;
+    return p.normalize(path).toLowerCase();
+  }
+}
+
+class GalleryMediaScanResult {
+  const GalleryMediaScanResult({
+    required this.assets,
+    required this.mediaStoreCount,
+    required this.pathCount,
+    required this.mergedCount,
+    this.permissionSkipCount = 0,
+    this.invalidSkipCount = 0,
+    this.diagnostics = const [],
+  });
+
+  final List<GalleryMediaAsset> assets;
+  final int mediaStoreCount;
+  final int pathCount;
+  final int mergedCount;
+  final int permissionSkipCount;
+  final int invalidSkipCount;
+  final List<String> diagnostics;
 }
 
 class GalleryMediaScanner {
@@ -58,21 +143,53 @@ class GalleryMediaScanner {
     bool includeImages = true,
     bool includeVideos = true,
   }) async {
-    final result = await _mediaChannel.invokeListMethod<Object?>(
-      'listGalleryMedia',
-      {
-        'limit': limit,
-        'includeImages': includeImages,
-        'includeVideos': includeVideos,
-      },
+    final result = await scanRecent(
+      limit: limit,
+      includeImages: includeImages,
+      includeVideos: includeVideos,
+      strategy: 'media_store_only',
     );
-    return (result ?? const [])
+    return result.assets;
+  }
+
+  Future<GalleryMediaScanResult> scanRecent({
+    int limit = 100,
+    bool includeImages = true,
+    bool includeVideos = true,
+    String strategy = 'media_store_only',
+  }) async {
+    final result = await _mediaChannel
+        .invokeListMethod<Object?>('listGalleryMedia', {
+          'limit': limit,
+          'includeImages': includeImages,
+          'includeVideos': includeVideos,
+          'strategy': strategy,
+        });
+    final maps = (result ?? const [])
         .whereType<Map>()
         .map(
           (item) => GalleryMediaAsset.fromJson(Map<String, dynamic>.from(item)),
         )
+        .toList();
+    final valid = maps
         .where((asset) => asset.sizeBytes > 0 && asset.contentUri.isNotEmpty)
         .toList();
+    final merged = <String, GalleryMediaAsset>{};
+    for (final asset in valid) {
+      final existing = merged[asset.physicalKey];
+      merged[asset.physicalKey] = existing == null
+          ? asset
+          : existing.mergeWith(asset);
+    }
+    final assets = merged.values.toList()
+      ..sort((a, b) => b.recencyMillis.compareTo(a.recencyMillis));
+    return GalleryMediaScanResult(
+      assets: assets.take(limit).toList(),
+      mediaStoreCount: valid.where((a) => a.sourceKind == 'mediastore').length,
+      pathCount: valid.where((a) => a.sourceKind == 'path').length,
+      mergedCount: assets.length,
+      invalidSkipCount: maps.length - valid.length,
+    );
   }
 
   Future<({String path, bool deleteWhenDone})> localPathFor(

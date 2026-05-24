@@ -39,7 +39,7 @@ class HeroSection extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.md),
         Text(
-          'TeleDrive helps you organize, preview, stream, and manage files through a clean drive interface while keeping storage backed by Telegram and your configured backend.',
+          'TeleDrive organizes your Telegram-hosted files through a clean drive interface. Private file bytes transfer locally through TDLib; the backend stores metadata and Telegram references.',
           textAlign: TextAlign.center,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: scheme.onSurfaceVariant,
@@ -81,7 +81,7 @@ class HeroSection extends StatelessWidget {
             _buildDividerDot(context),
             _buildTrustBadge(context, 'Telegram-backed'),
             _buildDividerDot(context),
-            _buildTrustBadge(context, 'Local Cache Explained'),
+            _buildTrustBadge(context, 'TDLib Local Transfer'),
             _buildDividerDot(context),
             _buildTrustBadge(context, 'No Confusions'),
           ],

@@ -5,13 +5,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/notifications/upload_notification_service.dart';
-import '../../core/telegram/telegram_auth_bridge.dart';
-import '../../core/telegram/telegram_transfer_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/social_icons.dart';
 import '../auth/auth_controller.dart';
 import 'app_settings_controller.dart';
 import 'cache_controller.dart';
+import 'gallery_backup_controller.dart';
 import 'theme_controller.dart';
 import 'widgets/telegram_status_card.dart';
 import 'widgets/theme_picker_cards.dart';
@@ -46,9 +45,20 @@ class SettingsScreen extends ConsumerWidget {
             icon: Icons.cloud_outlined,
             iconColor: const Color(0xFF6E7C97),
             title: 'Upload Settings',
-            subtitle: 'Manage upload limits, mobile network usage, & renaming',
+            subtitle: 'Manage manual upload limits, network usage, & renaming',
             onTap: () => Navigator.of(context).push(
               CupertinoPageRoute(builder: (_) => const UploadSettingsScreen()),
+            ),
+          ),
+          const _SettingsDivider(),
+          _SettingsTile(
+            icon: Icons.backup_outlined,
+            iconColor: const Color(0xFF4C8F87),
+            title: 'Backup',
+            subtitle:
+                'Configure gallery scan limits, queue limits, and indexing',
+            onTap: () => Navigator.of(context).push(
+              CupertinoPageRoute(builder: (_) => const BackupSettingsScreen()),
             ),
           ),
           const _SettingsDivider(),
@@ -295,49 +305,10 @@ class UploadSettingsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.xs),
             _FlatActionTile(
-              title: 'Device Telegram Session',
+              title: 'Repair device Telegram session',
               subtitle:
-                  'Authorize TDLib on this device for direct private media transfer.',
-              onTap: () => _openDirectTelegramDialog(context, ref),
-            ),
-          ],
-          if (auth.galleryBackupEnabled) ...[
-            const SizedBox(height: AppSpacing.xl),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              child: _settingsSectionLabel(context, 'Gallery Backup'),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              child: _settingsSectionIntro(
-                context,
-                'Backups are opt-in. TeleDrive scans local media only after permission and follows your network preferences.',
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            _FlatSwitchTile(
-              title: 'Gallery Backup',
-              subtitle:
-                  'Automatically queue selected photos and videos for direct Telegram upload.',
-              value: settings.galleryBackupEnabled,
-              onChanged: ref
-                  .read(appSettingsControllerProvider)
-                  .setGalleryBackupEnabled,
-            ),
-            Divider(
-              color: scheme.outlineVariant.withValues(alpha: 0.35),
-              height: 1,
-              thickness: 1,
-              indent: AppSpacing.md,
-            ),
-            _FlatSwitchTile(
-              title: 'Backup on Wi-Fi Only',
-              subtitle:
-                  'Pause gallery backup on cellular data unless you explicitly allow it.',
-              value: settings.galleryBackupWifiOnly,
-              onChanged: ref
-                  .read(appSettingsControllerProvider)
-                  .setGalleryBackupWifiOnly,
+                  'TeleDrive requires local TDLib file transfer. Use this if uploads or private downloads ask you to reconnect.',
+              onTap: () => context.push('/tdlib-session?returnTo=/settings'),
             ),
           ],
         ],
@@ -346,191 +317,140 @@ class UploadSettingsScreen extends ConsumerWidget {
   }
 }
 
-Future<void> _openDirectTelegramDialog(
-  BuildContext context,
-  WidgetRef ref,
-) async {
-  final auth = ref.read(authControllerProvider);
-  final user = auth.user;
-  if (user == null || user.telegramId == 0) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Connect Telegram before enabling direct media.'),
+class BackupSettingsScreen extends ConsumerWidget {
+  const BackupSettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(appSettingsControllerProvider).state;
+    final backup = ref.watch(galleryBackupControllerProvider);
+    final controller = ref.read(appSettingsControllerProvider);
+    final scheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          tooltip: 'Back',
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text('Backup'),
+      ),
+      body: ListView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.only(
+          top: AppSpacing.md,
+          bottom: AppSpacing.xxl,
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionLabel(context, 'Gallery Backup'),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionIntro(
+              context,
+              'The profile action sheet controls backup on/off. This page only configures scans. File transfers are handled locally on this device through TDLib, and Auto backups go to Auto > Media > Photos or Videos.',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _FlatSwitchTile(
+            title: 'Backup on Wi-Fi Only',
+            subtitle:
+                'Pause gallery backup on cellular data unless you explicitly allow it.',
+            value: settings.galleryBackupWifiOnly,
+            onChanged: controller.setGalleryBackupWifiOnly,
+          ),
+          Divider(
+            color: scheme.outlineVariant.withValues(alpha: 0.35),
+            height: 1,
+            thickness: 1,
+            indent: AppSpacing.md,
+          ),
+          _FlatNumberTile(
+            title: 'Scan limit',
+            subtitle: 'Maximum recent media candidates inspected per scan.',
+            value: settings.galleryBackupScanLimit,
+            min: 1,
+            max: 500,
+            step: 10,
+            onChanged: controller.setGalleryBackupScanLimit,
+          ),
+          _WarningText(
+            text:
+                'Increasing this makes each backup scan heavier. Very high values can slow startup, increase battery usage, and make media permission issues harder to debug.',
+          ),
+          Divider(
+            color: scheme.outlineVariant.withValues(alpha: 0.35),
+            height: 1,
+            thickness: 1,
+            indent: AppSpacing.md,
+          ),
+          _FlatNumberTile(
+            title: 'Queue limit',
+            subtitle:
+                'Maximum gallery backup uploads allowed in the queue at once.',
+            value: settings.galleryBackupQueueLimit,
+            min: 1,
+            max: 100,
+            step: 2,
+            onChanged: controller.setGalleryBackupQueueLimit,
+          ),
+          _WarningText(
+            text:
+                'Increasing this can enqueue many uploads at once. Very high values may drain battery, increase Telegram rate-limit risk, and make failures harder to recover.',
+          ),
+          Divider(
+            color: scheme.outlineVariant.withValues(alpha: 0.35),
+            height: 1,
+            thickness: 1,
+            indent: AppSpacing.md,
+          ),
+          _FlatStrategyTile(
+            value: settings.galleryBackupIndexingStrategy,
+            onChanged: controller.setGalleryBackupIndexingStrategy,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionLabel(context, 'Actions'),
+          ),
+          _FlatActionTile(
+            title: 'Scan now',
+            subtitle: settings.galleryBackupEnabled
+                ? 'Run an immediate scan using the current Backup settings.'
+                : 'Turn backup on from the profile action sheet before scanning.',
+            onTap: settings.galleryBackupEnabled
+                ? () => ref
+                      .read(galleryBackupControllerProvider)
+                      .scanNow(reason: 'settings_scan_now')
+                : () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Use the profile action sheet to turn backup on first.',
+                        ),
+                      ),
+                    );
+                  },
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _settingsSectionLabel(context, 'Diagnostics'),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: _BackupDiagnosticsCard(
+              diagnostics: backup.diagnostics,
+              running: backup.running,
+            ),
+          ),
+        ],
       ),
     );
-    return;
   }
-  final phoneController = TextEditingController(
-    text: auth.activeAccount?.phoneNumber ?? '',
-  );
-  final codeController = TextEditingController();
-  final passwordController = TextEditingController();
-  var step = 'checking';
-  var loading = false;
-  String? error;
-
-  await showDialog<void>(
-    context: context,
-    builder: (dialogContext) {
-      Future<void> configure(StateSetter setState) async {
-        setState(() {
-          loading = true;
-          error = null;
-        });
-        try {
-          final telegram = ref.read(telegramTransferServiceProvider);
-          await telegram.configure(
-            backendUserId: '${user.userId}',
-            telegramUserId: user.telegramId,
-          );
-          final health = await telegram.health();
-          final state = '${health['authorizationState'] ?? ''}';
-          setState(() {
-            step = health['authorized'] == true
-                ? 'ready'
-                : state == 'authorizationStateWaitCode'
-                ? 'code'
-                : state == 'authorizationStateWaitPassword'
-                ? 'password'
-                : 'phone';
-          });
-        } catch (err) {
-          setState(() {
-            step = 'phone';
-            error = ref
-                .read(apiClientProvider)
-                .errorMessage(err, 'TDLib is unavailable.');
-          });
-        } finally {
-          setState(() => loading = false);
-        }
-      }
-
-      Future<void> submit(StateSetter setState) async {
-        setState(() {
-          loading = true;
-          error = null;
-        });
-        try {
-          final bridge = TelegramAuthBridge();
-          Map<String, dynamic> health;
-          if (step == 'phone') {
-            health = await bridge.setPhoneNumber(phoneController.text.trim());
-          } else if (step == 'code') {
-            health = await bridge.checkCode(codeController.text.trim());
-          } else {
-            health = await bridge.checkPassword(passwordController.text);
-          }
-          final state = '${health['authorizationState'] ?? ''}';
-          setState(() {
-            step = health['authorized'] == true
-                ? 'ready'
-                : state == 'authorizationStateWaitPassword'
-                ? 'password'
-                : state == 'authorizationStateWaitCode'
-                ? 'code'
-                : 'phone';
-          });
-        } catch (err) {
-          setState(() {
-            error = ref
-                .read(apiClientProvider)
-                .errorMessage(err, 'Telegram authorization failed.');
-          });
-        } finally {
-          setState(() => loading = false);
-        }
-      }
-
-      return StatefulBuilder(
-        builder: (context, setState) {
-          if (step == 'checking' && !loading) {
-            Future.microtask(() => configure(setState));
-          }
-          final title = step == 'ready'
-              ? 'Direct Telegram Ready'
-              : 'Authorize Device Telegram';
-          return AlertDialog(
-            title: Text(title),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (step == 'checking' || loading)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: AppSpacing.md),
-                    child: LinearProgressIndicator(),
-                  ),
-                if (error != null) ...[
-                  Text(
-                    error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                ],
-                if (step == 'ready')
-                  const Text(
-                    'This device is authorized for direct media transfer.',
-                  ),
-                if (step == 'phone')
-                  TextField(
-                    key: const ValueKey('tdlib-phone-field'),
-                    controller: phoneController,
-                    keyboardType: TextInputType.phone,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Phone number',
-                    ),
-                  ),
-                if (step == 'code')
-                  TextField(
-                    key: const ValueKey('tdlib-code-field'),
-                    controller: codeController,
-                    keyboardType: TextInputType.number,
-                    textInputAction: TextInputAction.done,
-                    decoration: const InputDecoration(
-                      labelText: 'Verification code',
-                    ),
-                  ),
-                if (step == 'password')
-                  TextField(
-                    key: const ValueKey('tdlib-password-field'),
-                    controller: passwordController,
-                    keyboardType: TextInputType.visiblePassword,
-                    textInputAction: TextInputAction.done,
-                    obscureText: true,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    textCapitalization: TextCapitalization.none,
-                    decoration: const InputDecoration(
-                      labelText: 'Cloud password',
-                    ),
-                  ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: loading
-                    ? null
-                    : () => Navigator.of(dialogContext).pop(),
-                child: const Text('Close'),
-              ),
-              if (step != 'ready' && step != 'checking')
-                FilledButton(
-                  onPressed: loading ? null : () => submit(setState),
-                  child: Text(step == 'phone' ? 'Send Code' : 'Continue'),
-                ),
-            ],
-          );
-        },
-      );
-    },
-  );
-
-  phoneController.dispose();
-  codeController.dispose();
-  passwordController.dispose();
 }
 
 class CacheStorageSettingsScreen extends ConsumerWidget {
@@ -1006,6 +926,314 @@ class _FlatSwitchTile extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _FlatNumberTile extends StatelessWidget {
+  const _FlatNumberTile({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.step,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String subtitle;
+  final int value;
+  final int min;
+  final int max;
+  final int step;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final canDec = value > min;
+    final canInc = value < max;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSpacing.md,
+        horizontal: AppSpacing.md,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  subtitle,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          IconButton.filledTonal(
+            tooltip: 'Decrease',
+            onPressed: canDec
+                ? () => onChanged((value - step).clamp(min, max).toInt())
+                : null,
+            icon: const Icon(Icons.remove_rounded),
+          ),
+          SizedBox(
+            width: 48,
+            child: Text(
+              '$value',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          IconButton.filledTonal(
+            tooltip: 'Increase',
+            onPressed: canInc
+                ? () => onChanged((value + step).clamp(min, max).toInt())
+                : null,
+            icon: const Icon(Icons.add_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WarningText extends StatelessWidget {
+  const _WarningText({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        0,
+        AppSpacing.md,
+        AppSpacing.sm,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            size: 16,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.72),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FlatStrategyTile extends StatelessWidget {
+  const _FlatStrategyTile({required this.value, required this.onChanged});
+
+  final GalleryBackupIndexingStrategy value;
+  final ValueChanged<GalleryBackupIndexingStrategy> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSpacing.md,
+        horizontal: AppSpacing.md,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Indexing strategy',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  value == GalleryBackupIndexingStrategy.mediaStoreOnly
+                      ? 'Uses Android MediaStore indexing only.'
+                      : 'Path scanning is limited to accessible public media directories.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          DropdownButton<GalleryBackupIndexingStrategy>(
+            value: value,
+            underline: const SizedBox.shrink(),
+            items: GalleryBackupIndexingStrategy.values
+                .map(
+                  (strategy) => DropdownMenuItem(
+                    value: strategy,
+                    child: Text(strategy.label),
+                  ),
+                )
+                .toList(),
+            onChanged: (next) {
+              if (next != null) onChanged(next);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BackupDiagnosticsCard extends StatelessWidget {
+  const _BackupDiagnosticsCard({
+    required this.diagnostics,
+    required this.running,
+  });
+
+  final GalleryBackupDiagnostics diagnostics;
+  final bool running;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final rows = <({String label, String value})>[
+      (label: 'State', value: running ? 'Scanning' : 'Idle'),
+      (label: 'Started', value: _time(diagnostics.lastScanStartedAt)),
+      (label: 'Completed', value: _time(diagnostics.lastScanCompletedAt)),
+      (
+        label: 'Duration',
+        value: diagnostics.scanDuration == null
+            ? '-'
+            : '${diagnostics.scanDuration!.inMilliseconds} ms',
+      ),
+      (label: 'Strategy', value: diagnostics.indexingStrategy.label),
+      (
+        label: 'MediaStore / path',
+        value:
+            '${diagnostics.mediaStoreItemsScanned} / ${diagnostics.pathItemsScanned}',
+      ),
+      (label: 'Merged candidates', value: '${diagnostics.mergedCandidates}'),
+      (
+        label: 'Skipped uploaded',
+        value: '${diagnostics.skippedAlreadyUploaded}',
+      ),
+      (label: 'Skipped queued', value: '${diagnostics.skippedAlreadyQueued}'),
+      (label: 'Skipped permission', value: '${diagnostics.skippedPermission}'),
+      (label: 'Skipped invalid', value: '${diagnostics.skippedInvalid}'),
+      (label: 'Enqueued', value: '${diagnostics.enqueued}'),
+      (
+        label: 'Scan / queue limit',
+        value: '${diagnostics.scanLimit} / ${diagnostics.queueLimit}',
+      ),
+      (
+        label: 'Last uploaded marker',
+        value: _time(diagnostics.lastUploadCompleteMarker),
+      ),
+      if (diagnostics.lastError != null)
+        (label: 'Last scan error', value: diagnostics.lastError!),
+      if (diagnostics.lastEnqueueError != null)
+        (label: 'Last enqueue error', value: diagnostics.lastEnqueueError!),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: AppRadii.mdR,
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final row in rows)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 132,
+                    child: Text(
+                      row.label,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      row.value,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurface,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          for (final note in diagnostics.notes)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xxs),
+              child: Text(
+                note,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  height: 1.3,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _time(DateTime? value) {
+    if (value == null) return '-';
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    final second = value.second.toString().padLeft(2, '0');
+    return '$hour:$minute:$second';
   }
 }
 

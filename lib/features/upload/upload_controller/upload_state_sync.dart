@@ -67,6 +67,7 @@ extension _UploadStateSync on UploadController {
     _notifyListeners();
   }
 
+  // ignore: unused_element
   void _setItemProgress(String localId, {double? httpProgress}) {
     _setItem(localId, httpProgress: httpProgress);
   }

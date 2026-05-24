@@ -7,6 +7,8 @@ import 'features/auth/auth_controller.dart';
 import 'features/auth/community_onboarding_screen.dart';
 import 'features/auth/landing_screen.dart';
 import 'features/auth/login_screen.dart';
+import 'features/auth/tdlib_session_controller.dart';
+import 'features/auth/tdlib_session_screen.dart';
 import 'features/drive/drive_screen.dart';
 import 'features/drive/folder_screen.dart';
 import 'features/drive/starred_screen.dart';
@@ -27,10 +29,11 @@ import 'shared/splash_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.read(authControllerProvider);
+  final tdlib = ref.read(tdlibSessionControllerProvider);
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/',
-    refreshListenable: auth,
+    refreshListenable: Listenable.merge([auth, tdlib]),
     redirect: (context, state) {
       if (auth.loading) return state.matchedLocation == '/' ? null : '/';
 
@@ -47,6 +50,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       if (currentRoute == '/login' && isAccountLoginMode) return null;
+
+      if (!tdlib.isReadyForActiveUser) {
+        if (currentRoute == '/tdlib-session') return null;
+        final returnTo = state.uri.toString();
+        return Uri(
+          path: '/tdlib-session',
+          queryParameters: returnTo.isEmpty || returnTo == '/'
+              ? null
+              : {'returnTo': returnTo},
+        ).toString();
+      }
+
+      if (currentRoute == '/tdlib-session') {
+        return auth.needsCommunityOnboarding ? '/community-setup' : '/drive';
+      }
 
       if (auth.needsCommunityOnboarding) {
         return currentRoute == '/community-setup' ? null : '/community-setup';
@@ -70,6 +88,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: '/welcome', builder: (_, __) => const LandingScreen()),
+      GoRoute(
+        path: '/tdlib-session',
+        builder: (_, state) =>
+            TdlibSessionScreen(returnTo: state.uri.queryParameters['returnTo']),
+      ),
       GoRoute(
         path: '/community-setup',
         builder: (_, __) => const CommunityOnboardingScreen(),

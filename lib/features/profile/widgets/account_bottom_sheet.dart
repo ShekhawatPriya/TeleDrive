@@ -16,6 +16,8 @@ import '../../../widgets/sheet/sheet_drag_handle.dart';
 import '../../auth/auth_controller.dart';
 import '../../drive/drive_controller.dart';
 import '../../../models/drive_models.dart';
+import '../app_settings_controller.dart';
+import '../gallery_backup_controller.dart';
 import 'switch_account_provider.dart';
 
 part 'account_bottom_sheet/account_sheet_actions.dart';
@@ -86,7 +88,10 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
     final drive = ref.watch(driveControllerProvider);
-    final backupOn = ref.watch(mediaBackupProvider);
+    final backupOn = ref
+        .watch(appSettingsControllerProvider)
+        .state
+        .galleryBackupEnabled;
     final user = auth.user;
 
     final activeAccount = _activeAccountSnapshot(auth.activeAccount, user);

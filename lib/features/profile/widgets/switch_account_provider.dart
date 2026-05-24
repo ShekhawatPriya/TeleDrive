@@ -44,12 +44,7 @@ class SwitchAccountState {
 
 class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
   SwitchAccountNotifier(this._ref)
-    : super(
-        const SwitchAccountState(
-          accounts: [],
-          activeUserId: null,
-        ),
-      ) {
+    : super(const SwitchAccountState(accounts: [], activeUserId: null)) {
     _syncFromAuth();
     _ref.listen<AuthController>(authControllerProvider, (_, __) {
       _syncFromAuth();
@@ -96,8 +91,6 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
       photoUrl: activeUser.photoUrl,
     );
   }
-
-
 
   Future<void> addAnotherAccount(BuildContext context) async {
     if (checkUploadsBlocked(context)) return;
@@ -221,10 +214,14 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
   bool checkUploadsBlocked(BuildContext context) {
     final upload = _ref.read(uploadControllerProvider);
     final auth = _ref.read(authControllerProvider);
-    debugPrint('[DEBUG] checkUploadsBlocked: hasBlockingUploads = ${upload.hasBlockingUploads}, uploading = ${upload.uploading}, activeCount = ${upload.activeCount}, itemsLength = ${upload.items.length}');
+    debugPrint(
+      '[DEBUG] checkUploadsBlocked: hasBlockingUploads = ${upload.hasBlockingUploads}, uploading = ${upload.uploading}, activeCount = ${upload.activeCount}, itemsLength = ${upload.items.length}',
+    );
     for (var i = 0; i < upload.items.length; i++) {
       final item = upload.items[i];
-      debugPrint('[DEBUG] Item $i: name = ${item.name}, status = ${item.status}, localId = ${item.localId}');
+      debugPrint(
+        '[DEBUG] Item $i: name = ${item.name}, status = ${item.status}, localId = ${item.localId}',
+      );
     }
     if (auth.hasPendingDirectCommits) {
       showAppPremiumToast(
@@ -234,17 +231,22 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
       return true;
     }
     if (!upload.hasBlockingUploads) return false;
-    
+
     try {
-      _showUploadInProgressDialog(context).catchError((Object err, StackTrace stack) {
-        debugPrint('[ERROR] checkUploadsBlocked dialog async error: $err\n$stack');
+      _showUploadInProgressDialog(context).catchError((
+        Object err,
+        StackTrace stack,
+      ) {
+        debugPrint(
+          '[ERROR] checkUploadsBlocked dialog async error: $err\n$stack',
+        );
         _showFallbackToast();
       });
     } catch (err, stack) {
       debugPrint('[ERROR] checkUploadsBlocked dialog sync error: $err\n$stack');
       _showFallbackToast();
     }
-    
+
     return true;
   }
 
@@ -323,5 +325,3 @@ final switchAccountProvider =
     StateNotifierProvider<SwitchAccountNotifier, SwitchAccountState>((ref) {
       return SwitchAccountNotifier(ref);
     });
-
-final mediaBackupProvider = StateProvider<bool>((ref) => false);

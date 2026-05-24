@@ -33,17 +33,17 @@ class PrivacyAndTrustSection extends StatelessWidget {
         const FaqTile(
           question: 'Where are my files stored?',
           answer:
-              'Your uploaded files are hosted directly on Telegram\'s robust cloud infrastructure. TeleDrive acts as a client dashboard, wrapping those binaries into a structured, elegant folder interface.',
+              'Your private file objects are transferred locally through TDLib and referenced from Telegram storage. TeleDrive presents them in a structured folder interface.',
         ),
         const FaqTile(
           question: 'What does TeleDrive store?',
           answer:
-              'TeleDrive stores structural folder indexes, configuration tags, search cache files, names, and references on your self-hosted backend metadata DB to build a drive-like navigation experience. We do not inspect nor retain actual file contents.',
+              'The backend stores folder indexes, names, shares, upload state, backup fingerprints, and Telegram references. Private file bytes are not uploaded through TeleDrive backend servers.',
         ),
         const FaqTile(
           question: 'Is my login secure?',
           answer:
-              'Absolutely. Session keys and Telegram session credentials are saved directly in your device\'s hardware-backed keystore/keychain utilizing flutter_secure_storage. This guarantees credentials remain fully isolated.',
+              'Backend login and the local TDLib session must both be ready before Drive opens. Local TDLib keys are stored in the device keystore/keychain through flutter_secure_storage.',
         ),
         const FaqTile(
           question: 'Does clearing cache delete my files?',
@@ -53,7 +53,7 @@ class PrivacyAndTrustSection extends StatelessWidget {
         const FaqTile(
           question: 'How are my device folders accessed?',
           answer:
-              'TeleDrive only queries local storage when you explicitly tap to upload files or media. There is absolutely no background, automated, or passive storage scanning occurring inside this app.',
+              'Manual uploads read only the files you select. Gallery backup scans permitted media only after you turn it on from the profile sheet, and path scanning is limited by Android scoped storage.',
         ),
       ],
     );

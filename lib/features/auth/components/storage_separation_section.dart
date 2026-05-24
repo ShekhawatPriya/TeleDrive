@@ -22,7 +22,7 @@ class StorageSeparationSection extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          'TeleDrive clearly segregates uploaded permanent libraries from temporary performance resources.',
+          'TeleDrive separates Telegram-hosted file objects, backend metadata, and temporary local cache.',
           style: theme.textTheme.bodySmall?.copyWith(
             color: scheme.onSurfaceVariant,
             height: 1.35,
@@ -65,7 +65,7 @@ class StorageSeparationSection extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              'Telegram Storage',
+                              'Telegram File Objects',
                               style: theme.textTheme.bodyLarge?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: scheme.onSurface,
@@ -94,7 +94,7 @@ class StorageSeparationSection extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'This represents your actual library. All videos, songs, photos, documents, and folders reside here permanently, independent of your phone\'s local state.',
+                        'Original files are transferred by local TDLib and referenced from Telegram. Folder names, shares, refs, and backup state live in the backend metadata database.',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
                           height: 1.4,
@@ -103,11 +103,11 @@ class StorageSeparationSection extends StatelessWidget {
                       const SizedBox(height: AppSpacing.xs),
                       _buildBulletItem(
                         context,
-                        'No permanent phone storage consumed',
+                        'Private file bytes are not uploaded through TeleDrive backend servers',
                       ),
                       _buildBulletItem(
                         context,
-                        'Safe if app is uninstalled or device is changed',
+                        'Reconnect local TDLib on a supported device before private open/download',
                       ),
                     ],
                   ),
@@ -190,7 +190,7 @@ class StorageSeparationSection extends StatelessWidget {
                       const SizedBox(height: AppSpacing.xs),
                       _buildBulletItem(
                         context,
-                        'Clearing cache will NOT delete original cloud files',
+                        'Clearing cache will not delete Telegram-hosted originals',
                       ),
                       _buildBulletItem(
                         context,

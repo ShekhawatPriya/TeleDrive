@@ -208,8 +208,8 @@ extension _AccountSheetCards on _AccountBottomSheetState {
                   const SizedBox(height: 4),
                   Text(
                     backupOn
-                        ? 'Your files and media are currently backing up to Telegram Drive.'
-                        : 'Keep your photos and videos safe by backing them up to your Telegram Drive.',
+                        ? 'New photos and videos are scanned and transferred locally through TDLib.'
+                        : 'Turn on photo and video backup. Settings controls limits and indexing only.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
                       height: 1.3,
@@ -219,15 +219,23 @@ extension _AccountSheetCards on _AccountBottomSheetState {
                   Align(
                     alignment: Alignment.centerRight,
                     child: FilledButton.tonal(
-                      onPressed: () {
-                        ref.read(mediaBackupProvider.notifier).state =
-                            !backupOn;
+                      onPressed: () async {
+                        final next = !backupOn;
+                        await ref
+                            .read(appSettingsControllerProvider)
+                            .setGalleryBackupEnabled(next);
+                        if (next) {
+                          await ref
+                              .read(galleryBackupControllerProvider)
+                              .scanNow(reason: 'profile_toggle');
+                        }
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
                               backupOn
-                                  ? 'Backup turned off.'
-                                  : 'Backup enabled!',
+                                  ? 'Backup turned off. Queued backup items are paused; uploaded history is kept.'
+                                  : 'Backup enabled. Scanning now.',
                             ),
                             duration: const Duration(seconds: 2),
                           ),

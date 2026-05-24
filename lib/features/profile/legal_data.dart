@@ -23,6 +23,7 @@ const privacySections = [
     bullets: [
       'File names, sizes, types, and timestamps for your library, search, sorting, previews, and organization.',
       'Folder structure and structural directory references so your hierarchy can be restored seamlessly across devices.',
+      'Telegram media references, upload state, share records, and backup fingerprints used to prevent duplicate gallery uploads.',
       'Telegram account details (user ID, name, username, and profile photo link) retrieved upon authentication.',
       'A server session and connection token stored securely on your device so the application can communicate with your backend.',
     ],
@@ -30,7 +31,7 @@ const privacySections = [
   SectionContent(
     title: 'Local Device Security & Keychain',
     paragraph:
-        'To guarantee maximum security of your connection credentials, all authenticated keys and credentials are saved locally in the device\'s hardware-backed keystore/keychain (utilizing flutter_secure_storage). They are isolated and never exposed to other apps.',
+        'Backend session tokens and local TDLib keys are saved in the device keystore/keychain through flutter_secure_storage. TeleDrive requires both backend login and a ready local TDLib session before Drive opens.',
   ),
   SectionContent(
     title: 'Media Caching & Performance',
@@ -40,12 +41,12 @@ const privacySections = [
   SectionContent(
     title: 'On-Demand Media Access',
     paragraph:
-        'TeleDrive requests access to your photos, camera, or file directories only when you choose an upload or enable an opt-in backup feature. Gallery backup scans selected media after permission and setting enablement, follows your Wi-Fi/mobile-data preferences, and stores only local queue/cache data needed to finish transfers.',
+        'TeleDrive reads selected files locally to send them through TDLib. Gallery backup scans permitted media only after you turn it on from the profile action sheet, follows your Wi-Fi/mobile-data and Backup settings, and stores queue state plus dedupe fingerprints needed to finish transfers.',
   ),
   SectionContent(
     title: 'What We Do Not Collect',
     bullets: [
-      'TeleDrive does not read, intercept, or analyze the actual content of your files.',
+      'TeleDrive does not upload private file bytes through TeleDrive backend servers.',
       'TeleDrive has no access to your personal Telegram chat messages, contacts, or channels unrelated to your drive.',
       'TeleDrive does not contain ads, trackers, analytics packages, or third-party telemetry. All communication is strictly client-to-server.',
     ],
@@ -53,7 +54,7 @@ const privacySections = [
   SectionContent(
     title: 'Where Files Are Stored',
     paragraph:
-        'Your files are hosted directly on Telegram\'s infrastructure. TeleDrive acts as a frontend management layer, storing references, metadata, and cache structures required to display and structure your library on your configured backend API.',
+        'Private file bytes are transferred locally through TDLib and referenced from Telegram storage. The backend stores metadata, folders, refs, shares, upload state, and dedupe records. Public byte streaming for TDLib-managed files is not available yet.',
   ),
   SectionContent(
     title: 'Open Source Transparency',
@@ -65,7 +66,7 @@ const privacySections = [
     bullets: [
       'You can sign out of your account at any time, which fully deletes all local session keys and secure credentials from the device.',
       'Signing out completely flushes the cached previews, images, and document indices from your local device storage.',
-      'Files uploaded to Telegram remain under your complete control and ownership in Telegram.',
+      'Gallery backup on/off is controlled from the profile action sheet; Settings > Backup configures scan and queue behavior only.',
     ],
   ),
   SectionContent(
@@ -84,7 +85,7 @@ const termsSections = [
   SectionContent(
     title: 'Service Description',
     paragraph:
-        'TeleDrive provides a sleek, cloud-like file management interface backed by Telegram storage. It allows you to upload, organize, preview, stream, and download files through the mobile app and your configured self-hosted backend API.',
+        'TeleDrive provides a file management interface backed by Telegram storage. Private upload, open, preview, and download actions use local TDLib on supported devices; the backend stores metadata and Telegram references, not private file-byte upload fallbacks.',
   ),
   SectionContent(
     title: 'Your Account & Security',
@@ -107,7 +108,7 @@ const termsSections = [
   SectionContent(
     title: 'Data and Storage',
     paragraph:
-        'Your actual files reside on Telegram servers. TeleDrive stores structural references, names, folder trees, and configuration details solely to deliver an elegant drive interface on top of your chat storage.',
+        'Your private file objects are transferred locally through TDLib and referenced from Telegram storage. TeleDrive stores structural references, names, folder trees, shares, upload state, and backup dedupe records needed to deliver the drive interface.',
   ),
   SectionContent(
     title: 'Open Source License',

@@ -117,7 +117,7 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
     final available = await isAvailable;
     if (!available) {
       throw const TelegramClientUnavailableException(
-        'TDLib is not available on this device.',
+        'TeleDrive requires a supported 64-bit Android device for local TDLib file transfer.',
         code: 'tdlib_unavailable',
       );
     }
@@ -334,7 +334,7 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
       return <String, dynamic>{};
     } on MissingPluginException {
       throw const TelegramClientUnavailableException(
-        'TDLib bridge is not installed.',
+        'TeleDrive requires local TDLib file transfer, but the TDLib bridge is not installed.',
         code: 'tdlib_bridge_missing',
       );
     } on PlatformException catch (err) {

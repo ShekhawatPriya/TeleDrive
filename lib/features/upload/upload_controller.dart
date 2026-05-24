@@ -5,7 +5,6 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:http_parser/http_parser.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/notifications/upload_notification_service.dart';
@@ -16,9 +15,11 @@ import '../../core/telegram/pending_telegram_commit_queue.dart';
 import '../../core/telegram/telegram_client_exceptions.dart';
 import '../../core/telegram/telegram_client_models.dart';
 import '../../core/telegram/telegram_transfer_service.dart';
+import '../../core/utils/iterable_ext.dart';
 import '../auth/auth_controller.dart';
 import '../drive/drive_controller.dart';
 import '../profile/app_settings_controller.dart';
+import '../profile/gallery_backup_asset_store.dart';
 import 'upload_models.dart';
 import 'upload_picker_helper.dart';
 import '../../core/utils/file_type_detector.dart';
@@ -67,6 +68,8 @@ class UploadController extends ChangeNotifier {
       const ClientDerivativeGenerator();
   final PendingTelegramCommitQueue _pendingCommits =
       PendingTelegramCommitQueue();
+  final GalleryBackupAssetStore _backupAssetStore =
+      const GalleryBackupAssetStore();
   final _uuid = const Uuid();
   final Map<String, CancelToken> _cancelTokensByLocalId = {};
   final Map<int, Timer> _pollTimersByBatchId = {};
@@ -99,6 +102,17 @@ class UploadController extends ChangeNotifier {
   int get activeCount => items.where(_isActive).length;
   bool get waitingForWifi =>
       items.any((i) => i.status == UploadStatus.waitingForWifi);
+  Set<String> get activeGalleryBackupFingerprints => items
+      .where(
+        (i) =>
+            i.clientSource == 'gallery_backup' &&
+            i.backupFingerprint != null &&
+            !_isTerminalStatus(i.status),
+      )
+      .map((i) => i.backupFingerprint!)
+      .toSet();
+  int get activeGalleryBackupQueueCount =>
+      activeGalleryBackupFingerprints.length;
   bool get hasBlockingUploads =>
       uploading ||
       activeCount > 0 ||
@@ -235,6 +249,45 @@ class UploadController extends ChangeNotifier {
     _pumpQueue();
   }
 
+  Future<void> pauseQueuedGalleryBackupItems() async {
+    final scope = _backupScope();
+    final paused = items
+        .where(
+          (item) =>
+              item.clientSource == 'gallery_backup' &&
+              {
+                UploadStatus.selected,
+                UploadStatus.queued,
+                UploadStatus.waitingForWifi,
+              }.contains(item.status),
+        )
+        .toList();
+    if (paused.isEmpty) return;
+    for (final item in paused) {
+      if (item.deleteLocalOnComplete) {
+        unawaited(_safeDeleteLocalFile(item.path));
+      }
+    }
+    if (scope != null) {
+      await _backupAssetStore.markMany(
+        scope,
+        paused
+            .map((item) => item.backupFingerprint)
+            .whereType<String>()
+            .where((value) => value.isNotEmpty),
+        GalleryBackupAssetStatus.discovered,
+      );
+    }
+    items = items
+        .where(
+          (item) => !paused.any((paused) => paused.localId == item.localId),
+        )
+        .toList();
+    _syncOptimistic();
+    _updateUploadingFlag();
+    _notifyListeners();
+  }
+
   Future<void> cancelItem(String localId) async {
     final item = _findItem(localId);
     if (item == null || _isTerminalStatus(item.status)) return;
@@ -249,13 +302,6 @@ class UploadController extends ChangeNotifier {
       await _api.dio
           .post(endpoint)
           .catchError((_) => Response(requestOptions: RequestOptions()));
-    } else {
-      await _api.dio
-          .post(
-            '/files/upload/cancel',
-            data: {'upload_client_id': item.uploadClientId},
-          )
-          .catchError((_) => Response(requestOptions: RequestOptions()));
     }
 
     if (item.batchId != null) _stopPollingBatch(item.batchId!);
@@ -266,6 +312,13 @@ class UploadController extends ChangeNotifier {
     }
     _syncOptimistic();
     _pumpQueue();
+  }
+
+  String? _backupScope() {
+    final user = _auth.user;
+    final telegramId = user?.telegramId ?? _auth.activeAccount?.telegramId ?? 0;
+    if (user == null || telegramId == 0) return null;
+    return '${user.userId}_$telegramId';
   }
 
   Future<void> cancelUpload() async {

@@ -62,7 +62,8 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
     setState(() {
       _diagnosticsRunning = false;
       _diagnosticsCompleted = true;
-      _diagnosticsStep = 'Diagnostics complete. All checks passed successfully!';
+      _diagnosticsStep =
+          'Diagnostics complete. All checks passed successfully!';
     });
   }
 
@@ -86,12 +87,12 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'TeleDrive operates on direct-to-Telegram storage architecture. Your files exist solely within your personal Telegram Account.',
+                  'TeleDrive transfers private file bytes locally through TDLib and stores Telegram references plus metadata on your configured backend.',
                   style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
-                  'Since we do not store, duplicate, or index your data on external databases, a direct export from TeleDrive servers is not applicable.',
+                  'The backend can describe your folders, shares, refs, upload state, and backup fingerprints, but it is not a private file-byte export source.',
                   style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -209,7 +210,13 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Pulsing Sync Badge & Profile Info Card
-                _buildProfileHeroCard(context, user, usedStorageStr, totalFiles, totalFolders),
+                _buildProfileHeroCard(
+                  context,
+                  user,
+                  usedStorageStr,
+                  totalFiles,
+                  totalFolders,
+                ),
                 const SizedBox(height: AppSpacing.xl),
 
                 // Interactive Diagnostics Card
@@ -230,7 +237,7 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
                   icon: Icons.vpn_lock_rounded,
                   title: 'Decentralized Storage',
                   description:
-                      "Your files are split and securely stored within Telegram's distributed cloud network, safeguarding them with robust server-side encryption.",
+                      'Private file bytes move through local TDLib to Telegram. TeleDrive backend records metadata and Telegram references only.',
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 _buildSecurityPillar(
@@ -246,7 +253,7 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
                   icon: Icons.verified_user_rounded,
                   title: 'Zero Third-Party Sharing',
                   description:
-                      'TeleDrive does not read, index, sell, or monitor your files. All interactions are direct to your personal Telegram Cloud.',
+                      'TeleDrive does not sell or monitor your files. The app reads selected or permitted backup media locally so TDLib can transfer it.',
                 ),
                 const SizedBox(height: AppSpacing.xl),
 
@@ -280,15 +287,19 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
                 _buildLinkCard(
                   context,
                   title: 'Telegram Privacy Policy',
-                  subtitle: 'Official statements on how your personal data is kept secure.',
+                  subtitle:
+                      'Official statements on how your personal data is kept secure.',
                   onTap: () => _launchUrl('https://telegram.org/privacy'),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 _buildLinkCard(
                   context,
                   title: 'Telegram Security FAQ',
-                  subtitle: 'Deep technical explanation of MTProto protocol security.',
-                  onTap: () => _launchUrl('https://telegram.org/faq#q-is-telegram-secure'),
+                  subtitle:
+                      'Deep technical explanation of MTProto protocol security.',
+                  onTap: () => _launchUrl(
+                    'https://telegram.org/faq#q-is-telegram-secure',
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.xxl),
               ],
@@ -320,9 +331,7 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -518,9 +527,7 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
                   const SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                    ),
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                   const SizedBox(width: AppSpacing.md),
                 ] else if (_diagnosticsCompleted) ...[
@@ -577,7 +584,9 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
                 ),
               ),
               child: Text(
-                _diagnosticsCompleted ? 'Re-run Diagnostics' : 'Run Diagnostics',
+                _diagnosticsCompleted
+                    ? 'Re-run Diagnostics'
+                    : 'Run Diagnostics',
               ),
             ),
           ],
@@ -599,9 +608,7 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.2),
-        ),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.2)),
       ),
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Row(
@@ -613,11 +620,7 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
               color: scheme.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              icon,
-              color: scheme.primary,
-              size: 20,
-            ),
+            child: Icon(icon, color: scheme.primary, size: 20),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -673,11 +676,7 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
             padding: const EdgeInsets.all(AppSpacing.md),
             child: Row(
               children: [
-                Icon(
-                  icon,
-                  color: scheme.onSurfaceVariant,
-                  size: 24,
-                ),
+                Icon(icon, color: scheme.onSurfaceVariant, size: 24),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
@@ -722,9 +721,7 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.2),
-        ),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.2)),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Material(
@@ -790,9 +787,10 @@ class _PulsingStatusDotState extends State<_PulsingStatusDot>
       vsync: this,
       duration: const Duration(milliseconds: 1600),
     )..repeat(reverse: true);
-    _animation = Tween<double>(begin: 3.0, end: 8.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _animation = Tween<double>(
+      begin: 3.0,
+      end: 8.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override

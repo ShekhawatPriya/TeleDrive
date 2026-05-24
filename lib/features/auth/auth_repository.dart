@@ -18,7 +18,6 @@ class BackendFeatureFlags {
     this.directTelegramUploadEnabled = false,
     this.directTelegramDownloadEnabled = false,
     this.clientDerivativeGenerationEnabled = false,
-    this.legacyBackendUploadFallbackEnabled = true,
     this.galleryBackupEnabled = false,
     this.publicProxyEnabled = true,
   });
@@ -26,7 +25,6 @@ class BackendFeatureFlags {
   final bool directTelegramUploadEnabled;
   final bool directTelegramDownloadEnabled;
   final bool clientDerivativeGenerationEnabled;
-  final bool legacyBackendUploadFallbackEnabled;
   final bool galleryBackupEnabled;
   final bool publicProxyEnabled;
 
@@ -38,8 +36,6 @@ class BackendFeatureFlags {
           json['directTelegramDownloadEnabled'] == true,
       clientDerivativeGenerationEnabled:
           json['clientDerivativeGenerationEnabled'] == true,
-      legacyBackendUploadFallbackEnabled:
-          json['legacyBackendUploadFallbackEnabled'] != false,
       galleryBackupEnabled: json['galleryBackupEnabled'] == true,
       publicProxyEnabled: json['publicProxyEnabled'] != false,
     );

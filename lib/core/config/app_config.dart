@@ -3,8 +3,12 @@ import 'package:url_launcher/url_launcher.dart';
 
 class AppConfig {
   static const _fallbackApiBaseUrl = 'http://192.168.1.5:8000/api';
+  static const _dartDefineApiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
   static String get apiBaseUrl {
+    if (_dartDefineApiBaseUrl.trim().isNotEmpty) {
+      return _dartDefineApiBaseUrl.trim();
+    }
     final value = dotenv.maybeGet('API_BASE_URL');
     return (value == null || value.isEmpty) ? _fallbackApiBaseUrl : value;
   }
@@ -22,19 +26,16 @@ class AppConfig {
       telegramApiId != null && telegramApiHash.isNotEmpty;
 
   static bool get directTelegramUploadEnabled =>
-      _bool('DIRECT_TELEGRAM_UPLOAD_ENABLED', fallback: false);
+      _bool('DIRECT_TELEGRAM_UPLOAD_ENABLED', fallback: true);
 
   static bool get directTelegramDownloadEnabled =>
-      _bool('DIRECT_TELEGRAM_DOWNLOAD_ENABLED', fallback: false);
+      _bool('DIRECT_TELEGRAM_DOWNLOAD_ENABLED', fallback: true);
 
   static bool get clientDerivativeGenerationEnabled =>
       _bool('CLIENT_DERIVATIVE_GENERATION_ENABLED', fallback: false);
 
-  static bool get legacyBackendUploadFallbackEnabled =>
-      _bool('LEGACY_BACKEND_UPLOAD_FALLBACK_ENABLED', fallback: true);
-
   static bool get galleryBackupEnabled =>
-      _bool('GALLERY_BACKUP_ENABLED', fallback: false);
+      _bool('GALLERY_BACKUP_ENABLED', fallback: true);
 
   static int get maxConcurrentTelegramUploads =>
       _int('MAX_CONCURRENT_TELEGRAM_UPLOADS', fallback: 2);

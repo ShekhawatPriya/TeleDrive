@@ -42,7 +42,7 @@ class TelegramAuthBridge {
     final local = await getCurrentTelegramUserId();
     if (local == null) {
       throw const TelegramClientUnavailableException(
-        'Connect Telegram on this device before using direct media transfer.',
+        'Reconnect Telegram on this device before using TeleDrive transfer.',
         code: 'tdlib_not_connected',
       );
     }
@@ -64,7 +64,7 @@ class TelegramAuthBridge {
       return <String, dynamic>{};
     } on MissingPluginException {
       throw const TelegramClientUnavailableException(
-        'TDLib bridge is not installed.',
+        'TeleDrive requires local TDLib file transfer, but the TDLib bridge is not installed.',
         code: 'tdlib_bridge_missing',
       );
     } on PlatformException catch (err) {

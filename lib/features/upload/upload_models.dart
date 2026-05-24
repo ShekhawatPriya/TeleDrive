@@ -49,6 +49,10 @@ class UploadItem {
     required this.status,
     this.clientSource = 'manual_picker',
     this.deleteLocalOnComplete = true,
+    this.destinationFolderId,
+    this.backupFingerprint,
+    this.backupSourceKind,
+    this.contentUri,
     this.localModifiedAt,
     this.relativePath,
     this.durationMs,
@@ -72,6 +76,10 @@ class UploadItem {
   final UploadStatus status;
   final String clientSource;
   final bool deleteLocalOnComplete;
+  final String? destinationFolderId;
+  final String? backupFingerprint;
+  final String? backupSourceKind;
+  final String? contentUri;
   final DateTime? localModifiedAt;
   final String? relativePath;
   final int? durationMs;
@@ -137,6 +145,10 @@ class UploadItem {
     bool? cancelRequested,
     String? clientSource,
     bool? deleteLocalOnComplete,
+    String? destinationFolderId,
+    String? backupFingerprint,
+    String? backupSourceKind,
+    String? contentUri,
     DateTime? localModifiedAt,
     String? relativePath,
     int? durationMs,
@@ -156,6 +168,10 @@ class UploadItem {
       clientSource: clientSource ?? this.clientSource,
       deleteLocalOnComplete:
           deleteLocalOnComplete ?? this.deleteLocalOnComplete,
+      destinationFolderId: destinationFolderId ?? this.destinationFolderId,
+      backupFingerprint: backupFingerprint ?? this.backupFingerprint,
+      backupSourceKind: backupSourceKind ?? this.backupSourceKind,
+      contentUri: contentUri ?? this.contentUri,
       localModifiedAt: localModifiedAt ?? this.localModifiedAt,
       relativePath: relativePath ?? this.relativePath,
       durationMs: durationMs ?? this.durationMs,
@@ -184,7 +200,7 @@ extension UploadItemMapping on UploadItem {
       size: size,
       modifiedAt: DateTime.now().toIso8601String(),
       createdAt: DateTime.now().toIso8601String(),
-      parentId: activeFolderId,
+      parentId: destinationFolderId ?? activeFolderId,
       starred: false,
       mimeType: mimeType,
       uploadStatus: status.name,

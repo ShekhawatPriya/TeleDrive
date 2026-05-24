@@ -125,6 +125,16 @@ class DriveRepository {
     return _mapFolder(Map<String, dynamic>.from(res.data as Map));
   }
 
+  Future<DriveFolder> ensureFolderPath(List<String> path) async {
+    final res = await api.dio.post(
+      '/folders/ensure-path',
+      data: {'path': path},
+    );
+    final data = Map<String, dynamic>.from(res.data as Map);
+    final rawFolder = data['folder'] ?? data['finalFolder'] ?? data;
+    return _mapFolder(Map<String, dynamic>.from(rawFolder as Map));
+  }
+
   Future<void> renameFolder(String id, String name) async {
     await api.dio.patch('/folders/$id', data: {'name': name});
   }
@@ -190,7 +200,7 @@ class DriveRepository {
     final mime = json['mimeType'] as String?;
     final kind = detectFileKind(name, mime);
     final uploadStatus = '${json['uploadStatus'] ?? 'available'}';
-    final storageMode = '${json['storageMode'] ?? 'legacy_server_managed'}';
+    final storageMode = '${json['storageMode'] ?? 'client_managed'}';
     final mediaAccessMode = '${json['mediaAccessMode'] ?? 'server_proxy'}';
     final thumbnailStatus = '${json['thumbnailStatus'] ?? ''}';
     final previewStatus = '${json['previewStatus'] ?? ''}';
@@ -234,7 +244,7 @@ class DriveRepository {
       uploadStatus: uploadStatus,
       uploadError: json['uploadError'] as String?,
       storageMode: storageMode,
-      uploadOrigin: '${json['uploadOrigin'] ?? 'backend_multipart'}',
+      uploadOrigin: '${json['uploadOrigin'] ?? 'client_tdlib'}',
       publicProxyStatus: json['publicProxyStatus'] as String?,
       verificationStatus: json['verificationStatus'] as String?,
       mediaAccessMode: mediaAccessMode,

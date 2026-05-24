@@ -21,7 +21,6 @@ Backend flags used:
 - `CLIENT_DIRECT_UPLOADS_ENABLED=true`
 - `CLIENT_DIRECT_DOWNLOADS_ENABLED=true`
 - `CLIENT_DERIVATIVE_GENERATION_ENABLED=true`
-- `LEGACY_BACKEND_UPLOADS_ENABLED=true`
 - `GALLERY_BACKUP_ENABLED=true`
 - `PUBLIC_SHARE_PROXY_ENABLED=true`
 - `PUBLIC_BASE_URL=http://192.168.1.5:8001`
@@ -32,7 +31,6 @@ Flutter flags used:
 - `DIRECT_TELEGRAM_UPLOAD_ENABLED=true`
 - `DIRECT_TELEGRAM_DOWNLOAD_ENABLED=true`
 - `CLIENT_DERIVATIVE_GENERATION_ENABLED=true`
-- `LEGACY_BACKEND_UPLOAD_FALLBACK_ENABLED=true`
 - `GALLERY_BACKUP_ENABLED=true`
 - `MAX_CONCURRENT_TELEGRAM_UPLOADS=2`
 - `MAX_CONCURRENT_DERIVATIVE_TASKS=2`
@@ -169,50 +167,21 @@ TDLib downloaded the original to local app storage:
 The app opened the downloaded local file through its Android `FileProvider` as
 `image/png`, and Android routed it to Google Photos.
 
-## Legacy Fallback Verification
+## Backend Fallback Disabled Verification
 
-Direct upload/download flags were temporarily disabled in Flutter local config,
-then the debug APK was rebuilt and installed.
-
-Uploaded fixture:
-
-- Device path: `/sdcard/Download/teledrive_legacy_fallback_upload.png`
-- Size: `463` bytes
-- PNG validation: valid signature and chunk CRCs
-
-Backend evidence:
-
-- `POST /api/files/upload` returned `202`
-- Backend Telethon upload pipeline processed the file
-
-Database evidence:
-
-- `files.id=63`
-- `original_filename=teledrive_legacy_fallback_upload.png`
-- `storage_mode=legacy_server_managed`
-- `upload_origin=backend_multipart`
-- `upload_status=available`
-- `verification_status=verified`
-
-After this check, direct upload/download flags were restored.
+The legacy fallback check in earlier runs has been superseded. Current
+TeleDrive builds do not keep a backend file-byte upload fallback. The current
+expected result for `POST /api/files/upload` and `/api/files/upload/cancel` is
+`410 Gone`, with no upload batch, upload job, staging file, or file row created.
 
 ## Public Share Verification
 
-A public share was created for unverified client-managed file `62`.
-
-- Share id: `4`
-- Share token was generated locally and is intentionally not recorded here.
-- Item public id: `c06qOemLnBNZvLvN`
-- Manifest `availability=preparing`
-- Manifest `canDownload=false`
-- Manifest `downloadUrl=null`
-- Manifest `publicProxyStatus=pending_verification`
-- Manifest `storageMode=client_managed`
-- Manifest unavailable reason: `Public download is preparing.`
-- Direct public download returned HTTP `425`
-
-This confirms the public page does not expose a working download URL for an
-unverified client-managed file.
+The current policy disables public preview/download byte streaming for
+TDLib-managed `client_managed` files. Public share metadata can remain visible,
+but manifests should report `availability=tdlib_public_bytes_unavailable`,
+`canDownload=false`, and `downloadUrl=null`. Direct public download/preview
+requests should return an unavailable response instead of proxying private file
+bytes through the backend.
 
 ## Client-Side Thumbnail And Preview Implementation
 
@@ -369,7 +338,6 @@ The user suspected a corrupted PNG during verification. Local PNG chunk checks
 showed:
 
 - `teledrive_tdlib_e2e_upload_2.png`: valid
-- `teledrive_legacy_fallback_upload.png`: valid
 - `runtime-device-screen.png`: valid
 - `runtime-viewer-screen.png`: valid
 - `runtime-tdlib-e2e-upload.png`: corrupted `IDAT` CRC and truncated trailing

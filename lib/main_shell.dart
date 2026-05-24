@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -31,7 +33,8 @@ class MainShell extends ConsumerStatefulWidget {
   ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends ConsumerState<MainShell> {
+class _MainShellState extends ConsumerState<MainShell>
+    with WidgetsBindingObserver {
   static const _tabPaths = ['/drive', '/photos', '/starred', '/shared'];
   static const _tabPages = [
     _KeepAliveTab(child: DriveScreen()),
@@ -46,6 +49,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _pageController = PageController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = ref.read(authControllerProvider);
@@ -61,8 +65,16 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(ref.read(galleryBackupControllerProvider).handleAppResumed());
+    }
   }
 
   @override

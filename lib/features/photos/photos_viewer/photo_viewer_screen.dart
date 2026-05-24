@@ -9,6 +9,7 @@ import '../../../core/telegram/telegram_transfer_service.dart';
 import '../../../models/drive_models.dart';
 import '../../../widgets/empty_state.dart';
 import '../../auth/auth_controller.dart';
+import '../../auth/tdlib_session_controller.dart';
 import '../../drive/components/drive_item_actions.dart';
 import '../../drive/drive_controller.dart';
 import '../photos_filter.dart';
@@ -190,7 +191,15 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
       final dir = await getTemporaryDirectory();
       final safeName = file.name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
       final path = '${dir.path}/$safeName';
-      if (url == null && file.storageMode == 'client_managed') {
+      if (file.storageMode == 'client_managed') {
+        final session = ref.read(tdlibSessionControllerProvider);
+        if (!session.isReadyForActiveUser) {
+          if (!context.mounted) return;
+          context.go('/tdlib-session?returnTo=/photos/view/${file.id}');
+          throw Exception(
+            'Reconnect Telegram on this device to download TDLib-managed files.',
+          );
+        }
         final media = await ref
             .read(driveRepositoryProvider)
             .mediaRef(file.id, variant: 'original');
@@ -208,7 +217,9 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
           telegramUserId: user.telegramId,
         );
         if (!await telegram.isAuthorized) {
-          throw Exception('Local Telegram session is not authorized.');
+          if (!context.mounted) return;
+          context.go('/tdlib-session?returnTo=/photos/view/${file.id}');
+          throw Exception('Local TDLib session is not authorized.');
         }
         final result = await telegram.downloadToCache(
           telegramRef,

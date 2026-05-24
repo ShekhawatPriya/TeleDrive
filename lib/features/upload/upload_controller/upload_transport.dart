@@ -10,8 +10,13 @@ extension _UploadTransport on UploadController {
         : configuredConcurrency;
     final availableSlots = concurrentLimit - _runningLocalIds.length;
     if (availableSlots <= 0) return;
+    final firstQueued = items
+        .where((i) => i.status == UploadStatus.queued)
+        .firstOrNull;
+    final nextFolderId = firstQueued?.destinationFolderId ?? activeFolderId;
     final next = items
         .where((i) => i.status == UploadStatus.queued)
+        .where((i) => (i.destinationFolderId ?? activeFolderId) == nextFolderId)
         .take(availableSlots)
         .toList();
     if (next.isEmpty) {
@@ -28,46 +33,96 @@ extension _UploadTransport on UploadController {
   }
 
   Future<void> _uploadMany(List<UploadItem> batchItems) async {
-    if (await _shouldAttemptDirectUpload()) {
-      try {
-        await _uploadManyDirect(batchItems);
-        return;
-      } on TelegramClientUnavailableException catch (err) {
-        if (!_auth.legacyBackendUploadFallbackEnabled) {
-          for (final item in batchItems) {
-            _setItem(
-              item.localId,
-              status: UploadStatus.failed,
-              error: err.message,
-            );
-            _runningLocalIds.remove(item.localId);
-          }
-          _syncOptimistic();
-          await _refreshIfSettled();
-          return;
-        }
-      }
+    try {
+      await _requireDirectUploadReady();
+      await _uploadManyDirect(batchItems);
+    } on TelegramClientException catch (err) {
+      await _failBatchBeforeUpload(
+        batchItems,
+        _tdlibRequiredMessage(err.message),
+        failureCode: err.code ?? 'tdlib_unavailable',
+      );
+    } catch (err) {
+      await _failBatchBeforeUpload(
+        batchItems,
+        _tdlibRequiredMessage('$err'),
+        failureCode: 'tdlib_unavailable',
+      );
     }
-    await _uploadManyLegacy(batchItems);
   }
 
-  Future<bool> _shouldAttemptDirectUpload() async {
-    if (!_auth.directTelegramUploadEnabled) return false;
+  Future<void> _requireDirectUploadReady() async {
+    if (!_auth.directTelegramUploadEnabled) {
+      throw const TelegramClientUnavailableException(
+        'Local TDLib upload is not enabled by this backend.',
+        code: 'tdlib_direct_upload_disabled',
+      );
+    }
     final user = _auth.user;
-    if (user == null || user.telegramId == 0) return false;
-    if (!await _telegram.isAvailable) return false;
+    if (user == null || user.telegramId == 0) {
+      throw const TelegramClientUnavailableException(
+        'Connect Telegram before uploading.',
+        code: 'tdlib_not_connected',
+      );
+    }
+    if (!await _telegram.isAvailable) {
+      throw const TelegramClientUnavailableException(
+        'TeleDrive requires a supported 64-bit Android device for local TDLib file transfer.',
+        code: 'tdlib_unavailable',
+      );
+    }
     try {
       await _telegram.configure(
         backendUserId: '${user.userId}',
         telegramUserId: user.telegramId,
       );
-      if (!await _telegram.isAuthorized) return false;
+      if (!await _telegram.isAuthorized) {
+        throw const TelegramClientUnavailableException(
+          'Local TDLib is not authorized.',
+          code: 'tdlib_auth_required',
+        );
+      }
       final me = await _telegram.getMe();
       final tdlibUserId = _intish(me['id']);
-      return tdlibUserId == null || tdlibUserId == user.telegramId;
+      if (tdlibUserId != null && tdlibUserId != user.telegramId) {
+        throw const TelegramAccountMismatchException(
+          'Local TDLib account does not match the active TeleDrive account.',
+          code: 'tdlib_account_mismatch',
+        );
+      }
     } on TelegramClientException {
-      return false;
+      rethrow;
     }
+  }
+
+  Future<void> _failBatchBeforeUpload(
+    List<UploadItem> batchItems,
+    String message, {
+    required String failureCode,
+  }) async {
+    final scope = _backupScope();
+    for (final item in batchItems) {
+      _setItem(item.localId, status: UploadStatus.failed, error: message);
+      _runningLocalIds.remove(item.localId);
+      if (scope != null && item.backupFingerprint != null) {
+        await _backupAssetStore.mark(
+          scope,
+          item.backupFingerprint!,
+          GalleryBackupAssetStatus.failed,
+          failureCode: failureCode,
+          failureMessage: message,
+        );
+      }
+    }
+    _syncOptimistic();
+    await _refreshIfSettled();
+    _pumpQueue();
+  }
+
+  String _tdlibRequiredMessage(String detail) {
+    final trimmed = detail.trim();
+    final suffix = trimmed.isEmpty ? '' : ' $trimmed';
+    return 'TeleDrive uses local TDLib for file transfer. Reconnect Telegram on this device to continue.$suffix';
   }
 
   Future<void> _uploadManyDirect(List<UploadItem> batchItems) async {
@@ -109,12 +164,14 @@ extension _UploadTransport on UploadController {
 
     try {
       TelegramUploadTarget? preparedTarget;
+      final effectiveFolderId =
+          batchItems.first.destinationFolderId ?? activeFolderId;
       final prepareRes = await _api.dio.post(
         '/client-uploads/prepare-target',
         data: {
-          'folder_id': activeFolderId == null
+          'folder_id': effectiveFolderId == null
               ? null
-              : int.parse(activeFolderId!),
+              : int.parse(effectiveFolderId),
         },
       );
       final prepareData = Map<String, dynamic>.from(prepareRes.data as Map);
@@ -127,9 +184,9 @@ extension _UploadTransport on UploadController {
         '/client-uploads/init',
         data: {
           'upload_client_id': _directBatchUploadClientId(batchItems),
-          'folder_id': activeFolderId == null
+          'folder_id': effectiveFolderId == null
               ? null
-              : int.parse(activeFolderId!),
+              : int.parse(effectiveFolderId),
           'auto_rename_duplicates': _settings.state.autoRenameDuplicates,
           'files': batchItems
               .map(
@@ -145,6 +202,9 @@ extension _UploadTransport on UploadController {
                   'duration_ms': item.durationMs,
                   'relative_path': item.relativePath,
                   'client_source': item.clientSource,
+                  'backup_fingerprint': item.backupFingerprint,
+                  'backup_source': item.backupSourceKind,
+                  'content_uri': item.contentUri,
                 },
               )
               .toList(),
@@ -190,6 +250,27 @@ extension _UploadTransport on UploadController {
           );
           continue;
         }
+        final intentStatus = '${intent['status'] ?? ''}';
+        final duplicateResolution =
+            '${intent['duplicateResolution'] ?? intent['duplicate_resolution'] ?? ''}';
+        if (intentStatus == 'completed' ||
+            duplicateResolution == 'already_uploaded') {
+          _setItem(
+            latest.localId,
+            status: UploadStatus.uploaded,
+            serverProgress: 1,
+            thumbnailReady: true,
+          );
+          final backupScope = _backupScope();
+          if (backupScope != null && latest.backupFingerprint != null) {
+            await _backupAssetStore.mark(
+              backupScope,
+              latest.backupFingerprint!,
+              GalleryBackupAssetStatus.uploaded,
+            );
+          }
+          continue;
+        }
         final fileId = (intent['fileId'] as num).toInt();
         final target = intent['telegramTarget'] is Map
             ? TelegramUploadTarget.fromJson(
@@ -219,6 +300,14 @@ extension _UploadTransport on UploadController {
               'estimated_total_bytes': latest.size,
             },
           );
+          final scope = _backupScope();
+          if (scope != null && latest.backupFingerprint != null) {
+            await _backupAssetStore.mark(
+              scope,
+              latest.backupFingerprint!,
+              GalleryBackupAssetStatus.uploading,
+            );
+          }
           final result = await _telegram.uploadOriginal(
             filePath: latest.path,
             filename: latest.name,
@@ -247,13 +336,13 @@ extension _UploadTransport on UploadController {
             'platform': Platform.operatingSystem,
             'upload_strategy': 'tdlib',
           };
-          final scope = _pendingCommits.activeScope(
+          final commitScope = _pendingCommits.activeScope(
             backendUserId: user.userId,
             telegramUserId: user.telegramId,
           );
           final commitId = '$batchId:$fileId:${latest.localId}';
           await _pendingCommits.save(
-            scope,
+            commitScope,
             PendingTelegramCommit(
               id: commitId,
               backendBaseUrlHash: _pendingCommits.backendBaseUrlHash,
@@ -286,7 +375,7 @@ extension _UploadTransport on UploadController {
             serverProgress: 1,
           );
           await _commitClientUploadWithRetry(commitPath, commitPayload);
-          await _pendingCommits.remove(scope, commitId);
+          await _pendingCommits.remove(commitScope, commitId);
           unawaited(_auth.refreshPendingDirectCommitCount());
           _setItem(
             latest.localId,
@@ -294,6 +383,14 @@ extension _UploadTransport on UploadController {
             serverProgress: 1,
             thumbnailReady: true,
           );
+          final backupScope = _backupScope();
+          if (backupScope != null && latest.backupFingerprint != null) {
+            await _backupAssetStore.mark(
+              backupScope,
+              latest.backupFingerprint!,
+              GalleryBackupAssetStatus.uploaded,
+            );
+          }
           if (latest.deleteLocalOnComplete) {
             unawaited(_safeDeleteLocalFile(latest.path));
           }
@@ -327,6 +424,20 @@ extension _UploadTransport on UploadController {
                   )
                 : _api.errorMessage(err, 'Upload failed.'),
           );
+          final scope = _backupScope();
+          if (scope != null && latest.backupFingerprint != null) {
+            await _backupAssetStore.mark(
+              scope,
+              latest.backupFingerprint!,
+              GalleryBackupAssetStatus.failed,
+              failureCode: err is TelegramClientException
+                  ? err.code ?? 'telegram_transfer_failed'
+                  : uploadedToTelegram
+                  ? 'metadata_commit_failed'
+                  : 'telegram_transfer_failed',
+              failureMessage: err.toString(),
+            );
+          }
         }
       }
     } finally {
@@ -452,201 +563,7 @@ extension _UploadTransport on UploadController {
     return '$sessionId:$chunkId';
   }
 
-  Future<void> _uploadManyLegacy(List<UploadItem> batchItems) async {
-    if (await _isBlockedOnMobileData()) {
-      for (final item in batchItems) {
-        _runningLocalIds.remove(item.localId);
-        _setItem(item.localId, status: UploadStatus.waitingForWifi);
-      }
-      _updateUploadingFlag();
-      _notifyListeners();
-      return;
-    }
-    if (batchItems.length == 1) {
-      await _uploadOne(batchItems.single);
-      return;
-    }
-    final token = CancelToken();
-    for (final item in batchItems) {
-      _cancelTokensByLocalId[item.localId] = token;
-      _setItem(
-        item.localId,
-        status: UploadStatus.stagingToBackend,
-        httpProgress: 0,
-        serverProgress: 0,
-        clearError: true,
-      );
-    }
-
-    try {
-      final form = FormData();
-      for (final item in batchItems) {
-        form.files.add(
-          MapEntry(
-            'files',
-            await MultipartFile.fromFile(
-              item.path,
-              filename: item.name,
-              contentType: MediaType.parse(item.mimeType),
-            ),
-          ),
-        );
-      }
-      if (activeFolderId != null) {
-        form.fields.add(MapEntry('folder_id', activeFolderId!));
-      }
-      form.fields.add(
-        MapEntry('upload_client_id', uploadSessionId ?? _uuid.v4()),
-      );
-      form.fields.add(
-        MapEntry(
-          'auto_rename_duplicates',
-          _settings.state.autoRenameDuplicates.toString(),
-        ),
-      );
-
-      final res = await _api.dio.post(
-        '/files/upload',
-        data: form,
-        cancelToken: token,
-        onSendProgress: (sent, total) {
-          final progress = total <= 0 ? 0.05 : (sent / total).clamp(0.0, 1.0);
-          for (final item in batchItems) {
-            _setItemProgress(item.localId, httpProgress: progress);
-          }
-        },
-      );
-      final data = Map<String, dynamic>.from(res.data as Map);
-      final batchId = (data['batch_id'] as num).toInt();
-      final files = (data['files'] as List? ?? [])
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
-      for (var index = 0; index < batchItems.length; index++) {
-        final item = batchItems[index];
-        final file = index < files.length ? files[index] : <String, dynamic>{};
-        final current = _findItem(item.localId);
-        if (current == null || current.cancelRequested) continue;
-        _setItem(
-          item.localId,
-          name: file['filename'] as String?,
-          status: UploadStatus.waitingForServer,
-          httpProgress: 1,
-          batchId: batchId,
-          fileId: (file['file_id'] as num?)?.toInt(),
-          uploadJobId: (file['upload_job_id'] as num?)?.toInt(),
-        );
-      }
-      _startPollingBatch(batchId);
-      await _pollBatch(batchId);
-    } catch (err) {
-      final cancelled = err is DioException && CancelToken.isCancel(err);
-      for (final item in batchItems) {
-        _setItem(
-          item.localId,
-          status: cancelled ? UploadStatus.cancelled : UploadStatus.failed,
-          error: cancelled ? null : _api.errorMessage(err, 'Upload failed.'),
-        );
-      }
-    } finally {
-      for (final item in batchItems) {
-        _cancelTokensByLocalId.remove(item.localId);
-        _runningLocalIds.remove(item.localId);
-      }
-      _syncOptimistic();
-      await _refreshIfSettled();
-      _pumpQueue();
-    }
-  }
-
-  Future<void> _uploadOne(UploadItem item) async {
-    if (await _isBlockedOnMobileData()) {
-      _runningLocalIds.remove(item.localId);
-      _setItem(item.localId, status: UploadStatus.waitingForWifi);
-      _updateUploadingFlag();
-      _notifyListeners();
-      return;
-    }
-    final token = CancelToken();
-    _cancelTokensByLocalId[item.localId] = token;
-    _setItem(
-      item.localId,
-      status: UploadStatus.stagingToBackend,
-      httpProgress: 0,
-      serverProgress: 0,
-      clearError: true,
-    );
-
-    try {
-      final form = FormData();
-      form.files.add(
-        MapEntry(
-          'files',
-          await MultipartFile.fromFile(
-            item.path,
-            filename: item.name,
-            contentType: MediaType.parse(item.mimeType),
-          ),
-        ),
-      );
-      if (activeFolderId != null) {
-        form.fields.add(MapEntry('folder_id', activeFolderId!));
-      }
-      form.fields.add(MapEntry('upload_client_id', item.uploadClientId));
-      form.fields.add(
-        MapEntry(
-          'auto_rename_duplicates',
-          _settings.state.autoRenameDuplicates.toString(),
-        ),
-      );
-
-      final res = await _api.dio.post(
-        '/files/upload',
-        data: form,
-        cancelToken: token,
-        onSendProgress: (sent, total) {
-          _setItemProgress(
-            item.localId,
-            httpProgress: total <= 0 ? 0.05 : (sent / total).clamp(0.0, 1.0),
-          );
-        },
-      );
-      final current = _findItem(item.localId);
-      if (current == null || current.cancelRequested) return;
-      final data = Map<String, dynamic>.from(res.data as Map);
-      final batchId = (data['batch_id'] as num).toInt();
-      final file = Map<String, dynamic>.from(
-        ((data['files'] as List?)?.first ?? {}) as Map,
-      );
-      _setItem(
-        item.localId,
-        name: file['filename'] as String?,
-        status: UploadStatus.waitingForServer,
-        httpProgress: 1,
-        batchId: batchId,
-        fileId: (file['file_id'] as num?)?.toInt(),
-        uploadJobId: (file['upload_job_id'] as num?)?.toInt(),
-      );
-      _startPollingBatch(batchId);
-      await _pollBatch(batchId);
-    } catch (err) {
-      if (err is DioException && CancelToken.isCancel(err)) {
-        _setItem(item.localId, status: UploadStatus.cancelled);
-      } else {
-        _setItem(
-          item.localId,
-          status: UploadStatus.failed,
-          error: _api.errorMessage(err, 'Upload failed.'),
-        );
-      }
-    } finally {
-      _cancelTokensByLocalId.remove(item.localId);
-      _runningLocalIds.remove(item.localId);
-      _syncOptimistic();
-      await _refreshIfSettled();
-      _pumpQueue();
-    }
-  }
-
+  // ignore: unused_element
   void _startPollingBatch(int batchId) {
     _stopPollingBatch(batchId);
     _pollTimersByBatchId[batchId] = Timer.periodic(

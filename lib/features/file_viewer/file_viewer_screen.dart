@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -12,6 +13,7 @@ import '../../core/utils/file_type_detector.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../auth/auth_controller.dart';
+import '../auth/tdlib_session_controller.dart';
 import '../drive/drive_controller.dart';
 import 'components/document_preview.dart';
 import 'components/image_preview.dart';
@@ -124,7 +126,15 @@ class FileViewerScreen extends ConsumerWidget {
       final dir = await getTemporaryDirectory();
       final safeName = file.name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
       final path = '${dir.path}/$safeName';
-      if (url == null && file.storageMode == 'client_managed') {
+      if (file.storageMode == 'client_managed') {
+        final session = ref.read(tdlibSessionControllerProvider);
+        if (!session.isReadyForActiveUser) {
+          if (!context.mounted) return;
+          context.go('/tdlib-session?returnTo=/file/${file.id}');
+          throw Exception(
+            'Reconnect Telegram on this device to open TDLib-managed files.',
+          );
+        }
         final media = await ref
             .read(driveRepositoryProvider)
             .mediaRef(file.id, variant: 'original');
@@ -142,7 +152,9 @@ class FileViewerScreen extends ConsumerWidget {
           telegramUserId: user.telegramId,
         );
         if (!await telegram.isAuthorized) {
-          throw Exception('Local Telegram session is not authorized.');
+          if (!context.mounted) return;
+          context.go('/tdlib-session?returnTo=/file/${file.id}');
+          throw Exception('Local TDLib session is not authorized.');
         }
         final result = await telegram.downloadToCache(
           telegramRef,

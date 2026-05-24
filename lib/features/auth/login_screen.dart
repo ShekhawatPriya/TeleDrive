@@ -161,7 +161,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!mounted) return;
 
       final needsOnboarding = auth.needsCommunityOnboarding;
-      final destination = _authenticatedDestination();
+      final destination = _tdlibDestination(_authenticatedDestination());
       final newActive = auth.activeAccount;
       final displayName = newActive?.displayName;
       final avatarUser = newActive?.toAuthUser();
@@ -252,7 +252,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     Text(
-                      'Your data is stored securely on Telegram servers.',
+                      'Login completes after this device is ready for local TDLib file transfer.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
@@ -294,6 +294,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final target = widget.returnTo;
     if (target == null || target.isEmpty || target == '/login') return '/drive';
     return target;
+  }
+
+  String _tdlibDestination(String returnTo) {
+    return Uri(
+      path: '/tdlib-session',
+      queryParameters: returnTo == '/tdlib-session'
+          ? null
+          : {'returnTo': returnTo},
+    ).toString();
   }
 
   String _cancelDestination() {

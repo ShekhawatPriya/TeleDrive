@@ -79,8 +79,8 @@ class TelegramStatusCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   isConnected
-                      ? 'Storage is active.'
-                      : 'Connect Telegram to upload and access files.',
+                      ? 'Local TDLib handles private file transfer on this device.'
+                      : 'Reconnect Telegram to restore local TDLib transfer.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: onContainer.withValues(alpha: 0.85),
                   ),

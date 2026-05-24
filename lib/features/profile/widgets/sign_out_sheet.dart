@@ -263,7 +263,7 @@ class _SignOutConfirmationSheetState
                     iconBgColor: AppColors.success.withValues(alpha: 0.12),
                     title: 'Cloud Data Safe',
                     subtitle:
-                        'All your files, folders, and documents remain permanently safe in cloud storage.',
+                        'Telegram-hosted file objects and TeleDrive metadata remain on your account and backend unless you delete them.',
                   ),
                 ),
               ),

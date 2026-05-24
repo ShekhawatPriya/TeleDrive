@@ -63,9 +63,6 @@ class AuthController extends ChangeNotifier {
   bool get clientDerivativeGenerationEnabled =>
       AppConfig.clientDerivativeGenerationEnabled &&
       featureFlags.clientDerivativeGenerationEnabled;
-  bool get legacyBackendUploadFallbackEnabled =>
-      AppConfig.legacyBackendUploadFallbackEnabled &&
-      featureFlags.legacyBackendUploadFallbackEnabled;
   bool get galleryBackupEnabled =>
       AppConfig.galleryBackupEnabled && featureFlags.galleryBackupEnabled;
   bool get hasPendingDirectCommits => pendingDirectCommitCount > 0;
