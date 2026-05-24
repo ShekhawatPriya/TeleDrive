@@ -246,34 +246,84 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         val chatId = longArg(args, "tdlibChatId") ?: throw TdlibException("tdlib_ref_invalid", "TDLib chat id is required.")
         val messageId = longArg(args, "tdlibMessageId") ?: throw TdlibException("tdlib_ref_invalid", "TDLib message id is required.")
         val destinationPath = requireString(args, "destinationPath")
-        val suppliedFileId = intArg(args, "tdlibFileId")
-        val messageFuture = if (suppliedFileId != null && suppliedFileId > 0) {
-            CompletableFuture.completedFuture<JSONObject?>(null)
-        } else {
-            waitForConnectionReady(timeoutMs = 45000L).thenCompose {
-                send(JSONObject().put("@type", "getMessage").put("chat_id", chatId).put("message_id", messageId))
-            }
-        }
+        val suppliedFileId = intArg(args, "tdlibFileId")?.takeIf { it > 0 }
+        val remoteFileId = stringArg(args, "tdlibRemoteFileId")?.takeIf { it.isNotBlank() }
+        val messageFuture = waitForConnectionReady(timeoutMs = 45000L).thenCompose {
+            send(JSONObject().put("@type", "getMessage").put("chat_id", chatId).put("message_id", messageId))
+        }.handle<JSONObject?> { message, _ -> message }
         emitProgress(transferId, "downloading", 0, null, null)
         return messageFuture.thenCompose { message ->
-            val fileId = suppliedFileId ?: extractFile(message ?: JSONObject())?.optInt("id") ?: 0
-            if (fileId <= 0) {
-                throw TdlibException("tdlib_file_ref_missing", "Could not locate TDLib file id for this message.")
+            val messageFileId = extractFile(message ?: JSONObject())?.optInt("id")?.takeIf { it > 0 }
+            if (messageFileId != null) {
+                return@thenCompose startDownloadFile(messageFileId, transferId, destinationPath)
             }
-            val waiter = DownloadWaiter(transferId, destinationPath, CompletableFuture())
-            downloads[fileId] = waiter
-            transfers[transferId] = Transfer(transferId, fileId)
-            send(
-                JSONObject()
-                    .put("@type", "downloadFile")
-                    .put("file_id", fileId)
-                    .put("priority", 32)
-                    .put("offset", 0)
-                    .put("limit", 0)
-                    .put("synchronous", false)
-            ).thenAccept { file -> handleDownloadedFile(file) }
-            waiter.future
+            if (remoteFileId != null) {
+                return@thenCompose remoteFile(remoteFileId).handle<CompletableFuture<Map<String, Any?>>> { file, error ->
+                    val remoteResolvedFileId = if (error == null) file?.optInt("id")?.takeIf { it > 0 } else null
+                    when {
+                        remoteResolvedFileId != null -> startDownloadFile(remoteResolvedFileId, transferId, destinationPath)
+                        suppliedFileId != null -> startDownloadFile(suppliedFileId, transferId, destinationPath)
+                        error != null -> failed(error)
+                        else -> failed(TdlibException("tdlib_file_ref_missing", "Could not locate TDLib file id for this message."))
+                    }
+                }.thenCompose { it }
+            }
+            if (suppliedFileId != null) {
+                startDownloadFile(suppliedFileId, transferId, destinationPath)
+            } else {
+                failed(TdlibException("tdlib_file_ref_missing", "Could not locate TDLib file id for this message."))
+            }
         }
+    }
+
+    private fun remoteFile(remoteFileId: String): CompletableFuture<JSONObject> {
+        return send(
+            JSONObject()
+                .put("@type", "getRemoteFile")
+                .put("remote_file_id", remoteFileId)
+                .put("file_type", JSONObject().put("@type", "fileTypeUnknown"))
+        )
+    }
+
+    private fun startDownloadFile(
+        fileId: Int,
+        transferId: String,
+        destinationPath: String
+    ): CompletableFuture<Map<String, Any?>> {
+        val waiter = DownloadWaiter(transferId, destinationPath, CompletableFuture())
+        downloads[fileId] = waiter
+        transfers[transferId] = Transfer(transferId, fileId)
+        send(
+            JSONObject()
+                .put("@type", "downloadFile")
+                .put("file_id", fileId)
+                .put("priority", 32)
+                .put("offset", 0)
+                .put("limit", 0)
+                .put("synchronous", false)
+        ).whenComplete { file, error ->
+            if (error != null) {
+                downloads.remove(fileId)
+                transfers.remove(transferId)
+                emitProgress(transferId, "failed", 0, null, error.message)
+                waiter.future.completeExceptionally(error)
+            } else if (file != null) {
+                handleDownloadedFile(file)
+                val local = file.optJSONObject("local")
+                if (local?.optBoolean("is_downloading_completed", false) != true) {
+                    val remote = file.optJSONObject("remote")
+                    if (remote?.optBoolean("is_uploading_completed", true) == false) {
+                        downloads.remove(fileId)
+                        transfers.remove(transferId)
+                        waiter.future.completeExceptionally(
+                            TdlibException("tdlib_file_unavailable", "Telegram file is not ready to download.")
+                        )
+                    }
+                }
+            }
+        }
+        expireDownloadWaiter(fileId, waiter, timeoutMs = 45000L)
+        return waiter.future
     }
 
     fun cancelTransfer(args: Map<String, Any?>): CompletableFuture<Map<String, Any?>> {
@@ -632,6 +682,26 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         } catch (error: Throwable) {
             downloads.remove(fileId)
             waiter.future.completeExceptionally(TdlibException("tdlib_download_copy_failed", error.message ?: "Could not copy downloaded file."))
+        }
+    }
+
+    private fun expireDownloadWaiter(fileId: Int, waiter: DownloadWaiter, timeoutMs: Long) {
+        thread(name = "teledrive-tdlib-download-timeout", isDaemon = true) {
+            try {
+                Thread.sleep(timeoutMs)
+                if (downloads.remove(fileId, waiter)) {
+                    transfers.remove(waiter.transferId)
+                    emitProgress(waiter.transferId, "failed", 0, null, "Timed out waiting for Telegram to download the file.")
+                    waiter.future.completeExceptionally(
+                        TdlibException(
+                            "tdlib_download_timeout",
+                            "Timed out waiting for Telegram to download the file.",
+                            "fileId=$fileId timeoutMs=$timeoutMs"
+                        )
+                    )
+                }
+            } catch (_: InterruptedException) {
+            }
         }
     }
 

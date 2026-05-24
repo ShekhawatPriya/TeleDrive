@@ -308,6 +308,7 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
       'tdlibChatId': ref.tdlibChatId,
       'tdlibMessageId': ref.tdlibMessageId,
       'tdlibFileId': ref.tdlibFileId,
+      'tdlibRemoteFileId': ref.tdlibRemoteFileId,
       'destinationPath': path,
     });
     return TelegramDownloadResult(

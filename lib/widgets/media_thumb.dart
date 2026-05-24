@@ -152,7 +152,8 @@ class _MediaThumbState extends ConsumerState<MediaThumb> {
             telegramRef,
             filename: file.name,
             cacheKey: mediaRef.cacheKey,
-          );
+          )
+          .timeout(const Duration(seconds: 45));
       return result.file;
     } on TelegramClientException {
       return null;
