@@ -27,6 +27,20 @@ import 'features/share/share_detail_screen.dart';
 import 'main_shell.dart';
 import 'shared/splash_screen.dart';
 
+bool _routeRequiresTdlib(String location) {
+  final path = Uri.tryParse(location)?.path ?? location;
+  return path == '/drive' ||
+      path.startsWith('/drive/') ||
+      path == '/photos' ||
+      path.startsWith('/photos/') ||
+      path == '/starred' ||
+      path.startsWith('/starred/') ||
+      path == '/shared' ||
+      path.startsWith('/shared/') ||
+      path.startsWith('/folder/') ||
+      path.startsWith('/file/');
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.read(authControllerProvider);
   final tdlib = ref.read(tdlibSessionControllerProvider);
@@ -51,7 +65,9 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (currentRoute == '/login' && isAccountLoginMode) return null;
 
-      if (!tdlib.isReadyForActiveUser) {
+      if (_routeRequiresTdlib(currentRoute) &&
+          !tdlib.isReadyForActiveUser &&
+          tdlib.state.status != TdlibSessionStatus.checking) {
         if (currentRoute == '/tdlib-session') return null;
         final returnTo = state.uri.toString();
         return Uri(
@@ -62,7 +78,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ).toString();
       }
 
-      if (currentRoute == '/tdlib-session') {
+      if (currentRoute == '/tdlib-session' && tdlib.isReadyForActiveUser) {
         return auth.needsCommunityOnboarding ? '/community-setup' : '/drive';
       }
 
@@ -112,7 +128,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           final scrollToStorage =
               state.uri.queryParameters['scrollToStorage'] == 'true';
           return CupertinoPage(
-            key: state.pageKey,
             child: ProfileScreen(scrollToStorage: scrollToStorage),
           );
         },
@@ -120,22 +135,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile/my-data',
         pageBuilder: (context, state) =>
-            CupertinoPage(key: state.pageKey, child: const MyDataScreen()),
+            const CupertinoPage(child: MyDataScreen()),
       ),
       GoRoute(
         path: '/profile/free-up-space',
         pageBuilder: (context, state) =>
-            CupertinoPage(key: state.pageKey, child: const FreeUpSpaceScreen()),
+            const CupertinoPage(child: FreeUpSpaceScreen()),
       ),
       GoRoute(
         path: '/settings',
         pageBuilder: (context, state) =>
-            CupertinoPage(key: state.pageKey, child: const SettingsScreen()),
+            const CupertinoPage(child: SettingsScreen()),
       ),
       GoRoute(
         path: '/settings/trash',
         pageBuilder: (context, state) =>
-            CupertinoPage(key: state.pageKey, child: const TrashScreen()),
+            const CupertinoPage(child: TrashScreen()),
       ),
       GoRoute(
         path: '/folder/:id',
@@ -161,16 +176,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/privacy',
-        pageBuilder: (context, state) => CupertinoPage(
-          key: state.pageKey,
-          child: const LegalScreen(kind: LegalKind.privacy),
+        pageBuilder: (context, state) => const CupertinoPage(
+          child: LegalScreen(kind: LegalKind.privacy),
         ),
       ),
       GoRoute(
         path: '/terms',
-        pageBuilder: (context, state) => CupertinoPage(
-          key: state.pageKey,
-          child: const LegalScreen(kind: LegalKind.terms),
+        pageBuilder: (context, state) => const CupertinoPage(
+          child: LegalScreen(kind: LegalKind.terms),
         ),
       ),
     ],
