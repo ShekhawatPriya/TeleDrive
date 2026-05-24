@@ -119,6 +119,7 @@ extension _DriveMutations on DriveController {
     if (total == 0) return;
     var completed = 0;
     var failed = 0;
+    String? lastError;
     final oldFiles = state.files;
     final oldMedia = state.mediaFiles;
     final oldFolders = state.folders;
@@ -129,6 +130,7 @@ extension _DriveMutations on DriveController {
           .toList(),
       folders: state.folders.where((f) => !folderIds.contains(f.id)).toList(),
       deleteProgress: (completed: 0, failed: 0, total: total),
+      clearError: true,
     );
     _notifyListeners();
     for (final id in fileIds) {
@@ -138,8 +140,11 @@ extension _DriveMutations on DriveController {
         } else {
           await _repo.purgeFile(id);
         }
-      } catch (_) {
+      } catch (error, stackTrace) {
         failed++;
+        lastError = _repo.api.errorMessage(error, 'Delete failed.');
+        debugPrint('Delete file $id failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
       } finally {
         completed++;
         state = state.copyWith(
@@ -155,8 +160,11 @@ extension _DriveMutations on DriveController {
         } else {
           await _repo.purgeFolder(id);
         }
-      } catch (_) {
+      } catch (error, stackTrace) {
         failed++;
+        lastError = _repo.api.errorMessage(error, 'Delete failed.');
+        debugPrint('Delete folder $id failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
       } finally {
         completed++;
         state = state.copyWith(
@@ -170,6 +178,7 @@ extension _DriveMutations on DriveController {
         files: oldFiles,
         mediaFiles: oldMedia,
         folders: oldFolders,
+        error: lastError ?? 'Some items could not be deleted.',
       );
     } else {
       _markActiveAndAncestorsStale();

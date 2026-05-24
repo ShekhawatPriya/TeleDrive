@@ -94,15 +94,13 @@ class DriveBulkActions {
         .read(appSettingsControllerProvider)
         .state
         .trashEnabled;
-    if (!trashEnabled) {
-      final validation = FolderDeleteGuard.validateFolders(
-        controller.state,
-        folderIds,
-      );
-      if (!validation.canDelete) {
-        showFolderNotEmptyToast(context);
-        return false;
-      }
+    final validation = FolderDeleteGuard.validateFolders(
+      controller.state,
+      folderIds,
+    );
+    if (!validation.canDelete) {
+      showFolderNotEmptyToast(context);
+      return false;
     }
 
     final total = fileIds.length + folderIds.length;

@@ -15,6 +15,7 @@ extension _DriveRefresh on DriveController {
     required List<DriveFile> existing,
     required List<DriveFile> incoming,
     bool removeOrphanedOptimistic = false,
+    bool authoritative = false,
   }) {
     final result = <DriveFile>[];
     final processedIncomingIds = <String>{};
@@ -34,6 +35,12 @@ extension _DriveRefresh on DriveController {
         processedIncomingIds.add(match.id);
         if (localId != null) {
           processedIncomingIds.add('local:$localId');
+        }
+      } else if (authoritative) {
+        if (existingFile.isOptimistic &&
+            existingFile.uploadStatus != 'failed' &&
+            existingFile.uploadStatus != 'cancelled') {
+          result.add(existingFile);
         }
       } else if (!removeOrphanedOptimistic || !existingFile.isOptimistic) {
         result.add(existingFile);

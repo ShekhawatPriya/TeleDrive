@@ -100,12 +100,12 @@ class DriveController extends ChangeNotifier {
     final updatedFiles = _reconcileFiles(
       existing: state.files,
       incoming: incomingFiles,
-      removeOrphanedOptimistic: false,
+      authoritative: true,
     );
     final updatedMedia = _reconcileFiles(
       existing: state.mediaFiles,
       incoming: incomingMedia,
-      removeOrphanedOptimistic: false,
+      authoritative: true,
     );
 
     final keptOptimisticFolders = state.folders

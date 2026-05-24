@@ -138,15 +138,13 @@ class DriveItemActions {
           .read(appSettingsControllerProvider)
           .state
           .trashEnabled;
-      if (!trashEnabled) {
-        final validation = FolderDeleteGuard.validateFolder(
-          controller.state,
-          folder,
-        );
-        if (!validation.canDelete) {
-          showFolderNotEmptyToast(context);
-          return;
-        }
+      final validation = FolderDeleteGuard.validateFolder(
+        controller.state,
+        folder,
+      );
+      if (!validation.canDelete) {
+        showFolderNotEmptyToast(context);
+        return;
       }
       final ok = await confirmDelete(context, 1, trashEnabled: trashEnabled);
       if (ok && context.mounted) {
