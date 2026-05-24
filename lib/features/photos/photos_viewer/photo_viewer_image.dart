@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:photo_view/photo_view.dart';
 
 import '../../../core/storage/thumbnail_cache_manager.dart';
+import '../../../core/telegram/telegram_client_exceptions.dart';
+import '../../../core/telegram/telegram_media_access_service.dart';
 import '../../../models/drive_models.dart';
 import '../../profile/cache_controller.dart';
 
@@ -25,6 +27,9 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
   ImageProvider? _currentImageProvider;
   bool _hasRefreshed = false;
 
+  Future<File?>? _localFuture;
+  String? _localKey;
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +43,8 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
         oldWidget.file.previewUrl != widget.file.previewUrl ||
         oldWidget.file.thumbnailUrl != widget.file.thumbnailUrl) {
       _hasRefreshed = false;
+      _localKey = null;
+      _localFuture = null;
       _setupImageListener();
     }
   }
@@ -61,13 +68,17 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
             cacheManager: TeleDriveThumbnailCacheManager.instance,
           );
 
-    _currentImageProvider = imageProvider;
-    _imageStream = imageProvider.resolve(const ImageConfiguration());
+    _attachProvider(imageProvider);
+  }
+
+  void _attachProvider(ImageProvider provider) {
+    _cleanImageListener();
+    _currentImageProvider = provider;
+    _imageStream = provider.resolve(const ImageConfiguration());
     _imageListener = ImageStreamListener(
       (ImageInfo info, bool synchronousCall) {
         if (!mounted || _hasRefreshed) return;
         _hasRefreshed = true;
-        // Trigger background refresh of cache statistics
         ref.read(cacheControllerProvider).refreshCacheStats();
       },
       onError: (Object exception, StackTrace? stackTrace) {
@@ -86,10 +97,77 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
     _currentImageProvider = null;
   }
 
+  Future<File?>? _ensureLocalFuture(DriveFile file) {
+    if (file.storageMode != 'client_managed' ||
+        file.uploadStatus != 'available') {
+      return null;
+    }
+    final variant = file.previewRefAvailable
+        ? 'preview'
+        : file.originalRefAvailable
+        ? 'original'
+        : null;
+    if (variant == null) return null;
+    final version = variant == 'preview' ? file.previewVersion : 0;
+    final key = '${file.id}:$variant:${version ?? 0}';
+    if (_localKey != key) {
+      _localKey = key;
+      _localFuture = _downloadLocal(file, variant);
+    }
+    return _localFuture;
+  }
+
+  Future<File?> _downloadLocal(DriveFile file, String variant) async {
+    try {
+      final local = await ref
+          .read(telegramMediaAccessServiceProvider)
+          .downloadForPrivateView(file, variant: variant)
+          .timeout(const Duration(seconds: 90));
+      if (local != null && mounted) {
+        _attachProvider(FileImage(local));
+        setState(() {});
+      }
+      return local;
+    } on TelegramClientException {
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final url = widget.file.previewUrl ?? widget.file.thumbnailUrl;
-    if (url == null) return _fallback(context);
+    final file = widget.file;
+    final url = file.previewUrl ?? file.thumbnailUrl;
+
+    if (url == null) {
+      final localFuture = _ensureLocalFuture(file);
+      if (localFuture != null) {
+        return FutureBuilder<File?>(
+          future: localFuture,
+          builder: (context, snapshot) {
+            final local = snapshot.data;
+            if (local != null) {
+              return _photoView(FileImage(local));
+            }
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+              );
+            }
+            return _fallback(context);
+          },
+        );
+      }
+      return _fallback(context);
+    }
 
     final imageProvider =
         _currentImageProvider ??
@@ -100,6 +178,10 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
                 cacheManager: TeleDriveThumbnailCacheManager.instance,
               ));
 
+    return _photoView(imageProvider);
+  }
+
+  Widget _photoView(ImageProvider imageProvider) {
     return PhotoView(
       imageProvider: imageProvider,
       heroAttributes: PhotoViewHeroAttributes(tag: 'photo-${widget.file.id}'),

@@ -220,7 +220,7 @@ class _PreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final isVideo = isVideoFile(file) && file.streamUrl != null;
+    final isVideo = isVideoFile(file);
     final isImage = isImageFile(file);
 
     final Widget content;
@@ -228,7 +228,7 @@ class _PreviewCard extends StatelessWidget {
 
     if (isVideo) {
       aspect = 16 / 9;
-      content = VideoPreview(url: file.streamUrl!);
+      content = VideoPreview(file: file);
     } else if (isImage) {
       aspect = 4 / 3;
       content = ImagePreview(file: file);

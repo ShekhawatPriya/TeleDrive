@@ -118,8 +118,7 @@ class PhotoDetailsSheet extends StatelessWidget {
                     value: DateFormat('MMM d, y · h:mm a').format(modified),
                   ),
                 if ((file.uploadStatus ?? 'available') != 'available' ||
-                    (file.previewStatus ?? '').isNotEmpty &&
-                        file.previewStatus != 'available') ...[
+                    _shouldShowPreviewStatus(file)) ...[
                   const SizedBox(height: AppSpacing.md),
                   _SectionTitle('Status'),
                   if ((file.uploadStatus ?? 'available') != 'available')
@@ -128,8 +127,7 @@ class PhotoDetailsSheet extends StatelessWidget {
                       label: 'Upload',
                       value: formatUploadStatus(file),
                     ),
-                  if ((file.previewStatus ?? '').isNotEmpty &&
-                      file.previewStatus != 'available')
+                  if (_shouldShowPreviewStatus(file))
                     _DetailRow(
                       icon: Icons.preview_outlined,
                       label: 'Preview',
@@ -149,6 +147,19 @@ class PhotoDetailsSheet extends StatelessWidget {
     final h = file.heightPx!;
     final mp = (w * h) / 1000000;
     return '$w × $h · ${mp.toStringAsFixed(mp >= 10 ? 0 : 1)} MP';
+  }
+
+  bool _shouldShowPreviewStatus(DriveFile file) {
+    final status = file.previewStatus ?? '';
+    if (status.isEmpty || status == 'available') return false;
+    // TDLib-managed files can fetch the preview/original on demand even when
+    // the server-side preview status is 'unavailable', so don't surface a
+    // misleading warning row.
+    if (file.storageMode == 'client_managed' &&
+        (file.previewRefAvailable || file.originalRefAvailable)) {
+      return false;
+    }
+    return true;
   }
 }
 

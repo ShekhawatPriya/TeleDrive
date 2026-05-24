@@ -27,9 +27,7 @@ class MetadataBlock extends StatelessWidget {
       _MetaRow('Upload', _humanize(file.uploadStatus ?? 'available')),
       _MetaRow(
         'Preview',
-        file.previewStatus == 'available' || file.previewUrl != null
-            ? 'Available'
-            : 'Unavailable',
+        _isPreviewAvailable(file) ? 'Available' : 'Unavailable',
       ),
     ];
 
@@ -86,6 +84,16 @@ class MetadataBlock extends StatelessWidget {
     if (status.isEmpty) return '—';
     if (status.length <= 1) return status.toUpperCase();
     return status[0].toUpperCase() + status.substring(1);
+  }
+
+  bool _isPreviewAvailable(DriveFile file) {
+    if (file.previewStatus == 'available') return true;
+    if (file.previewUrl != null) return true;
+    if (file.storageMode == 'client_managed' &&
+        (file.previewRefAvailable || file.originalRefAvailable)) {
+      return true;
+    }
+    return false;
   }
 }
 

@@ -1,9 +1,19 @@
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../features/drive/drive_controller.dart';
 import '../../features/drive/drive_repository.dart';
 import '../../models/drive_models.dart';
 import 'telegram_client_exceptions.dart';
 import 'telegram_transfer_service.dart';
+
+final telegramMediaAccessServiceProvider = Provider<TelegramMediaAccessService>(
+  (ref) => TelegramMediaAccessService(
+    driveRepository: ref.watch(driveRepositoryProvider),
+    transferService: ref.watch(telegramTransferServiceProvider),
+  ),
+);
 
 class TelegramMediaAccessService {
   const TelegramMediaAccessService({
