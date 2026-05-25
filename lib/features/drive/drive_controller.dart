@@ -28,6 +28,86 @@ final driveControllerProvider = ChangeNotifierProvider<DriveController>((ref) {
   );
 });
 
+class DriveFolderViewSnapshot {
+  const DriveFolderViewSnapshot({
+    required this.folderId,
+    required this.folder,
+    required this.folders,
+    required this.files,
+    required this.path,
+    required this.loading,
+    required this.error,
+  });
+
+  final String? folderId;
+  final DriveFolder? folder;
+  final List<DriveFolder> folders;
+  final List<DriveFile> files;
+  final List<DriveFolder> path;
+  final bool loading;
+  final String? error;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! DriveFolderViewSnapshot) return false;
+    if (other.folderId != folderId) return false;
+    if (other.folder != folder) return false;
+    if (other.loading != loading) return false;
+    if (other.error != error) return false;
+    if (!identical(other.folders, folders)) return false;
+    if (!identical(other.files, files)) return false;
+    if (other.path.length != path.length) return false;
+    for (var i = 0; i < path.length; i++) {
+      if (other.path[i].id != path[i].id ||
+          other.path[i].name != path[i].name ||
+          other.path[i].parentId != path[i].parentId) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    folderId,
+    folder,
+    identityHashCode(folders),
+    identityHashCode(files),
+    loading,
+    error,
+    path.length,
+  );
+}
+
+class DriveRecentsSnapshot {
+  const DriveRecentsSnapshot(this.files);
+  final List<DriveFile> files;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! DriveRecentsSnapshot) return false;
+    if (other.files.length != files.length) return false;
+    for (var i = 0; i < files.length; i++) {
+      if (other.files[i].id != files[i].id ||
+          other.files[i].lastAccessedAt != files[i].lastAccessedAt) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @override
+  int get hashCode {
+    var h = files.length;
+    for (final f in files) {
+      h = Object.hash(h, f.id, f.lastAccessedAt);
+    }
+    return h;
+  }
+}
+
 class DriveController extends ChangeNotifier {
   DriveController(this._repo, this._prefs, this._settings, this._auth) {
     _loadRecent();
@@ -43,10 +123,73 @@ class DriveController extends ChangeNotifier {
   DateTime? _lastRefreshCompletedAt;
   final Set<String?> _staleFolderIds = {};
 
+  Map<String, DriveFolder> _folderById = const {};
+  Map<String, DriveFile> _fileById = const {};
+  Map<String, DriveFile> _mediaFileById = const {};
+  Map<String?, List<DriveFolder>> _foldersByParent = const {};
+  Map<String?, List<DriveFile>> _filesByParent = const {};
+  List<DriveFile> _filesMerged = const [];
+  List<DriveFile> _mediaFilesMerged = const [];
+  List<DriveFile>? _lastFilesRef;
+  List<DriveFile>? _lastMediaRef;
+  List<DriveFolder>? _lastFoldersRef;
+  Map<String, String>? _lastRecentRef;
+
+  void _rebuildIndexesIfDirty() {
+    final filesDirty = !identical(_lastFilesRef, state.files);
+    final mediaDirty = !identical(_lastMediaRef, state.mediaFiles);
+    final foldersDirty = !identical(_lastFoldersRef, state.folders);
+    final recentDirty = !identical(_lastRecentRef, _recent);
+    if (!filesDirty && !mediaDirty && !foldersDirty && !recentDirty) return;
+    if (filesDirty || recentDirty) {
+      final fileById = <String, DriveFile>{};
+      final filesByParent = <String?, List<DriveFile>>{};
+      final merged = <DriveFile>[];
+      for (final f in state.files) {
+        final mergedFile = _recent.containsKey(f.id)
+            ? f.copyWith(lastAccessedAt: _recent[f.id])
+            : f;
+        merged.add(mergedFile);
+        fileById[mergedFile.id] = mergedFile;
+        (filesByParent[mergedFile.parentId] ??= <DriveFile>[]).add(mergedFile);
+      }
+      _filesMerged = merged;
+      _fileById = fileById;
+      _filesByParent = filesByParent;
+    }
+    if (mediaDirty || recentDirty) {
+      final mediaById = <String, DriveFile>{};
+      final merged = <DriveFile>[];
+      for (final f in state.mediaFiles) {
+        final mergedFile = _recent.containsKey(f.id)
+            ? f.copyWith(lastAccessedAt: _recent[f.id])
+            : f;
+        merged.add(mergedFile);
+        mediaById[mergedFile.id] = mergedFile;
+      }
+      _mediaFilesMerged = merged;
+      _mediaFileById = mediaById;
+    }
+    if (foldersDirty) {
+      final folderById = <String, DriveFolder>{};
+      final foldersByParent = <String?, List<DriveFolder>>{};
+      for (final f in state.folders) {
+        folderById[f.id] = f;
+        (foldersByParent[f.parentId] ??= <DriveFolder>[]).add(f);
+      }
+      _folderById = folderById;
+      _foldersByParent = foldersByParent;
+    }
+    _lastFilesRef = state.files;
+    _lastMediaRef = state.mediaFiles;
+    _lastFoldersRef = state.folders;
+    _lastRecentRef = _recent;
+  }
+
   void setActiveFolderId(String? folderId) {
     if (state.activeFolderId == folderId) return;
     state = state.copyWith(activeFolderId: folderId);
-    notifyListeners();
+    _notifyListeners();
 
     if (_staleFolderIds.contains(folderId)) {
       refresh(silent: true, force: true);
@@ -59,16 +202,20 @@ class DriveController extends ChangeNotifier {
     _refreshing = null;
     _lastRefreshCompletedAt = null;
     _staleFolderIds.clear();
-    notifyListeners();
+    _notifyListeners();
     await _loadRecent();
   }
 
-  List<DriveFile> get files => state.files
-      .map((f) => f.copyWith(lastAccessedAt: _recent[f.id]))
-      .toList();
-  List<DriveFile> get mediaFiles => state.mediaFiles
-      .map((f) => f.copyWith(lastAccessedAt: _recent[f.id]))
-      .toList();
+  List<DriveFile> get files {
+    _rebuildIndexesIfDirty();
+    return _filesMerged;
+  }
+
+  List<DriveFile> get mediaFiles {
+    _rebuildIndexesIfDirty();
+    return _mediaFilesMerged;
+  }
+
   List<DriveFolder> get folders => state.folders;
 
   Future<void> refresh({bool silent = false, bool force = false}) async {
@@ -157,15 +304,60 @@ class DriveController extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<DriveFile> filesInFolder(String? folderId) =>
-      files.where((f) => f.parentId == folderId).toList();
-  List<DriveFolder> foldersInFolder(String? folderId) =>
-      folders.where((f) => f.parentId == folderId).toList();
-  DriveFile? file(String id) => files.where((f) => f.id == id).firstOrNull;
-  DriveFile? anyFile(String id) =>
-      file(id) ?? mediaFiles.where((f) => f.id == id).firstOrNull;
-  DriveFolder? folder(String id) =>
-      folders.where((f) => f.id == id).firstOrNull;
+  List<DriveFile> filesInFolder(String? folderId) {
+    _rebuildIndexesIfDirty();
+    return _filesByParent[folderId] ?? const [];
+  }
+
+  List<DriveFolder> foldersInFolder(String? folderId) {
+    _rebuildIndexesIfDirty();
+    return _foldersByParent[folderId] ?? const [];
+  }
+
+  DriveFile? file(String id) {
+    _rebuildIndexesIfDirty();
+    return _fileById[id];
+  }
+
+  DriveFile? anyFile(String id) {
+    _rebuildIndexesIfDirty();
+    return _fileById[id] ?? _mediaFileById[id];
+  }
+
+  DriveFolder? folder(String id) {
+    _rebuildIndexesIfDirty();
+    return _folderById[id];
+  }
+
+  DriveFolderViewSnapshot folderViewSnapshot(String? folderId) {
+    _rebuildIndexesIfDirty();
+    final folder = folderId == null ? null : _folderById[folderId];
+    final folders = _foldersByParent[folderId] ?? const <DriveFolder>[];
+    final files = _filesByParent[folderId] ?? const <DriveFile>[];
+    final path = folderId == null
+        ? const <DriveFolder>[]
+        : folderPath(folderId);
+    return DriveFolderViewSnapshot(
+      folderId: folderId,
+      folder: folder,
+      folders: folders,
+      files: files,
+      path: path,
+      loading: state.loading,
+      error: state.error,
+    );
+  }
+
+  DriveRecentsSnapshot recentsSnapshot() {
+    _rebuildIndexesIfDirty();
+    final result = <DriveFile>[];
+    for (final f in _filesMerged) {
+      if (f.lastAccessedAt != null) result.add(f);
+    }
+    result.sort((a, b) => b.lastAccessedAt!.compareTo(a.lastAccessedAt!));
+    if (result.length > 5) result.length = 5;
+    return DriveRecentsSnapshot(List<DriveFile>.unmodifiable(result));
+  }
 
   void markShared({
     Set<String> fileIds = const {},
@@ -327,8 +519,54 @@ class DriveController extends ChangeNotifier {
       removeOrphanedOptimistic: true,
     );
 
+    final filesUnchanged =
+        _filesFingerprint(updatedFiles) == _filesFingerprint(state.files);
+    final mediaUnchanged =
+        _filesFingerprint(updatedMedia) == _filesFingerprint(state.mediaFiles);
+    if (filesUnchanged && mediaUnchanged) return;
+
     state = state.copyWith(files: updatedFiles, mediaFiles: updatedMedia);
     notifyListeners();
+  }
+
+  int _filesFingerprint(List<DriveFile> files) {
+    if (files.isEmpty) return 0;
+    var h = 0;
+    for (final f in files) {
+      h = Object.hash(
+        h,
+        f.id,
+        f.name,
+        f.parentId,
+        f.kind,
+        f.size,
+        f.modifiedAt,
+        f.createdAt,
+        f.starred,
+        f.shared,
+        f.mimeType,
+        f.uploadStatus,
+        f.uploadError,
+        Object.hash(
+          f.thumbnailUrl,
+          f.previewUrl,
+          f.streamUrl,
+          f.downloadUrl,
+          f.localUri,
+          f.thumbnailStatus,
+          f.previewStatus,
+          f.thumbnailVersion,
+          f.previewVersion,
+          f.widthPx,
+          f.heightPx,
+          f.duration,
+          f.lastAccessedAt,
+          f.isOptimistic,
+          f.localId,
+        ),
+      );
+    }
+    return h;
   }
 
   void _bumpTrashRevision() {

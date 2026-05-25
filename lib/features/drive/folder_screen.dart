@@ -28,23 +28,83 @@ class FolderScreen extends ConsumerStatefulWidget {
 
 class _FolderScreenState extends ConsumerState<FolderScreen>
     with SelectionModeMixin<FolderScreen> {
+  List<DriveFile>? _sortedFiles;
+  ({List<DriveFile> source, SortField sort, bool ascending, String? folderId})?
+  _sortedFilesKey;
+  List<DriveFolder>? _sortedFolders;
+  ({List<DriveFolder> source, bool ascending, String? folderId})?
+  _sortedFoldersKey;
+
+  List<DriveFile> _memoSortedFiles({
+    required List<DriveFile> source,
+    required SortField sort,
+    required bool ascending,
+  }) {
+    final key = (
+      source: source,
+      sort: sort,
+      ascending: ascending,
+      folderId: widget.folderId,
+    );
+    if (_sortedFilesKey == key && _sortedFiles != null) return _sortedFiles!;
+    final sorted = sortDriveFiles(source, sort: sort, ascending: ascending);
+    _sortedFilesKey = key;
+    _sortedFiles = sorted;
+    return sorted;
+  }
+
+  List<DriveFolder> _memoSortedFolders({
+    required List<DriveFolder> source,
+    required bool ascending,
+  }) {
+    final key = (
+      source: source,
+      ascending: ascending,
+      folderId: widget.folderId,
+    );
+    if (_sortedFoldersKey == key && _sortedFolders != null) {
+      return _sortedFolders!;
+    }
+    final sorted = sortDriveFolders(source, ascending: ascending);
+    _sortedFoldersKey = key;
+    _sortedFolders = sorted;
+    return sorted;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(driveControllerProvider).setActiveFolderId(widget.folderId);
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant FolderScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.folderId != widget.folderId) {
+      ref.read(driveControllerProvider).setActiveFolderId(widget.folderId);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(driveControllerProvider).setActiveFolderId(widget.folderId);
-      }
-    });
-
-    final drive = ref.watch(driveControllerProvider);
+    final snapshot = ref.watch(
+      driveControllerProvider.select(
+        (c) => c.folderViewSnapshot(widget.folderId),
+      ),
+    );
     final prefs = ref.watch(viewPreferencesProvider);
-    final folder = drive.folder(widget.folderId);
-    var files = drive.filesInFolder(widget.folderId);
-    var folders = drive.foldersInFolder(widget.folderId);
-    folders = hideVirtualSectionFolders(folders);
-    folders = sortDriveFolders(folders, ascending: prefs.ascending);
-    files = sortDriveFiles(files, sort: prefs.sort, ascending: prefs.ascending);
-    final path = drive.folderPath(widget.folderId);
+    final folder = snapshot.folder;
+    var folders = hideVirtualSectionFolders(snapshot.folders);
+    folders = _memoSortedFolders(source: folders, ascending: prefs.ascending);
+    final files = _memoSortedFiles(
+      source: snapshot.files,
+      sort: prefs.sort,
+      ascending: prefs.ascending,
+    );
+    final path = snapshot.path;
     final grid = prefs.layout == LayoutMode.grid;
 
     return Scaffold(

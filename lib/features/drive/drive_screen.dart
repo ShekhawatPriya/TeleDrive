@@ -28,6 +28,51 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
     with SelectionModeMixin<DriveScreen> {
   int _handledSelectRequests = 0;
 
+  List<DriveFile>? _sortedFiles;
+  ({
+    List<DriveFile> source,
+    SortField sort,
+    bool ascending,
+    String query,
+  })?
+  _sortedFilesKey;
+  List<DriveFolder>? _sortedFolders;
+  ({List<DriveFolder> source, bool ascending, String query})? _sortedFoldersKey;
+
+  List<DriveFile> _memoSortedFiles({
+    required List<DriveFile> source,
+    required SortField sort,
+    required bool ascending,
+    required String query,
+  }) {
+    final key = (
+      source: source,
+      sort: sort,
+      ascending: ascending,
+      query: query,
+    );
+    if (_sortedFilesKey == key && _sortedFiles != null) return _sortedFiles!;
+    final sorted = sortDriveFiles(source, sort: sort, ascending: ascending);
+    _sortedFilesKey = key;
+    _sortedFiles = sorted;
+    return sorted;
+  }
+
+  List<DriveFolder> _memoSortedFolders({
+    required List<DriveFolder> source,
+    required bool ascending,
+    required String query,
+  }) {
+    final key = (source: source, ascending: ascending, query: query);
+    if (_sortedFoldersKey == key && _sortedFolders != null) {
+      return _sortedFolders!;
+    }
+    final sorted = sortDriveFolders(source, ascending: ascending);
+    _sortedFoldersKey = key;
+    _sortedFolders = sorted;
+    return sorted;
+  }
+
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -53,14 +98,20 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
       });
     }
 
-    final drive = ref.watch(driveControllerProvider);
     final prefs = ref.watch(viewPreferencesProvider);
-    final state = drive.state;
     final query = ref.watch(searchQueryProvider(SearchScope.drive)).query;
+    final snapshot = ref.watch(
+      driveControllerProvider.select((c) => c.folderViewSnapshot(null)),
+    );
+    final recentsSnapshot = ref.watch(
+      driveControllerProvider.select((c) => c.recentsSnapshot()),
+    );
 
-    var folders = drive.foldersInFolder(null);
-    var files = drive.filesInFolder(null);
+    var folders = snapshot.folders;
+    var files = snapshot.files;
     if (query.isNotEmpty) {
+      // Search across the entire drive — read once for the typed-query path.
+      final drive = ref.read(driveControllerProvider);
       folders = drive.folders
           .where((f) => f.name.toLowerCase().contains(query))
           .toList();
@@ -69,9 +120,20 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
           .toList();
     }
     folders = hideVirtualSectionFolders(folders);
-    folders = sortDriveFolders(folders, ascending: prefs.ascending);
-    files = sortDriveFiles(files, sort: prefs.sort, ascending: prefs.ascending);
-    final recent = drive.recentFiles();
+    folders = _memoSortedFolders(
+      source: folders,
+      ascending: prefs.ascending,
+      query: query,
+    );
+    files = _memoSortedFiles(
+      source: files,
+      sort: prefs.sort,
+      ascending: prefs.ascending,
+      query: query,
+    );
+    final recent = recentsSnapshot.files;
+    final loading = snapshot.loading;
+    final error = snapshot.error;
     final grid = prefs.layout == LayoutMode.grid;
 
     if (selectMode) {
@@ -89,7 +151,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
               ),
               Expanded(
                 child: RefreshIndicator(
-                  onRefresh: drive.refresh,
+                  onRefresh: ref.read(driveControllerProvider).refresh,
                   child: CustomScrollView(
                     slivers: [
                       if (folders.isNotEmpty)
@@ -127,7 +189,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
 
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: drive.refresh,
+        onRefresh: ref.read(driveControllerProvider).refresh,
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
@@ -140,9 +202,9 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                 ),
               ),
             ),
-            if (state.loading && files.isEmpty && folders.isEmpty)
+            if (loading && files.isEmpty && folders.isEmpty)
               const SliverFillRemaining(child: SkeletonList()),
-            if (state.error != null) _ErrorBanner(state.error!),
+            if (error != null) _ErrorBanner(error),
             if (recent.isNotEmpty && query.isEmpty) ...[
               const DriveSectionHeader('Recent', topPadding: AppSpacing.sm),
               SliverToBoxAdapter(
@@ -153,7 +215,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                 ),
               ),
             ],
-            if (!state.loading && folders.isEmpty && files.isEmpty)
+            if (!loading && folders.isEmpty && files.isEmpty)
               SliverFillRemaining(
                 child: EmptyState(
                   icon: query.isEmpty ? Icons.folder_open : Icons.search_off,
