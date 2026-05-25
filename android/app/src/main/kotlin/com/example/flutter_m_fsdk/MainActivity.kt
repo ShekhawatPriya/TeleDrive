@@ -3,6 +3,7 @@ package com.example.flutter_m_fsdk
 import android.content.ContentUris
 import android.net.Uri
 import android.graphics.Bitmap
+import android.graphics.ImageDecoder
 import android.media.ThumbnailUtils
 import android.os.Build
 import android.os.Environment
@@ -78,14 +79,52 @@ class MainActivity : FlutterActivity() {
         val typedArgs = args.entries.associate { "${it.key}" to it.value }
         try {
             when (call.method) {
+                "createImageDerivative" -> result.success(createImageDerivative(typedArgs))
                 "createVideoThumbnail" -> result.success(createVideoThumbnail(typedArgs))
                 "listGalleryMedia" -> result.success(listGalleryMedia(typedArgs))
                 "copyContentUriToFile" -> result.success(copyContentUriToFile(typedArgs))
                 else -> result.notImplemented()
             }
         } catch (error: Throwable) {
-            result.error("media_thumbnail_failed", error.message ?: "Media thumbnail failed.", null)
+            result.error("media_derivative_failed", error.message ?: "Media derivative failed.", null)
         }
+    }
+
+    private fun createImageDerivative(args: Map<String, Any?>): Map<String, Any?> {
+        val sourcePath = args["sourcePath"] as? String
+            ?: throw IllegalArgumentException("sourcePath is required")
+        val destinationPath = args["destinationPath"] as? String
+            ?: throw IllegalArgumentException("destinationPath is required")
+        val maxEdge = ((args["maxEdge"] as? Number)?.toInt() ?: 360).coerceAtLeast(1)
+        val quality = ((args["quality"] as? Number)?.toInt() ?: 82).coerceIn(1, 100)
+        val source = File(sourcePath)
+        if (!source.exists()) throw IllegalArgumentException("Image file does not exist")
+        val decoded = ImageDecoder.decodeBitmap(ImageDecoder.createSource(source)) { decoder, info, _ ->
+            decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+            val largest = maxOf(info.size.width, info.size.height)
+            if (largest > maxEdge) {
+                val ratio = maxEdge.toDouble() / largest.toDouble()
+                val width = maxOf(1, (info.size.width * ratio).toInt())
+                val height = maxOf(1, (info.size.height * ratio).toInt())
+                decoder.setTargetSize(width, height)
+            }
+        }
+        val bitmap = scaleBitmapToMaxEdge(decoded, maxEdge)
+        if (bitmap !== decoded) decoded.recycle()
+        val outFile = File(destinationPath)
+        outFile.parentFile?.mkdirs()
+        FileOutputStream(outFile).use { stream ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, stream)
+        }
+        val width = bitmap.width
+        val height = bitmap.height
+        bitmap.recycle()
+        return mapOf(
+            "path" to outFile.absolutePath,
+            "width" to width,
+            "height" to height,
+            "sizeBytes" to outFile.length(),
+        )
     }
 
     private fun createVideoThumbnail(args: Map<String, Any?>): Map<String, Any?> {
@@ -283,7 +322,7 @@ class MainActivity : FlutterActivity() {
     private fun mediaTypeForPath(file: File): String? {
         val name = file.name.lowercase()
         return when {
-            name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".webp") || name.endsWith(".gif") || name.endsWith(".heic") -> "image"
+            name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".webp") || name.endsWith(".gif") || name.endsWith(".heic") || name.endsWith(".heif") -> "image"
             name.endsWith(".mp4") || name.endsWith(".mov") || name.endsWith(".m4v") || name.endsWith(".webm") || name.endsWith(".mkv") || name.endsWith(".3gp") -> "video"
             else -> null
         }
@@ -296,6 +335,7 @@ class MainActivity : FlutterActivity() {
             name.endsWith(".webp") -> "image/webp"
             name.endsWith(".gif") -> "image/gif"
             name.endsWith(".heic") -> "image/heic"
+            name.endsWith(".heif") -> "image/heif"
             name.endsWith(".mov") -> "video/quicktime"
             name.endsWith(".webm") -> "video/webm"
             name.endsWith(".mkv") -> "video/x-matroska"

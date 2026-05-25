@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
@@ -45,6 +46,19 @@ class ClientDerivativeGenerator {
 
   static const thumbnailMaxEdge = 360;
   static const previewMaxEdge = 1600;
+  static const _imageExtensions = {
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.webp',
+    '.heic',
+    '.heif',
+    '.avif',
+    '.gif',
+    '.bmp',
+    '.tif',
+    '.tiff',
+  };
 
   final MethodChannel _mediaChannel;
 
@@ -57,11 +71,12 @@ class ClientDerivativeGenerator {
     required bool requiresPreview,
     bool allowVideoPreview = false,
   }) async {
-    if (mimeType.startsWith('image/')) {
+    if (_isImageInput(originalFilename, originalPath, mimeType)) {
       return _generateImageSet(
         localId: localId,
         originalPath: originalPath,
         originalFilename: originalFilename,
+        mimeType: mimeType,
         requiresThumbnail: requiresThumbnail,
         requiresPreview: requiresPreview,
       );
@@ -78,17 +93,40 @@ class ClientDerivativeGenerator {
     return const ClientDerivativeSet();
   }
 
+  bool _isImageInput(
+    String originalFilename,
+    String originalPath,
+    String mimeType,
+  ) {
+    final normalizedMimeType = mimeType.toLowerCase();
+    final filenameExtension = p.extension(originalFilename).toLowerCase();
+    final pathExtension = p.extension(originalPath).toLowerCase();
+    return normalizedMimeType.startsWith('image/') ||
+        _imageExtensions.contains(filenameExtension) ||
+        _imageExtensions.contains(pathExtension);
+  }
+
   Future<ClientDerivativeSet> _generateImageSet({
     required String localId,
     required String originalPath,
     required String originalFilename,
+    required String mimeType,
     required bool requiresThumbnail,
     required bool requiresPreview,
   }) async {
     if (!requiresThumbnail && !requiresPreview)
       return const ClientDerivativeSet();
+    if (_isHeicImage(originalFilename, originalPath, mimeType)) {
+      return _generateNativeImageSet(
+        localId: localId,
+        originalPath: originalPath,
+        originalFilename: originalFilename,
+        requiresThumbnail: requiresThumbnail,
+        requiresPreview: requiresPreview,
+      );
+    }
     final bytes = await File(originalPath).readAsBytes();
-    final decoded = img.decodeImage(bytes);
+    final decoded = _tryDecodeImage(bytes);
     if (decoded == null) return const ClientDerivativeSet();
     final oriented = img.bakeOrientation(decoded);
     final thumbnail = requiresThumbnail
@@ -105,6 +143,36 @@ class ClientDerivativeGenerator {
         ? await _writeImageVariant(
             source: oriented,
             localId: localId,
+            originalFilename: originalFilename,
+            variant: 'preview',
+            maxEdge: previewMaxEdge,
+            quality: 86,
+          )
+        : null;
+    return ClientDerivativeSet(thumbnail: thumbnail, preview: preview);
+  }
+
+  Future<ClientDerivativeSet> _generateNativeImageSet({
+    required String localId,
+    required String originalPath,
+    required String originalFilename,
+    required bool requiresThumbnail,
+    required bool requiresPreview,
+  }) async {
+    final thumbnail = requiresThumbnail
+        ? await _createNativeImageDerivative(
+            localId: localId,
+            originalPath: originalPath,
+            originalFilename: originalFilename,
+            variant: 'thumbnail',
+            maxEdge: thumbnailMaxEdge,
+            quality: 76,
+          )
+        : null;
+    final preview = requiresPreview
+        ? await _createNativeImageDerivative(
+            localId: localId,
+            originalPath: originalPath,
             originalFilename: originalFilename,
             variant: 'preview',
             maxEdge: previewMaxEdge,
@@ -141,6 +209,60 @@ class ClientDerivativeGenerator {
       widthPx: resized.width,
       heightPx: resized.height,
     );
+  }
+
+  img.Image? _tryDecodeImage(Uint8List bytes) {
+    try {
+      return img.decodeImage(bytes);
+    } on FormatException {
+      return null;
+    } on RangeError {
+      return null;
+    }
+  }
+
+  Future<ClientDerivativeAsset?> _createNativeImageDerivative({
+    required String localId,
+    required String originalPath,
+    required String originalFilename,
+    required String variant,
+    required int maxEdge,
+    required int quality,
+  }) async {
+    try {
+      final out = await _derivativeFile(
+        localId,
+        originalFilename,
+        variant,
+        'jpg',
+      );
+      final result = await _mediaChannel
+          .invokeMapMethod<String, Object?>('createImageDerivative', {
+            'sourcePath': originalPath,
+            'destinationPath': out.path,
+            'maxEdge': maxEdge,
+            'quality': quality,
+          });
+      final outputPath = (result?['path'] as String?) ?? out.path;
+      final file = File(outputPath);
+      if (!await file.exists()) return null;
+      final stat = await file.stat();
+      return ClientDerivativeAsset(
+        variant: variant,
+        path: outputPath,
+        filename: p.basename(outputPath),
+        mimeType: 'image/jpeg',
+        sizeBytes: stat.size,
+        widthPx: (result?['width'] as num?)?.toInt(),
+        heightPx: (result?['height'] as num?)?.toInt(),
+      );
+    } on MissingPluginException catch (err) {
+      debugPrint('Native image derivative missing plugin: $err');
+      return null;
+    } on PlatformException catch (err) {
+      debugPrint('Native image derivative failed: ${err.code} ${err.message}');
+      return null;
+    }
   }
 
   Future<ClientDerivativeSet> _generateVideoSet({
@@ -227,6 +349,22 @@ class ClientDerivativeGenerator {
       height: height,
       interpolation: img.Interpolation.average,
     );
+  }
+
+  bool _isHeicImage(
+    String originalFilename,
+    String originalPath,
+    String mimeType,
+  ) {
+    final filenameExtension = p.extension(originalFilename).toLowerCase();
+    final pathExtension = p.extension(originalPath).toLowerCase();
+    final normalizedMimeType = mimeType.toLowerCase();
+    return filenameExtension == '.heic' ||
+        filenameExtension == '.heif' ||
+        pathExtension == '.heic' ||
+        pathExtension == '.heif' ||
+        normalizedMimeType == 'image/heic' ||
+        normalizedMimeType == 'image/heif';
   }
 
   Future<File> _derivativeFile(

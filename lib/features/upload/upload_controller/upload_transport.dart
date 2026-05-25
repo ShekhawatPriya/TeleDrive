@@ -472,7 +472,13 @@ extension _UploadTransport on UploadController {
     required Map<String, dynamic> intent,
     required TelegramUploadTarget target,
   }) async {
-    if (!_auth.clientDerivativeGenerationEnabled) return {};
+    if (!_auth.clientDerivativeGenerationEnabled) {
+      debugPrint(
+        'Direct upload derivatives disabled for ${item.name}: '
+        'clientDerivativeGenerationEnabled=false',
+      );
+      return {};
+    }
     final policy = _serverPolicy(intent);
     final requiresThumbnail = _boolish(
       policy['requiresThumbnail'] ?? policy['requires_thumbnail'],
@@ -480,7 +486,24 @@ extension _UploadTransport on UploadController {
     final requiresPreview = _boolish(
       policy['requiresPreview'] ?? policy['requires_preview'],
     );
-    if (!requiresThumbnail && !requiresPreview) return {};
+    final isHeic =
+        item.name.toLowerCase().endsWith('.heic') ||
+        item.name.toLowerCase().endsWith('.heif') ||
+        item.path.toLowerCase().endsWith('.heic') ||
+        item.path.toLowerCase().endsWith('.heif') ||
+        item.mimeType.toLowerCase() == 'image/heic' ||
+        item.mimeType.toLowerCase() == 'image/heif';
+    debugPrint(
+      'Direct upload derivatives policy for ${item.name}: '
+      'mime=${item.mimeType} heic=$isHeic '
+      'requiresThumbnail=$requiresThumbnail requiresPreview=$requiresPreview',
+    );
+    if (!requiresThumbnail && !requiresPreview) {
+      debugPrint(
+        'Direct upload derivatives skipped by policy for ${item.name}',
+      );
+      return {};
+    }
 
     if (requiresThumbnail) {
       _setItem(item.localId, status: UploadStatus.creatingThumbnail);
@@ -505,8 +528,13 @@ extension _UploadTransport on UploadController {
       debugPrint('Direct upload derivative generation skipped: $err');
       return {};
     }
+    final generatedAssets = generated.assets.toList(growable: false);
+    debugPrint(
+      'Direct upload derivatives generated for ${item.name}: '
+      '${generatedAssets.length} asset(s)',
+    );
     final payloads = <String, Map<String, dynamic>>{};
-    for (final asset in generated.assets) {
+    for (final asset in generatedAssets) {
       final current = _findItem(item.localId);
       if (current == null || current.cancelRequested) break;
       try {
@@ -533,6 +561,10 @@ extension _UploadTransport on UploadController {
           widthPx: asset.widthPx,
           heightPx: asset.heightPx,
           durationMs: asset.durationMs,
+        );
+        debugPrint(
+          'Direct upload ${asset.variant} uploaded for ${item.name}: '
+          '${asset.sizeBytes} bytes',
         );
       } catch (err) {
         debugPrint('Direct upload ${asset.variant} skipped: $err');
