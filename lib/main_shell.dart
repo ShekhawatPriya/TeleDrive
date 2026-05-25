@@ -14,6 +14,7 @@ import 'features/drive/starred_screen.dart';
 import 'features/photos/components/photos_menu_builder.dart';
 import 'features/photos/photos_grid/photo_grid_density.dart';
 import 'features/photos/photos_screen.dart';
+import 'features/profile/gallery_backup_asset_store.dart';
 import 'features/profile/gallery_backup_controller.dart';
 import 'features/search/search_controller.dart';
 import 'features/share/my_shares_screen.dart';
@@ -52,6 +53,8 @@ class _MainShellState extends ConsumerState<MainShell>
     WidgetsBinding.instance.addObserver(this);
     _pageController = PageController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(galleryBackupControllerProvider);
       final auth = ref.read(authControllerProvider);
       if (auth.isAuthenticated && auth.telegramConnected == true) {
         final drive = ref.read(driveControllerProvider);
@@ -74,12 +77,14 @@ class _MainShellState extends ConsumerState<MainShell>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(ref.read(galleryBackupControllerProvider).handleAppResumed());
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      unawaited(const GalleryBackupAssetStore().flushAll());
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(galleryBackupControllerProvider);
     final location = GoRouterState.of(context).matchedLocation;
     final routeIndex = _tabIndexFor(location);
     final showingTab = routeIndex >= 0;

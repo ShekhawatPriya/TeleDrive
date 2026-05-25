@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  setUp(GalleryBackupAssetStore.debugResetCache);
+
   test('marks uploaded assets as non-retryable across reloads', () async {
     SharedPreferences.setMockInitialValues({});
     const store = GalleryBackupAssetStore();

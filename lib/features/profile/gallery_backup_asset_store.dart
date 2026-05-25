@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/media/gallery_media_scanner.dart';
@@ -212,20 +214,48 @@ class GalleryBackupAssetStore {
 
   static const _prefix = 'gallery_backup_assets_v2';
   static const _cap = 8000;
+  static const _debounce = Duration(milliseconds: 350);
+
+  static final Map<String, Map<String, GalleryBackupAssetRecord>> _cache = {};
+  static final Map<String, Timer> _saveTimers = {};
+  static final Map<String, Future<void>> _saveChain = {};
 
   Future<Map<String, GalleryBackupAssetRecord>> load(String scope) async {
+    final cached = _cache[scope];
+    if (cached != null) {
+      return Map<String, GalleryBackupAssetRecord>.from(cached);
+    }
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_key(scope));
-    if (raw == null || raw.isEmpty) return {};
-    final parsed = jsonDecode(raw);
-    if (parsed is! Map) return {};
-    return parsed.map((key, value) {
-      final json = value is Map
-          ? Map<String, dynamic>.from(value)
-          : <String, dynamic>{};
-      return MapEntry('$key', GalleryBackupAssetRecord.fromJson(json));
-    });
+    final populated = <String, GalleryBackupAssetRecord>{};
+    if (raw != null && raw.isNotEmpty) {
+      final parsed = jsonDecode(raw);
+      if (parsed is Map) {
+        for (final entry in parsed.entries) {
+          final value = entry.value;
+          final json = value is Map
+              ? Map<String, dynamic>.from(value)
+              : <String, dynamic>{};
+          populated['${entry.key}'] = GalleryBackupAssetRecord.fromJson(json);
+        }
+      }
+    }
+    _cache[scope] = populated;
+    return Map<String, GalleryBackupAssetRecord>.from(populated);
   }
+
+  Future<Map<String, GalleryBackupAssetRecord>> _ensureCache(
+    String scope,
+  ) async {
+    final cached = _cache[scope];
+    if (cached != null) return cached;
+    await load(scope);
+    return _cache[scope]!;
+  }
+
+  bool _isTerminalStatus(GalleryBackupAssetStatus status) =>
+      status == GalleryBackupAssetStatus.uploaded ||
+      status == GalleryBackupAssetStatus.failed;
 
   Future<void> mark(
     String scope,
@@ -234,7 +264,7 @@ class GalleryBackupAssetStore {
     String? failureCode,
     String? failureMessage,
   }) async {
-    final records = await load(scope);
+    final records = await _ensureCache(scope);
     final now = DateTime.now().millisecondsSinceEpoch;
     final existing = records[fingerprint];
     records[fingerprint] = (existing ?? _empty(fingerprint, now)).copyWith(
@@ -244,7 +274,7 @@ class GalleryBackupAssetStore {
       failureMessage: failureMessage,
       clearFailure: failureCode == null && failureMessage == null,
     );
-    await _save(scope, records);
+    await _scheduleSave(scope, terminal: _isTerminalStatus(status));
   }
 
   Future<void> markMany(
@@ -254,7 +284,7 @@ class GalleryBackupAssetStore {
     String? failureCode,
     String? failureMessage,
   }) async {
-    final records = await load(scope);
+    final records = await _ensureCache(scope);
     final now = DateTime.now().millisecondsSinceEpoch;
     for (final fingerprint in fingerprints) {
       final existing = records[fingerprint];
@@ -266,11 +296,11 @@ class GalleryBackupAssetStore {
         clearFailure: failureCode == null && failureMessage == null,
       );
     }
-    await _save(scope, records);
+    await _scheduleSave(scope, terminal: _isTerminalStatus(status));
   }
 
   Future<void> mergeAssetMetadata(String scope, GalleryMediaAsset asset) async {
-    final records = await load(scope);
+    final records = await _ensureCache(scope);
     final now = DateTime.now().millisecondsSinceEpoch;
     final existing =
         records[asset.fingerprint] ?? _empty(asset.fingerprint, now);
@@ -279,11 +309,11 @@ class GalleryBackupAssetStore {
       asset,
       updatedAtMillis: now,
     );
-    await _save(scope, records);
+    await _scheduleSave(scope, terminal: false);
   }
 
   Future<void> markUploadedAsset(String scope, GalleryMediaAsset asset) async {
-    final records = await load(scope);
+    final records = await _ensureCache(scope);
     final now = DateTime.now().millisecondsSinceEpoch;
     final existing = records[asset.fingerprint];
     final base = existing ?? _empty(asset.fingerprint, now);
@@ -296,13 +326,13 @@ class GalleryBackupAssetStore {
       clearFailure: true,
       clearCleanupFailure: true,
     );
-    await _save(scope, records);
+    await _scheduleSave(scope, terminal: true);
   }
 
   Future<void> markUploadedUploadItem(String scope, UploadItem item) async {
     final fingerprint = item.backupFingerprint;
     if (fingerprint == null || fingerprint.isEmpty) return;
-    final records = await load(scope);
+    final records = await _ensureCache(scope);
     final now = DateTime.now().millisecondsSinceEpoch;
     final existing = records[fingerprint];
     final base = existing ?? _empty(fingerprint, now);
@@ -324,11 +354,11 @@ class GalleryBackupAssetStore {
       clearFailure: true,
       clearCleanupFailure: true,
     );
-    await _save(scope, records);
+    await _scheduleSave(scope, terminal: true);
   }
 
   Future<void> markCleaned(String scope, Iterable<String> fingerprints) async {
-    final records = await load(scope);
+    final records = await _ensureCache(scope);
     final now = DateTime.now().millisecondsSinceEpoch;
     for (final fingerprint in fingerprints) {
       final existing = records[fingerprint];
@@ -339,7 +369,7 @@ class GalleryBackupAssetStore {
         clearCleanupFailure: true,
       );
     }
-    await _save(scope, records);
+    await _scheduleSave(scope, terminal: true);
   }
 
   Future<void> markCleanupFailed(
@@ -348,7 +378,7 @@ class GalleryBackupAssetStore {
     required String failureCode,
     required String failureMessage,
   }) async {
-    final records = await load(scope);
+    final records = await _ensureCache(scope);
     final existing = records[fingerprint];
     if (existing == null) return;
     records[fingerprint] = existing.copyWith(
@@ -356,7 +386,29 @@ class GalleryBackupAssetStore {
       cleanupFailureCode: failureCode,
       cleanupFailureMessage: failureMessage,
     );
-    await _save(scope, records);
+    await _scheduleSave(scope, terminal: true);
+  }
+
+  Future<void> flushAll() async {
+    final scopes = <String>{..._saveTimers.keys, ..._saveChain.keys};
+    for (final scope in scopes) {
+      _saveTimers.remove(scope)?.cancel();
+    }
+    final pending = <Future<void>>[];
+    for (final scope in scopes) {
+      pending.add(_enqueueSave(scope));
+    }
+    await Future.wait(pending);
+  }
+
+  // Visible for testing — resets in-memory cache state between tests.
+  static void debugResetCache() {
+    for (final timer in _saveTimers.values) {
+      timer.cancel();
+    }
+    _saveTimers.clear();
+    _saveChain.clear();
+    _cache.clear();
   }
 
   GalleryBackupAssetRecord _withAssetMetadata(
@@ -403,20 +455,63 @@ class GalleryBackupAssetStore {
     return 'unknown';
   }
 
-  Future<void> _save(
-    String scope,
-    Map<String, GalleryBackupAssetRecord> records,
-  ) async {
+  Future<void> _scheduleSave(String scope, {required bool terminal}) async {
+    if (terminal) {
+      _saveTimers.remove(scope)?.cancel();
+      await _enqueueSave(scope);
+      return;
+    }
+    _saveTimers.remove(scope)?.cancel();
+    _saveTimers[scope] = Timer(_debounce, () {
+      _saveTimers.remove(scope);
+      // Fire and forget; chained through _saveChain to preserve ordering.
+      _enqueueSave(scope);
+    });
+  }
+
+  Future<void> _enqueueSave(String scope) {
+    final prev = _saveChain[scope] ?? Future<void>.value();
+    final next = prev.then((_) => _flushSave(scope));
+    _saveChain[scope] = next.whenComplete(() {
+      if (identical(_saveChain[scope], next)) {
+        _saveChain.remove(scope);
+      }
+    });
+    return next;
+  }
+
+  Future<void> _flushSave(String scope) async {
+    final records = _cache[scope];
+    if (records == null) return;
+    final snapshot = <Map<String, dynamic>>[
+      for (final r in records.values) r.toJson(),
+    ];
+    String encoded;
+    try {
+      encoded = await compute(_encodeRecords, snapshot);
+    } catch (err, stack) {
+      debugPrint(
+        'GalleryBackupAssetStore compute encode failed, '
+        'falling back to in-isolate: $err',
+      );
+      debugPrintStack(stackTrace: stack);
+      encoded = _encodeRecords(snapshot);
+    }
     final prefs = await SharedPreferences.getInstance();
-    final trimmed = records.values.toList()
-      ..sort((a, b) => b.updatedAtMillis.compareTo(a.updatedAtMillis));
-    await prefs.setString(
-      _key(scope),
-      jsonEncode({
-        for (final record in trimmed.take(_cap))
-          record.fingerprint: record.toJson(),
-      }),
+    await prefs.setString(_key(scope), encoded);
+  }
+
+  static String _encodeRecords(List<Map<String, dynamic>> snapshot) {
+    snapshot.sort(
+      (a, b) =>
+          (b['updatedAtMillis'] as int).compareTo(a['updatedAtMillis'] as int),
     );
+    final trimmed = snapshot.length > _cap
+        ? snapshot.sublist(0, _cap)
+        : snapshot;
+    return jsonEncode({
+      for (final r in trimmed) r['fingerprint'] as String: r,
+    });
   }
 
   static String _key(String scope) => '${_prefix}_$scope';
