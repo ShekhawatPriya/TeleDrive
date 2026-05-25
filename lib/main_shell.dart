@@ -96,6 +96,12 @@ class _MainShellState extends ConsumerState<MainShell>
         setState(() {});
       });
     }
+    if (showingTab && routeIndex == 0 && location == '/drive') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(driveControllerProvider).setActiveFolderId(null);
+      });
+    }
 
     return Scaffold(
       body: showingTab ? _buildTabs(routeIndex) : widget.child,
