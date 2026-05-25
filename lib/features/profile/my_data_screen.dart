@@ -166,8 +166,9 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
                 const SizedBox(height: AppSpacing.sm),
                 _MyDataActionTile(
                   icon: Icons.cleaning_services_rounded,
-                  title: 'Clear Cached Storage',
-                  subtitle: 'Free up local space from downloaded items.',
+                  title: 'Free up backed-up media',
+                  subtitle:
+                      'Remove local Auto Backup copies already safe in TeleDrive.',
                   onTap: () => context.safePush('/profile/free-up-space'),
                 ),
                 const SizedBox(height: AppSpacing.xl + 4),

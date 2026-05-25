@@ -86,4 +86,61 @@ void main() {
       expect(result.assets.first.sourceKind, 'mediastore');
     },
   );
+
+  test(
+    'deleteMediaUris filters unsafe URIs and parses platform result',
+    () async {
+      Object? sentUris;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            expect(call.method, 'deleteGalleryMedia');
+            sentUris = call.arguments['contentUris'];
+            return {
+              'requested': 1,
+              'deleted': 1,
+              'failed': 0,
+              'userCancelled': false,
+              'deletedUris': ['content://media/external/images/media/10'],
+              'failedUris': [],
+            };
+          });
+
+      const scanner = GalleryMediaScanner(mediaChannel: channel);
+      final result = await scanner.deleteMediaUris([
+        'content://media/external/images/media/10',
+        'content://media/external/images/media',
+        'content://com.android.providers.media.documents/document/image%3A10',
+        'file:///sdcard/DCIM/camera.jpg',
+      ]);
+
+      expect(sentUris, ['content://media/external/images/media/10']);
+      expect(result.requested, 1);
+      expect(result.deleted, 1);
+      expect(result.failed, 0);
+      expect(result.userCancelled, isFalse);
+    },
+  );
+
+  test(
+    'deleteMediaUris returns no-op when no safe MediaStore item URI exists',
+    () async {
+      var called = false;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            called = true;
+            return null;
+          });
+
+      const scanner = GalleryMediaScanner(mediaChannel: channel);
+      final result = await scanner.deleteMediaUris([
+        r'C:\DCIM\Camera\camera.jpg',
+        'content://media/external/images/media',
+      ]);
+
+      expect(called, isFalse);
+      expect(result.requested, 0);
+      expect(result.deleted, 0);
+      expect(result.failed, 0);
+    },
+  );
 }

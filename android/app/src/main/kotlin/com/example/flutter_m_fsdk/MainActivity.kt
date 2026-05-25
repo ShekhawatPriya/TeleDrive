@@ -1,6 +1,8 @@
 package com.example.flutter_m_fsdk
 
 import android.content.ContentUris
+import android.content.Intent
+import android.content.IntentSender
 import android.net.Uri
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
@@ -23,6 +25,9 @@ class MainActivity : FlutterActivity() {
     private val channelName = "teledrive/tdlib"
     private val eventsName = "teledrive/tdlib/events"
     private val mediaChannelName = "teledrive/media"
+    private val deleteRequestCode = 7114
+    private var pendingDeleteResult: MethodChannel.Result? = null
+    private var pendingDeleteUris: List<Uri> = emptyList()
     private lateinit var tdlibBridge: TdlibBridge
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -83,11 +88,122 @@ class MainActivity : FlutterActivity() {
                 "createVideoThumbnail" -> result.success(createVideoThumbnail(typedArgs))
                 "listGalleryMedia" -> result.success(listGalleryMedia(typedArgs))
                 "copyContentUriToFile" -> result.success(copyContentUriToFile(typedArgs))
+                "deleteGalleryMedia" -> deleteGalleryMedia(typedArgs, result)
                 else -> result.notImplemented()
             }
         } catch (error: Throwable) {
             result.error("media_derivative_failed", error.message ?: "Media derivative failed.", null)
         }
+    }
+
+    private fun deleteGalleryMedia(args: Map<String, Any?>, result: MethodChannel.Result) {
+        if (pendingDeleteResult != null) {
+            result.error("media_delete_pending", "A media deletion request is already open.", null)
+            return
+        }
+        val rawUris = args["contentUris"] as? List<*> ?: emptyList<Any?>()
+        val uris = rawUris
+            .mapNotNull { parseDeleteUri(it as? String) }
+            .distinctBy { it.toString() }
+        if (uris.isEmpty()) {
+            result.success(deleteResultMap(emptyList(), emptyList(), emptyList(), false))
+            return
+        }
+        try {
+            val request = MediaStore.createDeleteRequest(contentResolver, uris)
+            pendingDeleteResult = result
+            pendingDeleteUris = uris
+            startIntentSenderForResult(
+                request.intentSender,
+                deleteRequestCode,
+                null,
+                0,
+                0,
+                0,
+                null,
+            )
+        } catch (error: IntentSender.SendIntentException) {
+            clearPendingDelete()
+            result.error("media_delete_launch_failed", error.message ?: "Could not open Android confirmation.", null)
+        } catch (error: Throwable) {
+            clearPendingDelete()
+            result.error("media_delete_failed", error.message ?: "Could not request media deletion.", null)
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != deleteRequestCode) return
+        val result = pendingDeleteResult ?: return
+        val uris = pendingDeleteUris
+        try {
+            if (resultCode != RESULT_OK) {
+                result.success(deleteResultMap(uris, emptyList(), uris, true))
+                return
+            }
+            val deleted = uris.filter { !uriExists(it) }
+            val failed = uris.filter { uriExists(it) }
+            result.success(deleteResultMap(uris, deleted, failed, false))
+        } finally {
+            clearPendingDelete()
+        }
+    }
+
+    private fun parseDeleteUri(value: String?): Uri? {
+        val raw = value?.trim()
+        if (raw.isNullOrEmpty()) return null
+        val uri = try {
+            Uri.parse(raw)
+        } catch (_: Throwable) {
+            return null
+        }
+        if (uri.scheme != "content") return null
+        if (uri.authority != MediaStore.AUTHORITY) return null
+        val segments = uri.pathSegments ?: return null
+        if (segments.size < 4) return null
+        val isImageItem = segments.contains("images") && segments.contains("media")
+        val isVideoItem = segments.contains("video") && segments.contains("media")
+        if (!isImageItem && !isVideoItem) return null
+        if (segments.lastOrNull()?.toLongOrNull() == null) return null
+        return uri
+    }
+
+    private fun uriExists(uri: Uri): Boolean {
+        return try {
+            contentResolver.query(
+                uri,
+                arrayOf(MediaStore.MediaColumns._ID),
+                null,
+                null,
+                null,
+            )?.use { cursor -> cursor.moveToFirst() } ?: false
+        } catch (_: SecurityException) {
+            true
+        } catch (_: Throwable) {
+            true
+        }
+    }
+
+    private fun deleteResultMap(
+        requested: List<Uri>,
+        deleted: List<Uri>,
+        failed: List<Uri>,
+        userCancelled: Boolean,
+    ): Map<String, Any?> {
+        return mapOf(
+            "requested" to requested.size,
+            "deleted" to deleted.size,
+            "failed" to failed.size,
+            "userCancelled" to userCancelled,
+            "deletedUris" to deleted.map { it.toString() },
+            "failedUris" to failed.map { it.toString() },
+        )
+    }
+
+    private fun clearPendingDelete() {
+        pendingDeleteResult = null
+        pendingDeleteUris = emptyList()
     }
 
     private fun createImageDerivative(args: Map<String, Any?>): Map<String, Any?> {

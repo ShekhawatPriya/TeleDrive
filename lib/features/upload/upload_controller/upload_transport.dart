@@ -199,11 +199,15 @@ extension _UploadTransport on UploadController {
                   'local_modified_at': item.localModifiedAt
                       ?.toUtc()
                       .toIso8601String(),
+                  'added_at_millis': item.addedAtMillis,
                   'duration_ms': item.durationMs,
                   'relative_path': item.relativePath,
                   'client_source': item.clientSource,
                   'backup_fingerprint': item.backupFingerprint,
-                  'backup_source': item.backupSourceKind,
+                  'backup_source': item.clientSource == 'gallery_backup'
+                      ? 'gallery_backup'
+                      : null,
+                  'source_kind': item.backupSourceKind,
                   'content_uri': item.contentUri,
                 },
               )
@@ -262,12 +266,10 @@ extension _UploadTransport on UploadController {
             thumbnailReady: true,
           );
           final backupScope = _backupScope();
-          if (backupScope != null && latest.backupFingerprint != null) {
-            await _backupAssetStore.mark(
-              backupScope,
-              latest.backupFingerprint!,
-              GalleryBackupAssetStatus.uploaded,
-            );
+          if (backupScope != null &&
+              latest.clientSource == 'gallery_backup' &&
+              latest.backupFingerprint != null) {
+            await _backupAssetStore.markUploadedUploadItem(backupScope, latest);
           }
           continue;
         }
@@ -384,12 +386,10 @@ extension _UploadTransport on UploadController {
             thumbnailReady: true,
           );
           final backupScope = _backupScope();
-          if (backupScope != null && latest.backupFingerprint != null) {
-            await _backupAssetStore.mark(
-              backupScope,
-              latest.backupFingerprint!,
-              GalleryBackupAssetStatus.uploaded,
-            );
+          if (backupScope != null &&
+              latest.clientSource == 'gallery_backup' &&
+              latest.backupFingerprint != null) {
+            await _backupAssetStore.markUploadedUploadItem(backupScope, latest);
           }
           if (latest.deleteLocalOnComplete) {
             unawaited(_safeDeleteLocalFile(latest.path));

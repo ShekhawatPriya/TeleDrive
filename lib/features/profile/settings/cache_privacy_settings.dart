@@ -100,13 +100,14 @@ class CacheStorageSettingsScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             child: _settingsSectionIntro(
               context,
-              'Reclaim device storage by deleting cached previews. Telegram-hosted originals stay intact.',
+              'Keep cache clearing separate from removing Auto Backup gallery copies.',
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
           _FlatActionTile(
-            title: 'Free up space',
-            subtitle: 'Delete local cache to reclaim storage.',
+            title: 'Free up backed-up media',
+            subtitle:
+                'Remove local copies of Auto Backup photos and videos already safe in TeleDrive.',
             onTap: () => context.push('/profile/free-up-space'),
           ),
         ],

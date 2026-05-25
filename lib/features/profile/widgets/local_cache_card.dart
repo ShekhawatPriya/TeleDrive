@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_type_detector.dart';
@@ -255,7 +256,7 @@ class LocalCacheCard extends ConsumerWidget {
                               }
                             },
                       icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-                      label: const Text('Clear Cache'),
+                      label: const Text('Clear cache'),
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(
                           color: state.totalSize == 0
@@ -283,6 +284,23 @@ class LocalCacheCard extends ConsumerWidget {
               ),
             ],
           ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.tonalIcon(
+            onPressed: () => context.push('/profile/free-up-space'),
+            icon: const Icon(Icons.cloud_done_outlined, size: 18),
+            label: const Text('Free up backed-up media'),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          'Remove local copies of Auto Backup photos and videos already safe in TeleDrive.',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+            height: 1.3,
+          ),
         ),
       ],
     );

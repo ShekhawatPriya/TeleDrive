@@ -54,6 +54,8 @@ class UploadItem {
     this.backupSourceKind,
     this.contentUri,
     this.localModifiedAt,
+    this.addedAtMillis,
+    this.mediaType,
     this.relativePath,
     this.durationMs,
     this.httpProgress = 0,
@@ -81,6 +83,8 @@ class UploadItem {
   final String? backupSourceKind;
   final String? contentUri;
   final DateTime? localModifiedAt;
+  final int? addedAtMillis;
+  final String? mediaType;
   final String? relativePath;
   final int? durationMs;
   final double httpProgress;
@@ -150,6 +154,8 @@ class UploadItem {
     String? backupSourceKind,
     String? contentUri,
     DateTime? localModifiedAt,
+    int? addedAtMillis,
+    String? mediaType,
     String? relativePath,
     int? durationMs,
     bool resetServerIds = false,
@@ -173,6 +179,8 @@ class UploadItem {
       backupSourceKind: backupSourceKind ?? this.backupSourceKind,
       contentUri: contentUri ?? this.contentUri,
       localModifiedAt: localModifiedAt ?? this.localModifiedAt,
+      addedAtMillis: addedAtMillis ?? this.addedAtMillis,
+      mediaType: mediaType ?? this.mediaType,
       relativePath: relativePath ?? this.relativePath,
       durationMs: durationMs ?? this.durationMs,
       httpProgress: httpProgress ?? this.httpProgress,

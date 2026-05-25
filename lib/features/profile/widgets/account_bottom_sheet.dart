@@ -161,7 +161,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                                 context,
                               ).colorScheme.onSurfaceVariant,
                             ),
-                            label: 'Free up space on this device',
+                            label: 'Free up backed-up media',
                             onTap: () {
                               context.safePush('/profile/free-up-space');
                             },
@@ -185,9 +185,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                               width: 22,
                               height: 22,
                               colorFilter: ColorFilter.mode(
-                                Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                                 BlendMode.srcIn,
                               ),
                             ),

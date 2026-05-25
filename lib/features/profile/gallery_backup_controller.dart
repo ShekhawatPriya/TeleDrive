@@ -281,11 +281,7 @@ class GalleryBackupController extends ChangeNotifier {
         final decision = resolved[asset.fingerprint];
         if (decision == _BackupResolveDecision.uploaded) {
           skippedUploaded++;
-          await _assetStore.mark(
-            scope,
-            asset.fingerprint,
-            GalleryBackupAssetStatus.uploaded,
-          );
+          await _assetStore.markUploadedAsset(scope, asset);
           continue;
         }
         if (decision == _BackupResolveDecision.queued) {
@@ -320,6 +316,8 @@ class GalleryBackupController extends ChangeNotifier {
               localModifiedAt: asset.recencyMillis > 0
                   ? DateTime.fromMillisecondsSinceEpoch(asset.recencyMillis)
                   : null,
+              addedAtMillis: asset.addedAtMillis,
+              mediaType: asset.mediaType,
               relativePath: asset.relativePath,
               durationMs: asset.durationMs,
             ),
@@ -465,8 +463,10 @@ class GalleryBackupController extends ChangeNotifier {
             .map(
               (asset) => {
                 'source_kind': asset.sourceKind,
+                'client_source': 'gallery_backup',
                 'backup_source': 'gallery_backup',
                 'media_type': asset.mediaType,
+                'mime_type': asset.mimeType,
                 'fingerprint': asset.fingerprint,
                 'content_uri': asset.contentUri,
                 'relative_path': asset.relativePath,
@@ -474,6 +474,7 @@ class GalleryBackupController extends ChangeNotifier {
                 'size_bytes': asset.sizeBytes,
                 'modified_at_millis': asset.modifiedAtMillis,
                 'added_at_millis': asset.addedAtMillis,
+                'duration_ms': asset.durationMs,
                 'status': 'discovered',
               },
             )

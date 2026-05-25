@@ -132,6 +132,48 @@ class GalleryMediaScanResult {
   final List<String> diagnostics;
 }
 
+class GalleryMediaDeleteResult {
+  const GalleryMediaDeleteResult({
+    required this.requested,
+    required this.deleted,
+    required this.failed,
+    required this.userCancelled,
+    required this.deletedUris,
+    required this.failedUris,
+  });
+
+  final int requested;
+  final int deleted;
+  final int failed;
+  final bool userCancelled;
+  final List<String> deletedUris;
+  final List<String> failedUris;
+
+  factory GalleryMediaDeleteResult.fromJson(Map<String, Object?> json) {
+    return GalleryMediaDeleteResult(
+      requested: (json['requested'] as num?)?.toInt() ?? 0,
+      deleted: (json['deleted'] as num?)?.toInt() ?? 0,
+      failed: (json['failed'] as num?)?.toInt() ?? 0,
+      userCancelled: json['userCancelled'] == true,
+      deletedUris: (json['deletedUris'] as List? ?? const [])
+          .map((value) => '$value')
+          .toList(),
+      failedUris: (json['failedUris'] as List? ?? const [])
+          .map((value) => '$value')
+          .toList(),
+    );
+  }
+}
+
+class GalleryMediaScannerException implements Exception {
+  const GalleryMediaScannerException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class GalleryMediaScanner {
   const GalleryMediaScanner({MethodChannel? mediaChannel})
     : _mediaChannel = mediaChannel ?? const MethodChannel('teledrive/media');
@@ -192,6 +234,36 @@ class GalleryMediaScanner {
     );
   }
 
+  Future<GalleryMediaDeleteResult> deleteMediaUris(
+    List<String> contentUris,
+  ) async {
+    final uris = contentUris
+        .map((uri) => uri.trim())
+        .where(_isConcreteMediaStoreContentUri)
+        .toList();
+    if (uris.isEmpty) {
+      return const GalleryMediaDeleteResult(
+        requested: 0,
+        deleted: 0,
+        failed: 0,
+        userCancelled: false,
+        deletedUris: [],
+        failedUris: [],
+      );
+    }
+    try {
+      final result = await _mediaChannel.invokeMapMethod<String, Object?>(
+        'deleteGalleryMedia',
+        {'contentUris': uris},
+      );
+      return GalleryMediaDeleteResult.fromJson(result ?? const {});
+    } on PlatformException catch (err) {
+      throw GalleryMediaScannerException(
+        err.message ?? 'Android could not remove the selected media.',
+      );
+    }
+  }
+
   Future<({String path, bool deleteWhenDone})> localPathFor(
     GalleryMediaAsset asset,
   ) async {
@@ -219,5 +291,13 @@ class GalleryMediaScanner {
     final fallbackName = asset.mediaType == 'video' ? 'video.mp4' : 'image.jpg';
     final name = safeName.trim().isEmpty ? fallbackName : safeName;
     return File(p.join(root.path, '${asset.stableKey.hashCode}_$name'));
+  }
+
+  static bool _isConcreteMediaStoreContentUri(String value) {
+    if (!value.startsWith('content://media/')) return false;
+    if (!value.contains('/images/media/') && !value.contains('/video/media/')) {
+      return false;
+    }
+    return int.tryParse(value.split('/').last) != null;
   }
 }
