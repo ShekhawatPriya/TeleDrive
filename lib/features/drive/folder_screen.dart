@@ -16,6 +16,7 @@ import 'components/drive_selection_bar.dart';
 import 'components/selection_mode_mixin.dart';
 import 'drive_controller.dart';
 import 'view_preferences_controller.dart';
+import 'virtual_sections.dart';
 
 class FolderScreen extends ConsumerStatefulWidget {
   const FolderScreen({required this.folderId, super.key});
@@ -40,6 +41,7 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
     final folder = drive.folder(widget.folderId);
     var files = drive.filesInFolder(widget.folderId);
     var folders = drive.foldersInFolder(widget.folderId);
+    folders = hideVirtualSectionFolders(folders);
     folders = sortDriveFolders(folders, ascending: prefs.ascending);
     files = sortDriveFiles(files, sort: prefs.sort, ascending: prefs.ascending);
     final path = drive.folderPath(widget.folderId);

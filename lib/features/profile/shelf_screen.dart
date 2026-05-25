@@ -68,12 +68,17 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
         _files = files;
         _loading = false;
       });
-    } catch (_) {
+    } catch (err) {
       if (!mounted) return;
+      final fallback = widget.kind == ShelfKind.archive
+          ? 'Could not load Archive.'
+          : 'Could not load Locked.';
+      final message = ref
+          .read(driveRepositoryProvider)
+          .api
+          .errorMessage(err, fallback);
       setState(() {
-        _error = widget.kind == ShelfKind.archive
-            ? 'Could not load Archive.'
-            : 'Could not load Locked.';
+        _error = message;
         _loading = false;
       });
     }
@@ -119,12 +124,6 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
     final ok = await confirmDelete(context, 1, trashEnabled: true);
     if (!ok || !mounted) return;
     final controller = ref.read(driveControllerProvider);
-    // Remove from this shelf first, then delete (which sends to trash).
-    if (widget.kind == ShelfKind.archive) {
-      await controller.unarchiveFile(id);
-    } else {
-      await controller.unlockFile(id);
-    }
     await controller.deleteItems(fileIds: [id]);
     await _load(showSpinner: false);
   }
@@ -151,15 +150,6 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
     if (!ok || !mounted) return;
     final controller = ref.read(driveControllerProvider);
     final ids = selectedFileIds.toList();
-    for (final id in ids) {
-      try {
-        if (widget.kind == ShelfKind.archive) {
-          await controller.unarchiveFile(id);
-        } else {
-          await controller.unlockFile(id);
-        }
-      } catch (_) {}
-    }
     await controller.deleteItems(fileIds: ids);
     if (!mounted) return;
     exitSelect();

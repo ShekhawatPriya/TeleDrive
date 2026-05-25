@@ -15,6 +15,7 @@ import 'components/selection_mode_mixin.dart';
 import 'drive_controller.dart';
 import 'drive_tab_commands.dart';
 import 'view_preferences_controller.dart';
+import 'virtual_sections.dart';
 
 class DriveScreen extends ConsumerStatefulWidget {
   const DriveScreen({super.key});
@@ -67,6 +68,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
           .where((f) => f.name.toLowerCase().contains(query))
           .toList();
     }
+    folders = hideVirtualSectionFolders(folders);
     folders = sortDriveFolders(folders, ascending: prefs.ascending);
     files = sortDriveFiles(files, sort: prefs.sort, ascending: prefs.ascending);
     final recent = drive.recentFiles();

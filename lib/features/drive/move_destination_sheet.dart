@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/sheet/sheet_header.dart';
 import 'drive_controller.dart';
+import 'virtual_sections.dart';
 
 const rootMoveDestination = '__teledrive_root__';
 
@@ -25,7 +26,9 @@ class MoveDestinationSheet extends ConsumerWidget {
     final drive = ref.watch(driveControllerProvider);
     final scheme = Theme.of(context).colorScheme;
     final excluded = _excludedIds(drive.folders);
-    final roots = drive.folders.where((f) => f.parentId == null).toList()
+    final roots = drive.folders
+        .where((f) => f.parentId == null && !isVirtualSectionFolder(f))
+        .toList()
       ..sort((a, b) => a.name.compareTo(b.name));
 
     return SafeArea(
