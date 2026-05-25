@@ -22,10 +22,14 @@ class BottomActionSystem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final upload = ref.watch(uploadControllerProvider);
-    final drive = ref.watch(driveControllerProvider);
-    final showProgress = upload.sheetVisible && upload.items.isNotEmpty;
-    final showDelete = drive.state.deleteProgress != null;
+    final summary = ref.watch(
+      uploadControllerProvider.select((c) => c.summary),
+    );
+    final deleteProgress = ref.watch(
+      driveControllerProvider.select((c) => c.state.deleteProgress),
+    );
+    final showProgress = summary.sheetVisible && summary.itemCount > 0;
+    final showDelete = deleteProgress != null;
 
     if (!showProgress && !showFab && !showDelete) {
       return const SizedBox.shrink();
@@ -89,7 +93,7 @@ class BottomActionSystem extends ConsumerWidget {
                     },
                     child: UploadCollapsedBar(
                       key: const ValueKey('upload_progress_collapsed_bar'),
-                      upload: upload,
+                      summary: summary,
                       onTap: () => showModalBottomSheet(
                         context: context,
                         isScrollControlled: true,

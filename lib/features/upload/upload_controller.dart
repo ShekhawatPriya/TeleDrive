@@ -81,6 +81,9 @@ class UploadController extends ChangeNotifier {
   String? _refreshedUploadSessionId;
   String? _notifiedSessionId;
   bool _disposed = false;
+  bool _notifyScheduled = false;
+  int _itemsVersion = 0;
+  Timer? _optimisticSyncTimer;
 
   String? uploadSessionId;
   List<UploadItem> items = [];
@@ -132,6 +135,48 @@ class UploadController extends ChangeNotifier {
         }.contains(i.status),
       );
 
+  UploadItemIdsSnapshot get itemIdsSnapshot => UploadItemIdsSnapshot(
+    List<String>.unmodifiable(items.map((i) => i.localId)),
+    _itemsVersion,
+  );
+
+  UploadSummary get summary {
+    final count = items.length;
+    var sumProgress = 0.0;
+    var totalBytes = 0;
+    var completedBytes = 0;
+    var stillGeneratingThumbs = false;
+    var allUploaded = count > 0;
+    for (final item in items) {
+      sumProgress += item.progress;
+      totalBytes += item.size;
+      completedBytes += (item.progress * item.size).round();
+      if (item.status != UploadStatus.uploaded) allUploaded = false;
+      if (item.status == UploadStatus.uploaded && !item.thumbnailReady) {
+        final kind = detectFileKind(item.name, item.mimeType);
+        if (kind == FileKind.image || kind == FileKind.video) {
+          stillGeneratingThumbs = true;
+        }
+      }
+    }
+    final progressPermille = count == 0
+        ? 0
+        : (sumProgress * 1000 / count).round().clamp(0, 1000);
+    return UploadSummary(
+      sheetVisible: sheetVisible,
+      itemCount: count,
+      uploadedCount: uploadedCount,
+      failedCount: failedCount,
+      activeCount: activeCount,
+      waitingForWifi: waitingForWifi,
+      uploading: uploading,
+      stillGeneratingThumbs: allUploaded && stillGeneratingThumbs,
+      progressPermille: progressPermille,
+      totalBytes: totalBytes,
+      completedBytes: completedBytes,
+    );
+  }
+
   Future<void> pickFiles({String? folderId, BuildContext? context}) async {
     activeFolderId = folderId;
     await _handlePicker(
@@ -167,6 +212,7 @@ class UploadController extends ChangeNotifier {
       } else if (res.items != null) {
         uploadSessionId = res.sessionId;
         items = res.items!;
+        _bumpItemsVersion();
         sheetVisible = items.isNotEmpty;
         _syncOptimistic();
         // The picker completes before this optional UI confirmation; callers
@@ -244,6 +290,7 @@ class UploadController extends ChangeNotifier {
         ),
       ),
     ];
+    _bumpItemsVersion();
     _syncOptimistic();
     _notifyListeners();
     _pumpQueue();
@@ -283,6 +330,7 @@ class UploadController extends ChangeNotifier {
           (item) => !paused.any((paused) => paused.localId == item.localId),
         )
         .toList();
+    _bumpItemsVersion();
     _syncOptimistic();
     _updateUploadingFlag();
     _notifyListeners();
@@ -365,6 +413,7 @@ class UploadController extends ChangeNotifier {
       unawaited(_safeDeleteLocalFile(item.path));
     }
     items = items.where((i) => i.localId != localId).toList();
+    _bumpItemsVersion();
     if (items.isEmpty) {
       sheetVisible = false;
       uploadSessionId = null;
@@ -386,11 +435,12 @@ class UploadController extends ChangeNotifier {
       }
     }
     items = [];
+    _bumpItemsVersion();
     sheetVisible = false;
     uploadSessionId = null;
     error = null;
     _syncOptimistic();
-    _notifyListeners();
+    _notifyListeners(force: true);
   }
 
   void resetTerminalForAccountSwitch() {
@@ -402,13 +452,14 @@ class UploadController extends ChangeNotifier {
     _pollingBatchIds.clear();
     _cancelCompletionTimers();
     items = [];
+    _bumpItemsVersion();
     sheetVisible = false;
     uploadSessionId = null;
     activeFolderId = null;
     error = null;
     uploading = false;
     _syncOptimistic();
-    _notifyListeners();
+    _notifyListeners(force: true);
   }
 
   Future<void> enableMobileDataUploads() async {
@@ -502,10 +553,20 @@ class UploadController extends ChangeNotifier {
     }
   }
 
-  void _notifyListeners() {
-    if (!_disposed) {
+  void _notifyListeners({bool force = false}) {
+    if (_disposed) return;
+    if (force) {
+      _notifyScheduled = false;
       notifyListeners();
+      return;
     }
+    if (_notifyScheduled) return;
+    _notifyScheduled = true;
+    scheduleMicrotask(() {
+      _notifyScheduled = false;
+      if (_disposed) return;
+      notifyListeners();
+    });
   }
 
   @override
@@ -516,6 +577,7 @@ class UploadController extends ChangeNotifier {
     }
     _connectivitySubscription?.cancel();
     _cancelCompletionTimers();
+    _optimisticSyncTimer?.cancel();
     _pollingBatchIds.clear();
     for (final token in _cancelTokensByLocalId.values) {
       token.cancel();

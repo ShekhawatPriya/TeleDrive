@@ -223,3 +223,77 @@ extension UploadItemMapping on UploadItem {
     );
   }
 }
+
+class UploadSummary {
+  const UploadSummary({
+    required this.sheetVisible,
+    required this.itemCount,
+    required this.uploadedCount,
+    required this.failedCount,
+    required this.activeCount,
+    required this.waitingForWifi,
+    required this.uploading,
+    required this.stillGeneratingThumbs,
+    required this.progressPermille,
+    required this.totalBytes,
+    required this.completedBytes,
+  });
+
+  final bool sheetVisible;
+  final int itemCount;
+  final int uploadedCount;
+  final int failedCount;
+  final int activeCount;
+  final bool waitingForWifi;
+  final bool uploading;
+  final bool stillGeneratingThumbs;
+  final int progressPermille;
+  final int totalBytes;
+  final int completedBytes;
+
+  double get overallProgress => progressPermille / 1000.0;
+
+  @override
+  bool operator ==(Object other) =>
+      other is UploadSummary &&
+      other.sheetVisible == sheetVisible &&
+      other.itemCount == itemCount &&
+      other.uploadedCount == uploadedCount &&
+      other.failedCount == failedCount &&
+      other.activeCount == activeCount &&
+      other.waitingForWifi == waitingForWifi &&
+      other.uploading == uploading &&
+      other.stillGeneratingThumbs == stillGeneratingThumbs &&
+      other.progressPermille == progressPermille &&
+      other.totalBytes == totalBytes &&
+      other.completedBytes == completedBytes;
+
+  @override
+  int get hashCode => Object.hash(
+    sheetVisible,
+    itemCount,
+    uploadedCount,
+    failedCount,
+    activeCount,
+    waitingForWifi,
+    uploading,
+    stillGeneratingThumbs,
+    progressPermille,
+    totalBytes,
+    completedBytes,
+  );
+}
+
+class UploadItemIdsSnapshot {
+  const UploadItemIdsSnapshot(this.ids, this.version);
+
+  final List<String> ids;
+  final int version;
+
+  @override
+  bool operator ==(Object other) =>
+      other is UploadItemIdsSnapshot && other.version == version;
+
+  @override
+  int get hashCode => version;
+}

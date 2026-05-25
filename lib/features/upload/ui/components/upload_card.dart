@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/file_type_detector.dart';
+import '../../../../core/utils/iterable_ext.dart';
 import '../../upload_controller.dart';
 import '../../upload_models.dart';
 import '../upload_status_label.dart';
@@ -13,11 +14,17 @@ import 'upload_thumb_slot.dart';
 /// Features high typographic scannability, clear hierarchical arrangement,
 /// and trailing controls for cancelling, retrying, or dismissing items.
 class UploadCard extends ConsumerWidget {
-  const UploadCard({required this.item, super.key});
-  final UploadItem item;
+  const UploadCard({required this.localId, super.key});
+  final String localId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final item = ref.watch(
+      uploadControllerProvider.select(
+        (c) => c.items.firstWhereOrNull((i) => i.localId == localId),
+      ),
+    );
+    if (item == null) return const SizedBox.shrink();
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 

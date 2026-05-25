@@ -1,5 +1,12 @@
 part of '../upload_controller.dart';
 
+enum _OptimisticBucket {
+  activeOrQueued,
+  terminalFailed,
+  uploadedWithoutFileId,
+  uploadedWithFileId,
+}
+
 extension _UploadStateSync on UploadController {
   UploadItem? _findItem(String localId) =>
       items.where((i) => i.localId == localId).firstOrNull;
@@ -27,6 +34,36 @@ extension _UploadStateSync on UploadController {
     UploadStatus.failed,
   }.contains(status);
 
+  void _bumpItemsVersion() {
+    _itemsVersion++;
+  }
+
+  _OptimisticBucket _bucketFor(UploadItem item) {
+    final s = item.status;
+    if (s == UploadStatus.cancelled || s == UploadStatus.failed) {
+      return _OptimisticBucket.terminalFailed;
+    }
+    if (s == UploadStatus.uploaded) {
+      return item.fileId == null
+          ? _OptimisticBucket.uploadedWithoutFileId
+          : _OptimisticBucket.uploadedWithFileId;
+    }
+    return _OptimisticBucket.activeOrQueued;
+  }
+
+  ({String localId, _OptimisticBucket bucket, int? fileId, bool thumbnailReady})
+  _optimisticSignature(UploadItem item) => (
+    localId: item.localId,
+    bucket: _bucketFor(item),
+    fileId: item.fileId,
+    thumbnailReady: item.thumbnailReady,
+  );
+
+  Set<
+    ({String localId, _OptimisticBucket bucket, int? fileId, bool thumbnailReady})
+  >
+  _optimisticSignatureSet() => items.map(_optimisticSignature).toSet();
+
   void _setItem(
     String localId, {
     String? name,
@@ -41,7 +78,9 @@ extension _UploadStateSync on UploadController {
     bool? cancelRequested,
     bool? thumbnailReady,
     String? thumbnailUrl,
+    bool notify = true,
   }) {
+    final before = notify ? _optimisticSignatureSet() : null;
     items = items
         .map(
           (i) => i.localId == localId
@@ -62,9 +101,20 @@ extension _UploadStateSync on UploadController {
               : i,
         )
         .toList();
+    if (!notify) return;
+    final isTerminal = status != null && _isTerminalStatus(status);
+    _syncOptimisticThrottled(
+      previousSignatures: before,
+      forceImmediate: isTerminal,
+    );
+    _updateUploadingFlag();
+    _notifyListeners(force: isTerminal);
+  }
+
+  void _flushSetItemBatch({bool force = false}) {
     _syncOptimistic();
     _updateUploadingFlag();
-    _notifyListeners();
+    _notifyListeners(force: force);
   }
 
   // ignore: unused_element
@@ -131,11 +181,12 @@ extension _UploadStateSync on UploadController {
         }
       }
       items = [];
+      _bumpItemsVersion();
       sheetVisible = false;
       uploadSessionId = null;
       error = null;
       _syncOptimistic();
-      _notifyListeners();
+      _notifyListeners(force: true);
     });
   }
 
@@ -152,6 +203,8 @@ extension _UploadStateSync on UploadController {
   }
 
   void _syncOptimistic() {
+    _optimisticSyncTimer?.cancel();
+    _optimisticSyncTimer = null;
     final serverFileIds = _drive.state.files
         .where((f) => !f.isOptimistic)
         .map((f) => f.id)
@@ -168,6 +221,40 @@ extension _UploadStateSync on UploadController {
           .map((i) => i.toDriveFile(activeFolderId))
           .toList(),
     );
+  }
+
+  void _syncOptimisticThrottled({
+    Set<
+      ({
+        String localId,
+        _OptimisticBucket bucket,
+        int? fileId,
+        bool thumbnailReady,
+      })
+    >?
+    previousSignatures,
+    bool forceImmediate = false,
+  }) {
+    if (forceImmediate) {
+      _syncOptimistic();
+      return;
+    }
+    final after = _optimisticSignatureSet();
+    final structuralChange =
+        previousSignatures == null ||
+        previousSignatures.length != after.length ||
+        !previousSignatures.containsAll(after) ||
+        !after.containsAll(previousSignatures);
+    if (structuralChange) {
+      _syncOptimistic();
+      return;
+    }
+    if (_optimisticSyncTimer?.isActive == true) return;
+    _optimisticSyncTimer = Timer(const Duration(milliseconds: 250), () {
+      _optimisticSyncTimer = null;
+      if (_disposed) return;
+      _syncOptimistic();
+    });
   }
 
   Future<void> _safeDeleteLocalFile(String path) async {

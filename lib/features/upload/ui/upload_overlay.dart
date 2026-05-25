@@ -15,12 +15,14 @@ class UploadOverlay extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final upload = ref.watch(uploadControllerProvider);
-    if (!upload.sheetVisible || upload.items.isEmpty) {
+    final summary = ref.watch(
+      uploadControllerProvider.select((c) => c.summary),
+    );
+    if (!summary.sheetVisible || summary.itemCount == 0) {
       return const SizedBox.shrink();
     }
     return UploadCollapsedBar(
-      upload: upload,
+      summary: summary,
       onTap: () => showModalBottomSheet(
         context: context,
         isScrollControlled: true,

@@ -13,7 +13,12 @@ class UploadSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final upload = ref.watch(uploadControllerProvider);
+    final summary = ref.watch(
+      uploadControllerProvider.select((c) => c.summary),
+    );
+    final idsSnapshot = ref.watch(
+      uploadControllerProvider.select((c) => c.itemIdsSnapshot),
+    );
 
     ref.listen<UploadController>(uploadControllerProvider, (previous, next) {
       if ((!next.sheetVisible || next.items.isEmpty) &&
@@ -61,8 +66,8 @@ class UploadSheet extends ConsumerWidget {
                     ),
                   ),
                 ),
-                UploadSheetHeader(upload: upload),
-                if (upload.waitingForWifi)
+                UploadSheetHeader(summary: summary),
+                if (summary.waitingForWifi)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
                     child: FilledButton.tonalIcon(
@@ -82,14 +87,14 @@ class UploadSheet extends ConsumerWidget {
                       AppSpacing.md,
                       AppSpacing.lg,
                     ),
-                    itemCount: upload.items.length,
+                    itemCount: idsSnapshot.ids.length,
                     separatorBuilder: (_, __) =>
                         const SizedBox(height: AppSpacing.sm),
                     itemBuilder: (_, i) {
-                      final item = upload.items[i];
+                      final localId = idsSnapshot.ids[i];
                       return UploadCard(
-                        key: ValueKey(item.localId),
-                        item: item,
+                        key: ValueKey(localId),
+                        localId: localId,
                       );
                     },
                   ),

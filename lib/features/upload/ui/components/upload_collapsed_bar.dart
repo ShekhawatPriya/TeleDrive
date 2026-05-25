@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/file_type_detector.dart';
-import '../../upload_controller.dart';
+import '../../upload_models.dart';
 import 'upload_progress_bar.dart';
 
 /// Collapsed pill that floats above the FAB while uploads are running. Tapping
 /// expands the modal upload sheet.
 class UploadCollapsedBar extends StatelessWidget {
   const UploadCollapsedBar({
-    required this.upload,
+    required this.summary,
     required this.onTap,
     super.key,
   });
 
-  final UploadController upload;
+  final UploadSummary summary;
   final VoidCallback onTap;
 
   @override
@@ -22,19 +22,14 @@ class UploadCollapsedBar extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    final total = upload.items.length;
-    final done = upload.uploadedCount;
+    final total = summary.itemCount;
+    final done = summary.uploadedCount;
     final completed = total > 0 && done == total;
-    final waitingForWifi = upload.waitingForWifi;
-    final progress = total == 0
-        ? 0.0
-        : upload.items.fold<double>(0, (s, i) => s + i.progress) / total;
+    final waitingForWifi = summary.waitingForWifi;
+    final progress = summary.overallProgress;
 
-    final totalBytes = upload.items.fold<int>(0, (s, i) => s + i.size);
-    final completedBytes = upload.items.fold<int>(
-      0,
-      (s, i) => s + (i.progress * i.size).round(),
-    );
+    final totalBytes = summary.totalBytes;
+    final completedBytes = summary.completedBytes;
 
     return Material(
       color: scheme.surfaceContainer,

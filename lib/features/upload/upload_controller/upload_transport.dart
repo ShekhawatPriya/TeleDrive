@@ -102,7 +102,12 @@ extension _UploadTransport on UploadController {
   }) async {
     final scope = _backupScope();
     for (final item in batchItems) {
-      _setItem(item.localId, status: UploadStatus.failed, error: message);
+      _setItem(
+        item.localId,
+        status: UploadStatus.failed,
+        error: message,
+        notify: false,
+      );
       _runningLocalIds.remove(item.localId);
       if (scope != null && item.backupFingerprint != null) {
         await _backupAssetStore.mark(
@@ -114,7 +119,7 @@ extension _UploadTransport on UploadController {
         );
       }
     }
-    _syncOptimistic();
+    _flushSetItemBatch(force: true);
     await _refreshIfSettled();
     _pumpQueue();
   }
@@ -159,8 +164,10 @@ extension _UploadTransport on UploadController {
         httpProgress: 0,
         serverProgress: 0,
         clearError: true,
+        notify: false,
       );
     }
+    _flushSetItemBatch();
 
     try {
       TelegramUploadTarget? preparedTarget;
@@ -228,6 +235,7 @@ extension _UploadTransport on UploadController {
             item.localId,
             status: UploadStatus.failed,
             error: 'Backend did not create an upload slot for this file.',
+            notify: false,
           );
           continue;
         }
@@ -237,8 +245,10 @@ extension _UploadTransport on UploadController {
           batchId: batchId,
           fileId: (file['fileId'] as num?)?.toInt(),
           uploadJobId: (file['uploadJobId'] as num?)?.toInt(),
+          notify: false,
         );
       }
+      _flushSetItemBatch();
 
       for (final item in batchItems) {
         final latest = _findItem(item.localId);
@@ -444,7 +454,7 @@ extension _UploadTransport on UploadController {
       for (final item in batchItems) {
         _runningLocalIds.remove(item.localId);
       }
-      _syncOptimistic();
+      _flushSetItemBatch(force: true);
       await _refreshIfSettled();
       _pumpQueue();
     }
