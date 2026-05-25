@@ -9,6 +9,9 @@ import android.graphics.ImageDecoder
 import android.media.ThumbnailUtils
 import android.os.Build
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
+import android.os.Process
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.Size
@@ -20,6 +23,8 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
     private val channelName = "teledrive/tdlib"
@@ -29,6 +34,13 @@ class MainActivity : FlutterActivity() {
     private var pendingDeleteResult: MethodChannel.Result? = null
     private var pendingDeleteUris: List<Uri> = emptyList()
     private lateinit var tdlibBridge: TdlibBridge
+    private val derivativeExecutor: ExecutorService = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "teledrive-media-derivative").apply { isDaemon = true }
+    }
+    private val ioExecutor: ExecutorService = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "teledrive-media-io").apply { isDaemon = true }
+    }
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -83,18 +95,50 @@ class MainActivity : FlutterActivity() {
     private fun handleMediaCall(call: MethodCall, result: MethodChannel.Result) {
         val args = call.arguments as? Map<*, *> ?: emptyMap<String, Any?>()
         val typedArgs = args.entries.associate { "${it.key}" to it.value }
-        try {
-            when (call.method) {
-                "createImageDerivative" -> result.success(createImageDerivative(typedArgs))
-                "createVideoThumbnail" -> result.success(createVideoThumbnail(typedArgs))
-                "listGalleryMedia" -> result.success(listGalleryMedia(typedArgs))
-                "copyContentUriToFile" -> result.success(copyContentUriToFile(typedArgs))
-                "deleteGalleryMedia" -> deleteGalleryMedia(typedArgs, result)
-                else -> result.notImplemented()
-            }
-        } catch (error: Throwable) {
-            result.error("media_derivative_failed", error.message ?: "Media derivative failed.", null)
+        when (call.method) {
+            "createImageDerivative" -> runMediaTask(derivativeExecutor, result) { createImageDerivative(typedArgs) }
+            "createVideoThumbnail" -> runMediaTask(derivativeExecutor, result) { createVideoThumbnail(typedArgs) }
+            "listGalleryMedia" -> runMediaTask(ioExecutor, result) { listGalleryMedia(typedArgs) }
+            "copyContentUriToFile" -> runMediaTask(ioExecutor, result) { copyContentUriToFile(typedArgs) }
+            "deleteGalleryMedia" -> deleteGalleryMedia(typedArgs, result)
+            else -> result.notImplemented()
         }
+    }
+
+    private inline fun runMediaTask(
+        executor: ExecutorService,
+        result: MethodChannel.Result,
+        crossinline block: () -> Any?,
+    ) {
+        executor.execute {
+            try {
+                Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+            } catch (_: Throwable) {
+            }
+            val outcome: Result<Any?> = try {
+                Result.success(block())
+            } catch (t: Throwable) {
+                Result.failure(t)
+            }
+            mainHandler.post {
+                outcome.fold(
+                    onSuccess = { result.success(it) },
+                    onFailure = { error ->
+                        result.error(
+                            "media_derivative_failed",
+                            error.message ?: "Media derivative failed.",
+                            null,
+                        )
+                    },
+                )
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        derivativeExecutor.shutdown()
+        ioExecutor.shutdown()
+        super.onDestroy()
     }
 
     private fun deleteGalleryMedia(args: Map<String, Any?>, result: MethodChannel.Result) {

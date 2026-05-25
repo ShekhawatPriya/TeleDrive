@@ -84,6 +84,7 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
   final SecureStorageService _storage;
   final _uuid = const Uuid();
   final Map<String, StreamController<TelegramTransferProgress>> _progress = {};
+  final Set<String> _observedTransferIds = {};
   // Kept to keep the native EventChannel subscription alive for bridge events.
   // ignore: unused_field
   StreamSubscription<dynamic>? _eventSubscription;
@@ -281,9 +282,21 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
 
   @override
   Stream<TelegramTransferProgress> watchProgress(String transferId) {
-    return _progress
-        .putIfAbsent(transferId, () => StreamController.broadcast())
-        .stream;
+    _observedTransferIds.add(transferId);
+    final controller = _progress.putIfAbsent(transferId, () {
+      late StreamController<TelegramTransferProgress> c;
+      c = StreamController<TelegramTransferProgress>.broadcast(
+        onCancel: () {
+          if (!c.hasListener) {
+            _observedTransferIds.remove(transferId);
+            _progress.remove(transferId);
+            c.close();
+          }
+        },
+      );
+      return c;
+    });
+    return controller.stream;
   }
 
   @override
@@ -291,6 +304,7 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
     await _channel
         .invokeMethod<void>('cancelTransfer', {'transferId': transferId})
         .catchError((_) {});
+    _closeTransferController(transferId);
   }
 
   @override
@@ -354,10 +368,24 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
   }
 
   void _emit(TelegramTransferProgress event) {
-    _progress
-        .putIfAbsent(event.transferId, () => StreamController.broadcast())
-        .add(event);
+    if (!_observedTransferIds.contains(event.transferId)) return;
+    final controller = _progress[event.transferId];
+    if (controller == null || controller.isClosed) return;
+    controller.add(event);
   }
+
+  void _closeTransferController(String transferId) {
+    _observedTransferIds.remove(transferId);
+    final controller = _progress.remove(transferId);
+    if (controller != null && !controller.isClosed) {
+      controller.close();
+    }
+  }
+
+  bool _isTerminalState(TelegramTransferState state) =>
+      state == TelegramTransferState.completed ||
+      state == TelegramTransferState.cancelled ||
+      state == TelegramTransferState.failed;
 
   void _onNativeEvent(dynamic event) {
     if (event is! Map) return;
@@ -365,15 +393,20 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
     if (data['type'] != 'progress') return;
     final transferId = data['transferId'] as String?;
     if (transferId == null) return;
+    if (!_observedTransferIds.contains(transferId)) return;
+    final state = _stateFromNative('${data['state'] ?? ''}');
     _emit(
       TelegramTransferProgress(
         transferId: transferId,
-        state: _stateFromNative('${data['state'] ?? ''}'),
+        state: state,
         bytesDone: _intish(data['bytesDone']) ?? 0,
         totalBytes: _intish(data['totalBytes']),
         message: data['message'] as String?,
       ),
     );
+    if (_isTerminalState(state)) {
+      _closeTransferController(transferId);
+    }
   }
 
   TelegramTransferState _stateFromNative(String value) {

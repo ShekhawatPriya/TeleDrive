@@ -125,6 +125,16 @@ class ClientDerivativeGenerator {
         requiresPreview: requiresPreview,
       );
     }
+    if (Platform.isAndroid) {
+      final native = await _tryNativeImageSet(
+        localId: localId,
+        originalPath: originalPath,
+        originalFilename: originalFilename,
+        requiresThumbnail: requiresThumbnail,
+        requiresPreview: requiresPreview,
+      );
+      if (native != null) return native;
+    }
     final bytes = await File(originalPath).readAsBytes();
     final decoded = _tryDecodeImage(bytes);
     if (decoded == null) return const ClientDerivativeSet();
@@ -149,6 +159,40 @@ class ClientDerivativeGenerator {
             quality: 86,
           )
         : null;
+    return ClientDerivativeSet(thumbnail: thumbnail, preview: preview);
+  }
+
+  Future<ClientDerivativeSet?> _tryNativeImageSet({
+    required String localId,
+    required String originalPath,
+    required String originalFilename,
+    required bool requiresThumbnail,
+    required bool requiresPreview,
+  }) async {
+    ClientDerivativeAsset? thumbnail;
+    if (requiresThumbnail) {
+      thumbnail = await _createNativeImageDerivative(
+        localId: localId,
+        originalPath: originalPath,
+        originalFilename: originalFilename,
+        variant: 'thumbnail',
+        maxEdge: thumbnailMaxEdge,
+        quality: 76,
+      );
+      if (thumbnail == null) return null;
+    }
+    ClientDerivativeAsset? preview;
+    if (requiresPreview) {
+      preview = await _createNativeImageDerivative(
+        localId: localId,
+        originalPath: originalPath,
+        originalFilename: originalFilename,
+        variant: 'preview',
+        maxEdge: previewMaxEdge,
+        quality: 86,
+      );
+      if (preview == null) return null;
+    }
     return ClientDerivativeSet(thumbnail: thumbnail, preview: preview);
   }
 

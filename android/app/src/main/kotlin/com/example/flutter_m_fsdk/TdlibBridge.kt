@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import io.flutter.plugin.common.EventChannel
 import org.drinkless.tdlib.JsonClient
 import org.json.JSONArray
@@ -57,6 +58,11 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
     private val transfers = ConcurrentHashMap<String, Transfer>()
     private val authorizationWaiters = CopyOnWriteArrayList<AuthorizationWaiter>()
     private val connectionWaiters = CopyOnWriteArrayList<ConnectionWaiter>()
+    private val lastEmittedAtByTransferId = ConcurrentHashMap<String, Long>()
+    private val lastEmittedFractionByTransferId = ConcurrentHashMap<String, Int>()
+    private val lastEmittedStateByTransferId = ConcurrentHashMap<String, String>()
+    private val terminalStates = setOf("completed", "failed", "cancelled")
+    private val progressMinIntervalMs = 250L
 
     @Volatile private var eventSink: EventChannel.EventSink? = null
     @Volatile private var clientId: Int = 0
@@ -874,6 +880,29 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
     }
 
     private fun emitProgress(transferId: String, state: String, bytesDone: Long, totalBytes: Long?, message: String?) {
+        if (state in terminalStates) {
+            lastEmittedAtByTransferId.remove(transferId)
+            lastEmittedFractionByTransferId.remove(transferId)
+            lastEmittedStateByTransferId.remove(transferId)
+            // fall through — terminal events ALWAYS post, never throttled
+        } else {
+            val prevState = lastEmittedStateByTransferId[transferId]
+            val stateChanged = prevState != state
+            val now = SystemClock.uptimeMillis()
+            val last = lastEmittedAtByTransferId[transferId] ?: 0L
+            val frac = if (totalBytes != null && totalBytes > 0L) {
+                ((bytesDone * 1000L) / totalBytes).toInt().coerceIn(0, 1000)
+            } else {
+                -1
+            }
+            val lastFrac = lastEmittedFractionByTransferId[transferId] ?: -1
+            val withinInterval = now - last < progressMinIntervalMs
+            val bigJump = frac >= 0 && lastFrac >= 0 && kotlin.math.abs(frac - lastFrac) >= 10
+            if (!stateChanged && last != 0L && withinInterval && !bigJump) return
+            lastEmittedAtByTransferId[transferId] = now
+            if (frac >= 0) lastEmittedFractionByTransferId[transferId] = frac
+            lastEmittedStateByTransferId[transferId] = state
+        }
         val event = mapOf(
             "type" to "progress",
             "transferId" to transferId,
