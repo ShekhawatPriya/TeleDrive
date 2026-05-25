@@ -8,7 +8,6 @@ import 'free_up_space/free_up_space_controller.dart';
 
 part 'free_up_space/free_up_space_components.dart';
 part 'free_up_space/free_up_space_dialog.dart';
-part 'free_up_space/free_up_space_illustration.dart';
 
 class FreeUpSpaceScreen extends ConsumerStatefulWidget {
   const FreeUpSpaceScreen({super.key});
@@ -74,9 +73,9 @@ class _FreeUpSpaceScreenState extends ConsumerState<FreeUpSpaceScreen> {
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.lg,
-            AppSpacing.sm,
+            AppSpacing.md,
             AppSpacing.lg,
-            120,
+            AppSpacing.xl,
           ),
           children: [
             _FreeUpHeroCard(state: state),
@@ -114,9 +113,9 @@ class _FreeUpSpaceScreenState extends ConsumerState<FreeUpSpaceScreen> {
               const _FreeUpLimitedAccessCard(),
             ],
             const SizedBox(height: AppSpacing.md),
-            const _FreeUpSafetyCard(),
-            const SizedBox(height: AppSpacing.md),
             _FreeUpBreakdownCard(state: state),
+            const SizedBox(height: AppSpacing.md),
+            const _FreeUpSafetyCard(),
             const SizedBox(height: AppSpacing.md),
             const _FreeUpExplanationCard(),
           ],
