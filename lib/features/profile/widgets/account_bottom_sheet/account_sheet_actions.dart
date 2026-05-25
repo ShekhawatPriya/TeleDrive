@@ -22,47 +22,37 @@ extension _AccountSheetActions on _AccountBottomSheetState {
               )
             : BorderSide.none,
       ),
-      child: SizedBox(
-        height:
-            (_AccountBottomSheetState._compactActionRowHeight *
-                actions.length) +
-            (_AccountBottomSheetState._compactActionDividerHeight *
-                (actions.length - 1)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            for (var i = 0; i < actions.length; i++) ...[
+            for (var i = 0; i < actions.length; i++)
               _buildCompactPillRow(
                 context,
                 icon: actions[i].icon,
                 label: actions[i].label,
                 onTap: actions[i].onTap,
               ),
-              if (i != actions.length - 1) _buildCompactPillDivider(context),
-            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCompactPillDivider(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return SizedBox(
-      height: _AccountBottomSheetState._compactActionDividerHeight,
-      width: double.infinity,
-      child: ColoredBox(color: scheme.surface),
-    );
-  }
-
   Widget _buildCompactPillRow(
     BuildContext context, {
-    required IconData icon,
+    required Widget icon,
     required String label,
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
+
+    final iconBackground = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.06);
 
     return Material(
       color: Colors.transparent,
@@ -73,14 +63,20 @@ extension _AccountSheetActions on _AccountBottomSheetState {
         child: SizedBox(
           height: _AccountBottomSheetState._compactActionRowHeight,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            padding: const EdgeInsets.symmetric(horizontal: 14.0),
             child: Row(
               children: [
-                SizedBox(
-                  width: 28,
-                  child: Icon(icon, color: scheme.onSurfaceVariant, size: 26),
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: iconBackground,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: icon,
                 ),
-                const SizedBox(width: AppSpacing.xs),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Text(
                     label,
@@ -89,9 +85,15 @@ extension _AccountSheetActions on _AccountBottomSheetState {
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: scheme.onSurface,
                       fontWeight: FontWeight.w500,
+                      fontSize: 15.5,
                       height: 1.1,
                     ),
                   ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
+                  size: 22,
                 ),
               ],
             ),

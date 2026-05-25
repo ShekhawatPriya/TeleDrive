@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_config.dart';
@@ -39,7 +40,7 @@ class _CompactPillAction {
     required this.onTap,
   });
 
-  final IconData icon;
+  final Widget icon;
   final String label;
   final VoidCallback onTap;
 }
@@ -49,8 +50,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
   static const _sectionRadius = 32.0;
   static const _sectionSpacing = 14.0;
   static const _sheetHorizontalPadding = AppSpacing.lg;
-  static const _compactActionRowHeight = 54.0;
-  static const _compactActionDividerHeight = 3.0;
+  static const _compactActionRowHeight = 68.0;
 
   bool _isExpanded = false;
 
@@ -153,28 +153,57 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                         context,
                         actions: [
                           _CompactPillAction(
-                            icon: Icons.phonelink_erase_rounded,
+                            icon: Image.asset(
+                              'assets/icon/icons/broom.png',
+                              width: 22,
+                              height: 22,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
                             label: 'Free up space on this device',
                             onTap: () {
                               context.safePush('/profile/free-up-space');
                             },
                           ),
                           _CompactPillAction(
-                            icon: Icons.settings_outlined,
+                            icon: Icon(
+                              Icons.settings_outlined,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              size: 22,
+                            ),
                             label: 'Settings',
                             onTap: () {
                               context.safePush('/settings');
                             },
                           ),
                           _CompactPillAction(
-                            icon: Icons.analytics_outlined,
+                            icon: SvgPicture.asset(
+                              'assets/icon/icons/add_chart_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg',
+                              width: 22,
+                              height: 22,
+                              colorFilter: ColorFilter.mode(
+                                Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                                BlendMode.srcIn,
+                              ),
+                            ),
                             label: 'My Data in Telegram Drive',
                             onTap: () {
                               context.safePush('/profile/my-data');
                             },
                           ),
                           _CompactPillAction(
-                            icon: Icons.help_outline_rounded,
+                            icon: Icon(
+                              Icons.help_outline_rounded,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              size: 22,
+                            ),
                             label: 'Help & Feedback',
                             onTap: () {
                               _showHelpFeedbackDialog(context);
