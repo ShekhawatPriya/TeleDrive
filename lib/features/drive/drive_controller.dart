@@ -155,7 +155,11 @@ class DriveController extends ChangeNotifier {
       }
       _filesMerged = merged;
       _fileById = fileById;
-      _filesByParent = filesByParent;
+      _filesByParent = _preservePerParentIdentity<String?, DriveFile>(
+        previous: _filesByParent,
+        next: filesByParent,
+        equal: _filesEqual,
+      );
     }
     if (mediaDirty || recentDirty) {
       final mediaById = <String, DriveFile>{};
@@ -178,13 +182,86 @@ class DriveController extends ChangeNotifier {
         (foldersByParent[f.parentId] ??= <DriveFolder>[]).add(f);
       }
       _folderById = folderById;
-      _foldersByParent = foldersByParent;
+      _foldersByParent = _preservePerParentIdentity<String?, DriveFolder>(
+        previous: _foldersByParent,
+        next: foldersByParent,
+        equal: _foldersEqual,
+      );
     }
     _lastFilesRef = state.files;
     _lastMediaRef = state.mediaFiles;
     _lastFoldersRef = state.folders;
     _lastRecentRef = _recent;
   }
+
+  static Map<K, List<V>> _preservePerParentIdentity<K, V>({
+    required Map<K, List<V>> previous,
+    required Map<K, List<V>> next,
+    required bool Function(V a, V b) equal,
+  }) {
+    if (previous.isEmpty || next.isEmpty) return next;
+    final preserved = Map<K, List<V>>.of(next);
+    for (final key in next.keys) {
+      final old = previous[key];
+      if (old == null) continue;
+      final cur = next[key]!;
+      if (identical(old, cur)) continue;
+      if (old.length != cur.length) continue;
+      var same = true;
+      for (var i = 0; i < cur.length; i++) {
+        if (!equal(old[i], cur[i])) {
+          same = false;
+          break;
+        }
+      }
+      if (same) preserved[key] = old;
+    }
+    return preserved;
+  }
+
+  static bool _filesEqual(DriveFile a, DriveFile b) =>
+      identical(a, b) ||
+      (a.id == b.id &&
+          a.name == b.name &&
+          a.parentId == b.parentId &&
+          a.kind == b.kind &&
+          a.size == b.size &&
+          a.modifiedAt == b.modifiedAt &&
+          a.createdAt == b.createdAt &&
+          a.starred == b.starred &&
+          a.shared == b.shared &&
+          a.mimeType == b.mimeType &&
+          a.uploadStatus == b.uploadStatus &&
+          a.uploadError == b.uploadError &&
+          a.thumbnailUrl == b.thumbnailUrl &&
+          a.previewUrl == b.previewUrl &&
+          a.streamUrl == b.streamUrl &&
+          a.downloadUrl == b.downloadUrl &&
+          a.localUri == b.localUri &&
+          a.thumbnailStatus == b.thumbnailStatus &&
+          a.previewStatus == b.previewStatus &&
+          a.thumbnailVersion == b.thumbnailVersion &&
+          a.previewVersion == b.previewVersion &&
+          a.widthPx == b.widthPx &&
+          a.heightPx == b.heightPx &&
+          a.duration == b.duration &&
+          a.lastAccessedAt == b.lastAccessedAt &&
+          a.isOptimistic == b.isOptimistic &&
+          a.localId == b.localId);
+
+  static bool _foldersEqual(DriveFolder a, DriveFolder b) =>
+      identical(a, b) ||
+      (a.id == b.id &&
+          a.name == b.name &&
+          a.parentId == b.parentId &&
+          a.modifiedAt == b.modifiedAt &&
+          a.createdAt == b.createdAt &&
+          a.starred == b.starred &&
+          a.shared == b.shared &&
+          a.recursiveFileCount == b.recursiveFileCount &&
+          a.recursiveSize == b.recursiveSize &&
+          a.isOptimistic == b.isOptimistic &&
+          a.uploadError == b.uploadError);
 
   void setActiveFolderId(String? folderId) {
     if (state.activeFolderId == folderId) return;
