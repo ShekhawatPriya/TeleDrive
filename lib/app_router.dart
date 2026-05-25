@@ -29,20 +29,6 @@ import 'features/share/share_detail_screen.dart';
 import 'main_shell.dart';
 import 'shared/splash_screen.dart';
 
-bool _routeRequiresTdlib(String location) {
-  final path = Uri.tryParse(location)?.path ?? location;
-  return path == '/drive' ||
-      path.startsWith('/drive/') ||
-      path == '/photos' ||
-      path.startsWith('/photos/') ||
-      path == '/starred' ||
-      path.startsWith('/starred/') ||
-      path == '/shared' ||
-      path.startsWith('/shared/') ||
-      path.startsWith('/folder/') ||
-      path.startsWith('/file/');
-}
-
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.read(authControllerProvider);
   final tdlib = ref.read(tdlibSessionControllerProvider);
@@ -67,24 +53,18 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (currentRoute == '/login' && isAccountLoginMode) return null;
 
-      if (_routeRequiresTdlib(currentRoute) &&
-          !tdlib.isReadyForActiveUser &&
-          tdlib.state.status != TdlibSessionStatus.checking) {
-        if (currentRoute == '/tdlib-session') return null;
+      if (!tdlib.isReadyForActiveUser && currentRoute != '/tdlib-session') {
         final returnTo = state.uri.toString();
         return Uri(
           path: '/tdlib-session',
-          queryParameters: returnTo.isEmpty || returnTo == '/'
-              ? null
-              : {'returnTo': returnTo},
+          queryParameters: {
+            'mode': 'auto',
+            if (returnTo.isNotEmpty && returnTo != '/') 'returnTo': returnTo,
+          },
         ).toString();
       }
 
-      if (currentRoute == '/tdlib-session' && tdlib.isReadyForActiveUser) {
-        return auth.needsCommunityOnboarding ? '/community-setup' : '/drive';
-      }
-
-      if (auth.needsCommunityOnboarding) {
+      if (tdlib.isReadyForActiveUser && auth.needsCommunityOnboarding) {
         return currentRoute == '/community-setup' ? null : '/community-setup';
       }
       if (currentRoute == '/community-setup') return '/drive';
@@ -108,8 +88,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/welcome', builder: (_, __) => const LandingScreen()),
       GoRoute(
         path: '/tdlib-session',
-        builder: (_, state) =>
-            TdlibSessionScreen(returnTo: state.uri.queryParameters['returnTo']),
+        builder: (_, state) => TdlibSessionScreen(
+          mode: state.uri.queryParameters['mode'],
+          returnTo: state.uri.queryParameters['returnTo'],
+        ),
       ),
       GoRoute(
         path: '/community-setup',

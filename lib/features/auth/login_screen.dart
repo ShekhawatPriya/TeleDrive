@@ -141,15 +141,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             .verifyPassword(_attemptId!, _password.text.trim()),
       );
       if (data['token'] != null) {
-        await _completeLogin('${data['token']}', data);
+        await _completeLogin(
+          '${data['token']}',
+          data,
+          ephemeralCloudPassword: _password.text.trim(),
+        );
       }
     } catch (_) {}
   }
 
   Future<void> _completeLogin(
     String token,
-    Map<String, dynamic> authPayload,
-  ) async {
+    Map<String, dynamic> authPayload, {
+    String? ephemeralCloudPassword,
+  }) async {
     setState(() {
       _loading = true;
       _error = null;
@@ -157,6 +162,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       final auth = ref.read(authControllerProvider);
       await auth.login(token, authPayload: authPayload);
+      if (ephemeralCloudPassword != null && ephemeralCloudPassword.isNotEmpty) {
+        auth.rememberEphemeralTelegramCloudPassword(ephemeralCloudPassword);
+      }
       await _resetForCommittedAccount();
       if (!mounted) return;
 
@@ -186,6 +194,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
       }
     } catch (err) {
+      ref.read(authControllerProvider).clearEphemeralTelegramCloudPassword();
       final repo = ref.read(authRepositoryProvider);
       if (mounted) setState(() => _error = repo.api.errorMessage(err));
     } finally {
@@ -299,9 +308,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String _tdlibDestination(String returnTo) {
     return Uri(
       path: '/tdlib-session',
-      queryParameters: returnTo == '/tdlib-session'
-          ? null
-          : {'returnTo': returnTo},
+      queryParameters: {
+        'mode': 'auto',
+        if (returnTo != '/tdlib-session') 'returnTo': returnTo,
+      },
     ).toString();
   }
 

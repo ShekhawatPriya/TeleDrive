@@ -48,6 +48,7 @@ class AuthController extends ChangeNotifier {
   List<CommunityTarget> communityTargets = const [];
   AccountVault vault = const AccountVault.empty();
   String? error;
+  String? _ephemeralTelegramCloudPassword;
   DriveSnapshot? pendingDriveBootstrap;
   int largeUploadThresholdBytes = 200 * 1024 * 1024;
   int pendingDirectCommitCount = 0;
@@ -242,6 +243,20 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void rememberEphemeralTelegramCloudPassword(String value) {
+    _ephemeralTelegramCloudPassword = value;
+  }
+
+  String? takeEphemeralTelegramCloudPassword() {
+    final value = _ephemeralTelegramCloudPassword;
+    _ephemeralTelegramCloudPassword = null;
+    return value;
+  }
+
+  void clearEphemeralTelegramCloudPassword() {
+    _ephemeralTelegramCloudPassword = null;
+  }
+
   Future<void> switchToAccount(int userId) async {
     final selected = vault.accounts
         .where((account) => account.userId == userId)
@@ -307,6 +322,7 @@ class AuthController extends ChangeNotifier {
 
   Future<void> signOutAll() async {
     await _repo.clearAllAuthStorage();
+    clearEphemeralTelegramCloudPassword();
     _clearSessionState();
     notifyListeners();
   }
@@ -508,6 +524,7 @@ class AuthController extends ChangeNotifier {
   }
 
   void _clearSessionState({bool clearVault = true}) {
+    clearEphemeralTelegramCloudPassword();
     token = null;
     user = null;
     telegramConnected = null;

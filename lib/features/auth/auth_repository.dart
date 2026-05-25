@@ -11,6 +11,7 @@ import '../../models/account_vault.dart';
 import '../../models/auth_user.dart';
 import '../../models/drive_models.dart';
 import '../drive/drive_repository.dart';
+import 'tdlib_auto_authorization_models.dart';
 import 'models/community_onboarding.dart';
 
 class BackendFeatureFlags {
@@ -119,6 +120,26 @@ class AuthRepository {
       data: {'attempt_id': attemptId, 'password': password},
     );
     return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<TdlibCodeResolveResult> resolveTdlibCode({
+    required int telegramUserId,
+    required String phoneNumber,
+    required DateTime startedAt,
+    required String nonce,
+  }) async {
+    final res = await api.dio.post(
+      '/telegram/auth/tdlib-code/resolve',
+      data: {
+        'telegram_user_id': telegramUserId,
+        'phone_number': phoneNumber,
+        'started_at_ms': startedAt.toUtc().millisecondsSinceEpoch,
+        'nonce': nonce,
+      },
+    );
+    return TdlibCodeResolveResult.fromJson(
+      Map<String, dynamic>.from(res.data as Map),
+    );
   }
 
   Future<bool?> telegramStatus() async {
