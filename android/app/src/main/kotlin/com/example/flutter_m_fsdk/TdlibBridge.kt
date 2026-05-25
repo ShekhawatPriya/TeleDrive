@@ -62,10 +62,12 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
     @Volatile private var clientId: Int = 0
     @Volatile private var receiverStarted = false
     @Volatile private var config: Config? = null
+    @Volatile private var activeScopeKey: String? = null
     @Volatile private var authorizationState: String = "authorizationStateClosed"
     @Volatile private var connectionState: String = "connectionStateWaitingForNetwork"
     @Volatile private var loadError: Throwable? = null
     @Volatile private var loaded = false
+    private val configureLock = Any()
 
     init {
         try {
@@ -96,13 +98,92 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         val version = stringArg(args, "applicationVersion") ?: appVersion()
         File(databaseDirectory).mkdirs()
         File(filesDirectory).mkdirs()
-        config = Config(databaseDirectory, filesDirectory, apiId, apiHash, encryptionKey, telegramUserId, version)
-        ensureClient()
+        val nextScopeKey = "$databaseDirectory|$filesDirectory|$telegramUserId"
+        synchronized(configureLock) {
+            val previousScopeKey = activeScopeKey
+            if (clientId != 0 && previousScopeKey != null && previousScopeKey != nextScopeKey) {
+                closeAndResetClientBlocking(timeoutMs = 5000L)
+            }
+            config = Config(databaseDirectory, filesDirectory, apiId, apiHash, encryptionKey, telegramUserId, version)
+            activeScopeKey = nextScopeKey
+            ensureClient()
+        }
         return send(JSONObject().put("@type", "getAuthorizationState"))
             .thenCompose {
                 waitForAuthorizationState(
                     setOf(
                         "authorizationStateWaitPhoneNumber",
+                        "authorizationStateWaitCode",
+                        "authorizationStateWaitPassword",
+                        "authorizationStateReady"
+                    ),
+                    timeoutMs = 20000L
+                )
+            }
+            .thenApply { health() }
+    }
+
+    private fun closeAndResetClientBlocking(timeoutMs: Long) {
+        val previousClientId = clientId
+        if (previousClientId != 0) {
+            val closeWaiter = CompletableFuture<String>()
+            val waiter = AuthorizationWaiter(setOf("authorizationStateClosed"), closeWaiter)
+            authorizationWaiters.add(waiter)
+            try {
+                JsonClient.send(previousClientId, JSONObject().put("@type", "close").toString())
+                try {
+                    closeWaiter.get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+                } catch (_: Throwable) {
+                    // Swallow timeout/interruption — we will force-reset state anyway.
+                }
+            } finally {
+                authorizationWaiters.remove(waiter)
+            }
+        }
+        val reconfigured = TdlibException("tdlib_reconfigured", "TDLib account changed.")
+        for ((extra, future) in pending.toMap()) {
+            future.completeExceptionally(reconfigured)
+            pending.remove(extra)
+        }
+        for ((key, future) in sendWaiters.toMap()) {
+            future.completeExceptionally(reconfigured)
+            sendWaiters.remove(key)
+        }
+        completedSends.clear()
+        failedSends.clear()
+        for ((fileId, waiter) in downloads.toMap()) {
+            waiter.future.completeExceptionally(reconfigured)
+            downloads.remove(fileId)
+        }
+        for ((transferId, transfer) in transfers.toMap()) {
+            transfer.cancelled = true
+            emitProgress(transferId, "cancelled", 0, null, "TDLib account changed.")
+            transfers.remove(transferId)
+        }
+        val authWaitersSnapshot = authorizationWaiters.toList()
+        for (waiter in authWaitersSnapshot) {
+            if (authorizationWaiters.remove(waiter)) {
+                waiter.future.completeExceptionally(reconfigured)
+            }
+        }
+        val connWaitersSnapshot = connectionWaiters.toList()
+        for (waiter in connWaitersSnapshot) {
+            if (connectionWaiters.remove(waiter)) {
+                waiter.future.completeExceptionally(reconfigured)
+            }
+        }
+        clientId = 0
+        authorizationState = "authorizationStateClosed"
+        connectionState = "connectionStateWaitingForNetwork"
+    }
+
+    fun resendCode(): CompletableFuture<Map<String, Any?>> {
+        ensureReadyForAuth()
+        return waitForAuthorizationState(setOf("authorizationStateWaitCode"), timeoutMs = 5000L)
+            .thenCompose { send(JSONObject().put("@type", "resendAuthenticationCode")) }
+            .thenCompose {
+                waitForAuthorizationState(
+                    setOf(
                         "authorizationStateWaitCode",
                         "authorizationStateWaitPassword",
                         "authorizationStateReady"

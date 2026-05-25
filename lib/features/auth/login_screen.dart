@@ -5,11 +5,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../widgets/premium_toast.dart';
-import '../drive/drive_controller.dart';
-import '../drive/drive_tab_commands.dart';
-import '../search/search_controller.dart';
-import '../share/share_controller.dart';
-import '../upload/upload_controller.dart';
 import 'auth_controller.dart';
 import 'components/login_error_banner.dart';
 import 'components/login_step_indicator.dart';
@@ -161,15 +156,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
     try {
       final auth = ref.read(authControllerProvider);
+      final pendingMode = switch (widget.mode) {
+        LoginMode.normalLogin => PendingTdlibMode.normalLogin,
+        LoginMode.addAccount => PendingTdlibMode.addAccount,
+        LoginMode.reauthenticateAccount =>
+          PendingTdlibMode.reauthenticateAccount,
+      };
+      final candidatePhone =
+          '${_selectedCountry.dialCode}${_phone.text.replaceAll(RegExp(r'\s+'), '')}';
+      // Snapshot the previous active account BEFORE login() commits the candidate.
+      auth.beginPendingAccountAuthorization(
+        mode: pendingMode,
+        candidateUserId: 0,
+        candidateTelegramId: 0,
+        candidatePhone: candidatePhone,
+        returnTo: widget.returnTo,
+      );
+      final previousUserId = auth.pendingPreviousUserId;
       await auth.login(token, authPayload: authPayload);
-      if (ephemeralCloudPassword != null && ephemeralCloudPassword.isNotEmpty) {
-        auth.rememberEphemeralTelegramCloudPassword(ephemeralCloudPassword);
+      final candidateUserId = auth.user?.userId ?? 0;
+      final candidateTelegramId = auth.user?.telegramId ?? 0;
+      auth.updatePendingAccountCandidate(
+        candidateUserId: candidateUserId,
+        candidateTelegramId: candidateTelegramId,
+      );
+      if (ephemeralCloudPassword != null &&
+          ephemeralCloudPassword.isNotEmpty &&
+          candidateTelegramId != 0) {
+        auth.rememberEphemeralTelegramCloudPassword(
+          candidateTelegramId,
+          ephemeralCloudPassword,
+        );
       }
-      await _resetForCommittedAccount();
       if (!mounted) return;
 
-      final needsOnboarding = auth.needsCommunityOnboarding;
-      final destination = _tdlibDestination(_authenticatedDestination());
+      final destination = _tdlibDestination(
+        _authenticatedDestination(),
+        mode: pendingMode,
+        previousUserId: previousUserId,
+      );
       final newActive = auth.activeAccount;
       final displayName = newActive?.displayName;
       final avatarUser = newActive?.toAuthUser();
@@ -177,7 +202,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       context.go(destination);
 
-      if (newActive != null && !needsOnboarding && displayName != null) {
+      if (newActive != null && displayName != null) {
         String? message;
         if (mode == LoginMode.addAccount) {
           message = 'Added $displayName.';
@@ -194,7 +219,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
       }
     } catch (err) {
-      ref.read(authControllerProvider).clearEphemeralTelegramCloudPassword();
+      final auth = ref.read(authControllerProvider);
+      if (auth.pendingCandidateTelegramId != null) {
+        auth.clearEphemeralTelegramCloudPassword(
+          telegramUserId: auth.pendingCandidateTelegramId,
+        );
+      } else {
+        auth.clearEphemeralTelegramCloudPassword();
+      }
       final repo = ref.read(authRepositoryProvider);
       if (mounted) setState(() => _error = repo.api.errorMessage(err));
     } finally {
@@ -277,40 +309,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Future<void> _resetForCommittedAccount() async {
-    final upload = ref.read(uploadControllerProvider);
-    if (!upload.hasBlockingUploads) {
-      upload.resetTerminalForAccountSwitch();
-    }
-    await ref.read(driveControllerProvider).resetForAccountSwitch();
-    final bootstrap = ref
-        .read(authControllerProvider)
-        .takePendingDriveBootstrap();
-    if (bootstrap != null) {
-      ref.read(driveControllerProvider).applyDriveState(bootstrap);
-    } else {
-      await ref.read(driveControllerProvider).refresh(force: true);
-    }
-    ref.read(shareControllerProvider).resetForAccountSwitch();
-    ref.read(selectionModeStateProvider).setDriveSelectMode(false);
-    ref.read(selectionModeStateProvider).setPhotosSelectMode(false);
-    for (final scope in SearchScope.values) {
-      ref.read(searchQueryProvider(scope)).clear();
-    }
-  }
-
   String _authenticatedDestination() {
     final target = widget.returnTo;
     if (target == null || target.isEmpty || target == '/login') return '/drive';
     return target;
   }
 
-  String _tdlibDestination(String returnTo) {
+  String _tdlibDestination(
+    String returnTo, {
+    required PendingTdlibMode mode,
+    int? previousUserId,
+  }) {
     return Uri(
       path: '/tdlib-session',
       queryParameters: {
         'mode': 'auto',
+        'source': mode.name,
         if (returnTo != '/tdlib-session') 'returnTo': returnTo,
+        if (previousUserId != null) 'previousUserId': '$previousUserId',
       },
     ).toString();
   }

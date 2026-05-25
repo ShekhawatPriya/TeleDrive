@@ -6,14 +6,20 @@ import 'package:flutter_m_fsdk/features/auth/auth_controller.dart';
 import 'package:flutter_m_fsdk/features/upload/upload_controller.dart';
 import 'package:flutter_m_fsdk/features/upload/upload_models.dart';
 import 'package:flutter_m_fsdk/features/auth/auth_repository.dart';
+import 'package:flutter_m_fsdk/core/storage/secure_storage.dart';
 
 class FakeAuthRepository implements AuthRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
+class FakeSecureStorage implements SecureStorageService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
 class MockAuthController extends AuthController {
-  MockAuthController() : super(FakeAuthRepository());
+  MockAuthController() : super(FakeAuthRepository(), FakeSecureStorage());
 }
 
 class MockUploadController extends ChangeNotifier implements UploadController {

@@ -53,6 +53,7 @@ class MainActivity : FlutterActivity() {
                 "setPhoneNumber" -> complete(tdlibBridge.setPhoneNumber(typedArgs), result)
                 "checkCode" -> complete(tdlibBridge.checkCode(typedArgs), result)
                 "checkPassword" -> complete(tdlibBridge.checkPassword(typedArgs), result)
+                "resendCode" -> complete(tdlibBridge.resendCode(), result)
                 "resolveChat" -> complete(tdlibBridge.resolveChat(typedArgs), result)
                 "sendDocument" -> complete(tdlibBridge.sendDocument(typedArgs), result)
                 "downloadToFile" -> complete(tdlibBridge.downloadToFile(typedArgs), result)

@@ -40,6 +40,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (auth.loading) return state.matchedLocation == '/' ? null : '/';
 
       const allowedUnauthRoutes = ['/welcome', '/login', '/privacy', '/terms'];
+      const tdlibEscapeRoutes = [
+        '/welcome',
+        '/login',
+        '/privacy',
+        '/terms',
+        '/tdlib-session',
+      ];
       final currentRoute = state.matchedLocation;
       final loginMode = LoginModeX.fromQuery(state.uri.queryParameters['mode']);
       final isAccountLoginMode =
@@ -53,18 +60,23 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (currentRoute == '/login' && isAccountLoginMode) return null;
 
-      if (!tdlib.isReadyForActiveUser && currentRoute != '/tdlib-session') {
+      if (tdlib.requiresAuthorizationFlow) {
+        if (tdlibEscapeRoutes.contains(currentRoute)) return null;
         final returnTo = state.uri.toString();
+        final pendingMode = auth.pendingTdlibMode?.name ?? 'normalLogin';
+        final previousUserId = auth.pendingPreviousUserId;
         return Uri(
           path: '/tdlib-session',
           queryParameters: {
             'mode': 'auto',
+            'source': pendingMode,
             if (returnTo.isNotEmpty && returnTo != '/') 'returnTo': returnTo,
+            if (previousUserId != null) 'previousUserId': '$previousUserId',
           },
         ).toString();
       }
 
-      if (tdlib.isReadyForActiveUser && auth.needsCommunityOnboarding) {
+      if (auth.needsCommunityOnboarding) {
         return currentRoute == '/community-setup' ? null : '/community-setup';
       }
       if (currentRoute == '/community-setup') return '/drive';
@@ -88,10 +100,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/welcome', builder: (_, __) => const LandingScreen()),
       GoRoute(
         path: '/tdlib-session',
-        builder: (_, state) => TdlibSessionScreen(
-          mode: state.uri.queryParameters['mode'],
-          returnTo: state.uri.queryParameters['returnTo'],
-        ),
+        builder: (_, state) {
+          final sourceParam = state.uri.queryParameters['source'];
+          final source = sourceParam == null
+              ? null
+              : PendingTdlibMode.values.firstWhere(
+                  (mode) => mode.name == sourceParam,
+                  orElse: () => PendingTdlibMode.normalLogin,
+                );
+          final previousUserIdParam =
+              state.uri.queryParameters['previousUserId'];
+          return TdlibSessionScreen(
+            mode: state.uri.queryParameters['mode'],
+            source: source,
+            returnTo: state.uri.queryParameters['returnTo'],
+            previousUserId: previousUserIdParam == null
+                ? null
+                : int.tryParse(previousUserIdParam),
+          );
+        },
       ),
       GoRoute(
         path: '/community-setup',

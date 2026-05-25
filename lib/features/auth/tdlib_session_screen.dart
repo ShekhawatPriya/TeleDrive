@@ -6,15 +6,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../drive/drive_controller.dart';
+import '../drive/drive_tab_commands.dart';
+import '../search/search_controller.dart';
+import '../share/share_controller.dart';
+import '../upload/upload_controller.dart';
 import 'auth_controller.dart';
 import 'tdlib_auto_authorization_models.dart';
 import 'tdlib_session_controller.dart';
 
 class TdlibSessionScreen extends ConsumerStatefulWidget {
-  const TdlibSessionScreen({this.mode, this.returnTo, super.key});
+  const TdlibSessionScreen({
+    this.mode,
+    this.source,
+    this.returnTo,
+    this.previousUserId,
+    super.key,
+  });
 
   final String? mode;
+  final PendingTdlibMode? source;
   final String? returnTo;
+  final int? previousUserId;
 
   @override
   ConsumerState<TdlibSessionScreen> createState() => _TdlibSessionScreenState();
@@ -23,32 +36,71 @@ class TdlibSessionScreen extends ConsumerStatefulWidget {
 class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
   final _phone = TextEditingController();
   final _code = TextEditingController();
+  final _password = TextEditingController();
   bool _autoStarted = false;
   bool _submitting = false;
+  bool _submittingPassword = false;
   bool _manualCodeVisible = false;
   bool _codeSheetVisible = false;
   bool _codeSheetShown = false;
   bool _navigating = false;
+  bool _disposed = false;
+  bool _obscurePassword = true;
+  int _uiRunId = 0;
+  ProviderSubscription<TdlibSessionController>? _tdlibSub;
+  TdlibAutoAuthStage? _lastObservedStage;
+  TdlibSessionStatus? _lastObservedStatus;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    _tdlibSub = ref.listenManual<TdlibSessionController>(
+      tdlibSessionControllerProvider,
+      (previous, next) {
+        if (!mounted || _disposed) return;
+        _onTdlibChanged(previous?.state, next.state);
+      },
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      if (!mounted || _disposed || _navigating) return;
       final auth = ref.read(authControllerProvider);
       _phone.text = auth.activeAccount?.phoneNumber ?? '';
       _startAutomation();
+      // The provider runs check() eagerly, so the controller may already be
+      // ready before this screen attached its listener. Evaluate the current
+      // state so navigation still fires in that race.
+      final current = ref.read(tdlibSessionControllerProvider).state;
+      _onTdlibChanged(null, current);
     });
   }
 
   @override
   void dispose() {
-    ref.read(authControllerProvider).clearEphemeralTelegramCloudPassword();
+    _disposed = true;
+    _uiRunId++;
+    _tdlibSub?.close();
+    _tdlibSub = null;
+    final auth = ref.read(authControllerProvider);
+    final candidateTelegramId = auth.pendingCandidateTelegramId;
+    if (candidateTelegramId != null) {
+      auth.clearEphemeralTelegramCloudPassword(
+        telegramUserId: candidateTelegramId,
+      );
+    } else {
+      auth.clearEphemeralTelegramCloudPassword();
+    }
     ref.read(tdlibSessionControllerProvider).cancelAutomation();
     _phone.dispose();
     _code.dispose();
+    _password.dispose();
     super.dispose();
+  }
+
+  PendingTdlibMode get _resolvedSource {
+    return widget.source ??
+        ref.read(authControllerProvider).pendingTdlibMode ??
+        PendingTdlibMode.normalLogin;
   }
 
   Future<void> _startAutomation({
@@ -58,34 +110,43 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
     if (_autoStarted && !restartOtpWindow && !force) return;
     final auth = ref.read(authControllerProvider);
     final active = auth.activeAccount;
-    final phone = active?.phoneNumber ?? '';
+    final phone =
+        auth.pendingCandidatePhone ?? active?.phoneNumber ?? _phone.text;
     final telegramUserId = auth.user?.telegramId != 0
         ? auth.user?.telegramId ?? 0
         : active?.telegramId ?? 0;
-    if (phone.isEmpty || telegramUserId == 0) {
-      setState(() {
-        _error = 'Could not confirm your Telegram phone number.';
-      });
+    final backendUserId = auth.user?.userId ?? active?.userId ?? 0;
+    if (phone.isEmpty || telegramUserId == 0 || backendUserId == 0) {
+      if (mounted) {
+        setState(() {
+          _error = 'Could not confirm your Telegram phone number.';
+        });
+      }
       return;
     }
-    setState(() {
-      _autoStarted = true;
-      _manualCodeVisible = false;
-      _error = null;
-    });
-    final secret = restartOtpWindow
-        ? null
-        : auth.takeEphemeralTelegramCloudPassword();
+    if (mounted) {
+      setState(() {
+        _autoStarted = true;
+        _manualCodeVisible = false;
+        _error = null;
+      });
+    }
     unawaited(
       ref
           .read(tdlibSessionControllerProvider)
           .authorizeAutomatically(
             phoneNumber: phone,
             telegramUserId: telegramUserId,
-            ephemeralCloudPassword: secret,
+            backendUserId: backendUserId,
+            mode: _resolvedSource,
             restartOtpWindow: restartOtpWindow,
           ),
     );
+  }
+
+  Future<void> _retryOtp() async {
+    if (mounted) setState(() => _error = null);
+    await ref.read(tdlibSessionControllerProvider).retryOtp();
   }
 
   Future<void> _submitManualAutoCode() async {
@@ -104,60 +165,141 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
     }
   }
 
-  String _destination() {
-    final auth = ref.read(authControllerProvider);
-    if (auth.needsCommunityOnboarding) return '/community-setup';
-    final target = widget.returnTo;
-    if (target != null &&
-        target.isNotEmpty &&
-        target != '/' &&
-        target != '/welcome' &&
-        target != '/login' &&
-        target != '/tdlib-session' &&
-        target != '/community-setup') {
-      return target;
+  Future<void> _submitManualPassword() async {
+    if (_submittingPassword || _password.text.isEmpty) return;
+    setState(() {
+      _submittingPassword = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(tdlibSessionControllerProvider)
+          .submitManualPasswordForAutomation(_password.text);
+      HapticFeedback.lightImpact();
+    } finally {
+      if (mounted) setState(() => _submittingPassword = false);
     }
-    return '/drive';
   }
 
-  void _scheduleAutoSideEffects(
-    TdlibSessionState session,
-    AuthController auth,
-  ) {
-    final auto = session.auto;
+  void _onTdlibChanged(TdlibSessionState? previous, TdlibSessionState next) {
+    if (_navigating) return;
+    final auth = ref.read(authControllerProvider);
     if (!auth.isAuthenticated && !auth.loading) {
+      _navigating = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.go('/login');
+        if (mounted && !_disposed) context.go('/welcome');
       });
       return;
     }
-    if (auth.isAuthenticated &&
-        !auth.loading &&
-        _autoStarted &&
-        auto.stage == TdlibAutoAuthStage.idle) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) unawaited(_startAutomation(force: true));
-      });
+    // ChangeNotifierProvider hands us the same controller instance as previous
+    // and next, so `previous.state` is identical to `next.state` and useless
+    // for diffing. Always compare against our own last-observed snapshots.
+    final priorStage = _lastObservedStage;
+    final priorStatus = _lastObservedStatus;
+    _lastObservedStage = next.auto.stage;
+    _lastObservedStatus = next.status;
+    final stageChanged = priorStage != next.auto.stage;
+    final statusChanged = priorStatus != next.status;
+    final atFinish =
+        next.status == TdlibSessionStatus.ready ||
+        next.auto.stage == TdlibAutoAuthStage.authorized;
+    final reachedFinish =
+        atFinish &&
+        (statusChanged ||
+            stageChanged ||
+            // Initial observation (snapshots were both null): controller may
+            // have already settled before the screen attached its listener.
+            (priorStage == null && priorStatus == null));
+    if (reachedFinish) {
+      unawaited(_navigateAfterSuccess());
     }
-    if (session.status == TdlibSessionStatus.ready && !_navigating) {
-      _navigating = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await Future<void>.delayed(const Duration(milliseconds: 650));
-        if (mounted) context.go(_destination());
-      });
-    }
-    if (auto.stage != TdlibAutoAuthStage.manualCodeRequired) {
+    if (stageChanged && next.auto.stage != TdlibAutoAuthStage.manualCodeRequired) {
       _codeSheetShown = false;
     }
-    if (auto.stage == TdlibAutoAuthStage.manualCodeRequired &&
+    if (stageChanged &&
+        next.auto.stage == TdlibAutoAuthStage.manualCodeRequired &&
         !_codeSheetShown &&
         !_codeSheetVisible &&
         !_manualCodeVisible) {
       _codeSheetShown = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showManualCodeSheet();
+        if (mounted && !_disposed && !_navigating) _showManualCodeSheet();
       });
     }
+  }
+
+  Future<void> _navigateAfterSuccess() async {
+    final run = ++_uiRunId;
+    await Future<void>.delayed(const Duration(milliseconds: 650));
+    if (!mounted || _disposed || run != _uiRunId || _navigating) return;
+    _navigating = true;
+    final auth = ref.read(authControllerProvider);
+    await _resetForCommittedAccount();
+    if (!mounted || _disposed) return;
+    final destination = auth.commitPendingAccountAuthorization();
+    if (!mounted || _disposed) return;
+    context.go(destination);
+  }
+
+  Future<void> _resetForCommittedAccount() async {
+    try {
+      final upload = ref.read(uploadControllerProvider);
+      if (!upload.hasBlockingUploads) {
+        upload.resetTerminalForAccountSwitch();
+      }
+      await ref.read(driveControllerProvider).resetForAccountSwitch();
+      final bootstrap = ref
+          .read(authControllerProvider)
+          .takePendingDriveBootstrap();
+      if (bootstrap != null) {
+        ref.read(driveControllerProvider).applyDriveState(bootstrap);
+      } else {
+        await ref.read(driveControllerProvider).refresh(force: true);
+      }
+      ref.read(shareControllerProvider).resetForAccountSwitch();
+      ref.read(selectionModeStateProvider).setDriveSelectMode(false);
+      ref.read(selectionModeStateProvider).setPhotosSelectMode(false);
+      for (final scope in SearchScope.values) {
+        ref.read(searchQueryProvider(scope)).clear();
+      }
+    } catch (_) {
+      // Reset failure should not block navigation; downstream screens will refresh.
+    }
+  }
+
+  Future<void> _cancelTdlibAuthorization() async {
+    if (_navigating || _disposed) return;
+    _navigating = true;
+    ref.read(tdlibSessionControllerProvider).cancelAutomation();
+    final auth = ref.read(authControllerProvider);
+    final destination = await auth.abortPendingTdlibAuthorization();
+    if (!mounted || _disposed) return;
+    context.go(destination);
+  }
+
+  Future<void> _switchToPreviousAccount() async {
+    if (_navigating || _disposed) return;
+    final auth = ref.read(authControllerProvider);
+    final previousUserId =
+        widget.previousUserId ?? auth.pendingPreviousUserId;
+    if (previousUserId == null) {
+      await _cancelTdlibAuthorization();
+      return;
+    }
+    _navigating = true;
+    ref.read(tdlibSessionControllerProvider).cancelAutomation();
+    final destination = await auth.abortPendingTdlibAuthorization();
+    if (!mounted || _disposed) return;
+    context.go(destination);
+  }
+
+  Future<void> _signOutFromHere() async {
+    if (_navigating || _disposed) return;
+    _navigating = true;
+    ref.read(tdlibSessionControllerProvider).cancelAutomation();
+    await ref.read(authControllerProvider).signOutAll();
+    if (!mounted || _disposed) return;
+    context.go('/welcome');
   }
 
   Future<void> _showManualCodeSheet() async {
@@ -215,36 +357,57 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
       },
     );
     _codeSheetVisible = false;
-    if (!mounted) return;
+    if (!mounted || _disposed) return;
     if (action == 'manual') {
       setState(() => _manualCodeVisible = true);
     } else if (action == 'retry') {
-      await _startAutomation(restartOtpWindow: true);
+      await _retryOtp();
     }
+  }
+
+  String _appBarTitle() {
+    return switch (_resolvedSource) {
+      PendingTdlibMode.addAccount => 'Add account',
+      PendingTdlibMode.reauthenticateAccount => 'Reconnect account',
+      PendingTdlibMode.normalLogin => 'Set up account',
+    };
   }
 
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(tdlibSessionControllerProvider);
     final session = controller.state;
-    final auth = ref.watch(authControllerProvider);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    _scheduleAutoSideEffects(session, auth);
 
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg,
-              vertical: AppSpacing.xl,
-            ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
-              child: AnimatedSwitcher(
-                duration: AppDurations.medium2,
-                child: _buildAutoCard(session, theme, scheme),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop || _navigating || _disposed) return;
+        await _cancelTdlibAuthorization();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            tooltip: 'Cancel setup',
+            icon: const Icon(Icons.close_rounded),
+            onPressed: () => _cancelTdlibAuthorization(),
+          ),
+          title: Text(_appBarTitle()),
+        ),
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.xl,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 460),
+                child: AnimatedSwitcher(
+                  duration: AppDurations.medium2,
+                  child: _buildAutoCard(session, theme, scheme),
+                ),
               ),
             ),
           ),
@@ -259,8 +422,11 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
     ColorScheme scheme,
   ) {
     final auto = session.auto;
-    final busy = auto.isAutomationActive || _submitting;
+    final busy = auto.isAutomationActive || _submitting || _submittingPassword;
     final value = auto.progressPercent.clamp(0, 100) / 100;
+    final auth = ref.watch(authControllerProvider);
+    final hasPreviousAccount =
+        (widget.previousUserId ?? auth.pendingPreviousUserId) != null;
     return Card(
       key: const ValueKey('tdlib-auto-card'),
       child: Padding(
@@ -364,7 +530,10 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
                 theme,
               ),
             ],
-            if (_manualCodeVisible ||
+            if (auto.stage == TdlibAutoAuthStage.manualPasswordRequired) ...[
+              const SizedBox(height: AppSpacing.lg),
+              _buildManualPasswordFallback(theme),
+            ] else if (_manualCodeVisible ||
                 auto.stage == TdlibAutoAuthStage.manualCodeRequired) ...[
               const SizedBox(height: AppSpacing.lg),
               _buildManualCodeFallback(theme),
@@ -383,6 +552,19 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
                 child: const Text('Start authorization'),
               ),
             ],
+            const SizedBox(height: AppSpacing.md),
+            if (hasPreviousAccount)
+              OutlinedButton.icon(
+                onPressed: _navigating ? null : _switchToPreviousAccount,
+                icon: const Icon(Icons.swap_horiz_rounded),
+                label: const Text('Back to existing account'),
+              )
+            else
+              TextButton.icon(
+                onPressed: _navigating ? null : _signOutFromHere,
+                icon: const Icon(Icons.logout_rounded, size: 18),
+                label: const Text('Sign out'),
+              ),
           ],
         ),
       ),
@@ -479,7 +661,7 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
           ),
           const SizedBox(height: AppSpacing.xs),
           OutlinedButton(
-            onPressed: () => _startAutomation(restartOtpWindow: true),
+            onPressed: _retryOtp,
             child: const Text('Try again'),
           ),
         ],
@@ -518,8 +700,50 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
         ),
         const SizedBox(height: AppSpacing.xs),
         TextButton(
-          onPressed: () => _startAutomation(restartOtpWindow: true),
+          onPressed: _retryOtp,
           child: const Text('Try automatic detection again'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildManualPasswordFallback(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _password,
+          keyboardType: TextInputType.visiblePassword,
+          textInputAction: TextInputAction.done,
+          enableSuggestions: false,
+          autocorrect: false,
+          obscureText: _obscurePassword,
+          autofillHints: const [AutofillHints.password],
+          decoration: InputDecoration(
+            labelText: 'Cloud password',
+            prefixIcon: const Icon(Icons.lock_outline_rounded),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscurePassword
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+              ),
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
+            ),
+          ),
+          onSubmitted: (_) => _submitManualPassword(),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        FilledButton(
+          onPressed: _submittingPassword ? null : _submitManualPassword,
+          child: _submittingPassword
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2.2),
+                )
+              : const Text('Continue'),
         ),
       ],
     );

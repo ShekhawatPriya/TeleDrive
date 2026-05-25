@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/storage/secure_storage.dart';
 import '../../core/telegram/telegram_auth_bridge.dart';
 import '../../core/telegram/telegram_client_exceptions.dart';
 import '../../core/telegram/telegram_transfer_service.dart';
@@ -64,12 +65,50 @@ class TdlibSessionState {
   }
 }
 
+@immutable
+class TdlibAuthorizationRun {
+  const TdlibAuthorizationRun({
+    required this.runId,
+    required this.backendUserId,
+    required this.telegramUserId,
+    required this.phoneNumber,
+    required this.nonce,
+    required this.phoneSubmittedAt,
+    required this.mode,
+  });
+
+  final int runId;
+  final int backendUserId;
+  final int telegramUserId;
+  final String phoneNumber;
+  final String nonce;
+  final DateTime phoneSubmittedAt;
+  final PendingTdlibMode mode;
+
+  TdlibAuthorizationRun copyWith({
+    int? runId,
+    DateTime? phoneSubmittedAt,
+    String? nonce,
+  }) {
+    return TdlibAuthorizationRun(
+      runId: runId ?? this.runId,
+      backendUserId: backendUserId,
+      telegramUserId: telegramUserId,
+      phoneNumber: phoneNumber,
+      nonce: nonce ?? this.nonce,
+      phoneSubmittedAt: phoneSubmittedAt ?? this.phoneSubmittedAt,
+      mode: mode,
+    );
+  }
+}
+
 final tdlibSessionControllerProvider =
     ChangeNotifierProvider<TdlibSessionController>((ref) {
       final controller = TdlibSessionController(
         auth: ref.read(authControllerProvider),
         repo: ref.read(authRepositoryProvider),
         telegram: ref.read(telegramTransferServiceProvider),
+        storage: ref.read(secureStorageProvider),
       );
       ref.onDispose(controller.dispose);
       unawaited(controller.check());
@@ -81,10 +120,12 @@ class TdlibSessionController extends ChangeNotifier {
     required AuthController auth,
     required AuthRepository repo,
     required TelegramTransferService telegram,
+    required SecureStorageService storage,
     TelegramAuthBridge? bridge,
   }) : _auth = auth,
        _repo = repo,
        _telegram = telegram,
+       _storage = storage,
        _bridge = bridge ?? TelegramAuthBridge() {
     _auth.addListener(_handleAuthChanged);
   }
@@ -92,6 +133,7 @@ class TdlibSessionController extends ChangeNotifier {
   final AuthController _auth;
   final AuthRepository _repo;
   final TelegramTransferService _telegram;
+  final SecureStorageService _storage;
   final TelegramAuthBridge _bridge;
   final _uuid = const Uuid();
   TdlibSessionState state = const TdlibSessionState();
@@ -100,32 +142,55 @@ class TdlibSessionController extends ChangeNotifier {
   Timer? _otpTimer;
   int _autoRunId = 0;
   Future<void>? _autoTask;
-  String? _autoPhoneNumber;
-  int? _autoTelegramUserId;
-  DateTime? _otpResolveStartedAt;
-  String? _ephemeralCloudPassword;
+  TdlibAuthorizationRun? _activeRun;
 
   bool get isReadyForActiveUser =>
       !_auth.isAuthenticated || state.status == TdlibSessionStatus.ready;
 
+  /// True only when the user genuinely needs to interact with the TDLib
+  /// authorization flow. Transient states like `checking`, terminal states like
+  /// `error` or `unavailable`, and `signedOut` are NOT included — the router
+  /// must not bounce the user to `/tdlib-session` for those.
+  bool get requiresAuthorizationFlow {
+    if (!_auth.isAuthenticated) return false;
+    switch (state.status) {
+      case TdlibSessionStatus.authorizationRequired:
+      case TdlibSessionStatus.waitCode:
+      case TdlibSessionStatus.waitPassword:
+      case TdlibSessionStatus.mismatch:
+        return true;
+      case TdlibSessionStatus.signedOut:
+      case TdlibSessionStatus.checking:
+      case TdlibSessionStatus.unavailable:
+      case TdlibSessionStatus.ready:
+      case TdlibSessionStatus.error:
+        return false;
+    }
+  }
+
+  TdlibAuthorizationRun? get activeRun => _activeRun;
+
   Future<void> authorizeAutomatically({
     required String phoneNumber,
     required int telegramUserId,
-    String? ephemeralCloudPassword,
+    required int backendUserId,
+    required PendingTdlibMode mode,
     bool restartOtpWindow = false,
   }) async {
     final current = _autoTask;
     if (current != null && !restartOtpWindow) return current;
     _cancelAutomation(clearSecret: false);
-    _autoPhoneNumber = phoneNumber;
-    _autoTelegramUserId = telegramUserId;
-    if (restartOtpWindow) {
-      _otpResolveStartedAt = DateTime.now().toUtc();
-    }
-    if (ephemeralCloudPassword != null && ephemeralCloudPassword.isNotEmpty) {
-      _ephemeralCloudPassword = ephemeralCloudPassword;
-    }
     final runId = ++_autoRunId;
+    final now = DateTime.now().toUtc();
+    _activeRun = TdlibAuthorizationRun(
+      runId: runId,
+      backendUserId: backendUserId,
+      telegramUserId: telegramUserId,
+      phoneNumber: phoneNumber,
+      nonce: _uuid.v4(),
+      phoneSubmittedAt: now,
+      mode: mode,
+    );
     final task = _runAutomaticAuthorization(
       runId,
       restartOtpWindow: restartOtpWindow,
@@ -138,9 +203,49 @@ class TdlibSessionController extends ChangeNotifier {
     }
   }
 
-  Future<void> submitManualCodeForAutomation(String code) async {
+  Future<void> retryOtp() async {
+    final run = _activeRun;
+    if (run == null) return;
     _cancelOtpTimer();
     final runId = ++_autoRunId;
+    _activeRun = run.copyWith(runId: runId);
+    if (state.status == TdlibSessionStatus.waitCode) {
+      try {
+        await _bridge.resendCode();
+        _activeRun = _activeRun!.copyWith(
+          phoneSubmittedAt: DateTime.now().toUtc(),
+          nonce: _uuid.v4(),
+        );
+      } catch (err) {
+        final message = '$err'.toLowerCase();
+        if (message.contains('flood') || message.contains('rate')) {
+          _showManualCodeRequired(
+            error:
+                'Telegram requires waiting before requesting another code. Enter the code manually if you already received one.',
+          );
+          return;
+        }
+        // Fall through with the existing nonce/startedAt — Telegram may still accept the old code.
+      }
+    } else {
+      // No longer waiting for code: re-check authorization state and continue.
+      await check(force: true);
+    }
+    final task = _advanceAutomaticAuthorization(runId);
+    _autoTask = task;
+    try {
+      await task;
+    } finally {
+      if (identical(_autoTask, task)) _autoTask = null;
+    }
+  }
+
+  Future<void> submitManualCodeForAutomation(String code) async {
+    final run = _activeRun;
+    if (run == null) return;
+    _cancelOtpTimer();
+    final runId = ++_autoRunId;
+    _activeRun = run.copyWith(runId: runId);
     _setAutoStage(TdlibAutoAuthStage.submittingCode);
     try {
       await submitCode(code);
@@ -152,6 +257,33 @@ class TdlibSessionController extends ChangeNotifier {
         otpSecondsRemaining: 0,
       );
     }
+  }
+
+  Future<void> submitManualPasswordForAutomation(String password) async {
+    final run = _activeRun;
+    if (run == null || password.isEmpty) return;
+    final runId = ++_autoRunId;
+    _activeRun = run.copyWith(runId: runId);
+    _setAutoStage(TdlibAutoAuthStage.submittingPassword);
+    try {
+      await submitPassword(password);
+    } catch (_) {
+      _setAutoStage(
+        TdlibAutoAuthStage.manualPasswordRequired,
+        error: 'Telegram rejected that cloud password.',
+      );
+      return;
+    }
+    try {
+      await _storage.saveTelegramCloudPassword(
+        backendUserId: run.backendUserId,
+        telegramUserId: run.telegramUserId,
+        password: password,
+      );
+    } catch (_) {
+      // Storage write failure should not abort authorization.
+    }
+    await _advanceAutomaticAuthorization(runId);
   }
 
   void cancelAutomation({bool clearSecret = true}) {
@@ -211,7 +343,6 @@ class TdlibSessionController extends ChangeNotifier {
         canRetryAutomation: true,
         canEnterCodeManually: state.status == TdlibSessionStatus.waitCode,
       );
-      _clearEphemeralCloudPassword();
     }
   }
 
@@ -223,24 +354,23 @@ class TdlibSessionController extends ChangeNotifier {
           await _verifyAuthorizedAccount(runId);
           return;
         case TdlibSessionStatus.authorizationRequired:
-          final phone = _autoPhoneNumber;
-          if (phone == null || phone.isEmpty) {
+          final run = _activeRun;
+          if (run == null || run.phoneNumber.isEmpty) {
             _setAutoStage(
               TdlibAutoAuthStage.failed,
               error: 'Could not confirm your Telegram phone number.',
               canRetryAutomation: true,
             );
-            _clearEphemeralCloudPassword();
             return;
           }
           _setAutoStage(TdlibAutoAuthStage.submittingPhoneNumber);
-          _otpResolveStartedAt = DateTime.now().toUtc();
-          await submitPhoneNumber(phone);
+          _activeRun = run.copyWith(phoneSubmittedAt: DateTime.now().toUtc());
+          await submitPhoneNumber(run.phoneNumber);
         case TdlibSessionStatus.waitCode:
           await _waitForAutomaticCode(runId);
           return;
         case TdlibSessionStatus.waitPassword:
-          await _submitAutomaticPasswordOrFallback(runId);
+          await _resolvePasswordAndSubmit(runId);
           return;
         case TdlibSessionStatus.checking:
           await check(force: true);
@@ -251,7 +381,6 @@ class TdlibSessionController extends ChangeNotifier {
                 'TDLib is unavailable on this device build. Please reinstall the supported app build.',
             canRetryAutomation: true,
           );
-          _clearEphemeralCloudPassword();
           return;
         case TdlibSessionStatus.mismatch:
           _setAutoStage(
@@ -259,7 +388,6 @@ class TdlibSessionController extends ChangeNotifier {
             error:
                 'This device is linked to a different Telegram account. Please reconnect with the correct account.',
           );
-          _clearEphemeralCloudPassword();
           return;
         case TdlibSessionStatus.error:
           _setAutoStage(
@@ -268,14 +396,12 @@ class TdlibSessionController extends ChangeNotifier {
             canRetryAutomation: true,
             canEnterCodeManually: true,
           );
-          _clearEphemeralCloudPassword();
           return;
         case TdlibSessionStatus.signedOut:
           _setAutoStage(
             TdlibAutoAuthStage.failed,
             error: 'Sign in before authorizing TDLib.',
           );
-          _clearEphemeralCloudPassword();
           return;
       }
     }
@@ -285,14 +411,12 @@ class TdlibSessionController extends ChangeNotifier {
         error: 'TDLib authorization did not settle. Please try again.',
         canRetryAutomation: true,
       );
-      _clearEphemeralCloudPassword();
     }
   }
 
   Future<void> _waitForAutomaticCode(int runId) async {
-    final phone = _autoPhoneNumber;
-    final telegramUserId = _autoTelegramUserId;
-    if (phone == null || telegramUserId == null) {
+    final run = _activeRun;
+    if (run == null) {
       _setAutoStage(
         TdlibAutoAuthStage.manualCodeRequired,
         error: 'Telegram code needed.',
@@ -300,8 +424,8 @@ class TdlibSessionController extends ChangeNotifier {
       );
       return;
     }
-    final startedAt = _otpResolveStartedAt ?? DateTime.now().toUtc();
-    final nonce = _uuid.v4();
+    final startedAt = run.phoneSubmittedAt;
+    final nonce = run.nonce;
     final deadline = startedAt.add(const Duration(seconds: 30));
     final rejectedAutoCodes = <String>{};
     _setWaitingForCode(deadline);
@@ -319,8 +443,8 @@ class TdlibSessionController extends ChangeNotifier {
       final TdlibCodeResolveResult result;
       try {
         result = await _repo.resolveTdlibCode(
-          telegramUserId: telegramUserId,
-          phoneNumber: phone,
+          telegramUserId: run.telegramUserId,
+          phoneNumber: run.phoneNumber,
           startedAt: startedAt,
           nonce: nonce,
         );
@@ -360,7 +484,6 @@ class TdlibSessionController extends ChangeNotifier {
             error:
                 'This device is linked to a different Telegram account. Please reconnect with the correct account.',
           );
-          _clearEphemeralCloudPassword();
           return;
         case TdlibCodeResolveStatus.rateLimited:
         case TdlibCodeResolveStatus.error:
@@ -374,50 +497,85 @@ class TdlibSessionController extends ChangeNotifier {
     if (_isRunActive(runId)) _showManualCodeRequired();
   }
 
-  Future<void> _submitAutomaticPasswordOrFallback(int runId) async {
-    _setAutoStage(TdlibAutoAuthStage.waitingForPassword);
-    final password = _ephemeralCloudPassword;
-    if (password == null || password.isEmpty) {
+  Future<void> _resolvePasswordAndSubmit(int runId) async {
+    final run = _activeRun;
+    if (run == null) {
       _setAutoStage(
-        TdlibAutoAuthStage.failed,
-        error:
-            'Cloud password verification could not be reused. Please sign in again.',
-        canRetryAutomation: true,
+        TdlibAutoAuthStage.manualPasswordRequired,
+        error: 'Cloud password verification needed.',
       );
+      return;
+    }
+    _setAutoStage(TdlibAutoAuthStage.waitingForPassword);
+    final ephemeral = _auth.takeEphemeralTelegramCloudPassword(
+      run.telegramUserId,
+    );
+    String? candidate = (ephemeral != null && ephemeral.isNotEmpty)
+        ? ephemeral
+        : null;
+    var fromStorage = false;
+    if (candidate == null) {
+      try {
+        candidate = await _storage.readTelegramCloudPassword(
+          backendUserId: run.backendUserId,
+          telegramUserId: run.telegramUserId,
+        );
+        fromStorage = candidate != null && candidate.isNotEmpty;
+      } catch (_) {
+        candidate = null;
+      }
+    }
+    if (!_isRunActive(runId)) return;
+    if (candidate == null || candidate.isEmpty) {
+      _setAutoStage(TdlibAutoAuthStage.manualPasswordRequired);
       return;
     }
     _setAutoStage(TdlibAutoAuthStage.submittingPassword);
     try {
-      await submitPassword(password);
+      await submitPassword(candidate);
     } catch (_) {
+      if (fromStorage) {
+        try {
+          await _storage.deleteTelegramCloudPassword(
+            backendUserId: run.backendUserId,
+            telegramUserId: run.telegramUserId,
+          );
+        } catch (_) {}
+      }
+      if (!_isRunActive(runId)) return;
       _setAutoStage(
-        TdlibAutoAuthStage.failed,
-        error:
-            'Cloud password verification could not be reused. Please sign in again.',
-        canRetryAutomation: true,
+        TdlibAutoAuthStage.manualPasswordRequired,
+        error: 'Saved password was rejected. Enter your cloud password.',
       );
       return;
-    } finally {
-      _clearEphemeralCloudPassword();
     }
+    if (!fromStorage) {
+      try {
+        await _storage.saveTelegramCloudPassword(
+          backendUserId: run.backendUserId,
+          telegramUserId: run.telegramUserId,
+          password: candidate,
+        );
+      } catch (_) {}
+    }
+    if (!_isRunActive(runId)) return;
     await _advanceAutomaticAuthorization(runId);
   }
 
   Future<void> _verifyAuthorizedAccount(int runId) async {
-    final telegramUserId = _autoTelegramUserId;
-    if (telegramUserId == null) {
+    final run = _activeRun;
+    final telegramUserId = run?.telegramUserId;
+    if (telegramUserId == null || telegramUserId == 0) {
       _setAutoStage(
         TdlibAutoAuthStage.failed,
         error: 'TDLib is authorized but could not confirm the account.',
       );
-      _clearEphemeralCloudPassword();
       return;
     }
     _setAutoStage(TdlibAutoAuthStage.verifyingAccount);
     await _bridge.assertMatchesBackend(telegramUserId);
     if (!_isRunActive(runId)) return;
     _setAutoStage(TdlibAutoAuthStage.authorized);
-    _clearEphemeralCloudPassword();
   }
 
   Future<void> _check() async {
@@ -516,24 +674,37 @@ class TdlibSessionController extends ChangeNotifier {
     }
   }
 
-  bool _isRunActive(int runId) => _autoRunId == runId;
+  bool _isRunActive(int runId) {
+    if (_autoRunId != runId) return false;
+    final run = _activeRun;
+    if (run == null) return false;
+    final activeBackendUserId = _auth.user?.userId;
+    if (activeBackendUserId != null &&
+        activeBackendUserId != 0 &&
+        activeBackendUserId != run.backendUserId) {
+      return false;
+    }
+    return true;
+  }
 
   void _cancelAutomation({required bool clearSecret}) {
     _autoRunId++;
     _autoTask = null;
-    _otpResolveStartedAt = null;
+    final run = _activeRun;
+    _activeRun = null;
     _cancelOtpTimer();
-    if (clearSecret) _clearEphemeralCloudPassword();
+    if (clearSecret && run != null) {
+      _auth.clearEphemeralTelegramCloudPassword(
+        telegramUserId: run.telegramUserId,
+      );
+    } else if (clearSecret) {
+      _auth.clearEphemeralTelegramCloudPassword();
+    }
   }
 
   void _cancelOtpTimer() {
     _otpTimer?.cancel();
     _otpTimer = null;
-  }
-
-  void _clearEphemeralCloudPassword() {
-    _ephemeralCloudPassword = null;
-    _auth.clearEphemeralTelegramCloudPassword();
   }
 
   void _showManualCodeRequired({String? error}) {
@@ -584,7 +755,9 @@ class TdlibSessionController extends ChangeNotifier {
         canEnterCodeManually:
             canEnterCodeManually ||
             stage == TdlibAutoAuthStage.manualCodeRequired,
-        canEnterPasswordManually: canEnterPasswordManually,
+        canEnterPasswordManually:
+            canEnterPasswordManually ||
+            stage == TdlibAutoAuthStage.manualPasswordRequired,
       ),
     );
     notifyListeners();
@@ -646,6 +819,11 @@ class TdlibSessionController extends ChangeNotifier {
         65,
         'Telegram code needed',
         'Enter the code manually or try automatic detection again.',
+      ),
+      TdlibAutoAuthStage.manualPasswordRequired => (
+        78,
+        'Telegram cloud password needed',
+        'Enter your two-step verification password to finish setup.',
       ),
       TdlibAutoAuthStage.failed => (
         state.auto.progressPercent,
@@ -721,6 +899,15 @@ class TdlibSessionController extends ChangeNotifier {
   void _handleAuthChanged() {
     if (!_auth.isAuthenticated) {
       _cancelAutomation(clearSecret: true);
+    } else {
+      final run = _activeRun;
+      final activeBackendUserId = _auth.user?.userId;
+      if (run != null &&
+          activeBackendUserId != null &&
+          activeBackendUserId != 0 &&
+          activeBackendUserId != run.backendUserId) {
+        _cancelAutomation(clearSecret: true);
+      }
     }
     _authDebounce?.cancel();
     _authDebounce = Timer(const Duration(milliseconds: 250), () {

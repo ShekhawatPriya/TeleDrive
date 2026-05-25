@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../config/app_config.dart';
 import '../../models/account_vault.dart';
 import '../../models/auth_user.dart';
 
@@ -14,6 +15,7 @@ class SecureStorageService {
   static const _tdlibKeyPrefix = 'teledrive_tdlib_key_v1';
   static const _pendingTelegramCommitsPrefix =
       'teledrive_pending_tdlib_commits_v1';
+  static const _telegramCloudPasswordPrefix = 'telegram_cloud_password_v1';
   final _storage = const FlutterSecureStorage();
 
   Future<String?> readToken() => _storage.read(key: _tokenKey);
@@ -81,4 +83,56 @@ class SecureStorageService {
 
   Future<void> clearPendingTelegramCommits(String scope) =>
       _storage.delete(key: '${_pendingTelegramCommitsPrefix}_$scope');
+
+  Future<void> saveTelegramCloudPassword({
+    required int backendUserId,
+    required int telegramUserId,
+    required String password,
+  }) {
+    return _storage.write(
+      key: _cloudPasswordKey(backendUserId, telegramUserId),
+      value: password,
+    );
+  }
+
+  Future<String?> readTelegramCloudPassword({
+    required int backendUserId,
+    required int telegramUserId,
+  }) {
+    return _storage.read(
+      key: _cloudPasswordKey(backendUserId, telegramUserId),
+    );
+  }
+
+  Future<void> deleteTelegramCloudPassword({
+    required int backendUserId,
+    required int telegramUserId,
+  }) {
+    return _storage.delete(
+      key: _cloudPasswordKey(backendUserId, telegramUserId),
+    );
+  }
+
+  Future<void> deleteAllTelegramCloudPasswordsForUser(int backendUserId) async {
+    final all = await _storage.readAll();
+    final prefix =
+        '$_telegramCloudPasswordPrefix:${_apiBaseUrlHash()}:$backendUserId:';
+    for (final key in all.keys.where((k) => k.startsWith(prefix)).toList()) {
+      await _storage.delete(key: key);
+    }
+  }
+
+  String _cloudPasswordKey(int backendUserId, int telegramUserId) {
+    return '$_telegramCloudPasswordPrefix:${_apiBaseUrlHash()}:$backendUserId:$telegramUserId';
+  }
+
+  String _apiBaseUrlHash() {
+    final value = AppConfig.apiBaseUrl;
+    var hash = 0xcbf29ce484222325;
+    for (final unit in value.codeUnits) {
+      hash ^= unit;
+      hash = (hash * 0x100000001b3) & 0x7fffffffffffffff;
+    }
+    return hash.toRadixString(16);
+  }
 }

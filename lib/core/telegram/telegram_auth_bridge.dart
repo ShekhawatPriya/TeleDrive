@@ -38,6 +38,8 @@ class TelegramAuthBridge {
     return _invokeMap('checkPassword', {'password': password});
   }
 
+  Future<Map<String, dynamic>> resendCode() => _invokeMap('resendCode', {});
+
   Future<void> assertMatchesBackend(int backendTelegramUserId) async {
     final local = await getCurrentTelegramUserId();
     if (local == null) {

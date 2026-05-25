@@ -12,6 +12,7 @@ enum TdlibAutoAuthStage {
   verifyingAccount,
   authorized,
   manualCodeRequired,
+  manualPasswordRequired,
   failed,
 }
 
