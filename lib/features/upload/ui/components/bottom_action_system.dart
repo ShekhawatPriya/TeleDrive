@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../upload_controller.dart';
+import '../../../drive/components/delete_progress_pill.dart';
 import '../../../drive/components/drive_fab.dart';
+import '../../../drive/drive_controller.dart';
 import 'upload_collapsed_bar.dart';
 import '../upload_sheet.dart';
 
@@ -21,9 +23,11 @@ class BottomActionSystem extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final upload = ref.watch(uploadControllerProvider);
+    final drive = ref.watch(driveControllerProvider);
     final showProgress = upload.sheetVisible && upload.items.isNotEmpty;
+    final showDelete = drive.state.deleteProgress != null;
 
-    if (!showProgress && !showFab) {
+    if (!showProgress && !showFab && !showDelete) {
       return const SizedBox.shrink();
     }
 
@@ -40,6 +44,31 @@ class BottomActionSystem extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.end,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              if (showDelete)
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: AppDurations.medium3,
+                    switchInCurve: AppEasing.emphasizedDecelerate,
+                    switchOutCurve: AppEasing.emphasizedAccelerate,
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(-0.05, 0),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: const DeleteProgressPill(
+                      key: ValueKey('delete_progress_pill'),
+                    ),
+                  ),
+                ),
+              if (showDelete && (showProgress || showFab))
+                const SizedBox(width: AppSpacing.sm),
               if (showProgress)
                 Expanded(
                   child: AnimatedSwitcher(

@@ -122,6 +122,8 @@ extension _DriveMutations on DriveController {
     var completed = 0;
     var failed = 0;
     String? lastError;
+    final failedFileIds = <String>{};
+    final failedFolderIds = <String>{};
     final oldFiles = state.files;
     final oldMedia = state.mediaFiles;
     final oldFolders = state.folders;
@@ -144,6 +146,7 @@ extension _DriveMutations on DriveController {
         }
       } catch (error, stackTrace) {
         failed++;
+        failedFileIds.add(id);
         lastError = _repo.api.errorMessage(error, 'Delete failed.');
         debugPrint('Delete file $id failed: $error');
         debugPrintStack(stackTrace: stackTrace);
@@ -164,6 +167,7 @@ extension _DriveMutations on DriveController {
         }
       } catch (error, stackTrace) {
         failed++;
+        failedFolderIds.add(id);
         lastError = _repo.api.errorMessage(error, 'Delete failed.');
         debugPrint('Delete folder $id failed: $error');
         debugPrintStack(stackTrace: stackTrace);
@@ -176,21 +180,36 @@ extension _DriveMutations on DriveController {
       }
     }
     if (failed > 0) {
+      // Restore only the items that actually failed, preserving items the
+      // server already deleted so they don't ghost-back into the UI.
       state = state.copyWith(
-        files: oldFiles,
-        mediaFiles: oldMedia,
-        folders: oldFolders,
+        files: [
+          ...state.files,
+          ...oldFiles.where((f) => failedFileIds.contains(f.id)),
+        ],
+        mediaFiles: [
+          ...state.mediaFiles,
+          ...oldMedia.where((f) => failedFileIds.contains(f.id)),
+        ],
+        folders: [
+          ...state.folders,
+          ...oldFolders.where((f) => failedFolderIds.contains(f.id)),
+        ],
         error: lastError ?? 'Some items could not be deleted.',
       );
-    } else {
-      _markActiveAndAncestorsStale();
-      _bumpTrashRevision();
-      refresh(silent: true, force: true);
-    }
-    Future<void>.delayed(Duration(milliseconds: failed > 0 ? 2200 : 900), () {
-      state = state.copyWith(clearDeleteProgress: true);
       _notifyListeners();
-    });
+    }
+    _markActiveAndAncestorsStale();
+    _bumpTrashRevision();
+    try {
+      await refresh(silent: true, force: true);
+    } catch (_) {}
+    // Briefly let the user see the final pill state, then clear it.
+    await Future<void>.delayed(
+      Duration(milliseconds: failed > 0 ? 1800 : 700),
+    );
+    state = state.copyWith(clearDeleteProgress: true);
+    _notifyListeners();
   }
 
   Future<void> _toggleStar(String id, {bool folder = false}) async {
