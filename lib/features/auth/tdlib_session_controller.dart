@@ -67,7 +67,7 @@ class TdlibSessionController extends ChangeNotifier {
 
   /// True only when the user genuinely needs to interact with the TDLib
   /// authorization flow. Transient states like `checking`, terminal states like
-  /// `error` or `unavailable`, and `signedOut` are NOT included â€” the router
+  /// `error` or `unavailable`, and `signedOut` are NOT included — the router
   /// must not bounce the user to `/tdlib-session` for those.
   bool get requiresAuthorizationFlow {
     if (!_auth.isAuthenticated) return false;
@@ -143,7 +143,7 @@ class TdlibSessionController extends ChangeNotifier {
           );
           return;
         }
-        // Fall through with the existing nonce/startedAt â€” Telegram may still accept the old code.
+        // Fall through with the existing nonce/startedAt — Telegram may still accept the old code.
       }
     } else {
       // No longer waiting for code: re-check authorization state and continue.

@@ -16,7 +16,7 @@ class _FreeUpHeroCard extends StatelessWidget {
     final (sizeMain, sizeUnit) = _splitSize(state.eligibleBytes);
 
     final supportText = isScanning
-        ? 'Scanning your gallery for backed-up itemsâ€¦'
+        ? 'Scanning your gallery for backed-up items…'
         : hasItems
         ? 'from ${state.eligibleCount} items on this device'
         : 'Nothing on this device is ready to remove.';
@@ -133,7 +133,7 @@ class _ScanningSizePlaceholder extends StatelessWidget {
         ),
         const SizedBox(width: AppSpacing.sm),
         Text(
-          'Calculatingâ€¦',
+          'Calculating…',
           style: theme.textTheme.headlineMedium?.copyWith(
             color: scheme.onSurface,
             fontWeight: FontWeight.w700,

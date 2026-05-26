@@ -57,7 +57,7 @@ extension _DriveMutations on DriveController {
     final movedFile = source.copyWith(parentId: targetFolderId);
 
     // Optimistically remove from source page; insert into destination page
-    // only if it is loaded â€” otherwise the destination will fetch fresh on
+    // only if it is loaded — otherwise the destination will fetch fresh on
     // next visit (G3 / 3i).
     final pages = Map<String?, DriveFolderPage>.of(state.folderPages);
     final sourcePage = pages[source.parentId];
@@ -81,8 +81,8 @@ extension _DriveMutations on DriveController {
       folderPages: pages,
       clearError: true,
     );
-    _refreshFlatAggregates();
-    _notifyListeners();
+    this._refreshFlatAggregates();
+    this._notifyListeners();
 
     try {
       final updated = await _repo.moveFile(fileId, targetFolderId);
@@ -103,14 +103,14 @@ extension _DriveMutations on DriveController {
             .map((f) => f.id == fileId ? updated : f)
             .toList(),
       );
-      _refreshFlatAggregates();
+      this._refreshFlatAggregates();
     } catch (err) {
       state = previousState.copyWith(
         error: _repo.api.errorMessage(err, 'Move failed.'),
       );
-      _refreshFlatAggregates();
+      this._refreshFlatAggregates();
     }
-    _notifyListeners();
+    this._notifyListeners();
   }
 
   Future<void> _moveFolder(String folderId, String? targetParentId) async {
@@ -150,7 +150,7 @@ extension _DriveMutations on DriveController {
       _replaceFolderEverywhere(folderId, updated);
       _notifyListeners();
     } catch (err) {
-      // The backend rejects cycles via `assert_can_move_folder` â€” surface
+      // The backend rejects cycles via `assert_can_move_folder` — surface
       // the error and roll back optimistic state.
       state = previousState.copyWith(
         error: _repo.api.errorMessage(err, 'Move failed.'),

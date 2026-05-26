@@ -3,24 +3,24 @@ part of 'auth_controller.dart';
 extension _AuthControllerSessionActions on AuthController {
   Future<void> _bootstrap() async {
     loading = true;
-    _emitChange();
+    this._emitChange(); // ignore: unnecessary_this
     try {
       error = null;
-      vault = await _loadVaultWithLegacyMigration();
+      vault = await this._loadVaultWithLegacyMigration(); // ignore: unnecessary_this
       if (vault.accounts.isEmpty) {
         _repo.setApiToken(null);
-        _clearSessionState(clearVault: false);
+        this._clearSessionState(clearVault: false); // ignore: unnecessary_this
         return;
       }
-      await _restoreBestAccount();
-      unawaited(_refreshSavedAccountSnapshots());
+      await this._restoreBestAccount(); // ignore: unnecessary_this
+      unawaited(this._refreshSavedAccountSnapshots()); // ignore: unnecessary_this
     } catch (err) {
       _repo.setApiToken(null);
-      _clearSessionState(clearVault: false);
+      this._clearSessionState(clearVault: false);
       error = _repo.api.errorMessage(err, 'Auth bootstrap failed.');
     } finally {
       loading = false;
-      _emitChange();
+      this._emitChange();
     }
   }
 
@@ -34,8 +34,8 @@ extension _AuthControllerSessionActions on AuthController {
       nextToken,
       includeDrive: true,
     );
-    await _commitActiveAccount(nextToken, bootstrap);
-    _emitChange();
+    await this._commitActiveAccount(nextToken, bootstrap); // ignore: unnecessary_this
+    this._emitChange(); // ignore: unnecessary_this
   }
 
   Future<void> _switchToAccount(int userId) async {
@@ -58,12 +58,12 @@ extension _AuthControllerSessionActions on AuthController {
         selected.token,
         includeDrive: true,
       );
-      if (!_bootstrapMatchesAccount(selected, bootstrap)) {
+      if (!this._bootstrapMatchesAccount(selected, bootstrap)) { // ignore: unnecessary_this
         vault = vault.markTokenStatus(selected.userId, TokenStatus.needsLogin);
         await _repo.saveVault(vault);
         throw Exception('Session expired. Please log in again.');
       }
-      await _commitActiveAccount(selected.token, bootstrap, existing: selected);
+      await this._commitActiveAccount(selected.token, bootstrap, existing: selected);
     } on DioException catch (err) {
       if (err.response?.statusCode == 401) {
         vault = vault.markTokenStatus(selected.userId, TokenStatus.needsLogin);
@@ -73,7 +73,7 @@ extension _AuthControllerSessionActions on AuthController {
       rethrow;
     } finally {
       switchingAccount = false;
-      _emitChange();
+      this._emitChange();
     }
   }
 
@@ -93,7 +93,7 @@ extension _AuthControllerSessionActions on AuthController {
     }
     clearEphemeralTelegramCloudPassword(telegramUserId: removed?.telegramId);
     if (!wasActive) {
-      _emitChange();
+      this._emitChange();
       return isAuthenticated;
     }
 
@@ -122,15 +122,15 @@ extension _AuthControllerSessionActions on AuthController {
       } catch (_) {}
     }
     clearEphemeralTelegramCloudPassword();
-    _clearPendingAccountAuthorization();
-    _clearSessionState();
-    _emitChange();
+    this._clearPendingAccountAuthorization();
+    this._clearSessionState();
+    this._emitChange();
   }
 
   Future<void> _markAccountNeedsLogin(int userId) async {
     vault = vault.markTokenStatus(userId, TokenStatus.needsLogin);
     await _repo.saveVault(vault);
-    _emitChange();
+    this._emitChange();
   }
 
   Future<void> _logout() async {

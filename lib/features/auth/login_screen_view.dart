@@ -143,7 +143,7 @@ extension _LoginScreenView on _LoginScreenState {
           decoration: const InputDecoration(
             labelText: 'Verification code',
             counterText: '',
-            hintText: 'â€”â€”â€”â€”â€”â€”',
+            hintText: '——————',
           ),
           onSubmitted: (_) => _verifyCode(),
         ),

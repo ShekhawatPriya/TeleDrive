@@ -1,4 +1,4 @@
-﻿package com.example.flutter_m_fsdk
+package com.example.flutter_m_fsdk
 
 import android.content.ContentUris
 import android.content.Intent

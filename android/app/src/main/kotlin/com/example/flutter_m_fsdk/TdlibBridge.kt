@@ -1,4 +1,4 @@
-﻿package com.example.flutter_m_fsdk
+package com.example.flutter_m_fsdk
 
 import android.content.Context
 import android.os.Build
@@ -108,7 +108,7 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
                 try {
                     closeWaiter.get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
                 } catch (_: Throwable) {
-                    // Swallow timeout/interruption â€” we will force-reset state anyway.
+                    // Swallow timeout/interruption — we will force-reset state anyway.
                 }
             } finally {
                 authorizationWaiters.remove(waiter)
@@ -852,7 +852,7 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
             lastEmittedAtByTransferId.remove(transferId)
             lastEmittedFractionByTransferId.remove(transferId)
             lastEmittedStateByTransferId.remove(transferId)
-            // fall through â€” terminal events ALWAYS post, never throttled
+            // fall through — terminal events ALWAYS post, never throttled
         } else {
             val prevState = lastEmittedStateByTransferId[transferId]
             val stateChanged = prevState != state

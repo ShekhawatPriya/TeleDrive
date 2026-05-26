@@ -6,7 +6,7 @@ extension _AuthControllerStatus on AuthController {
     if (activeUser == null) {
       pendingDirectCommitCount = 0;
       pendingDirectCommitError = null;
-      _emitChange();
+      this._emitChange(); // ignore: unnecessary_this
       return;
     }
     final telegramId = activeUser.telegramId != 0
@@ -18,7 +18,7 @@ extension _AuthControllerStatus on AuthController {
       telegramUserId: telegramId,
     );
     if (pendingDirectCommitCount == 0) pendingDirectCommitError = null;
-    _emitChange();
+    this._emitChange();
   }
 
   Future<void> _completeCommunityOnboarding() async {
@@ -28,7 +28,7 @@ extension _AuthControllerStatus on AuthController {
         : result.status;
     communityJoinError = result.error;
     if (result.targets.isNotEmpty) communityTargets = result.targets;
-    _emitChange();
+    this._emitChange();
   }
 
   DriveSnapshot? _takePendingDriveBootstrap() {
@@ -40,11 +40,11 @@ extension _AuthControllerStatus on AuthController {
   Future<void> _refreshTelegramStatus() async {
     if (token == null) {
       telegramConnected = null;
-      _emitChange();
+      this._emitChange();
       return;
     }
     telegramConnected = await _repo.telegramStatus();
-    _emitChange();
+    this._emitChange();
   }
 
   Future<void> _refreshProfile() async {
@@ -54,7 +54,7 @@ extension _AuthControllerStatus on AuthController {
       if (user != null && active != null) {
         final localPhotoPath =
             await _repo.cacheProfilePhoto(user!) ??
-            _trustedLocalPhotoPath(active);
+            this._trustedLocalPhotoPath(active);
         final updated = active.copyWith(
           firstName: user!.firstName,
           lastName: user!.lastName,
@@ -65,7 +65,7 @@ extension _AuthControllerStatus on AuthController {
         vault = vault.upsert(updated, makeActive: true);
         await _repo.saveVault(vault);
       }
-      _emitChange();
+      this._emitChange();
     } catch (_) {}
   }
 
@@ -74,6 +74,6 @@ extension _AuthControllerStatus on AuthController {
     telegramConnected = false;
     communityJoinStatus = null;
     communityJoinError = null;
-    _emitChange();
+    this._emitChange();
   }
 }

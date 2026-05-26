@@ -9,7 +9,7 @@ class _FreeUpExplanationCard extends StatelessWidget {
     final scheme = theme.colorScheme;
     return _FreeUpSectionCard(
       title: 'What gets removed',
-      subtitle: 'Local gallery copies only â€” your cloud stays untouched',
+      subtitle: 'Local gallery copies only — your cloud stays untouched',
       children: [
         Container(
           padding: const EdgeInsets.all(AppSpacing.md),

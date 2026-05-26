@@ -204,7 +204,7 @@ class GalleryBackupAssetStore {
     await Future.wait(pending);
   }
 
-  // Visible for testing â€” resets in-memory cache state between tests.
+  // Visible for testing — resets in-memory cache state between tests.
   static void debugResetCache() {
     for (final timer in _saveTimers.values) {
       timer.cancel();

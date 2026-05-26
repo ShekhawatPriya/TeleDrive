@@ -72,7 +72,7 @@ class DriveController extends ChangeNotifier {
 
   // Global folder metadata cache. Populated from every folder we encounter
   // (root bootstrap, child listings, paths from G4, mutations). Intentionally
-  // partial Ã¢â‚¬â€ folder views must NOT use this as proof of contents, only for
+  // partial — folder views must NOT use this as proof of contents, only for
   // breadcrumb / metadata lookup.
   Map<String, DriveFolder> _folderById = const {};
   Map<String, DriveFile> _fileById = const {};

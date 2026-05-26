@@ -49,8 +49,8 @@ extension _DriveDeleteMutations on DriveController {
       deleteProgress: (completed: 0, failed: 0, total: total),
       clearError: true,
     );
-    _refreshFlatAggregates();
-    _notifyListeners();
+    this._refreshFlatAggregates();
+    this._notifyListeners();
 
     for (final id in fileIds) {
       try {
@@ -70,7 +70,7 @@ extension _DriveDeleteMutations on DriveController {
         state = state.copyWith(
           deleteProgress: (completed: completed, failed: failed, total: total),
         );
-        _notifyListeners();
+        this._notifyListeners();
       }
     }
     for (final id in folderIds) {
@@ -91,7 +91,7 @@ extension _DriveDeleteMutations on DriveController {
         state = state.copyWith(
           deleteProgress: (completed: completed, failed: failed, total: total),
         );
-        _notifyListeners();
+        this._notifyListeners();
       }
     }
     if (failed > 0) {

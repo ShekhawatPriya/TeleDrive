@@ -140,7 +140,7 @@ extension _DriveIndexes on DriveController {
   }
 
   /// Merges folder metadata into the global `_folderById` and `state.folders`
-  /// list. Folder metadata is small and cumulative â€” we keep it complete
+  /// list. Folder metadata is small and cumulative — we keep it complete
   /// across navigation so breadcrumbs always resolve.
   void _mergeFolderMetadata(Iterable<DriveFolder> folders) {
     if (folders.isEmpty) return;

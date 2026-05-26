@@ -68,8 +68,8 @@ extension _AuthControllerPending on AuthController {
       clearEphemeralTelegramCloudPassword(telegramUserId: candidateTelegramId);
     }
     _clearPendingAccountAuthorization();
-    _emitChange();
-    unawaited(_retryPendingDirectCommitsForActiveAccount());
+    this._emitChange();
+    unawaited(this._retryPendingDirectCommitsForActiveAccount());
     if (needsCommunityOnboarding) return '/community-setup';
     if (returnTo != null &&
         returnTo.isNotEmpty &&
@@ -99,7 +99,7 @@ extension _AuthControllerPending on AuthController {
         previousUserId != candidateUserId) {
       try {
         await switchToAccount(previousUserId);
-        _emitChange();
+        this._emitChange();
         if (returnTo != null &&
             returnTo.isNotEmpty &&
             returnTo != '/tdlib-session' &&
@@ -123,7 +123,7 @@ extension _AuthControllerPending on AuthController {
         if (fallback != null) {
           try {
             await switchToAccount(fallback.userId);
-            _emitChange();
+            this._emitChange();
             return '/drive';
           } catch (_) {}
         }

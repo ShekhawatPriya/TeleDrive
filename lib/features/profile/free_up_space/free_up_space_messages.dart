@@ -138,9 +138,9 @@ class _FreeUpBottomBar extends StatelessWidget {
     final scheme = theme.colorScheme;
 
     final label = state.scanning
-        ? 'Scanning deviceâ€¦'
+        ? 'Scanning device…'
         : state.deleting
-        ? 'Waiting for Android confirmationâ€¦'
+        ? 'Waiting for Android confirmation…'
         : state.permissionDenied
         ? 'Allow photo access'
         : state.eligibleBytes <= 0
@@ -148,7 +148,7 @@ class _FreeUpBottomBar extends StatelessWidget {
         : 'Free up ${formatFileSize(state.eligibleBytes)}';
 
     final helperText = state.scanning
-        ? 'Checking which items are safe to removeâ€¦'
+        ? 'Checking which items are safe to remove…'
         : state.deleting
         ? 'Confirm in the system dialog to continue.'
         : state.permissionDenied

@@ -203,8 +203,8 @@ class AuthRepository {
           ? _decodeDataImage(source)
           : await _downloadProfilePhoto(source);
       if (bytes == null || bytes.isEmpty) return null;
-      final dir = await _profilePhotoDir();
-      await _deleteCachedProfilePhotoFiles(user.userId);
+      final dir = await this._profilePhotoDir();
+      await this._deleteCachedProfilePhotoFiles(user.userId);
       final stamp = DateTime.now().millisecondsSinceEpoch;
       final file = File(
         '${dir.path}${Platform.pathSeparator}${user.userId}_${user.telegramId}_$stamp.jpg',
@@ -218,13 +218,13 @@ class AuthRepository {
 
   Future<void> deleteCachedProfilePhoto(int userId) async {
     try {
-      await _deleteCachedProfilePhotoFiles(userId);
+      await this._deleteCachedProfilePhotoFiles(userId);
     } catch (_) {}
   }
 
   Future<void> clearCachedProfilePhotos() async {
     try {
-      final dir = await _profilePhotoDir();
+      final dir = await this._profilePhotoDir();
       if (await dir.exists()) await dir.delete(recursive: true);
     } catch (_) {}
   }
