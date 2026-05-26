@@ -5,6 +5,12 @@ class AppConfig {
   static const _fallbackApiBaseUrl = 'http://192.168.1.5:8000/api';
   static const _dartDefineApiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
+  static const _fallbackUpdateManifestUrl =
+      'https://raw.githubusercontent.com/sreejan-anand/teledrive-releases/main/android/latest.json';
+  static const _dartDefineUpdateManifestUrl = String.fromEnvironment(
+    'APP_UPDATE_MANIFEST_URL',
+  );
+
   static String get apiBaseUrl {
     if (_dartDefineApiBaseUrl.trim().isNotEmpty) {
       return _dartDefineApiBaseUrl.trim();
@@ -48,6 +54,21 @@ class AppConfig {
 
   static int get tdlibE2eCommitDelaySeconds =>
       _int('TDLIB_E2E_COMMIT_DELAY_SECONDS', fallback: 0);
+
+  static String get appUpdateManifestUrl {
+    if (_dartDefineUpdateManifestUrl.trim().isNotEmpty) {
+      return _dartDefineUpdateManifestUrl.trim();
+    }
+    final value = dotenv.maybeGet('APP_UPDATE_MANIFEST_URL');
+    if (value != null && value.trim().isNotEmpty) return value.trim();
+    return _fallbackUpdateManifestUrl;
+  }
+
+  static bool get appUpdateChecksEnabled =>
+      _bool('APP_UPDATE_CHECKS_ENABLED', fallback: true);
+
+  static int get appUpdateCheckIntervalMinutes =>
+      _int('APP_UPDATE_CHECK_INTERVAL_MINUTES', fallback: 30);
 
   /// The public GitHub repository URL for TeleDrive.
   static const repositoryUrl = 'https://github.com/caamer20/Telegram-Drive';

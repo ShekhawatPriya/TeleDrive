@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/theme/app_theme.dart';
+import 'features/app_update/app_update_controller.dart';
+import 'features/app_update/app_update_models.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/drive/components/drive_menu_builder.dart';
 import 'features/drive/drive_controller.dart';
@@ -77,6 +79,11 @@ class _MainShellState extends ConsumerState<MainShell>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(ref.read(galleryBackupControllerProvider).handleAppResumed());
+      unawaited(
+        ref
+            .read(appUpdateControllerProvider)
+            .checkForUpdate(reason: AppUpdateCheckReason.resume),
+      );
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
       unawaited(const GalleryBackupAssetStore().flushAll());

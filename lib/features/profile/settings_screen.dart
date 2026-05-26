@@ -7,6 +7,8 @@ import '../../core/config/app_config.dart';
 import '../../core/notifications/upload_notification_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/social_icons.dart';
+import '../app_update/app_update_controller.dart';
+import '../app_update/app_update_models.dart';
 import '../auth/auth_controller.dart';
 import 'app_settings_controller.dart';
 import 'cache_controller.dart';
@@ -22,6 +24,7 @@ part 'settings/notification_settings.dart';
 part 'settings/settings_menu_tiles.dart';
 part 'settings/settings_form_tiles.dart';
 part 'settings/backup_diagnostics_card.dart';
+part 'settings/app_updates_tile.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -108,6 +111,8 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
+          const _SettingsDivider(),
+          _AppUpdatesSettingsTile(),
           const _SettingsDivider(),
           const SizedBox(height: 24),
           _settingsSectionHeader(context, 'Appearance'),
