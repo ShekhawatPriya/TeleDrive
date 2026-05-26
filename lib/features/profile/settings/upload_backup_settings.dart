@@ -85,21 +85,6 @@ class UploadSettingsScreen extends ConsumerWidget {
                 .read(appSettingsControllerProvider)
                 .setAutoRenameDuplicates,
           ),
-          if (auth.directTelegramUploadEnabled ||
-              auth.directTelegramDownloadEnabled) ...[
-            const SizedBox(height: AppSpacing.xl),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              child: _settingsSectionLabel(context, 'Direct Telegram'),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            _FlatActionTile(
-              title: 'Repair device Telegram session',
-              subtitle:
-                  'TeleDrive requires local TDLib file transfer. Use this if uploads or private downloads ask you to reconnect.',
-              onTap: () => _openTdlibRepair(context),
-            ),
-          ],
         ],
       ),
     );

@@ -63,15 +63,6 @@ extension _DriveRefresh on DriveController {
     return result;
   }
 
-  void _clearStaleForFolder(String? folderId) {
-    if (folderId == null) {
-      _staleFolderIds.clear();
-    } else {
-      _staleFolderIds.remove(folderId);
-      _staleFolderIds.removeAll(_descendantFolderIds(folderId));
-    }
-  }
-
   void _markActiveAndAncestorsStale() {
     _staleFolderIds.add(state.activeFolderId);
     if (state.activeFolderId != null) {
@@ -88,16 +79,26 @@ extension _DriveRefresh on DriveController {
     _notifyListeners();
   }
 
+  /// Scope-limited refresh (G3). Refetches the bootstrap (which seeds the
+  /// root page) and, if the active folder isn't root, re-fetches that folder
+  /// in parallel. Other loaded folder pages stay cached and reload fresh on
+  /// next visit if marked stale.
   Future<void> _refresh({bool silent = false}) async {
     if (!silent) {
       state = state.copyWith(loading: true, clearError: true);
       _notifyListeners();
     }
     try {
-      applyDriveState(await _repo.getDriveState(), notify: false);
+      final bootstrapFuture = _repo.getDriveState();
+      final activeFolderId = state.activeFolderId;
+      final activeFolderFuture = activeFolderId == null
+          ? Future<void>.value()
+          : ensureFolderLoaded(activeFolderId, force: true, silent: true);
+      final snapshot = await bootstrapFuture;
+      applyDriveState(snapshot, notify: false);
+      await activeFolderFuture;
       state = state.copyWith(loading: false, clearError: true);
       _lastRefreshCompletedAt = DateTime.now();
-      _clearStaleForFolder(state.activeFolderId);
     } catch (err) {
       state = state.copyWith(
         loading: false,

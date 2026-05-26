@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -27,6 +29,19 @@ class DriveScreen extends ConsumerStatefulWidget {
 class _DriveScreenState extends ConsumerState<DriveScreen>
     with SelectionModeMixin<DriveScreen> {
   int _handledSelectRequests = 0;
+
+  // Server-backed file search state (G6). When the query is non-empty we
+  // hit `/files?query=&scope=all` instead of filtering the local page,
+  // because page contents are intentionally incomplete.
+  Timer? _searchDebounce;
+  String _activeSearchQuery = '';
+  // Tracks the latest query queued for a post-frame _runServerSearch dispatch.
+  // Reading state during build() must never call setState directly; this
+  // value de-duplicates back-to-back schedules and lets us drop stale ones.
+  String? _scheduledSearchQuery;
+  List<DriveFile>? _serverSearchFiles;
+  bool _searchLoading = false;
+  String? _searchError;
 
   List<DriveFile>? _sortedFiles;
   ({
@@ -83,6 +98,61 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
   }
 
   @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    try {
+      ref.read(selectionModeStateProvider).setDriveSelectMode(false);
+    } catch (_) {}
+    super.dispose();
+  }
+
+  void _runServerSearch(String query) {
+    _searchDebounce?.cancel();
+    if (query.isEmpty) {
+      final alreadyClear = _activeSearchQuery.isEmpty &&
+          _serverSearchFiles == null &&
+          !_searchLoading &&
+          _searchError == null;
+      if (alreadyClear) return;
+      setState(() {
+        _activeSearchQuery = '';
+        _serverSearchFiles = null;
+        _searchLoading = false;
+        _searchError = null;
+      });
+      return;
+    }
+    _searchDebounce = Timer(const Duration(milliseconds: 250), () async {
+      if (!mounted) return;
+      setState(() {
+        _activeSearchQuery = query;
+        _searchLoading = true;
+        _searchError = null;
+      });
+      try {
+        final repo = ref.read(driveRepositoryProvider);
+        final result = await repo.listFiles(
+          allFolders: true,
+          query: query,
+          limit: 60,
+        );
+        if (!mounted || _activeSearchQuery != query) return;
+        setState(() {
+          _serverSearchFiles = result.files;
+          _searchLoading = false;
+        });
+      } catch (err) {
+        if (!mounted || _activeSearchQuery != query) return;
+        setState(() {
+          _searchLoading = false;
+          _searchError = 'Search failed.';
+          _serverSearchFiles = const [];
+        });
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final commands = ref.watch(driveTabCommandsProvider);
     if (commands.selectRequests != _handledSelectRequests) {
@@ -110,15 +180,27 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
       driveControllerProvider.select((c) => c.recentsSnapshot()),
     );
 
+    if (query != _activeSearchQuery && query != _scheduledSearchQuery) {
+      _scheduledSearchQuery = query;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        // Drop stale schedules: another build cycle has already queued a
+        // newer query. Only the latest pending query runs.
+        if (_scheduledSearchQuery != query) return;
+        _scheduledSearchQuery = null;
+        _runServerSearch(query);
+      });
+    }
+
     var folders = snapshot.folders;
     var files = snapshot.files;
     if (query.isNotEmpty) {
-      // Search across the entire drive — read once for the typed-query path.
-      final drive = ref.read(driveControllerProvider);
-      folders = drive.folders
-          .where((f) => f.name.toLowerCase().contains(query))
-          .toList();
-      files = drive.files
+      // Server-backed file search across the entire drive (G6).
+      files = _serverSearchFiles ?? const <DriveFile>[];
+      // Folder search filters cumulative metadata only — see banner below.
+      folders = ref
+          .read(driveControllerProvider)
+          .folders
           .where((f) => f.name.toLowerCase().contains(query))
           .toList();
     }
@@ -135,7 +217,10 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
       query: query,
     );
     final recent = recentsSnapshot.files;
+    final loaded = snapshot.loaded;
     final loading = snapshot.loading;
+    final hasMore = snapshot.hasMore;
+    final loadingMore = snapshot.loadingMore;
     final error = snapshot.error;
     final grid = prefs.layout == LayoutMode.grid;
 
@@ -193,65 +278,99 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: ref.read(driveControllerProvider).refresh,
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(0, AppSpacing.xs, 0, 0),
-                child: DriveQuickActions(
-                  onTrashTap: () => context.safePush('/settings/trash'),
-                  onArchiveTap: () => context.safePush('/settings/archive'),
-                  onLockedTap: () => context.safePush('/settings/locked'),
-                ),
-              ),
-            ),
-            if (loading && files.isEmpty && folders.isEmpty)
-              const SliverFillRemaining(child: SkeletonList()),
-            if (error != null) _ErrorBanner(error),
-            if (recent.isNotEmpty && query.isEmpty) ...[
-              const DriveSectionHeader('Recent', topPadding: AppSpacing.sm),
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification.metrics.pixels >=
+                    notification.metrics.maxScrollExtent - 200 &&
+                hasMore &&
+                !loadingMore &&
+                query.isEmpty) {
+              ref.read(driveControllerProvider).loadMoreFolder(null);
+            }
+            return false;
+          },
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
               SliverToBoxAdapter(
-                child: DriveRecentsStrip(
-                  files: recent,
-                  onFileTap: (f) => openDriveFile(context, ref, f),
-                  onMore: (f) => DriveItemActions.openFile(context, ref, f),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(0, AppSpacing.xs, 0, 0),
+                  child: DriveQuickActions(
+                    onTrashTap: () => context.safePush('/settings/trash'),
+                    onArchiveTap: () => context.safePush('/settings/archive'),
+                    onLockedTap: () => context.safePush('/settings/locked'),
+                  ),
                 ),
               ),
+              if (!loaded && loading)
+                const SliverFillRemaining(child: SkeletonList()),
+              if (error != null) _ErrorBanner(error),
+              if (_searchError != null && query.isNotEmpty)
+                _ErrorBanner(_searchError!),
+              if (recent.isNotEmpty && query.isEmpty) ...[
+                const DriveSectionHeader('Recent', topPadding: AppSpacing.sm),
+                SliverToBoxAdapter(
+                  child: DriveRecentsStrip(
+                    files: recent,
+                    onFileTap: (f) => openDriveFile(context, ref, f),
+                    onMore: (f) => DriveItemActions.openFile(context, ref, f),
+                  ),
+                ),
+              ],
+              if (loaded &&
+                  !_searchLoading &&
+                  folders.isEmpty &&
+                  files.isEmpty)
+                SliverFillRemaining(
+                  child: EmptyState(
+                    icon: query.isEmpty ? Icons.folder_open : Icons.search_off,
+                    title: query.isEmpty ? 'Your Drive is empty' : 'No results',
+                    body: query.isEmpty
+                        ? 'Upload files or create a folder to get started.'
+                        : 'Try a different file or folder name.',
+                  ),
+                ),
+              if (folders.isNotEmpty)
+                const DriveSectionHeader('Folders', bottomPadding: 0),
+              if (folders.isNotEmpty && query.isNotEmpty)
+                const SliverToBoxAdapter(child: _PartialFoldersBanner()),
+              DriveFolderSliver(
+                folders: folders,
+                selectMode: false,
+                selectedFolderIds: selectedFolderIds,
+                onFolderTap: _onFolderTap,
+                onFolderLongPress: (id) => enterSelect(folderId: id),
+                onFolderMore: (folder) =>
+                    DriveItemActions.openFolder(context, ref, folder),
+              ),
+              if (files.isNotEmpty)
+                const DriveSectionHeader('Files', bottomPadding: 0),
+              DriveFilesSliver(
+                files: files,
+                grid: grid,
+                selectMode: false,
+                selectedFileIds: selectedFileIds,
+                onFileTap: _onFileTap,
+                onFileLongPress: (id) => enterSelect(fileId: id),
+                onFileMore: (file) =>
+                    DriveItemActions.openFile(context, ref, file),
+              ),
+              if (loadingMore && query.isEmpty)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+              if (_searchLoading && query.isNotEmpty)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ),
             ],
-            if (!loading && folders.isEmpty && files.isEmpty)
-              SliverFillRemaining(
-                child: EmptyState(
-                  icon: query.isEmpty ? Icons.folder_open : Icons.search_off,
-                  title: query.isEmpty ? 'Your Drive is empty' : 'No results',
-                  body: query.isEmpty
-                      ? 'Upload files or create a folder to get started.'
-                      : 'Try a different file or folder name.',
-                ),
-              ),
-            if (folders.isNotEmpty)
-              const DriveSectionHeader('Folders', bottomPadding: 0),
-            DriveFolderSliver(
-              folders: folders,
-              selectMode: false,
-              selectedFolderIds: selectedFolderIds,
-              onFolderTap: _onFolderTap,
-              onFolderLongPress: (id) => enterSelect(folderId: id),
-              onFolderMore: (folder) =>
-                  DriveItemActions.openFolder(context, ref, folder),
-            ),
-            if (files.isNotEmpty)
-              const DriveSectionHeader('Files', bottomPadding: 0),
-            DriveFilesSliver(
-              files: files,
-              grid: grid,
-              selectMode: false,
-              selectedFileIds: selectedFileIds,
-              onFileTap: _onFileTap,
-              onFileLongPress: (id) => enterSelect(fileId: id),
-              onFileMore: (file) =>
-                  DriveItemActions.openFile(context, ref, file),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -272,20 +391,11 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
     }
     context.safePush('/folder/${folder.id}');
   }
-
-  @override
-  void dispose() {
-    try {
-      ref.read(selectionModeStateProvider).setDriveSelectMode(false);
-    } catch (_) {}
-    super.dispose();
-  }
 }
 
 class _ErrorBanner extends StatelessWidget {
   const _ErrorBanner(this.message);
   final String message;
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -312,6 +422,33 @@ class _ErrorBanner extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Partial-folder-search banner (G6). Folder search filters cumulative
+/// metadata only — folders the user hasn't navigated into are not in the
+/// local index. The banner names this limitation explicitly.
+class _PartialFoldersBanner extends StatelessWidget {
+  const _PartialFoldersBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        0,
+        AppSpacing.md,
+        AppSpacing.xs,
+      ),
+      child: Text(
+        'Folders matched in your loaded sections — open a folder to discover more.',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: scheme.onSurfaceVariant,
+          fontStyle: FontStyle.italic,
         ),
       ),
     );

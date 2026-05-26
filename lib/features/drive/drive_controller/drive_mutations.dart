@@ -14,21 +14,15 @@ extension _DriveMutations on DriveController {
       createdAt: now,
       isOptimistic: true,
     );
-    state = state.copyWith(folders: [placeholder, ...state.folders]);
+    _insertOptimisticFolder(parentId, placeholder);
     _notifyListeners();
     try {
       final created = await _repo.createFolder(name, parentId);
-      state = state.copyWith(
-        folders: state.folders
-            .map((f) => f.id == tempId ? created : f)
-            .toList(),
-      );
+      _replaceFolderEverywhere(tempId, created);
       _notifyListeners();
       return created;
     } catch (err) {
-      state = state.copyWith(
-        folders: state.folders.where((f) => f.id != tempId).toList(),
-      );
+      _removeFolderEverywhere(tempId);
       _notifyListeners();
       rethrow;
     }
@@ -36,41 +30,85 @@ extension _DriveMutations on DriveController {
 
   Future<void> _renameFolder(String id, String name) async {
     await _repo.renameFolder(id, name);
-    state = state.copyWith(
-      folders: state.folders
-          .map((f) => f.id == id ? f.copyWith(name: name) : f)
-          .toList(),
-    );
+    final byId = {for (final f in state.folders) f.id: f};
+    final existing = byId[id];
+    if (existing != null) {
+      _mergeFolderMetadata([existing.copyWith(name: name)]);
+    }
+    final pages = Map<String?, DriveFolderPage>.of(state.folderPages);
+    pages.forEach((parent, page) {
+      if (page.subfolders.any((f) => f.id == id)) {
+        pages[parent] = page.copyWith(
+          subfolders: page.subfolders
+              .map((f) => f.id == id ? f.copyWith(name: name) : f)
+              .toList(),
+        );
+      }
+    });
+    state = state.copyWith(folderPages: pages);
     _notifyListeners();
   }
 
   Future<void> _moveFile(String fileId, String? targetFolderId) async {
-    final previousFiles = state.files;
-    final previousMedia = state.mediaFiles;
+    final previousState = state;
+    final source = state.files.firstWhereOrNull((f) => f.id == fileId);
+    if (source == null) return;
+
+    final movedFile = source.copyWith(parentId: targetFolderId);
+
+    // Optimistically remove from source page; insert into destination page
+    // only if it is loaded — otherwise the destination will fetch fresh on
+    // next visit (G3 / 3i).
+    final pages = Map<String?, DriveFolderPage>.of(state.folderPages);
+    final sourcePage = pages[source.parentId];
+    if (sourcePage != null) {
+      pages[source.parentId] = sourcePage.copyWith(
+        files: sourcePage.files.where((f) => f.id != fileId).toList(),
+      );
+    }
+    final destPage = pages[targetFolderId];
+    if (destPage != null) {
+      pages[targetFolderId] = destPage.copyWith(
+        files: [movedFile, ...destPage.files.where((f) => f.id != fileId)],
+      );
+    } else {
+      _staleFolderIds.add(targetFolderId);
+    }
     state = state.copyWith(
-      files: state.files
-          .map((f) => f.id == fileId ? f.copyWith(parentId: targetFolderId) : f)
-          .toList(),
       mediaFiles: state.mediaFiles
-          .map((f) => f.id == fileId ? f.copyWith(parentId: targetFolderId) : f)
+          .map((f) => f.id == fileId ? movedFile : f)
           .toList(),
+      folderPages: pages,
       clearError: true,
     );
+    _refreshFlatAggregates();
     _notifyListeners();
+
     try {
       final updated = await _repo.moveFile(fileId, targetFolderId);
+      // Patch with the server-truth row in the destination page (if loaded)
+      // and in mediaFiles.
+      final pagesAfter = Map<String?, DriveFolderPage>.of(state.folderPages);
+      final destAfter = pagesAfter[targetFolderId];
+      if (destAfter != null) {
+        pagesAfter[targetFolderId] = destAfter.copyWith(
+          files: destAfter.files
+              .map((f) => f.id == fileId ? updated : f)
+              .toList(),
+        );
+        state = state.copyWith(folderPages: pagesAfter);
+      }
       state = state.copyWith(
-        files: state.files.map((f) => f.id == fileId ? updated : f).toList(),
         mediaFiles: state.mediaFiles
             .map((f) => f.id == fileId ? updated : f)
             .toList(),
       );
+      _refreshFlatAggregates();
     } catch (err) {
-      state = state.copyWith(
-        files: previousFiles,
-        mediaFiles: previousMedia,
+      state = previousState.copyWith(
         error: _repo.api.errorMessage(err, 'Move failed.'),
       );
+      _refreshFlatAggregates();
     }
     _notifyListeners();
   }
@@ -79,38 +117,46 @@ extension _DriveMutations on DriveController {
     if (folderId == targetParentId) return;
     final folder = this.folder(folderId);
     if (folder == null) return;
-    final descendants = _descendantFolderIds(folderId);
-    if (targetParentId != null && descendants.contains(targetParentId)) {
-      state = state.copyWith(error: 'Cannot move a folder into itself.');
-      _notifyListeners();
-      return;
-    }
 
-    final previous = state.folders;
-    state = state.copyWith(
-      folders: state.folders
-          .map(
-            (f) => f.id == folderId ? f.copyWith(parentId: targetParentId) : f,
-          )
-          .toList(),
-      clearError: true,
-    );
+    final previousState = state;
+    final movedFolder = folder.copyWith(parentId: targetParentId);
+
+    final pages = Map<String?, DriveFolderPage>.of(state.folderPages);
+    final sourcePage = pages[folder.parentId];
+    if (sourcePage != null) {
+      pages[folder.parentId] = sourcePage.copyWith(
+        subfolders: sourcePage.subfolders
+            .where((f) => f.id != folderId)
+            .toList(),
+      );
+    }
+    final destPage = pages[targetParentId];
+    if (destPage != null) {
+      pages[targetParentId] = destPage.copyWith(
+        subfolders: [
+          movedFolder,
+          ...destPage.subfolders.where((f) => f.id != folderId),
+        ],
+      );
+    } else {
+      _staleFolderIds.add(targetParentId);
+    }
+    state = state.copyWith(folderPages: pages, clearError: true);
+    _mergeFolderMetadata([movedFolder]);
     _notifyListeners();
 
     try {
       final updated = await _repo.moveFolder(folderId, targetParentId);
-      state = state.copyWith(
-        folders: state.folders
-            .map((f) => f.id == folderId ? updated : f)
-            .toList(),
-      );
+      _replaceFolderEverywhere(folderId, updated);
+      _notifyListeners();
     } catch (err) {
-      state = state.copyWith(
-        folders: previous,
+      // The backend rejects cycles via `assert_can_move_folder` — surface
+      // the error and roll back optimistic state.
+      state = previousState.copyWith(
         error: _repo.api.errorMessage(err, 'Move failed.'),
       );
+      _notifyListeners();
     }
-    _notifyListeners();
   }
 
   Future<void> _deleteItems({
@@ -124,19 +170,42 @@ extension _DriveMutations on DriveController {
     String? lastError;
     final failedFileIds = <String>{};
     final failedFolderIds = <String>{};
-    final oldFiles = state.files;
-    final oldMedia = state.mediaFiles;
-    final oldFolders = state.folders;
+
+    final previousState = state;
+
+    // Optimistic removal across all loaded pages.
+    final pages = Map<String?, DriveFolderPage>.of(state.folderPages);
+    pages.forEach((parent, page) {
+      var pageChanged = false;
+      var nextFiles = page.files;
+      var nextFolders = page.subfolders;
+      if (page.files.any((f) => fileIds.contains(f.id))) {
+        nextFiles = page.files.where((f) => !fileIds.contains(f.id)).toList();
+        pageChanged = true;
+      }
+      if (page.subfolders.any((f) => folderIds.contains(f.id))) {
+        nextFolders = page.subfolders
+            .where((f) => !folderIds.contains(f.id))
+            .toList();
+        pageChanged = true;
+      }
+      if (pageChanged) {
+        pages[parent] = page.copyWith(
+          files: nextFiles,
+          subfolders: nextFolders,
+        );
+      }
+    });
     state = state.copyWith(
-      files: state.files.where((f) => !fileIds.contains(f.id)).toList(),
-      mediaFiles: state.mediaFiles
-          .where((f) => !fileIds.contains(f.id))
-          .toList(),
+      mediaFiles: state.mediaFiles.where((f) => !fileIds.contains(f.id)).toList(),
+      folderPages: pages,
       folders: state.folders.where((f) => !folderIds.contains(f.id)).toList(),
       deleteProgress: (completed: 0, failed: 0, total: total),
       clearError: true,
     );
+    _refreshFlatAggregates();
     _notifyListeners();
+
     for (final id in fileIds) {
       try {
         if (_settings.state.trashEnabled) {
@@ -180,31 +249,45 @@ extension _DriveMutations on DriveController {
       }
     }
     if (failed > 0) {
-      // Restore only the items that actually failed, preserving items the
-      // server already deleted so they don't ghost-back into the UI.
+      // Restore only the items that actually failed.
+      final restorePages = Map<String?, DriveFolderPage>.of(state.folderPages);
+      previousState.folderPages.forEach((parent, prevPage) {
+        final cur = restorePages[parent] ?? const DriveFolderPage();
+        final restoredFiles = [
+          ...cur.files,
+          ...prevPage.files.where((f) => failedFileIds.contains(f.id)),
+        ];
+        final restoredFolders = [
+          ...cur.subfolders,
+          ...prevPage.subfolders.where((f) => failedFolderIds.contains(f.id)),
+        ];
+        restorePages[parent] = cur.copyWith(
+          files: restoredFiles,
+          subfolders: restoredFolders,
+        );
+      });
+      final restoredFolderMeta = previousState.folders
+          .where((f) => failedFolderIds.contains(f.id))
+          .toList();
       state = state.copyWith(
-        files: [
-          ...state.files,
-          ...oldFiles.where((f) => failedFileIds.contains(f.id)),
-        ],
         mediaFiles: [
           ...state.mediaFiles,
-          ...oldMedia.where((f) => failedFileIds.contains(f.id)),
+          ...previousState.mediaFiles.where(
+            (f) => failedFileIds.contains(f.id),
+          ),
         ],
-        folders: [
-          ...state.folders,
-          ...oldFolders.where((f) => failedFolderIds.contains(f.id)),
-        ],
+        folderPages: restorePages,
+        folders: [...state.folders, ...restoredFolderMeta],
         error: lastError ?? 'Some items could not be deleted.',
       );
+      _refreshFlatAggregates();
       _notifyListeners();
     }
     _markActiveAndAncestorsStale();
     _bumpTrashRevision();
     try {
-      await refresh(silent: true, force: true);
+      await refreshFolder(state.activeFolderId);
     } catch (_) {}
-    // Briefly let the user see the final pill state, then clear it.
     await Future<void>.delayed(
       Duration(milliseconds: failed > 0 ? 1800 : 700),
     );
@@ -221,65 +304,95 @@ extension _DriveMutations on DriveController {
   }
 
   Future<void> _toggleFolderStar(String id) async {
-    final current = state.folders.where((f) => f.id == id).firstOrNull;
+    final current = state.folders.firstWhereOrNull((f) => f.id == id) ??
+        state.starred.folders.firstWhereOrNull((f) => f.id == id);
     if (current == null) return;
     final next = !current.starred;
-    final previous = state.folders;
-    state = state.copyWith(
-      folders: state.folders
-          .map((f) => f.id == id ? f.copyWith(starred: next) : f)
-          .toList(),
-      clearError: true,
-    );
+    final previousFolders = state.folders;
+    final previousStarred = state.starred;
+    final optimistic = current.copyWith(starred: next);
+    _mergeFolderMetadata([optimistic]);
+    final pages = Map<String?, DriveFolderPage>.of(state.folderPages);
+    pages.forEach((parent, page) {
+      if (page.subfolders.any((f) => f.id == id)) {
+        pages[parent] = page.copyWith(
+          subfolders: page.subfolders
+              .map((f) => f.id == id ? optimistic : f)
+              .toList(),
+        );
+      }
+    });
+    state = state.copyWith(folderPages: pages, clearError: true);
+    _patchStarredFolder(optimistic, starred: next);
     _notifyListeners();
     try {
       final updated = await _repo.setFolderStarred(id, next);
-      state = state.copyWith(
-        folders: state.folders.map((f) => f.id == id ? updated : f).toList(),
-      );
+      _replaceFolderEverywhere(id, updated);
+      _patchStarredFolder(updated, starred: next);
+      _notifyListeners();
     } catch (err) {
       state = state.copyWith(
-        folders: previous,
+        folders: previousFolders,
+        starred: previousStarred,
         error: _repo.api.errorMessage(err, 'Could not update star.'),
       );
+      _notifyListeners();
     }
-    _notifyListeners();
   }
 
   Future<void> _toggleFileStar(String id) async {
     final current =
-        state.files.where((f) => f.id == id).firstOrNull ??
-        state.mediaFiles.where((f) => f.id == id).firstOrNull;
+        state.files.firstWhereOrNull((f) => f.id == id) ??
+        state.mediaFiles.firstWhereOrNull((f) => f.id == id) ??
+        state.starred.files.firstWhereOrNull((f) => f.id == id);
     if (current == null) return;
     final next = !current.starred;
-    final previousFiles = state.files;
-    final previousMedia = state.mediaFiles;
+    final previousState = state;
+    final optimistic = current.copyWith(starred: next);
+    final pages = Map<String?, DriveFolderPage>.of(state.folderPages);
+    pages.forEach((parent, page) {
+      if (page.files.any((f) => f.id == id)) {
+        pages[parent] = page.copyWith(
+          files: page.files.map((f) => f.id == id ? optimistic : f).toList(),
+        );
+      }
+    });
     state = state.copyWith(
-      files: state.files
-          .map((f) => f.id == id ? f.copyWith(starred: next) : f)
-          .toList(),
       mediaFiles: state.mediaFiles
-          .map((f) => f.id == id ? f.copyWith(starred: next) : f)
+          .map((f) => f.id == id ? optimistic : f)
           .toList(),
+      folderPages: pages,
       clearError: true,
     );
+    _refreshFlatAggregates();
+    _patchStarredFile(optimistic, starred: next);
     _notifyListeners();
     try {
       final updated = await _repo.setFileStarred(id, next);
+      final pagesAfter = Map<String?, DriveFolderPage>.of(state.folderPages);
+      pagesAfter.forEach((parent, page) {
+        if (page.files.any((f) => f.id == id)) {
+          pagesAfter[parent] = page.copyWith(
+            files: page.files.map((f) => f.id == id ? updated : f).toList(),
+          );
+        }
+      });
       state = state.copyWith(
-        files: state.files.map((f) => f.id == id ? updated : f).toList(),
         mediaFiles: state.mediaFiles
             .map((f) => f.id == id ? updated : f)
             .toList(),
+        folderPages: pagesAfter,
       );
+      _refreshFlatAggregates();
+      _patchStarredFile(updated, starred: next);
+      _notifyListeners();
     } catch (err) {
-      state = state.copyWith(
-        files: previousFiles,
-        mediaFiles: previousMedia,
+      state = previousState.copyWith(
         error: _repo.api.errorMessage(err, 'Could not update star.'),
       );
+      _refreshFlatAggregates();
+      _notifyListeners();
     }
-    _notifyListeners();
   }
 
   Future<void> _moveToShelf(
@@ -287,16 +400,15 @@ extension _DriveMutations on DriveController {
     required _ShelfKind kind,
     required bool archive,
   }) async {
-    final previousFiles = state.files;
-    final previousMedia = state.mediaFiles;
+    final previousState = state;
     if (archive) {
-      // Optimistically remove from the active sets so the home/folder/photos
-      // views update immediately.
+      // Optimistically remove from active sets / loaded pages.
+      _removeFileFromAllPages(id);
       state = state.copyWith(
-        files: state.files.where((f) => f.id != id).toList(),
         mediaFiles: state.mediaFiles.where((f) => f.id != id).toList(),
         clearError: true,
       );
+      _refreshFlatAggregates();
       _notifyListeners();
     } else {
       state = state.copyWith(clearError: true);
@@ -314,12 +426,10 @@ extension _DriveMutations on DriveController {
       }
       _bumpShelfRevision(kind);
       _markActiveAndAncestorsStale();
-      await refresh(silent: true, force: true);
+      await refreshFolder(state.activeFolderId);
     } catch (err) {
       if (archive) {
-        state = state.copyWith(
-          files: previousFiles,
-          mediaFiles: previousMedia,
+        state = previousState.copyWith(
           error: _repo.api.errorMessage(
             err,
             kind == _ShelfKind.archive
@@ -327,6 +437,7 @@ extension _DriveMutations on DriveController {
                 : 'Could not lock file.',
           ),
         );
+        _refreshFlatAggregates();
       } else {
         state = state.copyWith(
           error: _repo.api.errorMessage(

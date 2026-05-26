@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../drive/drive_controller.dart';
 import '../drive/drive_tab_commands.dart';
+import '../profile/storage_summary_controller.dart';
 import '../search/search_controller.dart';
 import '../share/share_controller.dart';
 import '../upload/upload_controller.dart';
@@ -248,6 +249,7 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
         upload.resetTerminalForAccountSwitch();
       }
       await ref.read(driveControllerProvider).resetForAccountSwitch();
+      ref.read(storageSummaryControllerProvider).resetForAccountSwitch();
       final bootstrap = ref
           .read(authControllerProvider)
           .takePendingDriveBootstrap();

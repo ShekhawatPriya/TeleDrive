@@ -54,14 +54,6 @@ Widget _settingsSectionIntro(BuildContext context, String text) {
   );
 }
 
-void _openTdlibRepair(BuildContext context) {
-  final router = GoRouter.of(context);
-  rootNavigatorKey.currentState?.popUntil((route) => route.isFirst);
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    router.go('/tdlib-session?returnTo=/settings');
-  });
-}
-
 String _formatBytes(int bytes) {
   if (bytes <= 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB'];

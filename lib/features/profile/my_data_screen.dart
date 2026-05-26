@@ -12,6 +12,7 @@ import '../../models/auth_user.dart';
 import '../../widgets/profile_avatar.dart';
 import '../auth/auth_controller.dart';
 import '../drive/drive_controller.dart';
+import 'storage_summary_controller.dart';
 
 part 'my_data/my_data_diagnostics_card.dart';
 part 'my_data/my_data_export_dialog.dart';
@@ -29,6 +30,15 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
   bool _diagnosticsRunning = false;
   String _diagnosticsStep = '';
   bool _diagnosticsCompleted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(storageSummaryControllerProvider).ensureLoaded();
+    });
+  }
 
   Future<void> _launchUrl(String urlString) async {
     final uri = Uri.parse(urlString);
@@ -77,6 +87,8 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
     final theme = Theme.of(context);
     final auth = ref.watch(authControllerProvider);
     final drive = ref.watch(driveControllerProvider);
+    final summary =
+        ref.watch(storageSummaryControllerProvider).value ?? StorageSummary.empty;
 
     return Scaffold(
       appBar: AppBar(
@@ -120,8 +132,8 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
               children: [
                 _MyDataProfileHero(
                   user: auth.user,
-                  usedStorage: formatFileSize(drive.state.usedStorage),
-                  fileCount: drive.files.length,
+                  usedStorage: formatFileSize(summary.totalBytes),
+                  fileCount: summary.totalFiles,
                   folderCount: drive.folders.length,
                 ),
                 const SizedBox(height: AppSpacing.xl),

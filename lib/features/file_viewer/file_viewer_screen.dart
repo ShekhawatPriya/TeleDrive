@@ -12,6 +12,7 @@ import '../../core/telegram/telegram_transfer_service.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/skeletons.dart';
 import '../auth/auth_controller.dart';
 import '../auth/tdlib_session_controller.dart';
 import '../drive/drive_controller.dart';
@@ -20,23 +21,79 @@ import 'components/image_preview.dart';
 import 'components/metadata_block.dart';
 import 'components/video_preview.dart';
 
-class FileViewerScreen extends ConsumerWidget {
+class FileViewerScreen extends ConsumerStatefulWidget {
   const FileViewerScreen({required this.fileId, super.key});
   final String fileId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FileViewerScreen> createState() => _FileViewerScreenState();
+}
+
+class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
+  // True while we're awaiting `/files/{id}` because the file wasn't yet in
+  // any loaded folder page (Starred / Search / deep link path).
+  bool _resolving = false;
+  // True only after a server fetch returned no row \u2014 distinguishes "not yet
+  // loaded" from "actually missing." We never set this just because the
+  // initial sync lookup missed.
+  bool _serverSaysMissing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final drive = ref.read(driveControllerProvider);
+      if (drive.anyFile(widget.fileId) != null) return;
+      setState(() => _resolving = true);
+      drive.ensureFileLoaded(widget.fileId).then((file) {
+        if (!mounted) return;
+        setState(() {
+          _resolving = false;
+          _serverSaysMissing = file == null;
+        });
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final drive = ref.watch(driveControllerProvider);
-    final file = drive.file(fileId);
+    final file = drive.anyFile(widget.fileId);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+
     if (file == null) {
-      return const Scaffold(
-        body: EmptyState(
-          icon: Icons.error_outline,
-          title: 'File not found',
-          body: 'Refresh Drive and try again.',
-        ),
+      if (_resolving) {
+        return Scaffold(
+          backgroundColor: scheme.surface,
+          appBar: AppBar(
+            backgroundColor: scheme.surface,
+            surfaceTintColor: Colors.transparent,
+            scrolledUnderElevation: 0.6,
+            elevation: 0,
+            titleSpacing: 0,
+            title: const Text('Loading\u2026'),
+          ),
+          body: const SkeletonList(),
+        );
+      }
+      // Sync miss without an in-flight resolve happens only when an earlier
+      // resolve already returned null; surface the existing not-found UI.
+      if (_serverSaysMissing) {
+        return const Scaffold(
+          body: EmptyState(
+            icon: Icons.error_outline,
+            title: 'File not found',
+            body: 'Refresh Drive and try again.',
+          ),
+        );
+      }
+      // Initial frame before the post-frame resolve kicks in.
+      return Scaffold(
+        backgroundColor: scheme.surface,
+        appBar: AppBar(backgroundColor: scheme.surface),
+        body: const SkeletonList(),
       );
     }
     return Scaffold(

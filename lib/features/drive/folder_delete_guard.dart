@@ -1,5 +1,20 @@
 import '../../models/drive_models.dart';
 
+/// Folder delete pre-check.
+///
+/// After the on-demand Drive refactor, `state.folders` is intentionally
+/// incomplete (only folders the user has visited or that came in the root
+/// bootstrap). A client-side recursive descendant walk would silently miss
+/// subfolders that haven't been loaded.
+///
+/// The server is the source of truth for "is this folder empty?" — it
+/// enforces this in `FolderService._assert_folder_empty` and surfaces a
+/// `folder_not_empty` error on `trash_folder`. The pre-check here is a fast
+/// UX path: when the directly-known counts already say the folder isn't
+/// empty, block immediately so the user gets a clear message without a round
+/// trip. When the local view says it might be empty, we let the server
+/// confirm — the delete call will throw `folder_not_empty` and the existing
+/// error dialog surfaces.
 class FolderDeleteValidation {
   const FolderDeleteValidation({
     required this.canDelete,
@@ -23,11 +38,15 @@ class FolderDeleteGuard {
     DriveState state,
     DriveFolder folder,
   ) {
-    final descendantIds = _descendantFolderIds(state, folder.id);
-    final containsFolders = descendantIds.isNotEmpty;
+    final loadedChildFolders = state.folderPages[folder.id]?.subfolders ?? const [];
+    final containsFolders = loadedChildFolders.isNotEmpty;
+    // recursiveFileCount is currently populated from `direct_file_count` on
+    // the backend (see folder_response_direct). It accurately reflects direct
+    // children at the moment of the last folder fetch, which is good enough
+    // for the fast-path check; deeper non-emptiness is caught by the server.
     final containsFiles =
         folder.recursiveFileCount > 0 ||
-        _hasActiveOptimisticFile(state, {folder.id, ...descendantIds});
+        _hasActiveOptimisticFile(state, folder.id);
 
     if (!containsFiles && !containsFolders) {
       return FolderDeleteValidation.allowed;
@@ -61,30 +80,11 @@ class FolderDeleteGuard {
     return null;
   }
 
-  static Set<String> _descendantFolderIds(DriveState state, String folderId) {
-    final found = <String>{};
-
-    void visit(String id) {
-      for (final child in state.folders.where((f) => f.parentId == id)) {
-        if (found.add(child.id)) visit(child.id);
-      }
-    }
-
-    visit(folderId);
-    return found;
-  }
-
-  static bool _hasActiveOptimisticFile(
-    DriveState state,
-    Set<String> folderIds,
-  ) {
-    final checked = <String>{};
-    for (final file in [...state.files, ...state.mediaFiles]) {
-      if (!checked.add(file.id)) continue;
-      if (!_isActiveOptimisticFile(file)) continue;
-      if (file.parentId != null && folderIds.contains(file.parentId)) {
-        return true;
-      }
+  static bool _hasActiveOptimisticFile(DriveState state, String folderId) {
+    final page = state.folderPages[folderId];
+    if (page == null) return false;
+    for (final file in page.files) {
+      if (_isActiveOptimisticFile(file)) return true;
     }
     return false;
   }

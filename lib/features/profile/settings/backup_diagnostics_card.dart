@@ -23,7 +23,7 @@ class _BackupDiagnosticsCard extends StatelessWidget {
             ? '-'
             : '${diagnostics.scanDuration!.inMilliseconds} ms',
       ),
-      (label: 'Strategy', value: diagnostics.indexingStrategy.label),
+      (label: 'Scan mode', value: diagnostics.indexingStrategy.label),
       (
         label: 'MediaStore / path',
         value:

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../models/drive_models.dart';
+import '../storage_summary_controller.dart';
 import 'donut_chart.dart';
 import 'storage_legend.dart';
 
@@ -16,6 +17,38 @@ class StorageCategory {
   final Color color;
 }
 
+/// Builds the four-category storage breakdown from the backend
+/// `/storage/summary` response. Audio is rolled into Other to keep the
+/// existing Drive donut palette (Photos / Videos / Documents / Other).
+List<StorageCategory> buildStorageCategoriesFromSummary(StorageSummary summary) {
+  return [
+    StorageCategory(
+      label: 'Photos',
+      bytes: summary.imageBytes,
+      color: const Color(0xFFFF453A),
+    ),
+    StorageCategory(
+      label: 'Videos',
+      bytes: summary.videoBytes,
+      color: const Color(0xFFFF9F0A),
+    ),
+    StorageCategory(
+      label: 'Documents',
+      bytes: summary.documentBytes,
+      color: const Color(0xFF0A84FF),
+    ),
+    StorageCategory(
+      label: 'Other',
+      bytes: summary.audioBytes + summary.otherBytes,
+      color: const Color(0xFF8E8E93),
+    ),
+  ];
+}
+
+@Deprecated(
+  'Use buildStorageCategoriesFromSummary with /storage/summary; iterating '
+  '`drive.files` only counts the loaded folder pages after on-demand loading.',
+)
 List<StorageCategory> buildStorageCategories(
   List<DriveFile> files,
   ColorScheme scheme,

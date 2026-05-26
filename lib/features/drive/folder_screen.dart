@@ -7,6 +7,7 @@ import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/fab_anchor.dart';
 import '../../widgets/ios_more_menu.dart';
+import '../../widgets/skeletons.dart';
 
 import '../upload/ui/components/bottom_action_system.dart';
 import 'components/drive_item_actions.dart';
@@ -106,6 +107,15 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
     );
     final path = snapshot.path;
     final grid = prefs.layout == LayoutMode.grid;
+    final loaded = snapshot.loaded;
+    final loading = snapshot.loading;
+    final hasMore = snapshot.hasMore;
+    final loadingMore = snapshot.loadingMore;
+    // Deep link / G4: if metadata isn't in _folderById yet but the page is
+    // still loading, show "Loading folder…" rather than the placeholder
+    // "Folder" — once the children request returns with the path, the title
+    // resolves automatically.
+    final title = folder?.name ?? (loaded ? 'Folder' : 'Loading folder…');
 
     return Scaffold(
       appBar: selectMode
@@ -122,7 +132,7 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
               ),
             )
           : AppBar(
-              title: Text(folder?.name ?? 'Folder'),
+              title: Text(title),
               actions: [
                 IosMoreButton(
                   sectionsBuilder: (ctx) => buildDriveMenuSections(
@@ -139,43 +149,69 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
       body: Stack(
         children: [
           RefreshIndicator(
-            onRefresh: ref.read(driveControllerProvider).refresh,
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: _Breadcrumbs(path: path)),
-                if (folders.isEmpty && files.isEmpty)
-                  const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: EmptyState(
-                      icon: Icons.folder_open,
-                      title: 'Nothing here yet',
-                      body: 'Upload files or create a nested folder.',
+            onRefresh: () => ref
+                .read(driveControllerProvider)
+                .refreshFolder(widget.folderId, silent: false),
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification.metrics.pixels >=
+                        notification.metrics.maxScrollExtent - 200 &&
+                    hasMore &&
+                    !loadingMore) {
+                  ref
+                      .read(driveControllerProvider)
+                      .loadMoreFolder(widget.folderId);
+                }
+                return false;
+              },
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(child: _Breadcrumbs(path: path)),
+                  if (!loaded && loading)
+                    const SliverFillRemaining(child: SkeletonList()),
+                  if (loaded && folders.isEmpty && files.isEmpty)
+                    const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: EmptyState(
+                        icon: Icons.folder_open,
+                        title: 'Nothing here yet',
+                        body: 'Upload files or create a nested folder.',
+                      ),
+                    ),
+                  DriveFolderSliver(
+                    folders: folders,
+                    selectMode: selectMode,
+                    selectedFolderIds: selectedFolderIds,
+                    onFolderTap: _onFolderTap,
+                    onFolderLongPress: (id) => enterSelect(folderId: id),
+                    onFolderMore: (f) => DriveItemActions.openFolder(
+                      context,
+                      ref,
+                      f,
+                      allowRename: false,
                     ),
                   ),
-                DriveFolderSliver(
-                  folders: folders,
-                  selectMode: selectMode,
-                  selectedFolderIds: selectedFolderIds,
-                  onFolderTap: _onFolderTap,
-                  onFolderLongPress: (id) => enterSelect(folderId: id),
-                  onFolderMore: (f) => DriveItemActions.openFolder(
-                    context,
-                    ref,
-                    f,
-                    allowRename: false,
+                  DriveFilesSliver(
+                    files: files,
+                    grid: grid,
+                    selectMode: selectMode,
+                    selectedFileIds: selectedFileIds,
+                    onFileTap: _onFileTap,
+                    onFileLongPress: (id) => enterSelect(fileId: id),
+                    onFileMore: (f) =>
+                        DriveItemActions.openFile(context, ref, f),
+                    bottomPadding: 150,
                   ),
-                ),
-                DriveFilesSliver(
-                  files: files,
-                  grid: grid,
-                  selectMode: selectMode,
-                  selectedFileIds: selectedFileIds,
-                  onFileTap: _onFileTap,
-                  onFileLongPress: (id) => enterSelect(fileId: id),
-                  onFileMore: (f) => DriveItemActions.openFile(context, ref, f),
-                  bottomPadding: 150,
-                ),
-              ],
+                  if (loadingMore)
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           Positioned(

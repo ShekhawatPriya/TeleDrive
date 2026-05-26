@@ -98,6 +98,7 @@ class DriveRepository {
     int limit = 60,
     String? cursor,
     bool allFolders = false,
+    String? query,
   }) async {
     final res = await api.dio.get(
       '/files',
@@ -107,6 +108,7 @@ class DriveRepository {
         if (type != 'all') 'type': type,
         'limit': limit,
         if (cursor != null) 'cursor': cursor,
+        if (query != null && query.isNotEmpty) 'query': query,
       },
     );
     final data = Map<String, dynamic>.from(res.data as Map);
@@ -114,6 +116,69 @@ class DriveRepository {
         .map((e) => _mapFile(Map<String, dynamic>.from(e as Map)))
         .toList();
     return (files: files, nextCursor: data['nextCursor'] as String?);
+  }
+
+  Future<({List<DriveFolder> folders, String? nextCursor, List<DriveFolder> path})> listFolderChildren({
+    String? parentId,
+    int limit = 200,
+    String? cursor,
+  }) async {
+    final res = await api.dio.get(
+      '/folders/children',
+      queryParameters: {
+        if (parentId != null) 'parent_id': parentId,
+        'limit': limit,
+        if (cursor != null) 'cursor': cursor,
+      },
+    );
+    final data = Map<String, dynamic>.from(res.data as Map);
+    final folders = (data['folders'] as List? ?? [])
+        .map((e) => _mapFolder(Map<String, dynamic>.from(e as Map)))
+        .toList();
+    final path = (data['path'] as List? ?? [])
+        .map((e) => _mapFolder(Map<String, dynamic>.from(e as Map)))
+        .toList();
+    return (
+      folders: folders,
+      nextCursor: data['nextCursor'] as String?,
+      path: path,
+    );
+  }
+
+  Future<({List<DriveFile> files, String? nextCursor})> listStarredFiles({
+    int limit = 60,
+    String? cursor,
+  }) async {
+    final res = await api.dio.get(
+      '/files/starred',
+      queryParameters: {
+        'limit': limit,
+        if (cursor != null) 'cursor': cursor,
+      },
+    );
+    final data = Map<String, dynamic>.from(res.data as Map);
+    final files = (data['files'] as List? ?? [])
+        .map((e) => _mapFile(Map<String, dynamic>.from(e as Map)))
+        .toList();
+    return (files: files, nextCursor: data['nextCursor'] as String?);
+  }
+
+  Future<({List<DriveFolder> folders, String? nextCursor})> listStarredFolders({
+    int limit = 200,
+    String? cursor,
+  }) async {
+    final res = await api.dio.get(
+      '/folders/starred',
+      queryParameters: {
+        'limit': limit,
+        if (cursor != null) 'cursor': cursor,
+      },
+    );
+    final data = Map<String, dynamic>.from(res.data as Map);
+    final folders = (data['folders'] as List? ?? [])
+        .map((e) => _mapFolder(Map<String, dynamic>.from(e as Map)))
+        .toList();
+    return (folders: folders, nextCursor: data['nextCursor'] as String?);
   }
 
   Future<List<DriveFile>> listAllFiles() async {
@@ -178,6 +243,8 @@ class DriveRepository {
       mediaFiles: mediaFiles,
       folders: folders,
       mediaCursor: data['mediaNextCursor'] as String?,
+      rootFileCursor: data['rootFileCursor'] as String?,
+      rootFolderCursor: data['rootFolderCursor'] as String?,
     );
   }
 

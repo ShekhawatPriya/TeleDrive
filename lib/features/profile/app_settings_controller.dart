@@ -3,12 +3,9 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum GalleryBackupIndexingStrategy {
-  mediaStoreOnly('media_store_only', 'MediaStore indexing only'),
-  filePathOnly('file_path_only', 'File path scanning only'),
-  mediaStoreAndFilePath(
-    'media_store_and_file_path',
-    'MediaStore + file path scanning',
-  );
+  mediaStoreOnly('media_store_only', 'Recommended scan'),
+  filePathOnly('file_path_only', 'Folder scan'),
+  mediaStoreAndFilePath('media_store_and_file_path', 'Thorough scan');
 
   const GalleryBackupIndexingStrategy(this.storageValue, this.label);
 

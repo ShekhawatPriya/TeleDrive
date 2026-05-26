@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_config.dart';
-import '../../core/navigation/root_navigator.dart';
 import '../../core/notifications/upload_notification_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/social_icons.dart';
@@ -65,7 +64,7 @@ class SettingsScreen extends ConsumerWidget {
             iconColor: const Color(0xFF4C8F87),
             title: 'Backup',
             subtitle:
-                'Configure gallery scan limits, queue limits, and indexing',
+                'Configure gallery backup scans and queue behavior',
             onTap: () => Navigator.of(context).push(
               CupertinoPageRoute(builder: (_) => const BackupSettingsScreen()),
             ),

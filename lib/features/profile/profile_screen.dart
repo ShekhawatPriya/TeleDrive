@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../drive/drive_controller.dart';
+import 'storage_summary_controller.dart';
 import 'widgets/storage_swipe_card.dart';
 import 'widgets/storage_donut_card.dart';
 import 'cache_controller.dart';
@@ -21,20 +21,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(cacheControllerProvider).refreshCacheStats();
-      }
+      if (!mounted) return;
+      ref.read(cacheControllerProvider).refreshCacheStats();
+      ref.read(storageSummaryControllerProvider).ensureLoaded();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final drive = ref.watch(driveControllerProvider);
+    final summary =
+        ref.watch(storageSummaryControllerProvider).value ?? StorageSummary.empty;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final files = drive.files;
-    final used = drive.state.usedStorage;
-    final categories = buildStorageCategories(files, scheme);
+    final used = summary.totalBytes;
+    final categories = buildStorageCategoriesFromSummary(summary);
 
     final modalRoute = ModalRoute.of(context);
     final isCurrent = modalRoute?.isCurrent ?? true;

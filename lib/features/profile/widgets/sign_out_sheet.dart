@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../cache_controller.dart';
 import '../app_settings_controller.dart';
+import '../storage_summary_controller.dart';
 import '../../auth/auth_controller.dart';
 import '../../drive/drive_controller.dart';
 import '../../drive/drive_tab_commands.dart';
@@ -122,6 +123,7 @@ class _SignOutConfirmationSheetState
   Future<void> _resetLocalStateAfterSignOut() async {
     ref.read(uploadControllerProvider).resetTerminalForAccountSwitch();
     await ref.read(driveControllerProvider).resetForAccountSwitch();
+    ref.read(storageSummaryControllerProvider).resetForAccountSwitch();
     ref.read(shareControllerProvider).resetForAccountSwitch();
     ref.read(selectionModeStateProvider).setDriveSelectMode(false);
     ref.read(selectionModeStateProvider).setPhotosSelectMode(false);

@@ -15,10 +15,9 @@ import '../../../widgets/profile_avatar.dart';
 import '../../../widgets/social_icons.dart';
 import '../../../widgets/sheet/sheet_drag_handle.dart';
 import '../../auth/auth_controller.dart';
-import '../../drive/drive_controller.dart';
-import '../../../models/drive_models.dart';
 import '../app_settings_controller.dart';
 import '../gallery_backup_controller.dart';
+import '../storage_summary_controller.dart';
 import 'switch_account_provider.dart';
 
 part 'account_bottom_sheet/account_sheet_actions.dart';
@@ -62,6 +61,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
       final auth = ref.read(authControllerProvider);
       unawaited(auth.refreshProfile());
       unawaited(auth.refreshSavedAccountSnapshots());
+      ref.read(storageSummaryControllerProvider).ensureLoaded();
     });
   }
 
@@ -87,7 +87,8 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
-    final drive = ref.watch(driveControllerProvider);
+    final summary =
+        ref.watch(storageSummaryControllerProvider).value ?? StorageSummary.empty;
     final backupOn = ref
         .watch(appSettingsControllerProvider)
         .state
@@ -143,11 +144,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                       const SizedBox(height: _sectionSpacing),
                       _buildBackupCard(context, backupOn),
                       const SizedBox(height: _sectionSpacing),
-                      _buildStorageCard(
-                        context,
-                        drive.state.usedStorage,
-                        drive.files,
-                      ),
+                      _buildStorageCard(context, summary),
                       const SizedBox(height: _sectionSpacing),
                       _buildCompactActionPill(
                         context,

@@ -1,50 +1,25 @@
 part of '../account_bottom_sheet.dart';
 
 extension _AccountSheetCards on _AccountBottomSheetState {
-  Widget _buildStorageCard(
-    BuildContext context,
-    int used,
-    List<DriveFile> files,
-  ) {
+  Widget _buildStorageCard(BuildContext context, StorageSummary summary) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    int photosSize = 0;
-    int videosSize = 0;
-    int docsSize = 0;
-    int othersSize = 0;
-
-    for (final file in files) {
-      final isAvailable =
-          file.uploadStatus == null || file.uploadStatus == 'available';
-      if (!isAvailable) continue;
-      final size = file.size;
-      switch (file.kind) {
-        case FileKind.image:
-          photosSize += size;
-          break;
-        case FileKind.video:
-          videosSize += size;
-          break;
-        case FileKind.pdf:
-        case FileKind.doc:
-        case FileKind.sheet:
-        case FileKind.slides:
-        case FileKind.text:
-        case FileKind.code:
-          docsSize += size;
-          break;
-        default:
-          othersSize += size;
-          break;
-      }
-    }
-
+    final used = summary.totalBytes;
+    // Audio rolls into Others to keep the existing 4-category palette.
     final categories = [
-      _StorageCategory('Photos', photosSize, const Color(0xFFFF453A)),
-      _StorageCategory('Videos', videosSize, const Color(0xFFFF9F0A)),
-      _StorageCategory('Documents', docsSize, const Color(0xFF0A84FF)),
-      _StorageCategory('Others', othersSize, const Color(0xFF8E8E93)),
+      _StorageCategory('Photos', summary.imageBytes, const Color(0xFFFF453A)),
+      _StorageCategory('Videos', summary.videoBytes, const Color(0xFFFF9F0A)),
+      _StorageCategory(
+        'Documents',
+        summary.documentBytes,
+        const Color(0xFF0A84FF),
+      ),
+      _StorageCategory(
+        'Others',
+        summary.audioBytes + summary.otherBytes,
+        const Color(0xFF8E8E93),
+      ),
     ];
 
     final activeCategories = categories.where((c) => c.size > 0).toList();

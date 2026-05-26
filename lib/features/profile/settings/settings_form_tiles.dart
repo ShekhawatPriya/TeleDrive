@@ -188,6 +188,17 @@ class _FlatStrategyTile extends StatelessWidget {
   final GalleryBackupIndexingStrategy value;
   final ValueChanged<GalleryBackupIndexingStrategy> onChanged;
 
+  String _subtitleFor(GalleryBackupIndexingStrategy strategy) {
+    switch (strategy) {
+      case GalleryBackupIndexingStrategy.mediaStoreOnly:
+        return "Uses Android's photo and video library. Best for most people.";
+      case GalleryBackupIndexingStrategy.filePathOnly:
+        return 'Checks accessible public media folders. Use only if some items are missing.';
+      case GalleryBackupIndexingStrategy.mediaStoreAndFilePath:
+        return 'Combines both methods. Slower, useful for troubleshooting.';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -199,10 +210,8 @@ class _FlatStrategyTile extends StatelessWidget {
         children: [
           Expanded(
             child: _FlatTileText(
-              title: 'Indexing strategy',
-              subtitle: value == GalleryBackupIndexingStrategy.mediaStoreOnly
-                  ? 'Uses Android MediaStore indexing only.'
-                  : 'Path scanning is limited to accessible public media directories.',
+              title: 'Backup scan mode',
+              subtitle: _subtitleFor(value),
             ),
           ),
           const SizedBox(width: AppSpacing.md),

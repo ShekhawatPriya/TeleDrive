@@ -13,6 +13,7 @@ import '../../drive/drive_tab_commands.dart';
 import '../../search/search_controller.dart';
 import '../../share/share_controller.dart';
 import '../../upload/upload_controller.dart';
+import '../storage_summary_controller.dart';
 
 class SwitchAccountState {
   final List<SavedAccount> accounts;
@@ -282,6 +283,7 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
       upload.resetTerminalForAccountSwitch();
     }
     await _ref.read(driveControllerProvider).resetForAccountSwitch();
+    _ref.read(storageSummaryControllerProvider).resetForAccountSwitch();
     final bootstrap = _ref
         .read(authControllerProvider)
         .takePendingDriveBootstrap();

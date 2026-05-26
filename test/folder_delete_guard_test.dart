@@ -28,11 +28,17 @@ void main() {
       expect(result.containsFolders, isFalse);
     });
 
-    test('blocks active optimistic upload placeholders inside the folder', () {
+    test('blocks active optimistic upload placeholders in the folder page',
+        () {
       final folder = _folder('1');
+      final optimistic = _file(
+        'file-1',
+        parentId: '1',
+        uploadStatus: 'uploading',
+      );
       final state = DriveState(
         folders: [folder],
-        files: [_file('file-1', parentId: '1', uploadStatus: 'uploading')],
+        folderPages: {'1': DriveFolderPage(files: [optimistic], loaded: true)},
       );
 
       final result = FolderDeleteGuard.validateFolder(state, folder);
@@ -42,18 +48,19 @@ void main() {
       expect(result.containsFolders, isFalse);
     });
 
-    test('blocks active optimistic uploads inside descendant folders', () {
+    test('blocks when the folder page has loaded subfolders', () {
       final folder = _folder('1');
       final child = _folder('2', parentId: '1');
       final state = DriveState(
         folders: [folder, child],
-        files: [_file('file-1', parentId: '2', uploadStatus: 'pending')],
+        folderPages: {
+          '1': DriveFolderPage(subfolders: [child], loaded: true),
+        },
       );
 
       final result = FolderDeleteGuard.validateFolder(state, folder);
 
       expect(result.canDelete, isFalse);
-      expect(result.containsFiles, isTrue);
       expect(result.containsFolders, isTrue);
     });
 
@@ -61,10 +68,15 @@ void main() {
       final folder = _folder('1');
       final state = DriveState(
         folders: [folder],
-        files: [
-          _file('file-1', parentId: '1', uploadStatus: 'failed'),
-          _file('file-2', parentId: '1', uploadStatus: 'cancelled'),
-        ],
+        folderPages: {
+          '1': DriveFolderPage(
+            files: [
+              _file('file-1', parentId: '1', uploadStatus: 'failed'),
+              _file('file-2', parentId: '1', uploadStatus: 'cancelled'),
+            ],
+            loaded: true,
+          ),
+        },
       );
 
       final result = FolderDeleteGuard.validateFolder(state, folder);
@@ -73,49 +85,25 @@ void main() {
       expect(result.containsFiles, isFalse);
     });
 
-    test('blocks direct child folders even when empty', () {
-      final folder = _folder('1');
-      final child = _folder('2', parentId: '1');
-      final state = DriveState(folders: [folder, child]);
+    test(
+      'allows folder when only deep descendants might be non-empty — server '
+      'enforces folder_not_empty',
+      () {
+        // After the on-demand refactor, the guard does not walk descendants
+        // client-side because state.folders is intentionally incomplete. The
+        // server-side _assert_folder_empty is the source of truth and surfaces
+        // a folder_not_empty error if the delete is actually unsafe.
+        final folder = _folder('1');
+        final child = _folder('2', parentId: '1');
+        final grandchild = _folder('3', parentId: '2');
+        // Note: no folderPages entry for '1', so the guard sees nothing.
+        final state = DriveState(folders: [folder, child, grandchild]);
 
-      final result = FolderDeleteGuard.validateFolder(state, folder);
+        final result = FolderDeleteGuard.validateFolder(state, folder);
 
-      expect(result.canDelete, isFalse);
-      expect(result.containsFiles, isFalse);
-      expect(result.containsFolders, isTrue);
-    });
-
-    test('blocks nested descendant folders even when empty', () {
-      final folder = _folder('1');
-      final child = _folder('2', parentId: '1');
-      final grandchild = _folder('3', parentId: '2');
-      final state = DriveState(folders: [folder, child, grandchild]);
-
-      final result = FolderDeleteGuard.validateFolder(state, folder);
-
-      expect(result.canDelete, isFalse);
-      expect(result.containsFiles, isFalse);
-      expect(result.containsFolders, isTrue);
-    });
-
-    test('checks mediaFiles optimistic placeholders and dedupes by id', () {
-      final folder = _folder('1');
-      final optimistic = _file(
-        'file-1',
-        parentId: '1',
-        uploadStatus: 'processing',
-      );
-      final state = DriveState(
-        folders: [folder],
-        files: [optimistic],
-        mediaFiles: [optimistic],
-      );
-
-      final result = FolderDeleteGuard.validateFolder(state, folder);
-
-      expect(result.canDelete, isFalse);
-      expect(result.containsFiles, isTrue);
-    });
+        expect(result.canDelete, isTrue);
+      },
+    );
 
     test('validateFolders returns the first blocked selected folder', () {
       final first = _folder('1');
