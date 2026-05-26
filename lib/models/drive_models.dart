@@ -216,6 +216,7 @@ class DriveState {
   /// compatibility (it inspects this list to compute settled-server ids).
   final List<DriveFile> files;
   final List<DriveFile> mediaFiles;
+
   /// Flat list of all folders the controller has seen (root bootstrap, child
   /// listings, mutations). Intentionally incomplete after on-demand loading;
   /// folder views must read from [folderPages].

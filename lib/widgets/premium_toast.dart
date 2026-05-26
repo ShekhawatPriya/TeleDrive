@@ -55,7 +55,9 @@ void showAppPremiumToast({
   void run() {
     final overlay = rootNavigatorKey.currentState?.overlay;
     if (overlay == null) {
-      debugPrint('[PremiumToast] rootNavigatorKey.currentState?.overlay is null.');
+      debugPrint(
+        '[PremiumToast] rootNavigatorKey.currentState?.overlay is null.',
+      );
       return;
     }
 
@@ -175,8 +177,7 @@ class _PremiumToastOverlayState extends State<_PremiumToastOverlay>
     return ValueListenableBuilder<double>(
       valueListenable: fabAnchorBottom,
       builder: (context, anchor, _) {
-        final fallback =
-            MediaQuery.paddingOf(context).bottom + AppSpacing.md;
+        final fallback = MediaQuery.paddingOf(context).bottom + AppSpacing.md;
         final bottom = anchor > 0 ? anchor : fallback;
         return Positioned(
           bottom: bottom,

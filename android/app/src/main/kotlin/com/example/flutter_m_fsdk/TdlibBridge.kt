@@ -1,4 +1,4 @@
-package com.example.flutter_m_fsdk
+﻿package com.example.flutter_m_fsdk
 
 import android.content.Context
 import android.os.Build
@@ -17,38 +17,6 @@ import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.concurrent.thread
 
 class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
-    private data class Config(
-        val databaseDirectory: String,
-        val filesDirectory: String,
-        val apiId: Int,
-        val apiHash: String,
-        val encryptionKey: String,
-        val expectedTelegramUserId: Long,
-        val applicationVersion: String
-    )
-
-    private data class Transfer(
-        val transferId: String,
-        @Volatile var fileId: Int? = null,
-        @Volatile var cancelled: Boolean = false
-    )
-
-    private data class DownloadWaiter(
-        val transferId: String,
-        val destinationPath: String,
-        val future: CompletableFuture<Map<String, Any?>>
-    )
-
-    private data class AuthorizationWaiter(
-        val acceptedStates: Set<String>,
-        val future: CompletableFuture<String>
-    )
-
-    private data class ConnectionWaiter(
-        val acceptedStates: Set<String>,
-        val future: CompletableFuture<String>
-    )
-
     private val mainHandler = Handler(Looper.getMainLooper())
     private val pending = ConcurrentHashMap<String, CompletableFuture<JSONObject>>()
     private val sendWaiters = ConcurrentHashMap<String, CompletableFuture<JSONObject>>()
@@ -101,7 +69,7 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         val filesDirectory = requireString(args, "filesDirectory")
         val encryptionKey = requireString(args, "encryptionKey")
         val telegramUserId = longArg(args, "telegramUserId") ?: 0L
-        val version = stringArg(args, "applicationVersion") ?: appVersion()
+        val version = stringArg(args, "applicationVersion") ?: tdlibAppVersion(context)
         File(databaseDirectory).mkdirs()
         File(filesDirectory).mkdirs()
         val nextScopeKey = "$databaseDirectory|$filesDirectory|$telegramUserId"
@@ -140,7 +108,7 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
                 try {
                     closeWaiter.get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
                 } catch (_: Throwable) {
-                    // Swallow timeout/interruption — we will force-reset state anyway.
+                    // Swallow timeout/interruption â€” we will force-reset state anyway.
                 }
             } finally {
                 authorizationWaiters.remove(waiter)
@@ -884,7 +852,7 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
             lastEmittedAtByTransferId.remove(transferId)
             lastEmittedFractionByTransferId.remove(transferId)
             lastEmittedStateByTransferId.remove(transferId)
-            // fall through — terminal events ALWAYS post, never throttled
+            // fall through â€” terminal events ALWAYS post, never throttled
         } else {
             val prevState = lastEmittedStateByTransferId[transferId]
             val stateChanged = prevState != state
@@ -918,75 +886,6 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         mainHandler.post { eventSink?.success(mapOf("type" to "error", "code" to code, "message" to message)) }
     }
 
-    private fun jsonToMap(json: JSONObject): Map<String, Any?> {
-        val map = mutableMapOf<String, Any?>()
-        val keys = json.keys()
-        while (keys.hasNext()) {
-            val key = keys.next()
-            val value = json.get(key)
-            map[key] = when (value) {
-                JSONObject.NULL -> null
-                is JSONObject -> jsonToMap(value)
-                is JSONArray -> jsonArrayToList(value)
-                else -> value
-            }
-        }
-        return map
-    }
-
-    private fun jsonArrayToList(array: JSONArray): List<Any?> {
-        val list = mutableListOf<Any?>()
-        for (index in 0 until array.length()) {
-            val value = array.get(index)
-            list.add(
-                when (value) {
-                    JSONObject.NULL -> null
-                    is JSONObject -> jsonToMap(value)
-                    is JSONArray -> jsonArrayToList(value)
-                    else -> value
-                }
-            )
-        }
-        return list
-    }
-
-    private fun appVersion(): String {
-        return try {
-            val info = context.packageManager.getPackageInfo(context.packageName, 0)
-            info.versionName ?: "1.0"
-        } catch (_: Throwable) {
-            "1.0"
-        }
-    }
-
-    private fun requireString(args: Map<String, Any?>, key: String): String {
-        return stringArg(args, key)?.takeIf { it.isNotBlank() }
-            ?: throw TdlibException("tdlib_argument_missing", "$key is required.")
-    }
-
-    private fun stringArg(args: Map<String, Any?>, key: String): String? = args[key] as? String
-
-    private fun intArg(args: Map<String, Any?>, key: String): Int? = when (val value = args[key]) {
-        is Int -> value
-        is Long -> value.toInt()
-        is Number -> value.toInt()
-        is String -> value.toIntOrNull()
-        else -> null
-    }
-
-    private fun longArg(args: Map<String, Any?>, key: String): Long? = when (val value = args[key]) {
-        is Long -> value
-        is Int -> value.toLong()
-        is Number -> value.toLong()
-        is String -> value.toLongOrNull()
-        else -> null
-    }
-
-    private fun <T> failed(error: Throwable): CompletableFuture<T> {
-        val future = CompletableFuture<T>()
-        future.completeExceptionally(error)
-        return future
-    }
 }
 
-class TdlibException(val code: String, override val message: String, val detailsText: String? = null) : RuntimeException(message)
+

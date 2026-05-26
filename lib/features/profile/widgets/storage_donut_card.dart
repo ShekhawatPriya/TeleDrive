@@ -20,7 +20,9 @@ class StorageCategory {
 /// Builds the four-category storage breakdown from the backend
 /// `/storage/summary` response. Audio is rolled into Other to keep the
 /// existing Drive donut palette (Photos / Videos / Documents / Other).
-List<StorageCategory> buildStorageCategoriesFromSummary(StorageSummary summary) {
+List<StorageCategory> buildStorageCategoriesFromSummary(
+  StorageSummary summary,
+) {
   return [
     StorageCategory(
       label: 'Photos',

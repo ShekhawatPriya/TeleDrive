@@ -118,8 +118,10 @@ class _MoveDestinationSheetState extends ConsumerState<MoveDestinationSheet> {
 
   String _breadcrumb() {
     if (_stack.length == 1) return 'My Drive';
-    return ['My Drive', ..._stack.skip(1).map((l) => l.folder?.name ?? '')]
-        .join(' › ');
+    return [
+      'My Drive',
+      ..._stack.skip(1).map((l) => l.folder?.name ?? ''),
+    ].join(' › ');
   }
 
   bool _canChooseCurrent() {
@@ -143,11 +145,12 @@ class _MoveDestinationSheetState extends ConsumerState<MoveDestinationSheet> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final level = _stack.last;
-    final visibleChildren = level.children
-        .where((f) => !isVirtualSectionFolder(f))
-        .where((f) => f.id != widget.movingFolderId)
-        .toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
+    final visibleChildren =
+        level.children
+            .where((f) => !isVirtualSectionFolder(f))
+            .where((f) => f.id != widget.movingFolderId)
+            .toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
 
     return SafeArea(
       top: false,
@@ -217,7 +220,8 @@ class _MoveDestinationSheetState extends ConsumerState<MoveDestinationSheet> {
                 },
                 child: ListView.builder(
                   controller: controller,
-                  itemCount: visibleChildren.length +
+                  itemCount:
+                      visibleChildren.length +
                       (level.loading ? 1 : 0) +
                       (level.error != null ? 1 : 0) +
                       (level.loaded && visibleChildren.isEmpty ? 1 : 0),
@@ -248,7 +252,8 @@ class _MoveDestinationSheetState extends ConsumerState<MoveDestinationSheet> {
                         onTap: () => _enterFolder(folder),
                       );
                     }
-                    if (level.loaded && visibleChildren.isEmpty &&
+                    if (level.loaded &&
+                        visibleChildren.isEmpty &&
                         adj == visibleChildren.length) {
                       return const Padding(
                         padding: EdgeInsets.all(AppSpacing.md),

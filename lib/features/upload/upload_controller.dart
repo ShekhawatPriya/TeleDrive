@@ -26,7 +26,13 @@ import '../../core/utils/file_type_detector.dart';
 import '../../models/drive_models.dart';
 
 part 'upload_controller/upload_state_sync.dart';
-part 'upload_controller/upload_transport.dart';
+part 'upload_controller/upload_controller_helpers.dart';
+part 'upload_controller/upload_public_actions.dart';
+part 'upload_controller/upload_derivatives.dart';
+part 'upload_controller/upload_direct.dart';
+part 'upload_controller/upload_direct_file.dart';
+part 'upload_controller/upload_polling.dart';
+part 'upload_controller/upload_queue.dart';
 
 final uploadControllerProvider = ChangeNotifierProvider<UploadController>((
   ref,
@@ -84,6 +90,10 @@ class UploadController extends ChangeNotifier {
   bool _notifyScheduled = false;
   int _itemsVersion = 0;
   Timer? _optimisticSyncTimer;
+
+  void _emitChange() {
+    notifyListeners();
+  }
 
   String? uploadSessionId;
   List<UploadItem> items = [];
@@ -177,398 +187,33 @@ class UploadController extends ChangeNotifier {
     );
   }
 
-  Future<void> pickFiles({String? folderId, BuildContext? context}) async {
-    activeFolderId = folderId;
-    await _handlePicker(
-      () => UploadPickerHelper.pickFiles(maxFiles: maxFiles),
-      'Document picking failed.',
-      context: context,
-    );
-  }
+  Future<void> pickFiles({String? folderId, BuildContext? context}) =>
+      _pickFiles(folderId: folderId, context: context);
 
-  Future<void> pickPhoto({String? folderId, BuildContext? context}) async {
-    activeFolderId = folderId;
-    await _handlePicker(
-      () => UploadPickerHelper.pickPhoto(),
-      'Camera capture failed.',
-      context: context,
-    );
-  }
+  Future<void> pickPhoto({String? folderId, BuildContext? context}) =>
+      _pickPhoto(folderId: folderId, context: context);
 
-  Future<void> _handlePicker(
-    Future<UploadPickerResult> Function() pickAction,
-    String defaultErrorMessage, {
-    BuildContext? context,
-  }) async {
-    if (picking || uploading) return;
-    picking = true;
-    error = null;
-    _notifyListeners();
-    try {
-      final res = await pickAction();
-      if (res.error != null) {
-        error = res.error;
-        sheetVisible = true;
-      } else if (res.items != null) {
-        uploadSessionId = res.sessionId;
-        items = res.items!;
-        _bumpItemsVersion();
-        sheetVisible = items.isNotEmpty;
-        _syncOptimistic();
-        // The picker completes before this optional UI confirmation; callers
-        // pass a still-mounted context from the current screen.
-        // ignore: use_build_context_synchronously
-        final shouldUpload = await _confirmLargeUploadsIfNeeded(context);
-        if (!shouldUpload) {
-          dismiss();
-          return;
-        }
-        await confirmUpload();
-      }
-    } catch (err) {
-      error = _api.errorMessage(err, defaultErrorMessage);
-      sheetVisible = true;
-    } finally {
-      picking = false;
-      _notifyListeners();
-    }
-  }
+  Future<void> confirmUpload() => _confirmUpload();
 
-  Future<void> confirmUpload() async {
-    final retryable = {
-      UploadStatus.selected,
-      UploadStatus.failed,
-      UploadStatus.cancelled,
-      UploadStatus.waitingForWifi,
-    };
-    if (!items.any((i) => retryable.contains(i.status))) return;
-    _cancelCompletionTimers();
-    uploadSessionId ??= _uuid.v4();
-    uploading = true;
-    error = null;
-    items = items
-        .map(
-          (i) => retryable.contains(i.status)
-              ? i.copyWith(
-                  uploadClientId: _uuid.v4(),
-                  status: UploadStatus.queued,
-                  httpProgress: 0,
-                  serverProgress: 0,
-                  clearError: true,
-                  cancelRequested: false,
-                  resetServerIds: true,
-                  clearThumbnail: true,
-                )
-              : i,
-        )
-        .toList();
-    _syncOptimistic();
-    _notifyListeners();
-    _pumpQueue();
-  }
+  Future<void> enqueueGalleryBackupItems(List<UploadItem> backupItems) =>
+      _enqueueGalleryBackupItems(backupItems);
 
-  Future<void> enqueueGalleryBackupItems(List<UploadItem> backupItems) async {
-    if (backupItems.isEmpty) return;
-    _cancelCompletionTimers();
-    uploadSessionId ??= _uuid.v4();
-    uploading = true;
-    error = null;
-    sheetVisible = true;
-    items = [
-      ...items,
-      ...backupItems.map(
-        (item) => item.copyWith(
-          uploadClientId: _uuid.v4(),
-          status: UploadStatus.queued,
-          httpProgress: 0,
-          serverProgress: 0,
-          clearError: true,
-          cancelRequested: false,
-          resetServerIds: true,
-          clearThumbnail: true,
-          clientSource: 'gallery_backup',
-        ),
-      ),
-    ];
-    _bumpItemsVersion();
-    _syncOptimistic();
-    _notifyListeners();
-    _pumpQueue();
-  }
+  Future<void> pauseQueuedGalleryBackupItems() =>
+      _pauseQueuedGalleryBackupItems();
 
-  Future<void> pauseQueuedGalleryBackupItems() async {
-    final scope = _backupScope();
-    final paused = items
-        .where(
-          (item) =>
-              item.clientSource == 'gallery_backup' &&
-              {
-                UploadStatus.selected,
-                UploadStatus.queued,
-                UploadStatus.waitingForWifi,
-              }.contains(item.status),
-        )
-        .toList();
-    if (paused.isEmpty) return;
-    for (final item in paused) {
-      if (item.deleteLocalOnComplete) {
-        unawaited(_safeDeleteLocalFile(item.path));
-      }
-    }
-    if (scope != null) {
-      await _backupAssetStore.markMany(
-        scope,
-        paused
-            .map((item) => item.backupFingerprint)
-            .whereType<String>()
-            .where((value) => value.isNotEmpty),
-        GalleryBackupAssetStatus.discovered,
-      );
-    }
-    items = items
-        .where(
-          (item) => !paused.any((paused) => paused.localId == item.localId),
-        )
-        .toList();
-    _bumpItemsVersion();
-    _syncOptimistic();
-    _updateUploadingFlag();
-    _notifyListeners();
-  }
+  Future<void> cancelItem(String localId) => _cancelItem(localId);
 
-  Future<void> cancelItem(String localId) async {
-    final item = _findItem(localId);
-    if (item == null || _isTerminalStatus(item.status)) return;
-    _setItem(localId, status: UploadStatus.cancelling, cancelRequested: true);
-    _cancelTokensByLocalId[localId]?.cancel('Upload cancelled.');
-    unawaited(_telegram.cancelTransfer(item.uploadClientId));
+  Future<void> cancelUpload() => _cancelUpload();
 
-    if (item.batchId != null) {
-      final endpoint = item.uploadJobId == null
-          ? '/upload-batches/${item.batchId}/cancel'
-          : '/upload-jobs/${item.uploadJobId}/cancel';
-      await _api.dio
-          .post(endpoint)
-          .catchError((_) => Response(requestOptions: RequestOptions()));
-    }
+  Future<void> retryFailed() => _retryFailed();
 
-    if (item.batchId != null) _stopPollingBatch(item.batchId!);
-    _runningLocalIds.remove(localId);
-    _setItem(localId, status: UploadStatus.cancelled);
-    if (item.deleteLocalOnComplete) {
-      unawaited(_safeDeleteLocalFile(item.path));
-    }
-    _syncOptimistic();
-    _pumpQueue();
-  }
+  void removeFailed(String localId) => _removeFailed(localId);
 
-  String? _backupScope() {
-    final user = _auth.user;
-    final telegramId = user?.telegramId ?? _auth.activeAccount?.telegramId ?? 0;
-    if (user == null || telegramId == 0) return null;
-    return '${user.userId}_$telegramId';
-  }
+  void dismiss() => _dismiss();
 
-  Future<void> cancelUpload() async {
-    final activeIds = items
-        .where((i) => _isActive(i) || i.status == UploadStatus.selected)
-        .map((i) => i.localId)
-        .toList();
-    for (final id in activeIds) {
-      await cancelItem(id);
-    }
-    await _refreshDrive();
-  }
+  void resetTerminalForAccountSwitch() => _resetTerminalForAccountSwitch();
 
-  Future<void> retryFailed() async {
-    items = items
-        .map(
-          (i) =>
-              i.status == UploadStatus.failed ||
-                  i.status == UploadStatus.cancelled
-              ? i.copyWith(
-                  status: UploadStatus.selected,
-                  httpProgress: 0,
-                  serverProgress: 0,
-                  clearError: true,
-                  cancelRequested: false,
-                  resetServerIds: true,
-                  clearThumbnail: true,
-                )
-              : i,
-        )
-        .toList();
-    _notifyListeners();
-    await confirmUpload();
-  }
-
-  void removeFailed(String localId) {
-    final item = _findItem(localId);
-    if (item == null) return;
-    if (item.status != UploadStatus.failed &&
-        item.status != UploadStatus.cancelled) {
-      return;
-    }
-    if (item.deleteLocalOnComplete) {
-      unawaited(_safeDeleteLocalFile(item.path));
-    }
-    items = items.where((i) => i.localId != localId).toList();
-    _bumpItemsVersion();
-    if (items.isEmpty) {
-      sheetVisible = false;
-      uploadSessionId = null;
-      error = null;
-    }
-    _syncOptimistic();
-    _notifyListeners();
-  }
-
-  void dismiss() {
-    if (uploading) return;
-    for (final timer in _pollTimersByBatchId.values) {
-      timer.cancel();
-    }
-    _pollTimersByBatchId.clear();
-    for (final item in items) {
-      if (item.deleteLocalOnComplete) {
-        _safeDeleteLocalFile(item.path);
-      }
-    }
-    items = [];
-    _bumpItemsVersion();
-    sheetVisible = false;
-    uploadSessionId = null;
-    error = null;
-    _syncOptimistic();
-    _notifyListeners(force: true);
-  }
-
-  void resetTerminalForAccountSwitch() {
-    if (hasBlockingUploads) return;
-    for (final timer in _pollTimersByBatchId.values) {
-      timer.cancel();
-    }
-    _pollTimersByBatchId.clear();
-    _pollingBatchIds.clear();
-    _cancelCompletionTimers();
-    items = [];
-    _bumpItemsVersion();
-    sheetVisible = false;
-    uploadSessionId = null;
-    activeFolderId = null;
-    error = null;
-    uploading = false;
-    _syncOptimistic();
-    _notifyListeners(force: true);
-  }
-
-  Future<void> enableMobileDataUploads() async {
-    await _settings.setUploadOnMobileData(true);
-    items = items
-        .map(
-          (i) => i.status == UploadStatus.waitingForWifi
-              ? i.copyWith(status: UploadStatus.queued)
-              : i,
-        )
-        .toList();
-    _notifyListeners();
-    _pumpQueue();
-  }
-
-  Future<bool> _confirmLargeUploadsIfNeeded(BuildContext? context) async {
-    if (!_settings.state.askBeforeLargeUploads || context == null) return true;
-    final threshold = _auth.largeUploadThresholdBytes;
-    final large = items.where((i) => i.size > threshold).toList();
-    if (large.isEmpty) return true;
-    final totalBytes = large.fold<int>(0, (sum, item) => sum + item.size);
-    final thresholdMbStr =
-        '${(threshold / (1024 * 1024)).toStringAsFixed(0)} MB';
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          large.length == 1 ? 'Upload large file?' : 'Upload large files?',
-        ),
-        content: Text(
-          large.length == 1
-              ? '"${large.first.name}" is larger than $thresholdMbStr. It may take time, use mobile or Wi-Fi data, and consume upload resources.'
-              : '${large.length} selected files are larger than $thresholdMbStr (${formatFileSize(totalBytes)} total). They may take time, use data, and consume upload resources.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Continue upload'),
-          ),
-        ],
-      ),
-    );
-    return result == true;
-  }
-
-  Future<bool> _isBlockedOnMobileData() async {
-    if (_settings.state.uploadOnMobileData) return false;
-    final connectivity = await Connectivity().checkConnectivity();
-    return connectivity.contains(ConnectivityResult.mobile);
-  }
-
-  void _handleConnectivityChanged(List<ConnectivityResult> results) {
-    if (!items.any((i) => i.status == UploadStatus.waitingForWifi)) return;
-    final hasWifi =
-        results.contains(ConnectivityResult.wifi) ||
-        results.contains(ConnectivityResult.ethernet);
-    if (!hasWifi) return;
-    items = items
-        .map(
-          (i) => i.status == UploadStatus.waitingForWifi
-              ? i.copyWith(status: UploadStatus.queued)
-              : i,
-        )
-        .toList();
-    _notifyListeners();
-    _pumpQueue();
-  }
-
-  Future<void> _notifyUploadSettledIfNeeded() async {
-    final sessionId = uploadSessionId;
-    if (sessionId == null || _notifiedSessionId == sessionId || items.isEmpty) {
-      return;
-    }
-    final settled = items.every(
-      (i) =>
-          i.status == UploadStatus.uploaded ||
-          i.status == UploadStatus.failed ||
-          i.status == UploadStatus.cancelled,
-    );
-    if (!settled) return;
-    _notifiedSessionId = sessionId;
-    final failed = failedCount;
-    if (failed > 0 && _settings.state.uploadFailedAlerts) {
-      await _notifications.showUploadFailed(failed: failed);
-    } else if (failed == 0 && _settings.state.uploadCompletedAlerts) {
-      await _notifications.showUploadComplete(total: items.length, failed: 0);
-    }
-  }
-
-  void _notifyListeners({bool force = false}) {
-    if (_disposed) return;
-    if (force) {
-      _notifyScheduled = false;
-      notifyListeners();
-      return;
-    }
-    if (_notifyScheduled) return;
-    _notifyScheduled = true;
-    scheduleMicrotask(() {
-      _notifyScheduled = false;
-      if (_disposed) return;
-      notifyListeners();
-    });
-  }
-
+  Future<void> enableMobileDataUploads() => _enableMobileDataUploads();
   @override
   void dispose() {
     _disposed = true;

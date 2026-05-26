@@ -99,9 +99,7 @@ class SecureStorageService {
     required int backendUserId,
     required int telegramUserId,
   }) {
-    return _storage.read(
-      key: _cloudPasswordKey(backendUserId, telegramUserId),
-    );
+    return _storage.read(key: _cloudPasswordKey(backendUserId, telegramUserId));
   }
 
   Future<void> deleteTelegramCloudPassword({

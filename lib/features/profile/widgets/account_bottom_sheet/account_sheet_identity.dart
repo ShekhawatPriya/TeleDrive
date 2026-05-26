@@ -199,10 +199,7 @@ extension _AccountSheetIdentity on _AccountBottomSheetState {
         customBorder: const CircleBorder(),
         splashColor: scheme.primary.withValues(alpha: 0.12),
         highlightColor: scheme.primary.withValues(alpha: 0.06),
-        child: Padding(
-          padding: const EdgeInsets.all(6.0),
-          child: icon,
-        ),
+        child: Padding(padding: const EdgeInsets.all(6.0), child: icon),
       ),
     );
   }

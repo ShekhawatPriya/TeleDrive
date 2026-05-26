@@ -101,10 +101,8 @@ class PendingTelegramCommit {
       payload: json['payload'] is Map
           ? Map<String, dynamic>.from(json['payload'] as Map)
           : <String, dynamic>{},
-      createdAt:
-          DateTime.tryParse('${json['createdAt']}') ?? DateTime.now(),
-      updatedAt:
-          DateTime.tryParse('${json['updatedAt']}') ?? DateTime.now(),
+      createdAt: DateTime.tryParse('${json['createdAt']}') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse('${json['updatedAt']}') ?? DateTime.now(),
       attempts: _intValue(json['attempts']) ?? 0,
       lastError: json['lastError'] as String?,
     );
@@ -131,7 +129,10 @@ class PendingTelegramCommitQueue {
 
   final SecureStorageService _storage;
 
-  String activeScope({required int backendUserId, required int telegramUserId}) {
+  String activeScope({
+    required int backendUserId,
+    required int telegramUserId,
+  }) {
     return '${_stableHash(AppConfig.apiBaseUrl)}_${backendUserId}_$telegramUserId';
   }
 
@@ -156,9 +157,11 @@ class PendingTelegramCommitQueue {
       if (decoded is! List) return const [];
       return decoded
           .whereType<Map>()
-          .map((entry) => PendingTelegramCommit.fromJson(
-                Map<String, dynamic>.from(entry),
-              ))
+          .map(
+            (entry) => PendingTelegramCommit.fromJson(
+              Map<String, dynamic>.from(entry),
+            ),
+          )
           .where((entry) => entry.id.isNotEmpty)
           .toList();
     } catch (_) {
@@ -221,10 +224,7 @@ class PendingTelegramCommitQueue {
     );
   }
 
-  Future<void> _write(
-    String scope,
-    List<PendingTelegramCommit> records,
-  ) async {
+  Future<void> _write(String scope, List<PendingTelegramCommit> records) async {
     if (records.isEmpty) {
       await _storage.clearPendingTelegramCommits(scope);
       return;

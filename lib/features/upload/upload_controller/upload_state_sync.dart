@@ -60,7 +60,12 @@ extension _UploadStateSync on UploadController {
   );
 
   Set<
-    ({String localId, _OptimisticBucket bucket, int? fileId, bool thumbnailReady})
+    ({
+      String localId,
+      _OptimisticBucket bucket,
+      int? fileId,
+      bool thumbnailReady,
+    })
   >
   _optimisticSignatureSet() => items.map(_optimisticSignature).toSet();
 

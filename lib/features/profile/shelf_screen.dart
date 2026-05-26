@@ -84,12 +84,10 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
     }
   }
 
-  String get _title =>
-      widget.kind == ShelfKind.archive ? 'Archive' : 'Locked';
+  String get _title => widget.kind == ShelfKind.archive ? 'Archive' : 'Locked';
 
-  String get _emptyTitle => widget.kind == ShelfKind.archive
-      ? 'Archive is empty'
-      : 'Nothing locked';
+  String get _emptyTitle =>
+      widget.kind == ShelfKind.archive ? 'Archive is empty' : 'Nothing locked';
 
   String get _emptyBody => widget.kind == ShelfKind.archive
       ? 'Items you archive will appear here so they stay out of your main Drive.'
@@ -158,8 +156,7 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
 
   bool _isFileSelected(String id) => selectedFileIds.contains(id);
 
-  int _shelfRevision(DriveState state) =>
-      widget.kind == ShelfKind.archive
+  int _shelfRevision(DriveState state) => widget.kind == ShelfKind.archive
       ? state.archiveRevision
       : state.lockedRevision;
 

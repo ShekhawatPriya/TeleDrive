@@ -160,8 +160,8 @@ class StorageSummaryController extends ChangeNotifier {
 
 final storageSummaryControllerProvider =
     ChangeNotifierProvider<StorageSummaryController>((ref) {
-  return StorageSummaryController(
-    ref.watch(storageSummaryRepositoryProvider),
-    ref,
-  );
-});
+      return StorageSummaryController(
+        ref.watch(storageSummaryRepositoryProvider),
+        ref,
+      );
+    });

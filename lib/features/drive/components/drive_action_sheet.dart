@@ -66,7 +66,9 @@ class DriveActionSheet extends StatelessWidget {
         width: 64,
         height: 64,
         decoration: BoxDecoration(
-          color: leadingAccent?.withValues(alpha: 0.15) ?? scheme.secondaryContainer,
+          color:
+              leadingAccent?.withValues(alpha: 0.15) ??
+              scheme.secondaryContainer,
           shape: BoxShape.circle,
         ),
         alignment: Alignment.center,
@@ -180,12 +182,7 @@ class DriveActionSheet extends StatelessWidget {
           // Divider before destructive actions (Delete)
           if (destructiveActions.isNotEmpty &&
               (quickActions.isNotEmpty || otherActions.isNotEmpty))
-            const Divider(
-              height: 24,
-              thickness: 1,
-              indent: 24,
-              endIndent: 24,
-            ),
+            const Divider(height: 24, thickness: 1, indent: 24, endIndent: 24),
 
           // Destructive action (Delete)
           for (final action in destructiveActions)
@@ -278,13 +275,9 @@ class ListActionTile extends StatelessWidget {
         ? scheme.error.withValues(alpha: 0.20)
         : scheme.onSurface.withValues(alpha: 0.08);
 
-    final iconColor = destructive
-        ? scheme.error
-        : scheme.onSurface;
+    final iconColor = destructive ? scheme.error : scheme.onSurface;
 
-    final labelColor = destructive
-        ? scheme.error
-        : scheme.onSurface;
+    final labelColor = destructive ? scheme.error : scheme.onSurface;
 
     return InkWell(
       onTap: onTap,

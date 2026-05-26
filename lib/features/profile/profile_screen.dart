@@ -30,7 +30,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final summary =
-        ref.watch(storageSummaryControllerProvider).value ?? StorageSummary.empty;
+        ref.watch(storageSummaryControllerProvider).value ??
+        StorageSummary.empty;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final used = summary.totalBytes;

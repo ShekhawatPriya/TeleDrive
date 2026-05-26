@@ -88,7 +88,8 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
     final summary =
-        ref.watch(storageSummaryControllerProvider).value ?? StorageSummary.empty;
+        ref.watch(storageSummaryControllerProvider).value ??
+        StorageSummary.empty;
     final backupOn = ref
         .watch(appSettingsControllerProvider)
         .state

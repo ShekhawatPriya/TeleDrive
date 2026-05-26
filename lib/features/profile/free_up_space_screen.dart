@@ -6,8 +6,12 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/file_type_detector.dart';
 import 'free_up_space/free_up_space_controller.dart';
 
-part 'free_up_space/free_up_space_components.dart';
+part 'free_up_space/free_up_space_breakdown.dart';
+part 'free_up_space/free_up_space_confirmation_sheet.dart';
 part 'free_up_space/free_up_space_dialog.dart';
+part 'free_up_space/free_up_space_explanation.dart';
+part 'free_up_space/free_up_space_hero.dart';
+part 'free_up_space/free_up_space_messages.dart';
 
 class FreeUpSpaceScreen extends ConsumerStatefulWidget {
   const FreeUpSpaceScreen({super.key});

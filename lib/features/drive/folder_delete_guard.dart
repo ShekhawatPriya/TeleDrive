@@ -38,7 +38,8 @@ class FolderDeleteGuard {
     DriveState state,
     DriveFolder folder,
   ) {
-    final loadedChildFolders = state.folderPages[folder.id]?.subfolders ?? const [];
+    final loadedChildFolders =
+        state.folderPages[folder.id]?.subfolders ?? const [];
     final containsFolders = loadedChildFolders.isNotEmpty;
     // recursiveFileCount is currently populated from `direct_file_count` on
     // the backend (see folder_response_direct). It accurately reflects direct

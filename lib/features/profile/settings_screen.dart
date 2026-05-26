@@ -63,8 +63,7 @@ class SettingsScreen extends ConsumerWidget {
             icon: Icons.backup_outlined,
             iconColor: const Color(0xFF4C8F87),
             title: 'Backup',
-            subtitle:
-                'Configure gallery backup scans and queue behavior',
+            subtitle: 'Configure gallery backup scans and queue behavior',
             onTap: () => Navigator.of(context).push(
               CupertinoPageRoute(builder: (_) => const BackupSettingsScreen()),
             ),

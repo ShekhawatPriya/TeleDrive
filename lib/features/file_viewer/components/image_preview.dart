@@ -33,9 +33,7 @@ class _ImagePreviewState extends ConsumerState<ImagePreview> {
         ? 'original'
         : null;
     if (variant == null) return null;
-    final version = variant == 'preview'
-        ? file.previewVersion
-        : 0;
+    final version = variant == 'preview' ? file.previewVersion : 0;
     final key = '${file.id}:$variant:${version ?? 0}';
     if (_localKey != key) {
       _localKey = key;

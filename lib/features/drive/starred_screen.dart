@@ -67,9 +67,8 @@ class _StarredScreenState extends ConsumerState<StarredScreen> {
 
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: () => ref
-            .read(driveControllerProvider)
-            .ensureStarredLoaded(force: true),
+        onRefresh: () =>
+            ref.read(driveControllerProvider).ensureStarredLoaded(force: true),
         child: NotificationListener<ScrollNotification>(
           onNotification: (n) {
             // Only paginate the unfiltered server-backed list. A typed-search
@@ -86,116 +85,116 @@ class _StarredScreenState extends ConsumerState<StarredScreen> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.sm,
-                  AppSpacing.md,
-                  AppSpacing.sm,
-                ),
-                child: Text(
-                  query.isNotEmpty
-                      ? '$totalItems match${totalItems == 1 ? '' : 'es'}'
-                      : (totalItems == 0
-                            ? 'Quick access to favourites'
-                            : '$totalItems item${totalItems == 1 ? '' : 's'}'),
-                  style: theme.textTheme.headlineSmall,
-                ),
-              ),
-            ),
-            if (!loaded && loading)
-              const SliverFillRemaining(child: SkeletonList()),
-            if (loaded && starredFiles.isEmpty && starredFolders.isEmpty)
-              SliverFillRemaining(
-                child: EmptyState(
-                  icon: query.isEmpty
-                      ? Icons.star_border_rounded
-                      : Icons.search_off,
-                  title: query.isEmpty
-                      ? 'Nothing starred'
-                      : 'No matching starred items',
-                  body: query.isEmpty
-                      ? 'Star files and folders for quick access.'
-                      : 'Try a different name.',
-                ),
-              ),
-            if (starredFolders.isNotEmpty)
-              SliverList.builder(
-                itemCount: starredFolders.length,
-                itemBuilder: (_, i) {
-                  final folder = starredFolders[i];
-                  return FileListTile(
-                    name: folder.name,
-                    // TODO(direct-counts): rename when API exposes
-                    // directFileCount/directSizeBytes/childFolderCount.
-                    subtitle:
-                        '${folder.recursiveFileCount} files · ${formatFileSize(folder.recursiveSize)}',
-                    isFolder: true,
-                    starred: true,
-                    shared: folder.shared,
-                    onTap: () => context.safePush('/folder/${folder.id}'),
-                    onStar: () => ref
-                        .read(driveControllerProvider)
-                        .toggleStar(folder.id, folder: true),
-                    onMore: () =>
-                        DriveItemActions.openFolder(context, ref, folder),
-                  );
-                },
-              ),
-            if (starredFiles.isNotEmpty)
-              SliverPadding(
-                padding: const EdgeInsets.only(bottom: 120),
-                sliver: grid
-                    ? SliverGrid.builder(
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              childAspectRatio: .72,
-                              crossAxisSpacing: 10,
-                              mainAxisSpacing: 10,
-                            ),
-                        itemCount: starredFiles.length,
-                        itemBuilder: (_, i) {
-                          final file = starredFiles[i];
-                          return FileCardTile(
-                            key: ValueKey(file.localId ?? file.id),
-                            file: file,
-                            onTap: () => openDriveFile(context, ref, file),
-                            onMore: () =>
-                                DriveItemActions.openFile(context, ref, file),
-                          );
-                        },
-                      )
-                    : SliverList.builder(
-                        itemCount: starredFiles.length,
-                        itemBuilder: (_, i) {
-                          final file = starredFiles[i];
-                          return FileListTile(
-                            name: file.name,
-                            subtitle:
-                                '${formatLabel(file)} · ${formatFileSize(file.size)} · ${formatDate(file.modifiedAt)}',
-                            file: file,
-                            starred: true,
-                            onTap: () => openDriveFile(context, ref, file),
-                            onStar: () => ref
-                                .read(driveControllerProvider)
-                                .toggleStar(file.id),
-                            onMore: () =>
-                                DriveItemActions.openFile(context, ref, file),
-                          );
-                        },
-                      ),
-              ),
-            if (loadingMore)
-              const SliverToBoxAdapter(
+              SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Center(child: CircularProgressIndicator()),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    AppSpacing.sm,
+                    AppSpacing.md,
+                    AppSpacing.sm,
+                  ),
+                  child: Text(
+                    query.isNotEmpty
+                        ? '$totalItems match${totalItems == 1 ? '' : 'es'}'
+                        : (totalItems == 0
+                              ? 'Quick access to favourites'
+                              : '$totalItems item${totalItems == 1 ? '' : 's'}'),
+                    style: theme.textTheme.headlineSmall,
+                  ),
                 ),
               ),
-          ],
-        ),
+              if (!loaded && loading)
+                const SliverFillRemaining(child: SkeletonList()),
+              if (loaded && starredFiles.isEmpty && starredFolders.isEmpty)
+                SliverFillRemaining(
+                  child: EmptyState(
+                    icon: query.isEmpty
+                        ? Icons.star_border_rounded
+                        : Icons.search_off,
+                    title: query.isEmpty
+                        ? 'Nothing starred'
+                        : 'No matching starred items',
+                    body: query.isEmpty
+                        ? 'Star files and folders for quick access.'
+                        : 'Try a different name.',
+                  ),
+                ),
+              if (starredFolders.isNotEmpty)
+                SliverList.builder(
+                  itemCount: starredFolders.length,
+                  itemBuilder: (_, i) {
+                    final folder = starredFolders[i];
+                    return FileListTile(
+                      name: folder.name,
+                      // TODO(direct-counts): rename when API exposes
+                      // directFileCount/directSizeBytes/childFolderCount.
+                      subtitle:
+                          '${folder.recursiveFileCount} files · ${formatFileSize(folder.recursiveSize)}',
+                      isFolder: true,
+                      starred: true,
+                      shared: folder.shared,
+                      onTap: () => context.safePush('/folder/${folder.id}'),
+                      onStar: () => ref
+                          .read(driveControllerProvider)
+                          .toggleStar(folder.id, folder: true),
+                      onMore: () =>
+                          DriveItemActions.openFolder(context, ref, folder),
+                    );
+                  },
+                ),
+              if (starredFiles.isNotEmpty)
+                SliverPadding(
+                  padding: const EdgeInsets.only(bottom: 120),
+                  sliver: grid
+                      ? SliverGrid.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                childAspectRatio: .72,
+                                crossAxisSpacing: 10,
+                                mainAxisSpacing: 10,
+                              ),
+                          itemCount: starredFiles.length,
+                          itemBuilder: (_, i) {
+                            final file = starredFiles[i];
+                            return FileCardTile(
+                              key: ValueKey(file.localId ?? file.id),
+                              file: file,
+                              onTap: () => openDriveFile(context, ref, file),
+                              onMore: () =>
+                                  DriveItemActions.openFile(context, ref, file),
+                            );
+                          },
+                        )
+                      : SliverList.builder(
+                          itemCount: starredFiles.length,
+                          itemBuilder: (_, i) {
+                            final file = starredFiles[i];
+                            return FileListTile(
+                              name: file.name,
+                              subtitle:
+                                  '${formatLabel(file)} · ${formatFileSize(file.size)} · ${formatDate(file.modifiedAt)}',
+                              file: file,
+                              starred: true,
+                              onTap: () => openDriveFile(context, ref, file),
+                              onStar: () => ref
+                                  .read(driveControllerProvider)
+                                  .toggleStar(file.id),
+                              onMore: () =>
+                                  DriveItemActions.openFile(context, ref, file),
+                            );
+                          },
+                        ),
+                ),
+              if (loadingMore)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

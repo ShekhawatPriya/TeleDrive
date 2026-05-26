@@ -88,7 +88,8 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
     final auth = ref.watch(authControllerProvider);
     final drive = ref.watch(driveControllerProvider);
     final summary =
-        ref.watch(storageSummaryControllerProvider).value ?? StorageSummary.empty;
+        ref.watch(storageSummaryControllerProvider).value ??
+        StorageSummary.empty;
 
     return Scaffold(
       appBar: AppBar(

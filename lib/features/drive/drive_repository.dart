@@ -3,49 +3,11 @@ import '../../core/network/api_client.dart';
 import '../../core/telegram/telegram_client_models.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../models/drive_models.dart';
+import 'drive_repository_models.dart';
 
-class FreeUpSpaceResolveDecision {
-  const FreeUpSpaceResolveDecision({
-    required this.fingerprint,
-    required this.cleanupAllowed,
-    required this.reason,
-    this.clientSource,
-    this.backupSource,
-    required this.remoteAvailable,
-    this.fileId,
-    this.remoteSizeBytes,
-  });
+export 'drive_repository_models.dart';
 
-  final String fingerprint;
-  final bool cleanupAllowed;
-  final String reason;
-  final String? clientSource;
-  final String? backupSource;
-  final bool remoteAvailable;
-  final String? fileId;
-  final int? remoteSizeBytes;
-
-  factory FreeUpSpaceResolveDecision.fromJson(Map<String, dynamic> json) {
-    return FreeUpSpaceResolveDecision(
-      fingerprint: '${json['fingerprint'] ?? ''}',
-      cleanupAllowed:
-          json['cleanupAllowed'] == true || json['cleanup_allowed'] == true,
-      reason: '${json['reason'] ?? 'invalid_request'}',
-      clientSource:
-          json['clientSource'] as String? ?? json['client_source'] as String?,
-      backupSource:
-          json['backupSource'] as String? ?? json['backup_source'] as String?,
-      remoteAvailable:
-          json['remoteAvailable'] == true || json['remote_available'] == true,
-      fileId: json['fileId'] == null && json['file_id'] == null
-          ? null
-          : '${json['fileId'] ?? json['file_id']}',
-      remoteSizeBytes:
-          (json['remoteSizeBytes'] as num?)?.toInt() ??
-          (json['remote_size_bytes'] as num?)?.toInt(),
-    );
-  }
-}
+part 'drive_repository_mapping.dart';
 
 class DriveRepository {
   DriveRepository(this.api);
@@ -118,7 +80,10 @@ class DriveRepository {
     return (files: files, nextCursor: data['nextCursor'] as String?);
   }
 
-  Future<({List<DriveFolder> folders, String? nextCursor, List<DriveFolder> path})> listFolderChildren({
+  Future<
+    ({List<DriveFolder> folders, String? nextCursor, List<DriveFolder> path})
+  >
+  listFolderChildren({
     String? parentId,
     int limit = 200,
     String? cursor,
@@ -151,10 +116,7 @@ class DriveRepository {
   }) async {
     final res = await api.dio.get(
       '/files/starred',
-      queryParameters: {
-        'limit': limit,
-        if (cursor != null) 'cursor': cursor,
-      },
+      queryParameters: {'limit': limit, if (cursor != null) 'cursor': cursor},
     );
     final data = Map<String, dynamic>.from(res.data as Map);
     final files = (data['files'] as List? ?? [])
@@ -169,10 +131,7 @@ class DriveRepository {
   }) async {
     final res = await api.dio.get(
       '/folders/starred',
-      queryParameters: {
-        'limit': limit,
-        if (cursor != null) 'cursor': cursor,
-      },
+      queryParameters: {'limit': limit, if (cursor != null) 'cursor': cursor},
     );
     final data = Map<String, dynamic>.from(res.data as Map);
     final folders = (data['folders'] as List? ?? [])
@@ -374,94 +333,4 @@ class DriveRepository {
     );
     return _mapFolder(Map<String, dynamic>.from(res.data as Map));
   }
-
-  DriveFile _mapFile(Map<String, dynamic> json) {
-    final id = '${json['id']}';
-    final name = '${json['originalFilename'] ?? json['name'] ?? 'Untitled'}';
-    final mime = json['mimeType'] as String?;
-    final kind = detectFileKind(name, mime);
-    final uploadStatus = '${json['uploadStatus'] ?? 'available'}';
-    final storageMode = '${json['storageMode'] ?? 'client_managed'}';
-    final mediaAccessMode = '${json['mediaAccessMode'] ?? 'server_proxy'}';
-    final thumbnailStatus = '${json['thumbnailStatus'] ?? ''}';
-    final previewStatus = '${json['previewStatus'] ?? ''}';
-    final thumbnailVersion = (json['thumbnailVersion'] as num?)?.toInt();
-    final previewVersion = (json['previewVersion'] as num?)?.toInt();
-    final media = kind == FileKind.image || kind == FileKind.video;
-    final thumbnailOk =
-        uploadStatus == 'available' &&
-        ((kind == FileKind.image &&
-                thumbnailStatus != 'pending' &&
-                thumbnailStatus != 'processing') ||
-            (kind == FileKind.video && thumbnailStatus == 'available') ||
-            (media && thumbnailStatus == 'available'));
-    final previewOk = kind == FileKind.image && previewStatus == 'available';
-    final serverProxy =
-        mediaAccessMode == 'server_proxy' && storageMode != 'client_managed';
-    final thumb =
-        json['thumbnailUrl'] as String? ??
-        (thumbnailOk && serverProxy
-            ? api.mediaUrl(
-                '/files/$id/thumbnail',
-                params: {'v': thumbnailVersion},
-              )
-            : null);
-    final preview =
-        json['previewUrl'] as String? ??
-        (previewOk && serverProxy
-            ? api.mediaUrl('/files/$id/preview', params: {'v': previewVersion})
-            : null);
-    return DriveFile(
-      id: id,
-      name: name,
-      kind: kind,
-      size: (json['sizeBytes'] as num?)?.toInt() ?? 0,
-      modifiedAt: '${json['updatedAt'] ?? DateTime.now().toIso8601String()}',
-      createdAt: '${json['createdAt'] ?? DateTime.now().toIso8601String()}',
-      parentId: json['folderId'] == null ? null : '${json['folderId']}',
-      starred: json['isStarred'] == true,
-      shared: json['isShared'] == true,
-      mimeType: mime,
-      uploadStatus: uploadStatus,
-      uploadError: json['uploadError'] as String?,
-      storageMode: storageMode,
-      uploadOrigin: '${json['uploadOrigin'] ?? 'client_tdlib'}',
-      publicProxyStatus: json['publicProxyStatus'] as String?,
-      verificationStatus: json['verificationStatus'] as String?,
-      mediaAccessMode: mediaAccessMode,
-      originalRefAvailable: json['originalRefAvailable'] == true,
-      thumbnailRefAvailable: json['thumbnailRefAvailable'] == true,
-      previewRefAvailable: json['previewRefAvailable'] == true,
-      thumbnailStatus: thumbnailStatus,
-      previewStatus: previewStatus,
-      thumbnailVersion: thumbnailVersion,
-      previewVersion: previewVersion,
-      widthPx: (json['widthPx'] as num?)?.toInt(),
-      heightPx: (json['heightPx'] as num?)?.toInt(),
-      duration: (json['durationSeconds'] as num?)?.toInt(),
-      thumbnailUrl: thumb ?? preview,
-      previewUrl: preview ?? thumb,
-      streamUrl:
-          json['streamUrl'] as String? ??
-          (media && serverProxy ? api.mediaUrl('/files/$id/stream') : null),
-      downloadUrl:
-          json['downloadUrl'] as String? ??
-          (serverProxy ? api.mediaUrl('/files/$id/download') : null),
-    );
-  }
-
-  DriveFolder _mapFolder(Map<String, dynamic> json) => DriveFolder(
-    id: '${json['id']}',
-    name: '${json['name'] ?? 'Folder'}',
-    parentId: json['parentId'] == null ? null : '${json['parentId']}',
-    modifiedAt: '${json['updatedAt'] ?? DateTime.now().toIso8601String()}',
-    createdAt: '${json['createdAt'] ?? DateTime.now().toIso8601String()}',
-    starred: json['isStarred'] == true,
-    shared: json['isShared'] == true,
-    recursiveFileCount: (json['recursiveFileCount'] as num?)?.toInt() ?? 0,
-    recursiveSize:
-        (json['recursiveSizeBytes'] as num?)?.toInt() ??
-        (json['recursiveSize'] as num?)?.toInt() ??
-        0,
-  );
 }

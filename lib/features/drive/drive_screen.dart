@@ -44,12 +44,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
   String? _searchError;
 
   List<DriveFile>? _sortedFiles;
-  ({
-    List<DriveFile> source,
-    SortField sort,
-    bool ascending,
-    String query,
-  })?
+  ({List<DriveFile> source, SortField sort, bool ascending, String query})?
   _sortedFilesKey;
   List<DriveFolder>? _sortedFolders;
   ({List<DriveFolder> source, bool ascending, String query})? _sortedFoldersKey;
@@ -109,7 +104,8 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
   void _runServerSearch(String query) {
     _searchDebounce?.cancel();
     if (query.isEmpty) {
-      final alreadyClear = _activeSearchQuery.isEmpty &&
+      final alreadyClear =
+          _activeSearchQuery.isEmpty &&
           _serverSearchFiles == null &&
           !_searchLoading &&
           _searchError == null;
@@ -317,10 +313,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                   ),
                 ),
               ],
-              if (loaded &&
-                  !_searchLoading &&
-                  folders.isEmpty &&
-                  files.isEmpty)
+              if (loaded && !_searchLoading && folders.isEmpty && files.isEmpty)
                 SliverFillRemaining(
                   child: EmptyState(
                     icon: query.isEmpty ? Icons.folder_open : Icons.search_off,
