@@ -12,7 +12,6 @@ import 'app_settings_controller.dart';
 import 'cache_controller.dart';
 import 'gallery_backup_controller.dart';
 import 'theme_controller.dart';
-import 'widgets/telegram_status_card.dart';
 import 'widgets/theme_picker_cards.dart';
 
 part 'settings/settings_helpers.dart';
@@ -29,7 +28,6 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.watch(authControllerProvider);
     final cache = ref.watch(cacheControllerProvider).state;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
@@ -121,13 +119,6 @@ class SettingsScreen extends ConsumerWidget {
               mode: ref.watch(themeControllerProvider).mode,
               onChanged: ref.read(themeControllerProvider).setMode,
             ),
-          ),
-          const SizedBox(height: 28),
-          _settingsSectionHeader(context, 'Telegram Integration'),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: TelegramStatusCard(connected: auth.telegramConnected),
           ),
           const SizedBox(height: 28),
           _settingsSectionHeader(context, 'About Drive'),

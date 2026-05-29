@@ -78,25 +78,7 @@ extension _AccountSheetIdentity on _AccountBottomSheetState {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                OutlinedButton(
-                  onPressed: () =>
-                      _openTelegramProfile(context, activeAccount.username),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: scheme.outlineVariant),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
-                    ),
-                    shape: const StadiumBorder(),
-                  ),
-                  child: Text(
-                    'Manage Account',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: scheme.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+                _buildTdlibStatusChip(context),
               ],
             ),
           ),

@@ -24,6 +24,7 @@ part 'account_bottom_sheet/account_sheet_actions.dart';
 part 'account_bottom_sheet/account_sheet_cards.dart';
 part 'account_bottom_sheet/account_sheet_identity.dart';
 part 'account_bottom_sheet/account_sheet_switcher.dart';
+part 'account_bottom_sheet/account_sheet_tdlib_chip.dart';
 
 class AccountBottomSheet extends ConsumerStatefulWidget {
   const AccountBottomSheet({super.key});
