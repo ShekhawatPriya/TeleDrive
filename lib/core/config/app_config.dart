@@ -1,4 +1,5 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AppConfig {
@@ -82,8 +83,23 @@ class AppConfig {
   /// The official YouTube URL.
   static const youtubeUrl = 'https://www.youtube.com/@DevsDoCode';
 
-  /// The current version of the application.
-  static const appVersion = '2.1.8';
+  static String _packageVersion = '0.0.0';
+
+  /// The current version of the application, populated at startup from
+  /// the installed package metadata via [bootstrap].
+  static String get appVersion => _packageVersion;
+
+  /// Loads runtime metadata that needs platform calls (e.g. package version).
+  /// Call once during app startup before [runApp].
+  static Future<void> bootstrap() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (info.version.isNotEmpty) _packageVersion = info.version;
+    } catch (_) {
+      // Leave the fallback in place if the platform channel isn't available
+      // (e.g. unit tests without a binding).
+    }
+  }
 
   /// Launches the repository URL in the user's default browser.
   static Future<void> openRepository() async {
