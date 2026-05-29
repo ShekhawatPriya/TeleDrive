@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/navigation/root_navigator.dart';
+import 'features/app_update/app_update_screen.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/community_onboarding_screen.dart';
 import 'features/auth/landing_screen.dart';
@@ -158,6 +159,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings',
         pageBuilder: (context, state) =>
             CupertinoPage(key: state.pageKey, child: const SettingsScreen()),
+      ),
+      GoRoute(
+        path: '/settings/app-update',
+        pageBuilder: (context, state) =>
+            CupertinoPage(key: state.pageKey, child: const AppUpdateScreen()),
       ),
       GoRoute(
         path: '/settings/trash',

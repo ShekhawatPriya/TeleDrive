@@ -98,6 +98,8 @@ class AppUpdateController extends ChangeNotifier {
 
   Future<void> _runCheck(AppUpdateCheckReason reason) async {
     final manual = reason == AppUpdateCheckReason.manual;
+    final dedicated = reason == AppUpdateCheckReason.dedicatedScreen;
+    final userInitiated = manual || dedicated;
 
     if (reason == AppUpdateCheckReason.resume) {
       final prefs = await SharedPreferences.getInstance();
@@ -109,7 +111,7 @@ class AppUpdateController extends ChangeNotifier {
       }
     }
 
-    if (manual) {
+    if (userInitiated) {
       _set(_state.copyWith(
         isChecking: true,
         clearLastError: true,
@@ -136,7 +138,7 @@ class AppUpdateController extends ChangeNotifier {
     }
 
     if (error != null) {
-      if (manual) {
+      if (userInitiated) {
         _set(_state.copyWith(
           isChecking: false,
           lastError: error,
@@ -147,13 +149,13 @@ class AppUpdateController extends ChangeNotifier {
     }
 
     if (info == null) {
-      if (manual) {
+      if (userInitiated) {
         _set(_state.copyWith(
           isChecking: false,
           clearUpdate: true,
           clearLastError: true,
           lastManualResultUpToDate: true,
-          promptToken: _state.promptToken + 1,
+          promptToken: manual ? _state.promptToken + 1 : _state.promptToken,
         ));
       } else {
         _set(_state.copyWith(clearUpdate: true));
@@ -166,7 +168,7 @@ class AppUpdateController extends ChangeNotifier {
       isChecking: false,
       clearLastError: true,
       clearManualUpToDate: true,
-      promptToken: _state.promptToken + 1,
+      promptToken: dedicated ? _state.promptToken : _state.promptToken + 1,
     ));
   }
 

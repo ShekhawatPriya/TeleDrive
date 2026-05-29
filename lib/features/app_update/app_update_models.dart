@@ -1,4 +1,4 @@
-enum AppUpdateCheckReason { startup, resume, manual }
+enum AppUpdateCheckReason { startup, resume, manual, dedicatedScreen }
 
 class AndroidUpdateManifest {
   const AndroidUpdateManifest({
