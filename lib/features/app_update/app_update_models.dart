@@ -111,6 +111,7 @@ class AppUpdateInfo {
     required this.releaseNotes,
     required this.mandatory,
     this.publishedAt,
+    this.apkAssetApiUrl,
   });
 
   final String installedVersionName;
@@ -121,4 +122,12 @@ class AppUpdateInfo {
   final List<String> releaseNotes;
   final bool mandatory;
   final DateTime? publishedAt;
+
+  /// GitHub REST asset URL (`.../releases/assets/<id>`) for the APK, present
+  /// only for private-repo updates fetched through the authenticated API.
+  /// Requesting it with `Accept: application/octet-stream` + a bearer token
+  /// yields a short-lived signed download URL, so it must be resolved at the
+  /// moment the user taps download rather than stored. Null for public repos,
+  /// where [apkUrl] is directly launchable.
+  final String? apkAssetApiUrl;
 }

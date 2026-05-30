@@ -103,6 +103,12 @@ class AppConfig {
   static String get githubReleasesApiUrl =>
       'https://api.github.com/repos/$githubOwner/$githubRepo/releases';
 
+  /// GitHub REST endpoint for the single latest published Release. Used by the
+  /// in-app updater to read `latest.json` from a private repo (the public
+  /// `releases/latest/download/...` path 404s when the repo is private).
+  static String get githubLatestReleaseApiUrl =>
+      'https://api.github.com/repos/$githubOwner/$githubRepo/releases/latest';
+
   /// Optional personal access token for the GitHub API. Empty for public
   /// repositories; only needed for private repos or to raise the rate limit.
   ///

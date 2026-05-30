@@ -54,9 +54,7 @@ class _AppUpdateSheetState extends State<_AppUpdateSheet> {
     setState(() => _launching = false);
     if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open the download link.'),
-        ),
+        const SnackBar(content: Text('Could not open the download link.')),
       );
       return;
     }

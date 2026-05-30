@@ -108,10 +108,7 @@ class _AppUpdateScreenState extends ConsumerState<AppUpdateScreen> {
       case _UpdateStatus.checking:
         return _CheckingView(packageInfo: _packageInfo);
       case _UpdateStatus.upToDate:
-        return _UpToDateView(
-          packageInfo: _packageInfo,
-          onRecheck: _recheck,
-        );
+        return _UpToDateView(packageInfo: _packageInfo, onRecheck: _recheck);
       case _UpdateStatus.available:
         return _AvailableView(
           info: state.update!,
@@ -200,10 +197,7 @@ class _UpToDateView extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const _StatusHero(
-            icon: Icons.check_rounded,
-            tone: _HeroTone.success,
-          ),
+          const _StatusHero(icon: Icons.check_rounded, tone: _HeroTone.success),
           const SizedBox(height: AppSpacing.xl),
           Text(
             "You're up to date",

@@ -58,10 +58,9 @@ final appUpdateServiceProvider = Provider<AppUpdateService>(
   (ref) => AppUpdateService(),
 );
 
-final appUpdateControllerProvider =
-    ChangeNotifierProvider<AppUpdateController>(
-      (ref) => AppUpdateController(ref.watch(appUpdateServiceProvider)),
-    );
+final appUpdateControllerProvider = ChangeNotifierProvider<AppUpdateController>(
+  (ref) => AppUpdateController(ref.watch(appUpdateServiceProvider)),
+);
 
 class AppUpdateController extends ChangeNotifier {
   AppUpdateController(this._service);
@@ -82,9 +81,7 @@ class AppUpdateController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> checkForUpdate({
-    required AppUpdateCheckReason reason,
-  }) async {
+  Future<void> checkForUpdate({required AppUpdateCheckReason reason}) async {
     final inFlight = _inFlight;
     if (inFlight != null) return inFlight;
     final future = _runCheck(reason);
@@ -112,11 +109,13 @@ class AppUpdateController extends ChangeNotifier {
     }
 
     if (userInitiated) {
-      _set(_state.copyWith(
-        isChecking: true,
-        clearLastError: true,
-        clearManualUpToDate: true,
-      ));
+      _set(
+        _state.copyWith(
+          isChecking: true,
+          clearLastError: true,
+          clearManualUpToDate: true,
+        ),
+      );
     }
 
     AppUpdateInfo? info;
@@ -139,43 +138,58 @@ class AppUpdateController extends ChangeNotifier {
 
     if (error != null) {
       if (userInitiated) {
-        _set(_state.copyWith(
-          isChecking: false,
-          lastError: error,
-          clearManualUpToDate: true,
-        ));
+        _set(
+          _state.copyWith(
+            isChecking: false,
+            lastError: error,
+            clearManualUpToDate: true,
+          ),
+        );
       }
       return;
     }
 
     if (info == null) {
       if (userInitiated) {
-        _set(_state.copyWith(
-          isChecking: false,
-          clearUpdate: true,
-          clearLastError: true,
-          lastManualResultUpToDate: true,
-          promptToken: manual ? _state.promptToken + 1 : _state.promptToken,
-        ));
+        _set(
+          _state.copyWith(
+            isChecking: false,
+            clearUpdate: true,
+            clearLastError: true,
+            lastManualResultUpToDate: true,
+            promptToken: manual ? _state.promptToken + 1 : _state.promptToken,
+          ),
+        );
       } else {
         _set(_state.copyWith(clearUpdate: true));
       }
       return;
     }
 
-    _set(_state.copyWith(
-      update: info,
-      isChecking: false,
-      clearLastError: true,
-      clearManualUpToDate: true,
-      promptToken: dedicated ? _state.promptToken : _state.promptToken + 1,
-    ));
+    _set(
+      _state.copyWith(
+        update: info,
+        isChecking: false,
+        clearLastError: true,
+        clearManualUpToDate: true,
+        promptToken: dedicated ? _state.promptToken : _state.promptToken + 1,
+      ),
+    );
   }
 
   Future<bool> openDownload() async {
     final current = _state.update;
     if (current == null) return false;
-    final uri = Uri.tryParse(current.apkUrl);
+    // For a private repo the launchable URL is a short-lived signed URL that
+    // must be resolved now; for a public repo this just returns apkUrl.
+    String? downloadUrl;
+    try {
+      downloadUrl = await _service.resolveApkDownloadUrl(current);
+    } on AppUpdateFetchException {
+      downloadUrl = null;
+    }
+    downloadUrl ??= current.apkUrl;
+    final uri = Uri.tryParse(downloadUrl);
     if (uri == null) return false;
     try {
       return await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -185,9 +199,6 @@ class AppUpdateController extends ChangeNotifier {
   }
 
   void clearManualMessages() {
-    _set(_state.copyWith(
-      clearLastError: true,
-      clearManualUpToDate: true,
-    ));
+    _set(_state.copyWith(clearLastError: true, clearManualUpToDate: true));
   }
 }
