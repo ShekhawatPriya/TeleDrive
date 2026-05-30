@@ -21,9 +21,13 @@ green() { printf '\033[32m%s\033[0m\n' "$1"; }
 VERSION_NAME="${1:-}"
 [ -n "$VERSION_NAME" ] || { red "Usage: $0 <versionName> [buildNumber]   e.g. $0 2.1.9"; exit 1; }
 
-# Current "version: X.Y.Z+CODE" line from pubspec.yaml.
-CURRENT="$(grep -E '^version:' pubspec.yaml | head -1 | sed 's/version:[[:space:]]*//')"
+# Current "version: X.Y.Z+CODE" line from pubspec.yaml. tr -d '\r' guards
+# against CRLF line endings, which would otherwise corrupt the build number.
+CURRENT="$(grep -E '^version:' pubspec.yaml | head -1 | tr -d '\r' | sed 's/version:[[:space:]]*//')"
 CURRENT_CODE="${CURRENT##*+}"
+case "$CURRENT_CODE" in
+  ''|*[!0-9]*) CURRENT_CODE=0 ;;
+esac
 BUILD_NUMBER="${2:-$((CURRENT_CODE + 1))}"
 NEW_VERSION="${VERSION_NAME}+${BUILD_NUMBER}"
 TAG="v${VERSION_NAME}"

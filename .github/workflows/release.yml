@@ -83,8 +83,9 @@ jobs:
         run: |
           set -euo pipefail
           # Source of truth for both values is pubspec.yaml (version: X.Y.Z+CODE),
-          # which is exactly what the Gradle build embeds into the APK.
-          RAW_VERSION="$(grep -E '^version:' pubspec.yaml | head -1 | sed 's/version:[[:space:]]*//')"
+          # which is exactly what the Gradle build embeds into the APK. tr -d '\r'
+          # guards against CRLF line endings.
+          RAW_VERSION="$(grep -E '^version:' pubspec.yaml | head -1 | tr -d '\r' | sed 's/version:[[:space:]]*//')"
           VERSION_NAME="${RAW_VERSION%%+*}"
           VERSION_CODE="${RAW_VERSION##*+}"
           if [ "$VERSION_CODE" = "$RAW_VERSION" ]; then VERSION_CODE="0"; fi
