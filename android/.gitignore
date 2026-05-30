@@ -12,3 +12,7 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+# Plaintext keystore password backup — keep it on disk to read, but never let
+# it enter git history (history is permanent; deleting later won't scrub it).
+KEYSTORE_BACKUP.txt
+app/KEYSTORE_BACKUP.txt

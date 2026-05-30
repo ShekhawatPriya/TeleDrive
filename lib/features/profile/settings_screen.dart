@@ -3,10 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/config/app_config.dart';
 import '../../core/notifications/upload_notification_service.dart';
 import '../../core/theme/app_theme.dart';
-import '../../widgets/social_icons.dart';
 import '../auth/auth_controller.dart';
 import 'app_settings_controller.dart';
 import 'cache_controller.dart';
@@ -121,12 +119,13 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 28),
-          _settingsSectionHeader(context, 'About Drive'),
-          _InfoCard(
-            iconWidget: GitHubIcon(size: 24, color: scheme.onSurfaceVariant),
-            title: 'GitHub',
-            subtitle: 'Open Source Project',
-            onTap: AppConfig.openRepository,
+          _settingsSectionHeader(context, 'Project'),
+          _SettingsTile(
+            icon: Icons.workspaces_outline,
+            iconColor: const Color(0xFF6E7C97),
+            title: 'Project',
+            subtitle: 'Open source, changelog, and about TeleDrive',
+            onTap: () => context.push('/settings/project'),
           ),
           const SizedBox(height: AppSpacing.xxl),
           Center(

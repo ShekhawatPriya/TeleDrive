@@ -1,0 +1,135 @@
+# Builds a signed release APK on every `v*` tag, generates the `latest.json`
+# manifest the in-app updater reads, and publishes a GitHub Release with both
+# attached. The Changelog screen reads the Releases list via the GitHub API;
+# the updater reads latest.json from `releases/latest/download/latest.json`.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# Required so the workflow can create the GitHub Release and upload assets.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history for changelog)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          # Pinned to the version this project is developed and verified against.
+          # Bump this in lockstep with your local `flutter --version` so CI never
+          # drifts onto an SDK the code hasn't been tested on.
+          flutter-version: "3.44.0"
+          channel: stable
+          cache: true
+
+      - name: Restore .env.local (bundled as an asset)
+        # pubspec.yaml lists `.env.local` under assets, so the build fails to
+        # bundle without it. Store the full file contents in the ENV_LOCAL
+        # repository secret. APP_UPDATE / GITHUB_REPO_* keys fall back to the
+        # in-code defaults, so ENV_LOCAL only needs the real Telegram + API keys.
+        env:
+          ENV_LOCAL: ${{ secrets.ENV_LOCAL }}
+        run: |
+          if [ -z "$ENV_LOCAL" ]; then
+            echo "::error::ENV_LOCAL secret is not set. See docs in this workflow."
+            exit 1
+          fi
+          printf '%s' "$ENV_LOCAL" > .env.local
+
+      - name: Configure release signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::KEYSTORE_BASE64 secret is not set. The updater requires every release to share one signing key."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storeFile=upload-keystore.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Prepare release artifacts
+        id: artifacts
+        run: |
+          set -euo pipefail
+          # Source of truth for both values is pubspec.yaml (version: X.Y.Z+CODE),
+          # which is exactly what the Gradle build embeds into the APK.
+          RAW_VERSION="$(grep -E '^version:' pubspec.yaml | head -1 | sed 's/version:[[:space:]]*//')"
+          VERSION_NAME="${RAW_VERSION%%+*}"
+          VERSION_CODE="${RAW_VERSION##*+}"
+          if [ "$VERSION_CODE" = "$RAW_VERSION" ]; then VERSION_CODE="0"; fi
+
+          TAG="${GITHUB_REF_NAME}"
+          APK_NAME="teledrive-${VERSION_NAME}.apk"
+          SRC_APK="build/app/outputs/flutter-apk/app-release.apk"
+          cp "$SRC_APK" "$APK_NAME"
+
+          SHA256="$(sha256sum "$APK_NAME" | cut -d' ' -f1)"
+          PUBLISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          APK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${APK_NAME}"
+
+          # Build releaseNotes as a JSON array from commits since the previous tag.
+          PREV_TAG="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || echo '')"
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..${TAG}"
+          else
+            RANGE="${TAG}"
+          fi
+          NOTES_JSON="$(git log --no-merges --pretty=format:'%s' "$RANGE" | jq -R . | jq -s .)"
+          if [ "$NOTES_JSON" = "[]" ]; then
+            NOTES_JSON='["See the release notes on GitHub."]'
+          fi
+
+          jq -n \
+            --arg versionName "$VERSION_NAME" \
+            --argjson versionCode "$VERSION_CODE" \
+            --arg apkUrl "$APK_URL" \
+            --arg sha256 "$SHA256" \
+            --arg publishedAt "$PUBLISHED_AT" \
+            --argjson releaseNotes "$NOTES_JSON" \
+            '{android: {versionName: $versionName, versionCode: $versionCode, apkUrl: $apkUrl, sha256: $sha256, publishedAt: $publishedAt, mandatory: false, releaseNotes: $releaseNotes}}' \
+            > latest.json
+
+          echo "Generated latest.json:"
+          cat latest.json
+          echo "apk_name=${APK_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            ${{ steps.artifacts.outputs.apk_name }}
+            latest.json

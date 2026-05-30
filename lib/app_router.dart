@@ -25,6 +25,8 @@ import 'features/profile/my_data_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/settings_screen.dart';
 import 'features/profile/trash_screen.dart';
+import 'features/project/changelog_screen.dart';
+import 'features/project/project_screen.dart';
 import 'features/share/my_shares_screen.dart';
 import 'features/share/share_detail_screen.dart';
 import 'main_shell.dart';
@@ -164,6 +166,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings/app-update',
         pageBuilder: (context, state) =>
             CupertinoPage(key: state.pageKey, child: const AppUpdateScreen()),
+      ),
+      GoRoute(
+        path: '/settings/project',
+        pageBuilder: (context, state) =>
+            CupertinoPage(key: state.pageKey, child: const ProjectScreen()),
+      ),
+      GoRoute(
+        path: '/settings/project/changelog',
+        pageBuilder: (context, state) =>
+            CupertinoPage(key: state.pageKey, child: const ChangelogScreen()),
       ),
       GoRoute(
         path: '/settings/trash',

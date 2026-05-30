@@ -6,8 +6,20 @@ class AppConfig {
   static const _fallbackApiBaseUrl = 'http://192.168.1.5:8000/api';
   static const _dartDefineApiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
-  static const _fallbackUpdateManifestUrl =
-      'https://raw.githubusercontent.com/sreejan-anand/teledrive-releases/main/android/latest.json';
+  // GitHub repository that hosts the source code AND the published Releases
+  // (APK + latest.json) that drive both the Changelog and the in-app updater.
+  static const _fallbackGithubOwner = 'ShekhawatPriya';
+  static const _fallbackGithubRepo = 'TG-Cloud-Drive';
+  static const _dartDefineGithubOwner = String.fromEnvironment(
+    'GITHUB_REPO_OWNER',
+  );
+  static const _dartDefineGithubRepo = String.fromEnvironment(
+    'GITHUB_REPO_NAME',
+  );
+  static const _dartDefineGithubToken = String.fromEnvironment('GITHUB_TOKEN');
+
+  static String get _fallbackUpdateManifestUrl =>
+      'https://github.com/$githubOwner/$githubRepo/releases/latest/download/latest.json';
   static const _dartDefineUpdateManifestUrl = String.fromEnvironment(
     'APP_UPDATE_MANIFEST_URL',
   );
@@ -65,6 +77,45 @@ class AppConfig {
     return _fallbackUpdateManifestUrl;
   }
 
+  /// GitHub repository owner (user/org) hosting the source and Releases.
+  static String get githubOwner {
+    if (_dartDefineGithubOwner.trim().isNotEmpty) {
+      return _dartDefineGithubOwner.trim();
+    }
+    final value = dotenv.maybeGet('GITHUB_REPO_OWNER');
+    return (value == null || value.trim().isEmpty)
+        ? _fallbackGithubOwner
+        : value.trim();
+  }
+
+  /// GitHub repository name hosting the source and Releases.
+  static String get githubRepo {
+    if (_dartDefineGithubRepo.trim().isNotEmpty) {
+      return _dartDefineGithubRepo.trim();
+    }
+    final value = dotenv.maybeGet('GITHUB_REPO_NAME');
+    return (value == null || value.trim().isEmpty)
+        ? _fallbackGithubRepo
+        : value.trim();
+  }
+
+  /// GitHub REST endpoint listing all Releases for the configured repository.
+  static String get githubReleasesApiUrl =>
+      'https://api.github.com/repos/$githubOwner/$githubRepo/releases';
+
+  /// Optional personal access token for the GitHub API. Empty for public
+  /// repositories; only needed for private repos or to raise the rate limit.
+  ///
+  /// Resolution order mirrors the other config values: a compile-time
+  /// `--dart-define=GITHUB_TOKEN=...` wins (keeps the token out of the bundled
+  /// `.env.local` asset for production builds), then dotenv, then empty.
+  static String get githubToken {
+    if (_dartDefineGithubToken.trim().isNotEmpty) {
+      return _dartDefineGithubToken.trim();
+    }
+    return dotenv.maybeGet('GITHUB_TOKEN')?.trim() ?? '';
+  }
+
   static bool get appUpdateChecksEnabled =>
       _bool('APP_UPDATE_CHECKS_ENABLED', fallback: true);
 
@@ -72,7 +123,8 @@ class AppConfig {
       _int('APP_UPDATE_CHECK_INTERVAL_MINUTES', fallback: 30);
 
   /// The public GitHub repository URL for TeleDrive.
-  static const repositoryUrl = 'https://github.com/caamer20/Telegram-Drive';
+  static String get repositoryUrl =>
+      'https://github.com/$githubOwner/$githubRepo';
 
   /// The official Instagram URL.
   static const instagramUrl = 'https://www.instagram.com/devsdocode_';
