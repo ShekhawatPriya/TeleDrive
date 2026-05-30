@@ -99,14 +99,16 @@ jobs:
           PUBLISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           APK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${APK_NAME}"
 
-          # Build releaseNotes as a JSON array from commits since the previous tag.
+          # Build releaseNotes as a JSON array from commits since the previous
+          # tag. Capped at 20 entries so the in-app "What's new" card stays
+          # readable (the very first release otherwise spans all of history).
           PREV_TAG="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || echo '')"
           if [ -n "$PREV_TAG" ]; then
             RANGE="${PREV_TAG}..${TAG}"
           else
             RANGE="${TAG}"
           fi
-          NOTES_JSON="$(git log --no-merges --pretty=format:'%s' "$RANGE" | jq -R . | jq -s .)"
+          NOTES_JSON="$(git log --no-merges --pretty=format:'%s' "$RANGE" | jq -R . | jq -s '.[0:20]')"
           if [ "$NOTES_JSON" = "[]" ]; then
             NOTES_JSON='["See the release notes on GitHub."]'
           fi
