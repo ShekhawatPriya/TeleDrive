@@ -7,8 +7,8 @@ The Android bridge uses MethodChannel `teledrive/tdlib` plus EventChannel
 `teledrive/tdlib/events`. It is backed by the official TDLib JSON-for-Java
 artifact, `libtdjsonjava.so`, built from `tdlib/td` with the official Android
 Dockerfile. If the artifact is missing for the current ABI, the bridge returns
-`tdlib_unavailable` and the app falls back to legacy backend upload when the
-backend allows it.
+`tdlib_unavailable`. Current builds fail closed and ask the user to reconnect on
+a supported device; they do not upload file bytes through the backend.
 
 TDLib local data is scoped by:
 
@@ -80,5 +80,5 @@ Date: 2026-05-24
 
 The full real-device E2E verification was completed later on the same device.
 See `docs/tdlib-real-device-verification.md` for the auth, direct upload,
-`/media-ref` download/open, public share, legacy fallback, and restart recovery
-results.
+`/media-ref` download/open, public share, fail-closed behavior, and restart
+recovery results.
