@@ -10,13 +10,18 @@ import 'package:uuid/uuid.dart';
 
 import '../config/app_config.dart';
 import '../storage/secure_storage.dart';
+import '../utils/stable_hash.dart';
 import 'telegram_client_exceptions.dart';
 import 'telegram_client_models.dart';
 
 final telegramTransferServiceProvider = Provider<TelegramTransferService>((
   ref,
 ) {
-  return MethodChannelTelegramTransferService(storage: SecureStorageService());
+  final service = MethodChannelTelegramTransferService(
+    storage: SecureStorageService(),
+  );
+  ref.onDispose(service.dispose);
+  return service;
 });
 
 abstract class TelegramTransferService {
@@ -62,8 +67,6 @@ abstract class TelegramTransferService {
     required String filename,
     required String cacheKey,
   });
-
-  Future<Stream<List<int>>> openRead(TelegramMediaRef ref);
 }
 
 class MethodChannelTelegramTransferService implements TelegramTransferService {
@@ -86,7 +89,6 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
   final Map<String, StreamController<TelegramTransferProgress>> _progress = {};
   final Set<String> _observedTransferIds = {};
   // Kept to keep the native EventChannel subscription alive for bridge events.
-  // ignore: unused_field
   StreamSubscription<dynamic>? _eventSubscription;
 
   @override
@@ -130,7 +132,7 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
     }
     final dir = await getApplicationSupportDirectory();
     final scope =
-        '${_stableHash(AppConfig.apiBaseUrl)}_${backendUserId}_$telegramUserId';
+        '${stableHash(AppConfig.apiBaseUrl)}_${backendUserId}_$telegramUserId';
     var encryptionKey = await _storage.readTdlibKey(scope);
     if (encryptionKey == null || encryptionKey.isEmpty) {
       encryptionKey = _newEncryptionKey();
@@ -143,7 +145,7 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
       }
     }
     final scopedPath =
-        '${dir.path}${Platform.pathSeparator}tdlib${Platform.pathSeparator}${_stableHash(AppConfig.apiBaseUrl)}${Platform.pathSeparator}$backendUserId${Platform.pathSeparator}$telegramUserId';
+        '${dir.path}${Platform.pathSeparator}tdlib${Platform.pathSeparator}${stableHash(AppConfig.apiBaseUrl)}${Platform.pathSeparator}$backendUserId${Platform.pathSeparator}$telegramUserId';
     await _channel.invokeMethod<void>('configure', {
       'databaseDirectory': '$scopedPath/db',
       'filesDirectory': '$scopedPath/files',
@@ -316,7 +318,7 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
     final dir = await getTemporaryDirectory();
     final safeName = filename.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
     final path =
-        '${dir.path}${Platform.pathSeparator}teledrive_${_stableHash(cacheKey)}_$safeName';
+        '${dir.path}${Platform.pathSeparator}teledrive_${stableHash(cacheKey)}_$safeName';
     final result = await _invokeMap('downloadToFile', {
       'transferId': _uuid.v4(),
       'tdlibChatId': ref.tdlibChatId,
@@ -328,14 +330,6 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
     return TelegramDownloadResult(
       file: File((result['filePath'] as String?) ?? path),
       ref: ref,
-    );
-  }
-
-  @override
-  Future<Stream<List<int>>> openRead(TelegramMediaRef ref) async {
-    throw const TelegramClientUnavailableException(
-      'Streaming through TDLib is not exposed; download to cache first.',
-      code: 'tdlib_stream_unavailable',
     );
   }
 
@@ -380,6 +374,16 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
     if (controller != null && !controller.isClosed) {
       controller.close();
     }
+  }
+
+  void dispose() {
+    unawaited(_eventSubscription?.cancel());
+    _eventSubscription = null;
+    for (final controller in _progress.values) {
+      if (!controller.isClosed) unawaited(controller.close());
+    }
+    _progress.clear();
+    _observedTransferIds.clear();
   }
 
   bool _isTerminalState(TelegramTransferState state) =>
@@ -434,15 +438,6 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
     } on FormatException {
       return base64Encode(base64Url.decode(base64Url.normalize(value)));
     }
-  }
-
-  String _stableHash(String value) {
-    var hash = 0xcbf29ce484222325;
-    for (final unit in value.codeUnits) {
-      hash ^= unit;
-      hash = (hash * 0x100000001b3) & 0x7fffffffffffffff;
-    }
-    return hash.toRadixString(16);
   }
 
   int? _intish(Object? value) {

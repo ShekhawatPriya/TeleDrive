@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../config/app_config.dart';
+import '../utils/stable_hash.dart';
 import '../../models/account_vault.dart';
 import '../../models/auth_user.dart';
 
@@ -114,23 +115,13 @@ class SecureStorageService {
   Future<void> deleteAllTelegramCloudPasswordsForUser(int backendUserId) async {
     final all = await _storage.readAll();
     final prefix =
-        '$_telegramCloudPasswordPrefix:${_apiBaseUrlHash()}:$backendUserId:';
+        '$_telegramCloudPasswordPrefix:${stableHash(AppConfig.apiBaseUrl)}:$backendUserId:';
     for (final key in all.keys.where((k) => k.startsWith(prefix)).toList()) {
       await _storage.delete(key: key);
     }
   }
 
   String _cloudPasswordKey(int backendUserId, int telegramUserId) {
-    return '$_telegramCloudPasswordPrefix:${_apiBaseUrlHash()}:$backendUserId:$telegramUserId';
-  }
-
-  String _apiBaseUrlHash() {
-    final value = AppConfig.apiBaseUrl;
-    var hash = 0xcbf29ce484222325;
-    for (final unit in value.codeUnits) {
-      hash ^= unit;
-      hash = (hash * 0x100000001b3) & 0x7fffffffffffffff;
-    }
-    return hash.toRadixString(16);
+    return '$_telegramCloudPasswordPrefix:${stableHash(AppConfig.apiBaseUrl)}:$backendUserId:$telegramUserId';
   }
 }

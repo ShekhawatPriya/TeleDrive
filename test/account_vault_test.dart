@@ -55,6 +55,25 @@ void main() {
     expect(vault.accounts.single.token, 'new');
   });
 
+  test('upsert repairs collisions across user and telegram ids', () {
+    final firstAddedAt = DateTime(2026, 1, 1);
+    final vault = AccountVault(
+      accounts: [
+        account(userId: 1, telegramId: 10, token: 'one', addedAt: firstAddedAt),
+        account(userId: 2, telegramId: 20, token: 'two'),
+      ],
+      activeUserId: 1,
+    );
+
+    final updated = vault.upsert(
+      account(userId: 1, telegramId: 20, token: 'replacement'),
+    );
+
+    expect(updated.accounts, hasLength(1));
+    expect(updated.accounts.single.token, 'replacement');
+    expect(updated.accounts.single.addedAt, firstAddedAt);
+  });
+
   test('validAccountsByRecent excludes expired and needs-login accounts', () {
     final vault = const AccountVault.empty()
         .upsert(

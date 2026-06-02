@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../config/app_config.dart';
 import '../network/api_client.dart';
 import '../storage/secure_storage.dart';
+import '../utils/stable_hash.dart';
 
 class PendingTelegramCommit {
   const PendingTelegramCommit({
@@ -128,15 +129,16 @@ class PendingTelegramCommitQueue {
     : _storage = storage ?? SecureStorageService();
 
   final SecureStorageService _storage;
+  static final Map<String, Future<void>> _mutationChains = {};
 
   String activeScope({
     required int backendUserId,
     required int telegramUserId,
   }) {
-    return '${_stableHash(AppConfig.apiBaseUrl)}_${backendUserId}_$telegramUserId';
+    return '${stableHash(AppConfig.apiBaseUrl)}_${backendUserId}_$telegramUserId';
   }
 
-  String get backendBaseUrlHash => _stableHash(AppConfig.apiBaseUrl);
+  String get backendBaseUrlHash => stableHash(AppConfig.apiBaseUrl);
 
   Future<int> pendingCount({
     required int backendUserId,
@@ -169,21 +171,22 @@ class PendingTelegramCommitQueue {
     }
   }
 
-  Future<void> save(String scope, PendingTelegramCommit record) async {
-    final records = await list(scope);
-    final next = [
-      for (final existing in records)
-        if (existing.id != record.id) existing,
-      record,
-    ];
-    await _write(scope, next);
-  }
+  Future<void> save(String scope, PendingTelegramCommit record) =>
+      _mutate(scope, () async {
+        final records = await list(scope);
+        final next = [
+          for (final existing in records)
+            if (existing.id != record.id) existing,
+          record,
+        ];
+        await _write(scope, next);
+      });
 
-  Future<void> remove(String scope, String id) async {
+  Future<void> remove(String scope, String id) => _mutate(scope, () async {
     final records = await list(scope);
     final next = records.where((entry) => entry.id != id).toList();
     await _write(scope, next);
-  }
+  });
 
   Future<PendingTelegramCommitRetryResult> retryPending({
     required ApiClient api,
@@ -235,13 +238,17 @@ class PendingTelegramCommitQueue {
     );
   }
 
-  static String _stableHash(String value) {
-    var hash = 0xcbf29ce484222325;
-    for (final unit in value.codeUnits) {
-      hash ^= unit;
-      hash = (hash * 0x100000001b3) & 0x7fffffffffffffff;
-    }
-    return hash.toRadixString(16);
+  Future<void> _mutate(String scope, Future<void> Function() operation) {
+    final previous = _mutationChains[scope] ?? Future<void>.value();
+    final next = previous.catchError((_) {}).then((_) => operation());
+    late final Future<void> tracked;
+    tracked = next.whenComplete(() {
+      if (identical(_mutationChains[scope], tracked)) {
+        _mutationChains.remove(scope);
+      }
+    });
+    _mutationChains[scope] = tracked;
+    return tracked;
   }
 }
 

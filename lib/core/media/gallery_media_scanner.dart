@@ -180,20 +180,6 @@ class GalleryMediaScanner {
 
   final MethodChannel _mediaChannel;
 
-  Future<List<GalleryMediaAsset>> listRecent({
-    int limit = 100,
-    bool includeImages = true,
-    bool includeVideos = true,
-  }) async {
-    final result = await scanRecent(
-      limit: limit,
-      includeImages: includeImages,
-      includeVideos: includeVideos,
-      strategy: 'media_store_only',
-    );
-    return result.assets;
-  }
-
   Future<GalleryMediaScanResult> scanRecent({
     int limit = 100,
     bool includeImages = true,
@@ -239,7 +225,7 @@ class GalleryMediaScanner {
   ) async {
     final uris = contentUris
         .map((uri) => uri.trim())
-        .where(_isConcreteMediaStoreContentUri)
+        .where(isConcreteMediaStoreContentUri)
         .toList();
     if (uris.isEmpty) {
       return const GalleryMediaDeleteResult(
@@ -293,7 +279,7 @@ class GalleryMediaScanner {
     return File(p.join(root.path, '${asset.stableKey.hashCode}_$name'));
   }
 
-  static bool _isConcreteMediaStoreContentUri(String value) {
+  static bool isConcreteMediaStoreContentUri(String value) {
     if (!value.startsWith('content://media/')) return false;
     if (!value.contains('/images/media/') && !value.contains('/video/media/')) {
       return false;

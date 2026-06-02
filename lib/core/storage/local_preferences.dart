@@ -24,7 +24,11 @@ class LocalPreferences {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_sortKey);
     if (raw == null) return {'field': 'name', 'ascending': true};
-    return jsonDecode(raw) as Map<String, dynamic>;
+    try {
+      final parsed = jsonDecode(raw);
+      if (parsed is Map) return Map<String, dynamic>.from(parsed);
+    } catch (_) {}
+    return {'field': 'name', 'ascending': true};
   }
 
   Future<void> setSortPreference(String field, bool ascending) async {
@@ -39,8 +43,15 @@ class LocalPreferences {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_recentKeyFor(userId));
     if (raw == null) return {};
-    final parsed = jsonDecode(raw) as Map<String, dynamic>;
-    return parsed.map((key, value) => MapEntry(key, '$value'));
+    try {
+      final parsed = jsonDecode(raw);
+      if (parsed is Map) {
+        return Map<String, dynamic>.from(
+          parsed,
+        ).map((key, value) => MapEntry(key, '$value'));
+      }
+    } catch (_) {}
+    return {};
   }
 
   Future<void> setRecentAccess(Map<String, String> value, {int? userId}) async {
