@@ -15,7 +15,7 @@ class AppUpdateFetchException implements Exception {
 }
 
 class AppUpdateService {
-  AppUpdateService({Dio? dio, PackageInfo? packageInfoOverride})
+  AppUpdateService({Dio? dio, this._packageInfoOverride})
     : _dio =
           dio ??
           Dio(
@@ -25,8 +25,7 @@ class AppUpdateService {
               responseType: ResponseType.json,
               headers: {'Accept': 'application/json'},
             ),
-          ),
-      _packageInfoOverride = packageInfoOverride;
+          );
 
   final Dio _dio;
   final PackageInfo? _packageInfoOverride;
