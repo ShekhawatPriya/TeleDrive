@@ -8,34 +8,14 @@ enum UploadStatus {
   preparingMetadata,
   creatingThumbnail,
   creatingPreview,
-  stagingToBackend,
-  waitingForServer,
-  uploadingToTelegram,
   uploadingOriginalToTelegram,
   uploadingThumbnailToTelegram,
   uploadingPreviewToTelegram,
   committingMetadata,
-  processing,
   uploaded,
   cancelling,
   cancelled,
-  failed;
-
-  static UploadStatus fromBackendStatus(String status) {
-    if (status == 'completed' || status == 'available')
-      return UploadStatus.uploaded;
-    if (status == 'cancelled') return UploadStatus.cancelled;
-    if (status == 'failed') return UploadStatus.failed;
-    if (status == 'client_uploading')
-      return UploadStatus.uploadingOriginalToTelegram;
-    if (status == 'pending_client_upload')
-      return UploadStatus.preparingMetadata;
-    if (status == 'uploading' || status == 'uploading_original')
-      return UploadStatus.uploadingToTelegram;
-    if (status.startsWith('processing') || status == 'derivatives')
-      return UploadStatus.processing;
-    return UploadStatus.waitingForServer;
-  }
+  failed,
 }
 
 class UploadItem {
@@ -122,12 +102,6 @@ class UploadItem {
         return (0.85 + server * 0.10).clamp(0.85, 0.95);
       case UploadStatus.committingMetadata:
         return 0.96;
-      case UploadStatus.stagingToBackend:
-        return (http * 0.4).clamp(0.0, 0.4);
-      case UploadStatus.waitingForServer:
-      case UploadStatus.uploadingToTelegram:
-      case UploadStatus.processing:
-        return (0.4 + server * 0.6).clamp(0.0, 1.0);
       case UploadStatus.cancelling:
       case UploadStatus.cancelled:
       case UploadStatus.failed:

@@ -1,6 +1,12 @@
 part of '../upload_controller.dart';
 
 extension _UploadDirect on UploadController {
+  String _directBatchUploadClientId(List<UploadItem> batchItems) {
+    final sessionId = uploadSessionId ??= _uuid.v4();
+    final chunkId = batchItems.map((item) => item.localId).join(',');
+    return '$sessionId:$chunkId';
+  }
+
   Future<void> _uploadManyDirect(List<UploadItem> batchItems) async {
     if (await _isBlockedOnMobileData()) {
       for (final item in batchItems) {

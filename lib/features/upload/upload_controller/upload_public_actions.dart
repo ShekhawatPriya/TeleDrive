@@ -125,7 +125,6 @@ extension _UploadPublicActions on UploadController {
     final item = _findItem(localId);
     if (item == null || _isTerminalStatus(item.status)) return;
     _setItem(localId, status: UploadStatus.cancelling, cancelRequested: true);
-    _cancelTokensByLocalId[localId]?.cancel('Upload cancelled.');
     unawaited(_telegram.cancelTransfer(item.uploadClientId));
 
     if (item.batchId != null) {
@@ -137,7 +136,6 @@ extension _UploadPublicActions on UploadController {
           .catchError((_) => Response(requestOptions: RequestOptions()));
     }
 
-    if (item.batchId != null) _stopPollingBatch(item.batchId!);
     _runningLocalIds.remove(localId);
     _setItem(localId, status: UploadStatus.cancelled);
     if (item.deleteLocalOnComplete) {
@@ -203,10 +201,6 @@ extension _UploadPublicActions on UploadController {
 
   void _dismiss() {
     if (uploading) return;
-    for (final timer in _pollTimersByBatchId.values) {
-      timer.cancel();
-    }
-    _pollTimersByBatchId.clear();
     for (final item in items) {
       if (item.deleteLocalOnComplete) {
         _safeDeleteLocalFile(item.path);
@@ -223,11 +217,6 @@ extension _UploadPublicActions on UploadController {
 
   void _resetTerminalForAccountSwitch() {
     if (hasBlockingUploads) return;
-    for (final timer in _pollTimersByBatchId.values) {
-      timer.cancel();
-    }
-    _pollTimersByBatchId.clear();
-    _pollingBatchIds.clear();
     _cancelCompletionTimers();
     items = [];
     _bumpItemsVersion();

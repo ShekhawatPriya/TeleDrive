@@ -17,14 +17,10 @@ extension _UploadStateSync on UploadController {
     UploadStatus.preparingMetadata,
     UploadStatus.creatingThumbnail,
     UploadStatus.creatingPreview,
-    UploadStatus.stagingToBackend,
-    UploadStatus.waitingForServer,
-    UploadStatus.uploadingToTelegram,
     UploadStatus.uploadingOriginalToTelegram,
     UploadStatus.uploadingThumbnailToTelegram,
     UploadStatus.uploadingPreviewToTelegram,
     UploadStatus.committingMetadata,
-    UploadStatus.processing,
     UploadStatus.cancelling,
   }.contains(item.status);
 
@@ -120,16 +116,6 @@ extension _UploadStateSync on UploadController {
     _syncOptimistic();
     _updateUploadingFlag();
     _notifyListeners(force: force);
-  }
-
-  // ignore: unused_element
-  void _setItemProgress(String localId, {double? httpProgress}) {
-    _setItem(localId, httpProgress: httpProgress);
-  }
-
-  void _stopPollingBatch(int batchId) {
-    _pollTimersByBatchId.remove(batchId)?.cancel();
-    _pollingBatchIds.remove(batchId);
   }
 
   void _updateUploadingFlag() {

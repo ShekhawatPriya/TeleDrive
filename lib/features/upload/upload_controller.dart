@@ -31,7 +31,6 @@ part 'upload_controller/upload_public_actions.dart';
 part 'upload_controller/upload_derivatives.dart';
 part 'upload_controller/upload_direct.dart';
 part 'upload_controller/upload_direct_file.dart';
-part 'upload_controller/upload_polling.dart';
 part 'upload_controller/upload_queue.dart';
 
 final uploadControllerProvider = ChangeNotifierProvider<UploadController>((
@@ -62,7 +61,6 @@ class UploadController extends ChangeNotifier {
   }
 
   static const maxFiles = 50;
-  static const pollInterval = Duration(milliseconds: 1200);
 
   final ApiClient _api;
   final DriveController _drive;
@@ -77,11 +75,7 @@ class UploadController extends ChangeNotifier {
   final GalleryBackupAssetStore _backupAssetStore =
       const GalleryBackupAssetStore();
   final _uuid = const Uuid();
-  final Map<String, CancelToken> _cancelTokensByLocalId = {};
-  final Map<int, Timer> _pollTimersByBatchId = {};
-  final Set<int> _pollingBatchIds = {};
   final Set<String> _runningLocalIds = {};
-  final Map<int, DateTime> _batchUploadFinishedTimes = {};
   Timer? _autoDismissTimer;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   String? _refreshedUploadSessionId;
@@ -140,7 +134,6 @@ class UploadController extends ChangeNotifier {
           UploadStatus.uploadingThumbnailToTelegram,
           UploadStatus.uploadingPreviewToTelegram,
           UploadStatus.committingMetadata,
-          UploadStatus.processing,
           UploadStatus.cancelling,
         }.contains(i.status),
       );
@@ -217,16 +210,9 @@ class UploadController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
-    for (final timer in _pollTimersByBatchId.values) {
-      timer.cancel();
-    }
     _connectivitySubscription?.cancel();
     _cancelCompletionTimers();
     _optimisticSyncTimer?.cancel();
-    _pollingBatchIds.clear();
-    for (final token in _cancelTokensByLocalId.values) {
-      token.cancel();
-    }
     super.dispose();
   }
 }
