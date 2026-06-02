@@ -3,7 +3,7 @@
 Direct Telegram transfers use the official TDLib JSON-for-Java artifact built
 from the official `tdlib/td` repository. This app loads `libtdjsonjava.so` from
 Android `jniLibs`; if the library is missing for the running ABI, direct media
-transfer is disabled and the legacy backend fallback remains available.
+transfer fails closed and the user must reconnect on a supported device.
 
 Expected ABI layout:
 
@@ -39,4 +39,4 @@ MethodChannel contract: `teledrive/tdlib`; EventChannel contract:
 `teledrive/tdlib/events`.
 
 The Kotlin bridge intentionally returns `tdlib_unavailable` when these artifacts
-are absent, so uploads/downloads fail closed and can fall back to legacy paths.
+are absent, so uploads/downloads fail closed.

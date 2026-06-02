@@ -1,20 +1,12 @@
 package com.example.flutter_m_fsdk
 
-import android.content.ContentUris
 import android.content.Intent
 import android.content.IntentSender
 import android.net.Uri
-import android.graphics.Bitmap
-import android.graphics.ImageDecoder
-import android.media.ThumbnailUtils
-import android.os.Build
-import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
 import android.provider.MediaStore
-import android.provider.OpenableColumns
-import android.util.Size
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -268,13 +260,6 @@ class MainActivity : FlutterActivity() {
             }
         }
         return mapOf("path" to outFile.absolutePath, "sizeBytes" to outFile.length())
-    }
-
-
-    private fun displayNameFor(uri: Uri): String? {
-        return contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) stringAt(cursor, cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)) else null
-        }
     }
 }
 

@@ -22,7 +22,7 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
     private val sendWaiters = ConcurrentHashMap<String, CompletableFuture<JSONObject>>()
     private val completedSends = ConcurrentHashMap<String, JSONObject>()
     private val failedSends = ConcurrentHashMap<String, TdlibException>()
-    private val downloads = ConcurrentHashMap<Int, DownloadWaiter>()
+    private val downloads = ConcurrentHashMap<Int, CopyOnWriteArrayList<DownloadWaiter>>()
     private val transfers = ConcurrentHashMap<String, Transfer>()
     private val authorizationWaiters = CopyOnWriteArrayList<AuthorizationWaiter>()
     private val connectionWaiters = CopyOnWriteArrayList<ConnectionWaiter>()
@@ -31,6 +31,7 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
     private val lastEmittedStateByTransferId = ConcurrentHashMap<String, String>()
     private val terminalStates = setOf("completed", "failed", "cancelled")
     private val progressMinIntervalMs = 250L
+    private val downloadsLock = Any()
 
     @Volatile private var eventSink: EventChannel.EventSink? = null
     @Volatile private var clientId: Int = 0
@@ -125,10 +126,12 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         }
         completedSends.clear()
         failedSends.clear()
-        for ((fileId, waiter) in downloads.toMap()) {
-            waiter.future.completeExceptionally(reconfigured)
-            downloads.remove(fileId)
+        val abandonedDownloads = synchronized(downloadsLock) {
+            val snapshot = downloads.values.flatMap { it.toList() }
+            downloads.clear()
+            snapshot
         }
+        abandonedDownloads.forEach { it.future.completeExceptionally(reconfigured) }
         for ((transferId, transfer) in transfers.toMap()) {
             transfer.cancelled = true
             emitProgress(transferId, "cancelled", 0, null, "TDLib account changed.")
@@ -346,19 +349,22 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         destinationPath: String
     ): CompletableFuture<Map<String, Any?>> {
         val waiter = DownloadWaiter(transferId, destinationPath, CompletableFuture())
-        downloads[fileId] = waiter
-        transfers[transferId] = Transfer(transferId, fileId)
-        send(
-            JSONObject()
-                .put("@type", "downloadFile")
-                .put("file_id", fileId)
-                .put("priority", 32)
-                .put("offset", 0)
-                .put("limit", 0)
-                .put("synchronous", false)
-        ).whenComplete { file, error ->
+        val request = synchronized(downloadsLock) {
+            downloads.computeIfAbsent(fileId) { CopyOnWriteArrayList() }.add(waiter)
+            transfers[transferId] = Transfer(transferId, fileId)
+            send(
+                JSONObject()
+                    .put("@type", "downloadFile")
+                    .put("file_id", fileId)
+                    .put("priority", 32)
+                    .put("offset", 0)
+                    .put("limit", 0)
+                    .put("synchronous", false)
+            )
+        }
+        request.whenComplete { file, error ->
             if (error != null) {
-                downloads.remove(fileId)
+                removeDownloadWaiter(fileId, waiter)
                 transfers.remove(transferId)
                 emitProgress(transferId, "failed", 0, null, error.message)
                 waiter.future.completeExceptionally(error)
@@ -368,7 +374,7 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
                 if (local?.optBoolean("is_downloading_completed", false) != true) {
                     val remote = file.optJSONObject("remote")
                     if (remote?.optBoolean("is_uploading_completed", true) == false) {
-                        downloads.remove(fileId)
+                        removeDownloadWaiter(fileId, waiter)
                         transfers.remove(transferId)
                         waiter.future.completeExceptionally(
                             TdlibException("tdlib_file_unavailable", "Telegram file is not ready to download.")
@@ -386,10 +392,20 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         val transfer = transfers[transferId]
         transfer?.cancelled = true
         val fileId = transfer?.fileId
+        val waiter = synchronized(downloadsLock) {
+            val removed = if (fileId == null) null else removeDownloadWaiter(fileId, transferId)
+            if (clientId != 0 && fileId != null && !downloads.containsKey(fileId)) {
+                sendNoWait(JSONObject().put("@type", "cancelDownloadFile").put("file_id", fileId).put("only_if_pending", false))
+            }
+            removed
+        }
+        waiter?.future?.completeExceptionally(
+            TdlibException("tdlib_cancelled", "Transfer was cancelled.")
+        )
         if (clientId != 0 && fileId != null) {
-            sendNoWait(JSONObject().put("@type", "cancelDownloadFile").put("file_id", fileId).put("only_if_pending", false))
             sendNoWait(JSONObject().put("@type", "cancelUploadFile").put("file_id", fileId))
         }
+        transfers.remove(transferId)
         emitProgress(transferId, "cancelled", 0, null, null)
         return CompletableFuture.completedFuture(mapOf("cancelled" to true))
     }
@@ -720,23 +736,27 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
 
     private fun handleDownloadedFile(file: JSONObject) {
         val fileId = file.optInt("id", 0)
-        val waiter = downloads[fileId] ?: return
+        val waiters = downloads[fileId] ?: return
         val sourcePath = file.optJSONObject("local")?.optString("path", null)
         if (sourcePath.isNullOrBlank()) return
-        try {
-            val source = File(sourcePath)
-            val dest = File(waiter.destinationPath)
-            dest.parentFile?.mkdirs()
-            if (source.absolutePath != dest.absolutePath) {
-                source.copyTo(dest, overwrite = true)
+        if (!synchronized(downloadsLock) { downloads.remove(fileId, waiters) }) return
+        val source = File(sourcePath)
+        for (waiter in waiters) {
+            try {
+                val dest = File(waiter.destinationPath)
+                dest.parentFile?.mkdirs()
+                if (source.absolutePath != dest.absolutePath) {
+                    source.copyTo(dest, overwrite = true)
+                }
+                transfers.remove(waiter.transferId)
+                emitProgress(waiter.transferId, "completed", source.length(), source.length(), null)
+                waiter.future.complete(mapOf("filePath" to dest.absolutePath, "tdlibFileId" to fileId))
+            } catch (error: Throwable) {
+                transfers.remove(waiter.transferId)
+                val message = error.message ?: "Could not copy downloaded file."
+                emitProgress(waiter.transferId, "failed", 0, null, message)
+                waiter.future.completeExceptionally(TdlibException("tdlib_download_copy_failed", message))
             }
-            downloads.remove(fileId)
-            transfers.remove(waiter.transferId)
-            emitProgress(waiter.transferId, "completed", source.length(), source.length(), null)
-            waiter.future.complete(mapOf("filePath" to dest.absolutePath, "tdlibFileId" to fileId))
-        } catch (error: Throwable) {
-            downloads.remove(fileId)
-            waiter.future.completeExceptionally(TdlibException("tdlib_download_copy_failed", error.message ?: "Could not copy downloaded file."))
         }
     }
 
@@ -744,7 +764,7 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         thread(name = "teledrive-tdlib-download-timeout", isDaemon = true) {
             try {
                 Thread.sleep(timeoutMs)
-                if (downloads.remove(fileId, waiter)) {
+                if (removeDownloadWaiter(fileId, waiter)) {
                     transfers.remove(waiter.transferId)
                     emitProgress(waiter.transferId, "failed", 0, null, "Timed out waiting for Telegram to download the file.")
                     waiter.future.completeExceptionally(
@@ -757,6 +777,25 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
                 }
             } catch (_: InterruptedException) {
             }
+        }
+    }
+
+    private fun removeDownloadWaiter(fileId: Int, waiter: DownloadWaiter): Boolean {
+        return synchronized(downloadsLock) {
+            val waiters = downloads[fileId] ?: return@synchronized false
+            val removed = waiters.remove(waiter)
+            if (waiters.isEmpty()) downloads.remove(fileId, waiters)
+            removed
+        }
+    }
+
+    private fun removeDownloadWaiter(fileId: Int, transferId: String): DownloadWaiter? {
+        return synchronized(downloadsLock) {
+            val waiters = downloads[fileId] ?: return@synchronized null
+            val waiter = waiters.firstOrNull { it.transferId == transferId }
+                ?: return@synchronized null
+            removeDownloadWaiter(fileId, waiter)
+            waiter
         }
     }
 
@@ -887,5 +926,4 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
     }
 
 }
-
 
