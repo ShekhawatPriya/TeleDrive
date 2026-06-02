@@ -39,11 +39,10 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Restore .env.local (bundled as an asset)
-        # pubspec.yaml lists `.env.local` under assets, so the build fails to
-        # bundle without it. Store the full file contents in the ENV_LOCAL
-        # repository secret. APP_UPDATE / GITHUB_REPO_* keys fall back to the
-        # in-code defaults, so ENV_LOCAL only needs the real Telegram + API keys.
+      - name: Restore release configuration
+        # pubspec.yaml bundles `.env.local` as a runtime asset. Store its full
+        # contents in the ENV_LOCAL repository secret. Values remain extractable
+        # from the APK, so treat them as client configuration rather than secrets.
         env:
           ENV_LOCAL: ${{ secrets.ENV_LOCAL }}
         run: |
