@@ -41,7 +41,9 @@ extension _FreeUpSpaceScan on FreeUpSpaceController {
         skippedPathOnly++;
         continue;
       }
-      if (!_isConcreteMediaStoreContentUri(asset.contentUri)) {
+      if (!GalleryMediaScanner.isConcreteMediaStoreContentUri(
+        asset.contentUri,
+      )) {
         skippedUnsupportedUri++;
         continue;
       }
@@ -177,14 +179,6 @@ extension _FreeUpSpaceScan on FreeUpSpaceController {
         _auth.user?.telegramId ?? _auth.activeAccount?.telegramId ?? 0;
     if (userId == null || telegramId == 0) return null;
     return '${userId}_$telegramId';
-  }
-
-  bool _isConcreteMediaStoreContentUri(String value) {
-    if (!value.startsWith('content://media/')) return false;
-    if (!value.contains('/images/media/') && !value.contains('/video/media/')) {
-      return false;
-    }
-    return int.tryParse(value.split('/').last) != null;
   }
 
   String _formatBytes(int bytes) {

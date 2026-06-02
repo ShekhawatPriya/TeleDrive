@@ -29,18 +29,13 @@ final freeUpSpaceControllerProvider =
 
 class FreeUpSpaceController extends ChangeNotifier {
   FreeUpSpaceController({
-    required AuthController auth,
-    required UploadController uploads,
-    required DriveRepository drive,
-    GalleryMediaScanner scanner = const GalleryMediaScanner(),
-    GalleryBackupAssetStore assetStore = const GalleryBackupAssetStore(),
-    bool Function() isAndroid = _defaultIsAndroid,
-  }) : _auth = auth,
-       _uploads = uploads,
-       _drive = drive,
-       _scanner = scanner,
-       _assetStore = assetStore,
-       _isAndroid = isAndroid;
+    required this._auth,
+    required this._uploads,
+    required this._drive,
+    this._scanner = const GalleryMediaScanner(),
+    this._assetStore = const GalleryBackupAssetStore(),
+    this._isAndroid = _defaultIsAndroid,
+  });
 
   final AuthController _auth;
   final UploadController _uploads;

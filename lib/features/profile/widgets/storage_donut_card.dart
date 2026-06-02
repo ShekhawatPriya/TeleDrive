@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../models/drive_models.dart';
 import '../storage_summary_controller.dart';
 import 'donut_chart.dart';
 import 'storage_legend.dart';
@@ -42,57 +41,6 @@ List<StorageCategory> buildStorageCategoriesFromSummary(
     StorageCategory(
       label: 'Other',
       bytes: summary.audioBytes + summary.otherBytes,
-      color: const Color(0xFF8E8E93),
-    ),
-  ];
-}
-
-@Deprecated(
-  'Use buildStorageCategoriesFromSummary with /storage/summary; iterating '
-  '`drive.files` only counts the loaded folder pages after on-demand loading.',
-)
-List<StorageCategory> buildStorageCategories(
-  List<DriveFile> files,
-  ColorScheme scheme,
-) {
-  var photos = 0, videos = 0, documents = 0, other = 0;
-  for (final file in files) {
-    if (file.kind == FileKind.image) {
-      photos += file.size;
-    } else if (file.kind == FileKind.video) {
-      videos += file.size;
-    } else if ({
-      FileKind.pdf,
-      FileKind.doc,
-      FileKind.sheet,
-      FileKind.slides,
-      FileKind.code,
-      FileKind.text,
-    }.contains(file.kind)) {
-      documents += file.size;
-    } else {
-      other += file.size;
-    }
-  }
-  return [
-    StorageCategory(
-      label: 'Photos',
-      bytes: photos,
-      color: const Color(0xFFFF453A),
-    ),
-    StorageCategory(
-      label: 'Videos',
-      bytes: videos,
-      color: const Color(0xFFFF9F0A),
-    ),
-    StorageCategory(
-      label: 'Documents',
-      bytes: documents,
-      color: const Color(0xFF0A84FF),
-    ),
-    StorageCategory(
-      label: 'Other',
-      bytes: other,
       color: const Color(0xFF8E8E93),
     ),
   ];

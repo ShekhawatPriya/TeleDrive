@@ -6,14 +6,17 @@ extension _AuthControllerSessionActions on AuthController {
     this._emitChange(); // ignore: unnecessary_this
     try {
       error = null;
-      vault = await this._loadVaultWithLegacyMigration(); // ignore: unnecessary_this
+      vault = await this
+          ._loadVaultWithLegacyMigration(); // ignore: unnecessary_this
       if (vault.accounts.isEmpty) {
         _repo.setApiToken(null);
         this._clearSessionState(clearVault: false); // ignore: unnecessary_this
         return;
       }
       await this._restoreBestAccount(); // ignore: unnecessary_this
-      unawaited(this._refreshSavedAccountSnapshots()); // ignore: unnecessary_this
+      unawaited(
+        this._refreshSavedAccountSnapshots(),
+      ); // ignore: unnecessary_this
     } catch (err) {
       _repo.setApiToken(null);
       this._clearSessionState(clearVault: false);
@@ -34,7 +37,10 @@ extension _AuthControllerSessionActions on AuthController {
       nextToken,
       includeDrive: true,
     );
-    await this._commitActiveAccount(nextToken, bootstrap); // ignore: unnecessary_this
+    await this._commitActiveAccount(
+      nextToken,
+      bootstrap,
+    ); // ignore: unnecessary_this
     this._emitChange(); // ignore: unnecessary_this
   }
 
@@ -58,12 +64,17 @@ extension _AuthControllerSessionActions on AuthController {
         selected.token,
         includeDrive: true,
       );
-      if (!this._bootstrapMatchesAccount(selected, bootstrap)) { // ignore: unnecessary_this
+      if (!this._bootstrapMatchesAccount(selected, bootstrap)) {
+        // ignore: unnecessary_this
         vault = vault.markTokenStatus(selected.userId, TokenStatus.needsLogin);
         await _repo.saveVault(vault);
         throw Exception('Session expired. Please log in again.');
       }
-      await this._commitActiveAccount(selected.token, bootstrap, existing: selected);
+      await this._commitActiveAccount(
+        selected.token,
+        bootstrap,
+        existing: selected,
+      );
     } on DioException catch (err) {
       if (err.response?.statusCode == 401) {
         vault = vault.markTokenStatus(selected.userId, TokenStatus.needsLogin);

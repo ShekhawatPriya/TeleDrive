@@ -17,10 +17,9 @@ final telegramMediaAccessServiceProvider = Provider<TelegramMediaAccessService>(
 
 class TelegramMediaAccessService {
   const TelegramMediaAccessService({
-    required DriveRepository driveRepository,
-    required TelegramTransferService transferService,
-  }) : _driveRepository = driveRepository,
-       _transferService = transferService;
+    required this._driveRepository,
+    required this._transferService,
+  });
 
   final DriveRepository _driveRepository;
   final TelegramTransferService _transferService;

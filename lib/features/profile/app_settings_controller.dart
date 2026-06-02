@@ -131,13 +131,15 @@ class AppSettingsController extends ChangeNotifier {
       uploadFailedAlerts: prefs.getBool(_uploadFailedAlertsKey) ?? false,
       galleryBackupEnabled: prefs.getBool(_galleryBackupEnabledKey) ?? false,
       galleryBackupWifiOnly: prefs.getBool(_galleryBackupWifiOnlyKey) ?? true,
-      galleryBackupScanLimit: _boundedPositiveInt(
+      galleryBackupScanLimit: _boundedInt(
         prefs.getInt(_galleryBackupScanLimitKey),
         80,
+        max: 500,
       ),
-      galleryBackupQueueLimit: _boundedPositiveInt(
+      galleryBackupQueueLimit: _boundedInt(
         prefs.getInt(_galleryBackupQueueLimitKey),
         12,
+        max: 100,
       ),
       galleryBackupIndexingStrategy: GalleryBackupIndexingStrategy.fromStorage(
         prefs.getString(_galleryBackupIndexingStrategyKey),
@@ -237,8 +239,9 @@ class AppSettingsController extends ChangeNotifier {
     }
   }
 
-  static int _boundedPositiveInt(int? value, int fallback) {
+  static int _boundedInt(int? value, int fallback, {required int max}) {
     final next = value ?? fallback;
-    return next < 1 ? fallback : next;
+    if (next < 1) return fallback;
+    return next.clamp(1, max).toInt();
   }
 }

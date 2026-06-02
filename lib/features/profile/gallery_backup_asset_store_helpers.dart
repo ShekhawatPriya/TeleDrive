@@ -65,13 +65,15 @@ extension _GalleryBackupAssetStoreHelpers on GalleryBackupAssetStore {
   Future<void> _enqueueSave(String scope) {
     final prev =
         GalleryBackupAssetStore._saveChain[scope] ?? Future<void>.value();
-    final next = prev.then((_) => _flushSave(scope));
-    GalleryBackupAssetStore._saveChain[scope] = next.whenComplete(() {
-      if (identical(GalleryBackupAssetStore._saveChain[scope], next)) {
+    final next = prev.catchError((_) {}).then((_) => _flushSave(scope));
+    late final Future<void> tracked;
+    tracked = next.whenComplete(() {
+      if (identical(GalleryBackupAssetStore._saveChain[scope], tracked)) {
         GalleryBackupAssetStore._saveChain.remove(scope);
       }
     });
-    return next;
+    GalleryBackupAssetStore._saveChain[scope] = tracked;
+    return tracked;
   }
 
   Future<void> _flushSave(String scope) async {

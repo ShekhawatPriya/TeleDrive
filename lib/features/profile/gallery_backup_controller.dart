@@ -37,18 +37,13 @@ final galleryBackupControllerProvider =
 
 class GalleryBackupController extends ChangeNotifier {
   GalleryBackupController({
-    required AppSettingsController settings,
-    required AuthController auth,
-    required UploadController uploads,
-    required DriveRepository drive,
-    GalleryMediaScanner scanner = const GalleryMediaScanner(),
-    GalleryBackupAssetStore assetStore = const GalleryBackupAssetStore(),
-  }) : _settings = settings,
-       _auth = auth,
-       _uploads = uploads,
-       _drive = drive,
-       _scanner = scanner,
-       _assetStore = assetStore {
+    required this._settings,
+    required this._auth,
+    required this._uploads,
+    required this._drive,
+    this._scanner = const GalleryMediaScanner(),
+    this._assetStore = const GalleryBackupAssetStore(),
+  }) {
     _lastEnabled = _settings.state.galleryBackupEnabled;
     _settings.addListener(_handleSettingsChanged);
     _auth.addListener(_scheduleSoon);

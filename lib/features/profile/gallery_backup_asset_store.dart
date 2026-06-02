@@ -20,6 +20,8 @@ class GalleryBackupAssetStore {
   static const _debounce = Duration(milliseconds: 350);
 
   static final Map<String, Map<String, GalleryBackupAssetRecord>> _cache = {};
+  static final Map<String, Future<Map<String, GalleryBackupAssetRecord>>>
+  _loadTasks = {};
   static final Map<String, Timer> _saveTimers = {};
   static final Map<String, Future<void>> _saveChain = {};
 
@@ -28,23 +30,44 @@ class GalleryBackupAssetStore {
     if (cached != null) {
       return Map<String, GalleryBackupAssetRecord>.from(cached);
     }
+    final existingTask = _loadTasks[scope];
+    if (existingTask != null) {
+      return Map<String, GalleryBackupAssetRecord>.from(await existingTask);
+    }
+    late final Future<Map<String, GalleryBackupAssetRecord>> tracked;
+    tracked = _loadFromStorage(scope).whenComplete(() {
+      if (identical(_loadTasks[scope], tracked)) _loadTasks.remove(scope);
+    });
+    _loadTasks[scope] = tracked;
+    return Map<String, GalleryBackupAssetRecord>.from(await tracked);
+  }
+
+  Future<Map<String, GalleryBackupAssetRecord>> _loadFromStorage(
+    String scope,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_key(scope));
     final populated = <String, GalleryBackupAssetRecord>{};
     if (raw != null && raw.isNotEmpty) {
-      final parsed = jsonDecode(raw);
-      if (parsed is Map) {
-        for (final entry in parsed.entries) {
-          final value = entry.value;
-          final json = value is Map
-              ? Map<String, dynamic>.from(value)
-              : <String, dynamic>{};
-          populated['${entry.key}'] = GalleryBackupAssetRecord.fromJson(json);
+      try {
+        final parsed = jsonDecode(raw);
+        if (parsed is Map) {
+          for (final entry in parsed.entries) {
+            try {
+              final value = entry.value;
+              final json = value is Map
+                  ? Map<String, dynamic>.from(value)
+                  : <String, dynamic>{};
+              populated['${entry.key}'] = GalleryBackupAssetRecord.fromJson(
+                json,
+              );
+            } catch (_) {}
+          }
         }
-      }
+      } catch (_) {}
     }
     _cache[scope] = populated;
-    return Map<String, GalleryBackupAssetRecord>.from(populated);
+    return populated;
   }
 
   Future<Map<String, GalleryBackupAssetRecord>> _ensureCache(
@@ -211,6 +234,7 @@ class GalleryBackupAssetStore {
     }
     _saveTimers.clear();
     _saveChain.clear();
+    _loadTasks.clear();
     _cache.clear();
   }
 }

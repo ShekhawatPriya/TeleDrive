@@ -35,16 +35,12 @@ final tdlibSessionControllerProvider =
 
 class TdlibSessionController extends ChangeNotifier {
   TdlibSessionController({
-    required AuthController auth,
-    required AuthRepository repo,
-    required TelegramTransferService telegram,
-    required SecureStorageService storage,
+    required this._auth,
+    required this._repo,
+    required this._telegram,
+    required this._storage,
     TelegramAuthBridge? bridge,
-  }) : _auth = auth,
-       _repo = repo,
-       _telegram = telegram,
-       _storage = storage,
-       _bridge = bridge ?? TelegramAuthBridge() {
+  }) : _bridge = bridge ?? TelegramAuthBridge() {
     _auth.addListener(_handleAuthChanged);
   }
 

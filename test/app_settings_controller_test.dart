@@ -83,4 +83,17 @@ void main() {
       );
     },
   );
+
+  test('bounds backup limits loaded from preferences', () async {
+    SharedPreferences.setMockInitialValues({
+      'settings_gallery_scan_limit': 9999,
+      'settings_gallery_queue_limit': 9999,
+    });
+    final controller = AppSettingsController();
+
+    await controller.load();
+
+    expect(controller.state.galleryBackupScanLimit, 500);
+    expect(controller.state.galleryBackupQueueLimit, 100);
+  });
 }

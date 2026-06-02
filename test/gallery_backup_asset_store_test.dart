@@ -29,6 +29,15 @@ void main() {
     expect(record.isRetryable, isFalse);
   });
 
+  test('returns an empty index when stored JSON is malformed', () async {
+    SharedPreferences.setMockInitialValues({
+      'gallery_backup_assets_v2_user-1': 'not-json',
+    });
+    const store = GalleryBackupAssetStore();
+
+    expect(await store.load('user-1'), isEmpty);
+  });
+
   test('failed assets remain retryable with failure metadata', () async {
     SharedPreferences.setMockInitialValues({});
     const store = GalleryBackupAssetStore();

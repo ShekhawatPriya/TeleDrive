@@ -215,15 +215,6 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
   bool checkUploadsBlocked(BuildContext context) {
     final upload = _ref.read(uploadControllerProvider);
     final auth = _ref.read(authControllerProvider);
-    debugPrint(
-      '[DEBUG] checkUploadsBlocked: hasBlockingUploads = ${upload.hasBlockingUploads}, uploading = ${upload.uploading}, activeCount = ${upload.activeCount}, itemsLength = ${upload.items.length}',
-    );
-    for (var i = 0; i < upload.items.length; i++) {
-      final item = upload.items[i];
-      debugPrint(
-        '[DEBUG] Item $i: name = ${item.name}, status = ${item.status}, localId = ${item.localId}',
-      );
-    }
     if (auth.hasPendingDirectCommits) {
       showAppPremiumToast(
         message: 'Finish pending Telegram metadata sync first.',
