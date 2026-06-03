@@ -60,6 +60,14 @@ extension _DriveIndexes on DriveController {
           a.mimeType == b.mimeType &&
           a.uploadStatus == b.uploadStatus &&
           a.uploadError == b.uploadError &&
+          a.storageMode == b.storageMode &&
+          a.uploadOrigin == b.uploadOrigin &&
+          a.publicProxyStatus == b.publicProxyStatus &&
+          a.verificationStatus == b.verificationStatus &&
+          a.mediaAccessMode == b.mediaAccessMode &&
+          a.originalRefAvailable == b.originalRefAvailable &&
+          a.thumbnailRefAvailable == b.thumbnailRefAvailable &&
+          a.previewRefAvailable == b.previewRefAvailable &&
           a.thumbnailUrl == b.thumbnailUrl &&
           a.previewUrl == b.previewUrl &&
           a.streamUrl == b.streamUrl &&

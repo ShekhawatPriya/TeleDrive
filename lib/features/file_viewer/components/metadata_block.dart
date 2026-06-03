@@ -89,8 +89,7 @@ class MetadataBlock extends StatelessWidget {
   bool _isPreviewAvailable(DriveFile file) {
     if (file.previewStatus == 'available') return true;
     if (file.previewUrl != null) return true;
-    if (file.storageMode == 'client_managed' &&
-        (file.previewRefAvailable || file.originalRefAvailable)) {
+    if (file.hasTelegramMediaRefs) {
       return true;
     }
     return false;

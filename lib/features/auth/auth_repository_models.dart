@@ -20,15 +20,56 @@ class BackendFeatureFlags {
   factory BackendFeatureFlags.fromJson(Map<String, dynamic>? json) {
     if (json == null) return const BackendFeatureFlags();
     return BackendFeatureFlags(
-      directTelegramUploadEnabled: json['directTelegramUploadEnabled'] == true,
+      directTelegramUploadEnabled:
+          _boolish(json, const [
+            'directTelegramUploadEnabled',
+            'direct_telegram_upload_enabled',
+          ]) ??
+          false,
       directTelegramDownloadEnabled:
-          json['directTelegramDownloadEnabled'] == true,
+          _boolish(json, const [
+            'directTelegramDownloadEnabled',
+            'direct_telegram_download_enabled',
+          ]) ??
+          false,
       clientDerivativeGenerationEnabled:
-          json['clientDerivativeGenerationEnabled'] == true,
-      galleryBackupEnabled: json['galleryBackupEnabled'] == true,
-      publicProxyEnabled: json['publicProxyEnabled'] != false,
+          _boolish(json, const [
+            'clientDerivativeGenerationEnabled',
+            'client_derivative_generation_enabled',
+          ]) ??
+          false,
+      galleryBackupEnabled:
+          _boolish(json, const [
+            'galleryBackupEnabled',
+            'gallery_backup_enabled',
+          ]) ??
+          false,
+      publicProxyEnabled:
+          _boolish(json, const [
+            'publicProxyEnabled',
+            'public_proxy_enabled',
+          ]) ??
+          true,
     );
   }
+}
+
+bool? _boolish(Map<String, dynamic> json, List<String> keys) {
+  for (final key in keys) {
+    final value = json[key];
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      if (normalized == 'true' || normalized == '1' || normalized == 'yes') {
+        return true;
+      }
+      if (normalized == 'false' || normalized == '0' || normalized == 'no') {
+        return false;
+      }
+    }
+  }
+  return null;
 }
 
 class AuthBootstrapResult {

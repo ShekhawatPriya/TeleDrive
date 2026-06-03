@@ -42,18 +42,41 @@ class TelegramMediaRef {
 
   factory TelegramMediaRef.fromJson(Map<String, dynamic> json) {
     return TelegramMediaRef(
-      variant: '${json['variant'] ?? 'original'}',
-      storageBackend: '${json['storageBackend'] ?? 'telegram'}',
-      clientProvider: json['clientProvider'] as String?,
-      serverProvider: json['serverProvider'] as String?,
-      tdlibChatId: _intish(json['tdlibChatId']),
-      tdlibMessageId: _intish(json['tdlibMessageId']),
-      tdlibFileId: _intish(json['tdlibFileId']),
-      tdlibRemoteFileId: json['tdlibRemoteFileId'] as String?,
-      telethonPeerId: _intish(json['telethonPeerId']),
-      telethonMessageId: _intish(json['telethonMessageId']),
-      telethonAccessHash: _intish(json['telethonAccessHash']),
-      telegramDcId: _intish(json['telegramDcId']),
+      variant: _stringish(json, const ['variant']) ?? 'original',
+      storageBackend:
+          _stringish(json, const ['storageBackend', 'storage_backend']) ??
+          'telegram',
+      clientProvider: _stringish(json, const [
+        'clientProvider',
+        'client_provider',
+      ]),
+      serverProvider: _stringish(json, const [
+        'serverProvider',
+        'server_provider',
+      ]),
+      tdlibChatId: _intishAny(json, const ['tdlibChatId', 'tdlib_chat_id']),
+      tdlibMessageId: _intishAny(json, const [
+        'tdlibMessageId',
+        'tdlib_message_id',
+      ]),
+      tdlibFileId: _intishAny(json, const ['tdlibFileId', 'tdlib_file_id']),
+      tdlibRemoteFileId: _stringish(json, const [
+        'tdlibRemoteFileId',
+        'tdlib_remote_file_id',
+      ]),
+      telethonPeerId: _intishAny(json, const [
+        'telethonPeerId',
+        'telethon_peer_id',
+      ]),
+      telethonMessageId: _intishAny(json, const [
+        'telethonMessageId',
+        'telethon_message_id',
+      ]),
+      telethonAccessHash: _intishAny(json, const [
+        'telethonAccessHash',
+        'telethon_access_hash',
+      ]),
+      telegramDcId: _intishAny(json, const ['telegramDcId', 'telegram_dc_id']),
     );
   }
 
@@ -107,16 +130,67 @@ class TelegramUploadTarget {
 
   factory TelegramUploadTarget.fromJson(Map<String, dynamic> json) {
     return TelegramUploadTarget(
-      folderId: (json['folderId'] as num?)?.toInt(),
-      telethonPeerId: _intish(json['telethonPeerId']),
-      telethonAccessHash: _intish(json['telethonAccessHash']),
-      telethonChannelId: _intish(json['telethonChannelId']),
-      tdlibChatId: _intish(json['tdlibChatId']),
-      title: json['title'] as String?,
-      type: '${json['type'] ?? 'private_channel'}',
-      requiresClientResolution: json['requiresClientResolution'] != false,
+      folderId: _intishAny(json, const ['folderId', 'folder_id']),
+      telethonPeerId: _intishAny(json, const [
+        'telethonPeerId',
+        'telethon_peer_id',
+      ]),
+      telethonAccessHash: _intishAny(json, const [
+        'telethonAccessHash',
+        'telethon_access_hash',
+      ]),
+      telethonChannelId: _intishAny(json, const [
+        'telethonChannelId',
+        'telethon_channel_id',
+      ]),
+      tdlibChatId: _intishAny(json, const ['tdlibChatId', 'tdlib_chat_id']),
+      title: _stringish(json, const ['title']),
+      type: _stringish(json, const ['type']) ?? 'private_channel',
+      requiresClientResolution:
+          _boolishAny(json, const [
+            'requiresClientResolution',
+            'requires_client_resolution',
+          ]) ??
+          true,
     );
   }
+}
+
+String? _stringish(Map<String, dynamic> json, List<String> keys) {
+  for (final key in keys) {
+    final value = json[key];
+    if (value == null) continue;
+    final string = value is String ? value : '$value';
+    final trimmed = string.trim();
+    if (trimmed.isNotEmpty) return trimmed;
+  }
+  return null;
+}
+
+int? _intishAny(Map<String, dynamic> json, List<String> keys) {
+  for (final key in keys) {
+    final parsed = _intish(json[key]);
+    if (parsed != null) return parsed;
+  }
+  return null;
+}
+
+bool? _boolishAny(Map<String, dynamic> json, List<String> keys) {
+  for (final key in keys) {
+    final value = json[key];
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      if (normalized == 'true' || normalized == '1' || normalized == 'yes') {
+        return true;
+      }
+      if (normalized == 'false' || normalized == '0' || normalized == 'no') {
+        return false;
+      }
+    }
+  }
+  return null;
 }
 
 int? _intish(Object? value) {

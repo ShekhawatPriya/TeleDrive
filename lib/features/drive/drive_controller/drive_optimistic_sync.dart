@@ -74,6 +74,16 @@ extension _DriveOptimisticSync on DriveController {
         file.uploadStatus,
         file.uploadError,
         Object.hash(
+          file.storageMode,
+          file.uploadOrigin,
+          file.publicProxyStatus,
+          file.verificationStatus,
+          file.mediaAccessMode,
+          file.originalRefAvailable,
+          file.thumbnailRefAvailable,
+          file.previewRefAvailable,
+        ),
+        Object.hash(
           file.thumbnailUrl,
           file.previewUrl,
           file.streamUrl,

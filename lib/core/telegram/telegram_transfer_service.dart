@@ -66,6 +66,8 @@ abstract class TelegramTransferService {
     TelegramMediaRef ref, {
     required String filename,
     required String cacheKey,
+    Duration? timeout,
+    String? variant,
   });
 }
 
@@ -314,6 +316,8 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
     TelegramMediaRef ref, {
     required String filename,
     required String cacheKey,
+    Duration? timeout,
+    String? variant,
   }) async {
     final dir = await getTemporaryDirectory();
     final safeName = filename.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
@@ -321,6 +325,8 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
         '${dir.path}${Platform.pathSeparator}teledrive_${stableHash(cacheKey)}_$safeName';
     final result = await _invokeMap('downloadToFile', {
       'transferId': _uuid.v4(),
+      'variant': variant ?? ref.variant,
+      if (timeout != null) 'timeoutMs': timeout.inMilliseconds,
       'tdlibChatId': ref.tdlibChatId,
       'tdlibMessageId': ref.tdlibMessageId,
       'tdlibFileId': ref.tdlibFileId,

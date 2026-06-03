@@ -2,13 +2,12 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/media/media_source_resolver.dart';
 import '../core/storage/thumbnail_cache_manager.dart';
-import '../core/telegram/telegram_client_exceptions.dart';
-import '../core/telegram/telegram_transfer_service.dart';
-import '../features/drive/drive_controller.dart';
 import '../models/drive_models.dart';
 import 'google_drive_icon.dart';
 
@@ -33,11 +32,18 @@ class MediaThumb extends ConsumerStatefulWidget {
 class _MediaThumbState extends ConsumerState<MediaThumb> {
   Future<File?>? _clientThumbFuture;
   String? _clientThumbKey;
+  String? _sourceKey;
+  final Set<String> _failedUrls = {};
 
   @override
   Widget build(BuildContext context) {
     final file = widget.file;
-    final url = file.thumbnailUrl ?? file.previewUrl;
+    _resetIfSourceChanged(file);
+    final urls = MediaSourceResolver.imageUrls(
+      file,
+      MediaImageUse.thumbnail,
+    ).where((url) => !_failedUrls.contains(url)).toList();
+    final url = urls.isEmpty ? null : urls.first;
     final bg = Theme.of(context).colorScheme.surfaceContainerHighest;
 
     if (url == null) {
@@ -57,7 +63,10 @@ class _MediaThumbState extends ConsumerState<MediaThumb> {
                     fit: widget.fit,
                     cacheWidth: 320,
                     cacheHeight: 320,
-                    errorBuilder: (_, __, ___) => _fallback(context),
+                    errorBuilder: (_, err, _) {
+                      _debug('Local thumbnail decode failed', err);
+                      return _fallback(context);
+                    },
                   );
                 }
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -96,7 +105,7 @@ class _MediaThumbState extends ConsumerState<MediaThumb> {
                 fit: widget.fit,
                 cacheWidth: 320,
                 cacheHeight: 320,
-                errorBuilder: (_, __, ___) => _fallback(context),
+                errorBuilder: (_, err, _) => _urlError(context, url, err),
               )
             : CachedNetworkImage(
                 cacheManager: TeleDriveThumbnailCacheManager.instance,
@@ -111,55 +120,61 @@ class _MediaThumbState extends ConsumerState<MediaThumb> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                 ),
-                errorWidget: (_, __, ___) => _fallback(context),
+                errorWidget: (_, __, err) => _urlError(context, url, err),
               ),
       ),
     );
   }
 
   Future<File?>? _clientThumbnailFuture(DriveFile file) {
-    if (file.storageMode != 'client_managed' ||
-        file.uploadStatus != 'available') {
+    if (file.uploadStatus != null && file.uploadStatus != 'available') {
       return null;
     }
-    final variant = file.thumbnailRefAvailable
-        ? 'thumbnail'
-        : file.previewRefAvailable
-        ? 'preview'
-        : null;
-    if (variant == null) return null;
-    final version = variant == 'thumbnail'
-        ? file.thumbnailVersion
-        : file.previewVersion;
-    final key = '${file.id}:$variant:${version ?? 0}';
+    final variants = MediaSourceResolver.imageTelegramVariants(
+      file,
+      MediaImageUse.thumbnail,
+    );
+    if (variants.isEmpty) return null;
+    final key =
+        '${file.id}:${variants.join(',')}:${file.thumbnailVersion ?? 0}:'
+        '${file.previewVersion ?? 0}';
     if (_clientThumbKey != key) {
       _clientThumbKey = key;
-      _clientThumbFuture = _downloadClientThumbnail(file, variant);
+      _clientThumbFuture = MediaSourceResolver.downloadFirstTelegramImage(
+        ref,
+        file,
+        MediaImageUse.thumbnail,
+      );
     }
     return _clientThumbFuture;
   }
 
-  Future<File?> _downloadClientThumbnail(DriveFile file, String variant) async {
-    try {
-      final mediaRef = await ref
-          .read(driveRepositoryProvider)
-          .mediaRef(file.id, variant: variant);
-      final telegramRef = mediaRef.ref;
-      if (telegramRef == null) return null;
-      final result = await ref
-          .read(telegramTransferServiceProvider)
-          .downloadToCache(
-            telegramRef,
-            filename: file.name,
-            cacheKey: mediaRef.cacheKey,
-          )
-          .timeout(const Duration(seconds: 45));
-      return result.file;
-    } on TelegramClientException {
-      return null;
-    } catch (_) {
-      return null;
+  Widget _urlError(BuildContext context, String url, Object err) {
+    _debug('Thumbnail URL failed: $url', err);
+    if (_failedUrls.add(url)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
     }
+    return _fallback(context);
+  }
+
+  void _resetIfSourceChanged(DriveFile file) {
+    final nextKey =
+        '${file.id}|${file.thumbnailUrl}|${file.previewUrl}|'
+        '${file.thumbnailRefAvailable}|${file.previewRefAvailable}|'
+        '${file.originalRefAvailable}|${file.thumbnailVersion}|'
+        '${file.previewVersion}|${file.uploadStatus}';
+    if (_sourceKey == nextKey) return;
+    _sourceKey = nextKey;
+    _failedUrls.clear();
+    _clientThumbFuture = null;
+    _clientThumbKey = null;
+  }
+
+  void _debug(String message, Object err) {
+    if (!kDebugMode) return;
+    debugPrint('$message: $err');
   }
 
   Widget _fallback(BuildContext context) {

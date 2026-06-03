@@ -1,13 +1,13 @@
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:photo_view/photo_view.dart';
 
+import '../../../core/media/media_source_resolver.dart';
 import '../../../core/storage/thumbnail_cache_manager.dart';
-import '../../../core/telegram/telegram_client_exceptions.dart';
-import '../../../core/telegram/telegram_media_access_service.dart';
 import '../../../models/drive_models.dart';
 import '../../profile/cache_controller.dart';
 
@@ -25,26 +25,31 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
   ImageStream? _imageStream;
   ImageStreamListener? _imageListener;
   ImageProvider? _currentImageProvider;
+  String? _currentImageUrl;
   bool _hasRefreshed = false;
 
   Future<File?>? _localFuture;
   String? _localKey;
+  String? _sourceKey;
+  final Set<String> _failedUrls = {};
 
   @override
   void initState() {
     super.initState();
+    _sourceKey = _sourceKeyFor(widget.file);
     _setupImageListener();
   }
 
   @override
   void didUpdateWidget(covariant PhotoViewerImage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.file.id != widget.file.id ||
-        oldWidget.file.previewUrl != widget.file.previewUrl ||
-        oldWidget.file.thumbnailUrl != widget.file.thumbnailUrl) {
+    final nextKey = _sourceKeyFor(widget.file);
+    if (_sourceKey != nextKey) {
+      _sourceKey = nextKey;
       _hasRefreshed = false;
       _localKey = null;
       _localFuture = null;
+      _failedUrls.clear();
       _setupImageListener();
     }
   }
@@ -58,10 +63,14 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
   void _setupImageListener() {
     _cleanImageListener();
 
-    final url = widget.file.previewUrl ?? widget.file.thumbnailUrl;
+    final urls = MediaSourceResolver.imageUrls(
+      widget.file,
+      MediaImageUse.fullImage,
+    ).where((url) => !_failedUrls.contains(url)).toList();
+    final url = urls.isEmpty ? null : urls.first;
     if (url == null) return;
 
-    final imageProvider = url.startsWith('/') || url.contains(':\\')
+    final imageProvider = MediaSourceResolver.isLocalPath(url)
         ? FileImage(File(url)) as ImageProvider
         : CachedNetworkImageProvider(
             url,
@@ -69,6 +78,7 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
           );
 
     _attachProvider(imageProvider);
+    _currentImageUrl = url;
   }
 
   void _attachProvider(ImageProvider provider) {
@@ -82,7 +92,7 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
         ref.read(cacheControllerProvider).refreshCacheStats();
       },
       onError: (Object exception, StackTrace? stackTrace) {
-        debugPrint('Error loading image in viewer: $exception');
+        _markUrlFailed('Image stream failed', widget.file, exception);
       },
     );
     _imageStream!.addListener(_imageListener!);
@@ -95,50 +105,49 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
     _imageStream = null;
     _imageListener = null;
     _currentImageProvider = null;
+    _currentImageUrl = null;
   }
 
   Future<File?>? _ensureLocalFuture(DriveFile file) {
-    if (file.storageMode != 'client_managed' ||
-        file.uploadStatus != 'available') {
+    if (file.uploadStatus != null && file.uploadStatus != 'available') {
       return null;
     }
-    final variant = file.previewRefAvailable
-        ? 'preview'
-        : file.originalRefAvailable
-        ? 'original'
-        : null;
-    if (variant == null) return null;
-    final version = variant == 'preview' ? file.previewVersion : 0;
-    final key = '${file.id}:$variant:${version ?? 0}';
+    final variants = MediaSourceResolver.imageTelegramVariants(
+      file,
+      MediaImageUse.fullImage,
+    );
+    if (variants.isEmpty) return null;
+    final key =
+        '${file.id}:${variants.join(',')}:${file.previewVersion ?? 0}:'
+        '${file.thumbnailVersion ?? 0}';
     if (_localKey != key) {
       _localKey = key;
-      _localFuture = _downloadLocal(file, variant);
+      _localFuture = _downloadLocal(file);
     }
     return _localFuture;
   }
 
-  Future<File?> _downloadLocal(DriveFile file, String variant) async {
-    try {
-      final local = await ref
-          .read(telegramMediaAccessServiceProvider)
-          .downloadForPrivateView(file, variant: variant)
-          .timeout(const Duration(seconds: 90));
-      if (local != null && mounted) {
-        _attachProvider(FileImage(local));
-        setState(() {});
-      }
-      return local;
-    } on TelegramClientException {
-      return null;
-    } catch (_) {
-      return null;
+  Future<File?> _downloadLocal(DriveFile file) async {
+    final local = await MediaSourceResolver.downloadFirstTelegramImage(
+      ref,
+      file,
+      MediaImageUse.fullImage,
+    );
+    if (local != null && mounted) {
+      _attachProvider(FileImage(local));
+      setState(() {});
     }
+    return local;
   }
 
   @override
   Widget build(BuildContext context) {
     final file = widget.file;
-    final url = file.previewUrl ?? file.thumbnailUrl;
+    final urls = MediaSourceResolver.imageUrls(
+      file,
+      MediaImageUse.fullImage,
+    ).where((url) => !_failedUrls.contains(url)).toList();
+    final url = urls.isEmpty ? null : urls.first;
 
     if (url == null) {
       final localFuture = _ensureLocalFuture(file);
@@ -171,17 +180,17 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
 
     final imageProvider =
         _currentImageProvider ??
-        (url.startsWith('/') || url.contains(':\\')
+        (MediaSourceResolver.isLocalPath(url)
             ? FileImage(File(url)) as ImageProvider
             : CachedNetworkImageProvider(
                 url,
                 cacheManager: TeleDriveThumbnailCacheManager.instance,
               ));
 
-    return _photoView(imageProvider);
+    return _photoView(imageProvider, url: url);
   }
 
-  Widget _photoView(ImageProvider imageProvider) {
+  Widget _photoView(ImageProvider imageProvider, {String? url}) {
     return PhotoView(
       imageProvider: imageProvider,
       heroAttributes: PhotoViewHeroAttributes(tag: 'photo-${widget.file.id}'),
@@ -197,8 +206,48 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
         ),
       ),
-      errorBuilder: (_, __, ___) => _fallback(context),
+      errorBuilder: (_, err, _) {
+        if (url != null) return _urlError(url, err);
+        _debug('Local photo decode failed', err);
+        return _fallback(context);
+      },
     );
+  }
+
+  Widget _urlError(String url, Object err) {
+    _debug('Photo URL failed: $url', err);
+    if (_failedUrls.add(url)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _setupImageListener();
+        setState(() {});
+      });
+    }
+    return _fallback(context);
+  }
+
+  void _markUrlFailed(String message, DriveFile file, Object err) {
+    final currentUrl = _currentImageUrl;
+    if (currentUrl == null) return;
+    _debug('$message: $currentUrl', err);
+    if (_failedUrls.add(currentUrl)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _setupImageListener();
+        setState(() {});
+      });
+    }
+  }
+
+  String _sourceKeyFor(DriveFile file) =>
+      '${file.id}|${file.previewUrl}|${file.thumbnailUrl}|'
+      '${file.previewRefAvailable}|${file.thumbnailRefAvailable}|'
+      '${file.originalRefAvailable}|${file.previewVersion}|'
+      '${file.thumbnailVersion}|${file.uploadStatus}';
+
+  void _debug(String message, Object err) {
+    if (!kDebugMode) return;
+    debugPrint('$message: $err');
   }
 
   Widget _fallback(BuildContext context) {

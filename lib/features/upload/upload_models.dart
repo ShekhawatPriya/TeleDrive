@@ -172,6 +172,15 @@ class UploadItem {
   }
 }
 
+bool directDerivativePayloadsReady(
+  UploadItem item,
+  Map<String, Map<String, dynamic>> payloads,
+) {
+  final kind = detectFileKind(item.name, item.mimeType);
+  if (kind != FileKind.image && kind != FileKind.video) return true;
+  return payloads.containsKey('thumbnail') || payloads.containsKey('preview');
+}
+
 extension UploadItemMapping on UploadItem {
   DriveFile toDriveFile(String? activeFolderId) {
     final kind = detectFileKind(name, mimeType);

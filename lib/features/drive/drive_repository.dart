@@ -74,10 +74,13 @@ class DriveRepository {
       },
     );
     final data = Map<String, dynamic>.from(res.data as Map);
-    final files = (data['files'] as List? ?? [])
-        .map((e) => _mapFile(Map<String, dynamic>.from(e as Map)))
-        .toList();
-    return (files: files, nextCursor: data['nextCursor'] as String?);
+    final files = _readList(data, const [
+      'files',
+    ]).map((e) => _mapFile(Map<String, dynamic>.from(e as Map))).toList();
+    return (
+      files: files,
+      nextCursor: _readString(data, const ['nextCursor', 'next_cursor']),
+    );
   }
 
   Future<
@@ -97,15 +100,15 @@ class DriveRepository {
       },
     );
     final data = Map<String, dynamic>.from(res.data as Map);
-    final folders = (data['folders'] as List? ?? [])
-        .map((e) => _mapFolder(Map<String, dynamic>.from(e as Map)))
-        .toList();
-    final path = (data['path'] as List? ?? [])
-        .map((e) => _mapFolder(Map<String, dynamic>.from(e as Map)))
-        .toList();
+    final folders = _readList(data, const [
+      'folders',
+    ]).map((e) => _mapFolder(Map<String, dynamic>.from(e as Map))).toList();
+    final path = _readList(data, const [
+      'path',
+    ]).map((e) => _mapFolder(Map<String, dynamic>.from(e as Map))).toList();
     return (
       folders: folders,
-      nextCursor: data['nextCursor'] as String?,
+      nextCursor: _readString(data, const ['nextCursor', 'next_cursor']),
       path: path,
     );
   }
@@ -119,10 +122,13 @@ class DriveRepository {
       queryParameters: {'limit': limit, if (cursor != null) 'cursor': cursor},
     );
     final data = Map<String, dynamic>.from(res.data as Map);
-    final files = (data['files'] as List? ?? [])
-        .map((e) => _mapFile(Map<String, dynamic>.from(e as Map)))
-        .toList();
-    return (files: files, nextCursor: data['nextCursor'] as String?);
+    final files = _readList(data, const [
+      'files',
+    ]).map((e) => _mapFile(Map<String, dynamic>.from(e as Map))).toList();
+    return (
+      files: files,
+      nextCursor: _readString(data, const ['nextCursor', 'next_cursor']),
+    );
   }
 
   Future<({List<DriveFolder> folders, String? nextCursor})> listStarredFolders({
@@ -134,10 +140,13 @@ class DriveRepository {
       queryParameters: {'limit': limit, if (cursor != null) 'cursor': cursor},
     );
     final data = Map<String, dynamic>.from(res.data as Map);
-    final folders = (data['folders'] as List? ?? [])
-        .map((e) => _mapFolder(Map<String, dynamic>.from(e as Map)))
-        .toList();
-    return (folders: folders, nextCursor: data['nextCursor'] as String?);
+    final folders = _readList(data, const [
+      'folders',
+    ]).map((e) => _mapFolder(Map<String, dynamic>.from(e as Map))).toList();
+    return (
+      folders: folders,
+      nextCursor: _readString(data, const ['nextCursor', 'next_cursor']),
+    );
   }
 
   Future<List<DriveFile>> listAllFiles() async {
@@ -188,22 +197,32 @@ class DriveRepository {
   }
 
   DriveSnapshot parseDriveState(Map<String, dynamic> data) {
-    final files = (data['files'] as List? ?? [])
-        .map((e) => _mapFile(Map<String, dynamic>.from(e as Map)))
-        .toList();
-    final mediaFiles = (data['mediaFiles'] as List? ?? [])
-        .map((e) => _mapFile(Map<String, dynamic>.from(e as Map)))
-        .toList();
-    final folders = (data['folders'] as List? ?? [])
-        .map((e) => _mapFolder(Map<String, dynamic>.from(e as Map)))
-        .toList();
+    final files = _readList(data, const [
+      'files',
+    ]).map((e) => _mapFile(Map<String, dynamic>.from(e as Map))).toList();
+    final mediaFiles = _readList(data, const [
+      'mediaFiles',
+      'media_files',
+    ]).map((e) => _mapFile(Map<String, dynamic>.from(e as Map))).toList();
+    final folders = _readList(data, const [
+      'folders',
+    ]).map((e) => _mapFolder(Map<String, dynamic>.from(e as Map))).toList();
     return DriveSnapshot(
       files: files,
       mediaFiles: mediaFiles,
       folders: folders,
-      mediaCursor: data['mediaNextCursor'] as String?,
-      rootFileCursor: data['rootFileCursor'] as String?,
-      rootFolderCursor: data['rootFolderCursor'] as String?,
+      mediaCursor: _readString(data, const [
+        'mediaNextCursor',
+        'media_next_cursor',
+      ]),
+      rootFileCursor: _readString(data, const [
+        'rootFileCursor',
+        'root_file_cursor',
+      ]),
+      rootFolderCursor: _readString(data, const [
+        'rootFolderCursor',
+        'root_folder_cursor',
+      ]),
     );
   }
 
@@ -219,13 +238,12 @@ class DriveRepository {
       queryParameters: {'variant': variant},
     );
     final data = Map<String, dynamic>.from(res.data as Map);
-    final rawRef = data['telegramRef'];
+    final rawRef = _readMap(data, const ['telegramRef', 'telegram_ref']);
     return (
-      ref: rawRef is Map
-          ? TelegramMediaRef.fromJson(Map<String, dynamic>.from(rawRef))
-          : null,
-      fallbackUrl: data['fallbackUrl'] as String?,
-      cacheKey: '${data['cacheKey'] ?? '$id:$variant'}',
+      ref: rawRef == null ? null : TelegramMediaRef.fromJson(rawRef),
+      fallbackUrl: _readString(data, const ['fallbackUrl', 'fallback_url']),
+      cacheKey:
+          _readString(data, const ['cacheKey', 'cache_key']) ?? '$id:$variant',
     );
   }
 

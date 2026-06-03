@@ -14,11 +14,11 @@ class DriveFile {
     this.mimeType,
     this.uploadStatus,
     this.uploadError,
-    this.storageMode = 'client_managed',
+    this.storageMode,
     this.uploadOrigin = 'client_tdlib',
     this.publicProxyStatus,
     this.verificationStatus,
-    this.mediaAccessMode = 'server_proxy',
+    this.mediaAccessMode,
     this.originalRefAvailable = false,
     this.thumbnailRefAvailable = false,
     this.previewRefAvailable = false,
@@ -51,11 +51,11 @@ class DriveFile {
   final String? mimeType;
   final String? uploadStatus;
   final String? uploadError;
-  final String storageMode;
+  final String? storageMode;
   final String uploadOrigin;
   final String? publicProxyStatus;
   final String? verificationStatus;
-  final String mediaAccessMode;
+  final String? mediaAccessMode;
   final bool originalRefAvailable;
   final bool thumbnailRefAvailable;
   final bool previewRefAvailable;
@@ -75,14 +75,45 @@ class DriveFile {
   final bool isOptimistic;
   final String? localId;
 
+  bool get isClientManaged =>
+      storageMode == 'client_managed' ||
+      mediaAccessMode == 'client_direct' ||
+      mediaAccessMode == 'client_tdlib' ||
+      mediaAccessMode == 'telegram_client_direct';
+
+  bool get hasTelegramMediaRefs =>
+      originalRefAvailable || thumbnailRefAvailable || previewRefAvailable;
+
   DriveFile copyWith({
     bool? starred,
     bool? shared,
     String? name,
     Object? parentId = _unset,
+    String? mimeType,
     String? uploadStatus,
     String? uploadError,
+    Object? storageMode = _unset,
+    String? uploadOrigin,
+    Object? publicProxyStatus = _unset,
+    Object? verificationStatus = _unset,
+    Object? mediaAccessMode = _unset,
+    bool? originalRefAvailable,
+    bool? thumbnailRefAvailable,
+    bool? previewRefAvailable,
+    Object? thumbnailStatus = _unset,
+    Object? previewStatus = _unset,
+    Object? thumbnailVersion = _unset,
+    Object? previewVersion = _unset,
+    Object? widthPx = _unset,
+    Object? heightPx = _unset,
+    Object? duration = _unset,
+    Object? thumbnailUrl = _unset,
+    Object? previewUrl = _unset,
+    Object? streamUrl = _unset,
+    Object? downloadUrl = _unset,
+    Object? localUri = _unset,
     String? lastAccessedAt,
+    bool? isOptimistic,
     String? localId,
   }) {
     return DriveFile(
@@ -95,31 +126,54 @@ class DriveFile {
       parentId: parentId == _unset ? this.parentId : parentId as String?,
       starred: starred ?? this.starred,
       shared: shared ?? this.shared,
-      mimeType: mimeType,
+      mimeType: mimeType ?? this.mimeType,
       uploadStatus: uploadStatus ?? this.uploadStatus,
       uploadError: uploadError ?? this.uploadError,
-      storageMode: storageMode,
-      uploadOrigin: uploadOrigin,
-      publicProxyStatus: publicProxyStatus,
-      verificationStatus: verificationStatus,
-      mediaAccessMode: mediaAccessMode,
-      originalRefAvailable: originalRefAvailable,
-      thumbnailRefAvailable: thumbnailRefAvailable,
-      previewRefAvailable: previewRefAvailable,
-      thumbnailStatus: thumbnailStatus,
-      previewStatus: previewStatus,
-      thumbnailVersion: thumbnailVersion,
-      previewVersion: previewVersion,
-      widthPx: widthPx,
-      heightPx: heightPx,
-      duration: duration,
-      thumbnailUrl: thumbnailUrl,
-      previewUrl: previewUrl,
-      streamUrl: streamUrl,
-      downloadUrl: downloadUrl,
-      localUri: localUri,
+      storageMode: storageMode == _unset
+          ? this.storageMode
+          : storageMode as String?,
+      uploadOrigin: uploadOrigin ?? this.uploadOrigin,
+      publicProxyStatus: publicProxyStatus == _unset
+          ? this.publicProxyStatus
+          : publicProxyStatus as String?,
+      verificationStatus: verificationStatus == _unset
+          ? this.verificationStatus
+          : verificationStatus as String?,
+      mediaAccessMode: mediaAccessMode == _unset
+          ? this.mediaAccessMode
+          : mediaAccessMode as String?,
+      originalRefAvailable: originalRefAvailable ?? this.originalRefAvailable,
+      thumbnailRefAvailable:
+          thumbnailRefAvailable ?? this.thumbnailRefAvailable,
+      previewRefAvailable: previewRefAvailable ?? this.previewRefAvailable,
+      thumbnailStatus: thumbnailStatus == _unset
+          ? this.thumbnailStatus
+          : thumbnailStatus as String?,
+      previewStatus: previewStatus == _unset
+          ? this.previewStatus
+          : previewStatus as String?,
+      thumbnailVersion: thumbnailVersion == _unset
+          ? this.thumbnailVersion
+          : thumbnailVersion as int?,
+      previewVersion: previewVersion == _unset
+          ? this.previewVersion
+          : previewVersion as int?,
+      widthPx: widthPx == _unset ? this.widthPx : widthPx as int?,
+      heightPx: heightPx == _unset ? this.heightPx : heightPx as int?,
+      duration: duration == _unset ? this.duration : duration as int?,
+      thumbnailUrl: thumbnailUrl == _unset
+          ? this.thumbnailUrl
+          : thumbnailUrl as String?,
+      previewUrl: previewUrl == _unset
+          ? this.previewUrl
+          : previewUrl as String?,
+      streamUrl: streamUrl == _unset ? this.streamUrl : streamUrl as String?,
+      downloadUrl: downloadUrl == _unset
+          ? this.downloadUrl
+          : downloadUrl as String?,
+      localUri: localUri == _unset ? this.localUri : localUri as String?,
       lastAccessedAt: lastAccessedAt ?? this.lastAccessedAt,
-      isOptimistic: isOptimistic,
+      isOptimistic: isOptimistic ?? this.isOptimistic,
       localId: localId ?? this.localId,
     );
   }

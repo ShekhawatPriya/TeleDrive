@@ -191,7 +191,7 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
       final dir = await getTemporaryDirectory();
       final safeName = file.name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
       final path = '${dir.path}/$safeName';
-      if (file.storageMode == 'client_managed') {
+      if (file.isClientManaged) {
         final session = ref.read(tdlibSessionControllerProvider);
         if (!session.isReadyForActiveUser) {
           if (!context.mounted) return;

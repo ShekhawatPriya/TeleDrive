@@ -155,8 +155,7 @@ class PhotoDetailsSheet extends StatelessWidget {
     // TDLib-managed files can fetch the preview/original on demand even when
     // the server-side preview status is 'unavailable', so don't surface a
     // misleading warning row.
-    if (file.storageMode == 'client_managed' &&
-        (file.previewRefAvailable || file.originalRefAvailable)) {
+    if (file.hasTelegramMediaRefs) {
       return false;
     }
     return true;

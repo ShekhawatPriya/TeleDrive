@@ -93,6 +93,10 @@ extension _UploadDirectFile on UploadController {
           intent: intent,
           target: target,
         );
+        final thumbnailReady = directDerivativePayloadsReady(
+          latest,
+          derivativePayloads,
+        );
         final commitPath = '/client-uploads/$batchId/file-complete';
         final commitPayload = {
           'file_id': fileId,
@@ -152,7 +156,7 @@ extension _UploadDirectFile on UploadController {
           latest.localId,
           status: UploadStatus.uploaded,
           serverProgress: 1,
-          thumbnailReady: true,
+          thumbnailReady: thumbnailReady,
         );
         final backupScope = _backupScope();
         if (backupScope != null &&
