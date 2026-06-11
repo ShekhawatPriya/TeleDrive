@@ -14,6 +14,36 @@ extension _DriveDeleteMutations on DriveController {
     final failedFolderIds = <String>{};
     final previousState = state;
 
+    // Pre-delete lookups so each successful server delete can instantly
+    // decrement the ancestor chain's displayed totals.
+    final fileMetaById = <String, ({String? parentId, int size})>{};
+    previousState.folderPages.forEach((parent, page) {
+      for (final file in page.files) {
+        if (fileIds.contains(file.id)) {
+          fileMetaById[file.id] = (
+            parentId: file.parentId ?? parent,
+            size: file.size,
+          );
+        }
+      }
+    });
+    for (final id in fileIds) {
+      if (fileMetaById.containsKey(id)) continue;
+      final file = _anyFile(id);
+      if (file != null) {
+        fileMetaById[id] = (parentId: file.parentId, size: file.size);
+      }
+    }
+    final folderMetaById = <String, ({String? parentId, int count, int size})>{
+      for (final folder in previousState.folders)
+        if (folderIds.contains(folder.id))
+          folder.id: (
+            parentId: folder.parentId,
+            count: folder.recursiveFileCount,
+            size: folder.recursiveSize,
+          ),
+    };
+
     final pages = Map<String?, DriveFolderPage>.of(state.folderPages);
     pages.forEach((parent, page) {
       var pageChanged = false;
@@ -59,6 +89,14 @@ extension _DriveDeleteMutations on DriveController {
         } else {
           await _repo.purgeFile(id);
         }
+        final meta = fileMetaById[id];
+        if (meta != null) {
+          _bumpFolderAggregates(
+            meta.parentId,
+            fileCountDelta: -1,
+            sizeDelta: -meta.size,
+          );
+        }
       } catch (error, stackTrace) {
         failed++;
         failedFileIds.add(id);
@@ -79,6 +117,14 @@ extension _DriveDeleteMutations on DriveController {
           await _repo.deleteFolder(id);
         } else {
           await _repo.purgeFolder(id);
+        }
+        final meta = folderMetaById[id];
+        if (meta != null) {
+          _bumpFolderAggregates(
+            meta.parentId,
+            fileCountDelta: -meta.count,
+            sizeDelta: -meta.size,
+          );
         }
       } catch (error, stackTrace) {
         failed++;

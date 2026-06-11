@@ -15,7 +15,11 @@ extension _DriveFolderLoading on DriveController {
     final page = state.folderPages[folderId];
     final stale = _staleFolderIds.contains(folderId);
     if (page == null || !page.loaded || stale) {
-      _ensureFolderLoaded(folderId, force: stale);
+      _ensureFolderLoaded(
+        folderId,
+        force: stale,
+        silent: page != null && page.loaded,
+      );
     }
   }
 
@@ -90,15 +94,14 @@ extension _DriveFolderLoading on DriveController {
 
       _mergeFolderMetadata(folderResult.path);
 
-      final optimistic = (page?.files ?? const <DriveFile>[])
-          .where((f) => f.isOptimistic)
-          .toList();
-      final mergedFiles = <DriveFile>[
-        ...optimistic,
-        ...fileResult.files.where(
-          (f) => !optimistic.any((o) => o.id == f.id || o.localId == f.localId),
-        ),
-      ];
+      // Server rows are authoritative: matched optimistic upload copies get
+      // promoted to their server counterparts; unmatched in-flight optimistic
+      // items survive so upload tiles don't vanish mid-flight.
+      final mergedFiles = _reconcileFiles(
+        existing: page?.files ?? const <DriveFile>[],
+        incoming: fileResult.files,
+        authoritative: true,
+      );
 
       _staleFolderIds.remove(folderId);
       _applyFolderPage(

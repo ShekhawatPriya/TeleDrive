@@ -14,14 +14,13 @@ extension _DriveStateBootstrap on DriveController {
     final rootRowsFiles = snapshot.files
         .where((f) => f.uploadStatus == 'available')
         .toList();
-    final rootOptimistic =
-        (state.folderPages[null]?.files ?? const <DriveFile>[])
-            .where((f) => f.isOptimistic && f.parentId == null)
-            .toList();
-    final rootFiles = <DriveFile>[
-      ...rootOptimistic,
-      ...rootRowsFiles.where((f) => !rootOptimistic.any((o) => o.id == f.id)),
-    ];
+    // Server rows are authoritative: matched optimistic upload copies are
+    // promoted, unmatched in-flight optimistic items survive.
+    final rootFiles = _reconcileFiles(
+      existing: state.folderPages[null]?.files ?? const <DriveFile>[],
+      incoming: rootRowsFiles,
+      authoritative: true,
+    );
 
     final keptOptimisticFolders = state.folders
         .where((f) => f.isOptimistic)

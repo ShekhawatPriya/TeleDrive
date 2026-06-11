@@ -70,6 +70,73 @@ extension _DriveFolderHelpers on DriveController {
     }
   }
 
+  /// Locally adjusts the displayed recursive file count / size of [folderId]
+  /// and every ancestor after a mutation this client performed (upload
+  /// commit, delete, move). These are instant estimates: server fetches
+  /// overwrite them with authoritative values, and [markStale] guarantees
+  /// such a fetch happens on the next visit to any affected folder.
+  void _bumpFolderAggregates(
+    String? folderId, {
+    required int fileCountDelta,
+    required int sizeDelta,
+    bool markStale = true,
+  }) {
+    if (markStale) {
+      _staleFolderIds.add(null);
+      _staleFolderIds.add(folderId);
+    }
+    if (folderId == null) return;
+    final chain = folderPath(folderId);
+    if (markStale) {
+      for (final f in chain) {
+        _staleFolderIds.add(f.id);
+      }
+    }
+    // Unknown metadata (e.g. destination never visited): stale marking above
+    // is all we can do — the next fetch reconciles.
+    if (chain.isEmpty) return;
+    if (fileCountDelta == 0 && sizeDelta == 0) return;
+
+    int clamped(int value) => value < 0 ? 0 : value;
+    final updatedById = <String, DriveFolder>{
+      for (final f in chain)
+        f.id: f.copyWith(
+          recursiveFileCount: clamped(f.recursiveFileCount + fileCountDelta),
+          recursiveSize: clamped(f.recursiveSize + sizeDelta),
+        ),
+    };
+
+    // Breadcrumbs / folder title read the global metadata cache.
+    _mergeFolderMetadata(updatedById.values);
+
+    // Folder tiles render from each page's `subfolders` list.
+    final pages = Map<String?, DriveFolderPage>.of(state.folderPages);
+    var pagesChanged = false;
+    pages.forEach((parent, page) {
+      if (!page.subfolders.any((f) => updatedById.containsKey(f.id))) return;
+      pages[parent] = page.copyWith(
+        subfolders: page.subfolders.map((f) => updatedById[f.id] ?? f).toList(),
+      );
+      pagesChanged = true;
+    });
+    if (pagesChanged) {
+      state = state.copyWith(folderPages: pages);
+    }
+
+    final starred = state.starred;
+    if (starred.loaded &&
+        starred.folders.any((f) => updatedById.containsKey(f.id))) {
+      state = state.copyWith(
+        starred: starred.copyWith(
+          folders: starred.folders
+              .map((f) => updatedById[f.id] ?? f)
+              .toList(),
+        ),
+      );
+    }
+    _notifyListeners();
+  }
+
   void _removeFileFromAllPages(String fileId) {
     final pages = Map<String?, DriveFolderPage>.of(state.folderPages);
     var changed = false;

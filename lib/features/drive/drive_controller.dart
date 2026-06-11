@@ -233,6 +233,20 @@ class DriveController extends ChangeNotifier {
   void syncOptimisticUploads(List<DriveFile> optimistic) =>
       _syncOptimisticUploads(optimistic);
 
+  /// Instantly updates the displayed recursive file count / size of
+  /// [folderId] and all of its ancestors (e.g. +1 file after an upload
+  /// commit, negative deltas after a delete). Server fetches reconcile the
+  /// estimates to exact values.
+  void bumpFolderAggregates(
+    String? folderId, {
+    required int fileCountDelta,
+    required int sizeDelta,
+  }) => _bumpFolderAggregates(
+    folderId,
+    fileCountDelta: fileCountDelta,
+    sizeDelta: sizeDelta,
+  );
+
   void _bumpTrashRevision() {
     state = state.copyWith(trashRevision: state.trashRevision + 1);
     notifyListeners();

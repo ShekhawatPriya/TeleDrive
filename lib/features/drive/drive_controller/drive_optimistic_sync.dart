@@ -23,6 +23,19 @@ extension _DriveOptimisticSync on DriveController {
         incoming: incomingForParent,
         removeOrphanedOptimistic: true,
       );
+      // If an uploaded optimistic row was stripped before its server
+      // counterpart landed in this page, the page is missing real content —
+      // make sure the next visit refetches it.
+      final removedUploaded = existing.any(
+        (f) =>
+            f.isOptimistic &&
+            f.uploadStatus == 'uploaded' &&
+            !f.id.startsWith('local:') &&
+            !reconciled.any((r) => r.id == f.id),
+      );
+      if (removedUploaded) {
+        _staleFolderIds.add(parent);
+      }
       final preserved = _preserveFilesIdentity(existing, reconciled);
       if (identical(preserved, existing)) continue;
       pages[parent] = (page ?? const DriveFolderPage()).copyWith(

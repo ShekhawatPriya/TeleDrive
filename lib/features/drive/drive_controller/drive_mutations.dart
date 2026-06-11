@@ -82,6 +82,20 @@ extension _DriveMutations on DriveController {
       clearError: true,
     );
     this._refreshFlatAggregates();
+    // Shift displayed totals from the source chain to the target chain. The
+    // failure path below restores previousState wholesale, rolling this back.
+    if (source.parentId != targetFolderId) {
+      _bumpFolderAggregates(
+        source.parentId,
+        fileCountDelta: -1,
+        sizeDelta: -source.size,
+      );
+      _bumpFolderAggregates(
+        targetFolderId,
+        fileCountDelta: 1,
+        sizeDelta: source.size,
+      );
+    }
     this._notifyListeners();
 
     try {
@@ -143,6 +157,21 @@ extension _DriveMutations on DriveController {
     }
     state = state.copyWith(folderPages: pages, clearError: true);
     _mergeFolderMetadata([movedFolder]);
+    // Shift the moved subtree's totals from the source chain to the target
+    // chain. The failure path restores previousState wholesale.
+    if (folder.parentId != targetParentId &&
+        (folder.recursiveFileCount != 0 || folder.recursiveSize != 0)) {
+      _bumpFolderAggregates(
+        folder.parentId,
+        fileCountDelta: -folder.recursiveFileCount,
+        sizeDelta: -folder.recursiveSize,
+      );
+      _bumpFolderAggregates(
+        targetParentId,
+        fileCountDelta: folder.recursiveFileCount,
+        sizeDelta: folder.recursiveSize,
+      );
+    }
     _notifyListeners();
 
     try {

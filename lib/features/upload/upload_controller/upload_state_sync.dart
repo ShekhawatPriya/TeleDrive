@@ -150,6 +150,19 @@ extension _UploadStateSync on UploadController {
     final sessionId = uploadSessionId;
     if (sessionId != null && _refreshedUploadSessionId != sessionId) {
       _refreshedUploadSessionId = sessionId;
+      // _refreshDrive only reloads root + the active folder. Uploads that
+      // targeted another folder (destination picker) need their pages
+      // refreshed too, so their optimistic rows are replaced by server rows
+      // before the sheet auto-dismiss strips them.
+      final destinations = items
+          .where((i) => i.status == UploadStatus.uploaded)
+          .map((i) => i.destinationFolderId ?? activeFolderId)
+          .toSet();
+      for (final dest in destinations) {
+        if (dest != null && dest != _drive.state.activeFolderId) {
+          unawaited(_drive.refreshFolder(dest));
+        }
+      }
       await _refreshDrive();
     }
     if (_allItemsCompleted) {

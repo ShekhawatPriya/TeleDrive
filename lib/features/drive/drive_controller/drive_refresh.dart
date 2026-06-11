@@ -11,6 +11,39 @@ extension _DriveRefresh on DriveController {
     return false;
   }
 
+  /// True for rows that came from the server and are fully settled — these
+  /// are authoritative and must never be replaced by an optimistic upload
+  /// copy (which the upload sheet keeps emitting until thumbnails are ready).
+  bool _isSettledServerFile(DriveFile file) =>
+      !file.isOptimistic &&
+      (file.uploadStatus == null || file.uploadStatus == 'available');
+
+  /// Server row replaces a matched optimistic upload copy, but keeps the
+  /// local media paths so the tile can keep rendering the on-device preview
+  /// until the server has a renderable thumbnail/preview of its own.
+  DriveFile _promoteServerFile(
+    DriveFile optimistic,
+    DriveFile server, {
+    String? localId,
+  }) {
+    var promoted = server.copyWith(localId: localId);
+    if (server.localUri == null && optimistic.localUri != null) {
+      promoted = promoted.copyWith(localUri: optimistic.localUri);
+    }
+    final hasServerMedia =
+        server.thumbnailUrl != null ||
+        server.previewUrl != null ||
+        server.thumbnailRefAvailable ||
+        server.previewRefAvailable;
+    if (!hasServerMedia) {
+      promoted = promoted.copyWith(
+        thumbnailUrl: optimistic.thumbnailUrl,
+        previewUrl: optimistic.previewUrl,
+      );
+    }
+    return promoted;
+  }
+
   List<DriveFile> _reconcileFiles({
     required List<DriveFile> existing,
     required List<DriveFile> incoming,
@@ -31,7 +64,15 @@ extension _DriveRefresh on DriveController {
 
       if (match != null) {
         final localId = match.localId ?? existingFile.localId;
-        result.add(match.copyWith(localId: localId));
+        if (match.isOptimistic && _isSettledServerFile(existingFile)) {
+          result.add(existingFile.copyWith(localId: localId));
+        } else if (existingFile.isOptimistic && !match.isOptimistic) {
+          result.add(
+            _promoteServerFile(existingFile, match, localId: localId),
+          );
+        } else {
+          result.add(match.copyWith(localId: localId));
+        }
         processedIncomingIds.add(match.id);
         if (localId != null) {
           processedIncomingIds.add('local:$localId');

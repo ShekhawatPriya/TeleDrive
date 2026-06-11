@@ -158,6 +158,13 @@ extension _UploadDirectFile on UploadController {
           serverProgress: 1,
           thumbnailReady: thumbnailReady,
         );
+        // The server now has one more available file: reflect it instantly in
+        // the destination folder's (and all its ancestors') displayed totals.
+        _drive.bumpFolderAggregates(
+          latest.destinationFolderId ?? activeFolderId,
+          fileCountDelta: 1,
+          sizeDelta: latest.size,
+        );
         final backupScope = _backupScope();
         if (backupScope != null &&
             latest.clientSource == 'gallery_backup' &&
