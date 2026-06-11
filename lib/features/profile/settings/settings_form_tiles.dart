@@ -1,10 +1,10 @@
 part of '../settings_screen.dart';
 
-class _FlatTileText extends StatelessWidget {
-  const _FlatTileText({required this.title, required this.subtitle});
+class _SettingsTileText extends StatelessWidget {
+  const _SettingsTileText({required this.title, this.subtitle});
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -17,17 +17,17 @@ class _FlatTileText extends StatelessWidget {
         Text(
           title,
           style: theme.textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
             color: scheme.onSurface,
             height: 1.2,
           ),
         ),
-        if (subtitle.isNotEmpty) ...[
+        if (subtitle != null && subtitle!.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.xxs),
           Text(
-            subtitle,
+            subtitle!,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
               height: 1.35,
             ),
           ),
@@ -37,49 +37,61 @@ class _FlatTileText extends StatelessWidget {
   }
 }
 
-class _FlatSwitchTile extends StatelessWidget {
-  const _FlatSwitchTile({
+class _SettingsSwitchTile extends StatelessWidget {
+  const _SettingsSwitchTile({
     required this.title,
-    required this.subtitle,
+    this.subtitle,
+    this.icon,
+    this.iconColor,
     required this.value,
     required this.onChanged,
   });
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
+  final IconData? icon;
+  final Color? iconColor;
   final bool value;
   final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => onChanged(!value),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: AppSpacing.md,
-            horizontal: AppSpacing.md,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: _FlatTileText(title: title, subtitle: subtitle),
+    final scheme = Theme.of(context).colorScheme;
+
+    return InkWell(
+      onTap: () => onChanged(!value),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          vertical: icon != null ? AppSpacing.sm : AppSpacing.md,
+          horizontal: AppSpacing.md,
+        ),
+        child: Row(
+          children: [
+            if (icon != null) ...[
+              _SettingsIconBadge(
+                icon: icon!,
+                color: iconColor ?? scheme.primary,
               ),
               const SizedBox(width: AppSpacing.md),
-              Switch(value: value, onChanged: onChanged),
             ],
-          ),
+            Expanded(
+              child: _SettingsTileText(title: title, subtitle: subtitle),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Switch(value: value, onChanged: onChanged),
+          ],
         ),
       ),
     );
   }
 }
 
-class _FlatNumberTile extends StatelessWidget {
-  const _FlatNumberTile({
+class _SettingsNumberTile extends StatelessWidget {
+  const _SettingsNumberTile({
     required this.title,
-    required this.subtitle,
+    this.subtitle,
+    this.icon,
+    this.iconColor,
     required this.value,
     required this.min,
     required this.max,
@@ -88,7 +100,9 @@ class _FlatNumberTile extends StatelessWidget {
   });
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
+  final IconData? icon;
+  final Color? iconColor;
   final int value;
   final int min;
   final int max;
@@ -98,39 +112,50 @@ class _FlatNumberTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final canDec = value > min;
     final canInc = value < max;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: AppSpacing.md,
+      padding: EdgeInsets.symmetric(
+        vertical: icon != null ? AppSpacing.sm : AppSpacing.md,
         horizontal: AppSpacing.md,
       ),
       child: Row(
         children: [
-          Expanded(
-            child: _FlatTileText(title: title, subtitle: subtitle),
-          ),
+          if (icon != null) ...[
+            _SettingsIconBadge(icon: icon!, color: iconColor ?? scheme.primary),
+            const SizedBox(width: AppSpacing.md),
+          ],
+          Expanded(child: _SettingsTileText(title: title, subtitle: subtitle)),
           const SizedBox(width: AppSpacing.md),
           IconButton.filledTonal(
             tooltip: 'Decrease',
+            visualDensity: VisualDensity.compact,
             onPressed: canDec
                 ? () => onChanged((value - step).clamp(min, max).toInt())
                 : null,
             icon: const Icon(Icons.remove_rounded),
           ),
           SizedBox(
-            width: 48,
-            child: Text(
-              '$value',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
+            width: 44,
+            child: AnimatedSwitcher(
+              duration: AppDurations.short3,
+              switchInCurve: AppEasing.standard,
+              switchOutCurve: AppEasing.standard,
+              child: Text(
+                '$value',
+                key: ValueKey(value),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
           IconButton.filledTonal(
             tooltip: 'Increase',
+            visualDensity: VisualDensity.compact,
             onPressed: canInc
                 ? () => onChanged((value + step).clamp(min, max).toInt())
                 : null,
@@ -142,15 +167,47 @@ class _FlatNumberTile extends StatelessWidget {
   }
 }
 
-class _WarningText extends StatelessWidget {
-  const _WarningText({required this.text});
+enum _SettingsNoteTone { info, warning }
+
+/// Footnote that sits inside a [_SettingsGroupCard], glued under its row.
+class _SettingsInfoNote extends StatelessWidget {
+  const _SettingsInfoNote({
+    required this.text,
+    this.tone = _SettingsNoteTone.info,
+  });
 
   final String text;
+  final _SettingsNoteTone tone;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final warning = tone == _SettingsNoteTone.warning;
+
+    final row = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          warning ? Icons.warning_amber_rounded : Icons.info_outline_rounded,
+          size: 16,
+          color: warning
+              ? AppColors.warning
+              : scheme.onSurfaceVariant.withValues(alpha: 0.7),
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        Expanded(
+          child: Text(
+            text,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
+              height: 1.35,
+            ),
+          ),
+        ),
+      ],
+    );
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
@@ -158,33 +215,30 @@ class _WarningText extends StatelessWidget {
         AppSpacing.md,
         AppSpacing.sm,
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.info_outline_rounded,
-            size: 16,
-            color: scheme.onSurfaceVariant.withValues(alpha: 0.72),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Expanded(
-            child: Text(
-              text,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
-                height: 1.35,
+      child: warning
+          ? Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.12),
+                borderRadius: AppRadii.smR,
               ),
-            ),
-          ),
-        ],
-      ),
+              child: row,
+            )
+          : row,
     );
   }
 }
 
-class _FlatStrategyTile extends StatelessWidget {
-  const _FlatStrategyTile({required this.value, required this.onChanged});
+class _SettingsStrategyTile extends StatelessWidget {
+  const _SettingsStrategyTile({
+    this.icon,
+    this.iconColor,
+    required this.value,
+    required this.onChanged,
+  });
 
+  final IconData? icon;
+  final Color? iconColor;
   final GalleryBackupIndexingStrategy value;
   final ValueChanged<GalleryBackupIndexingStrategy> onChanged;
 
@@ -201,34 +255,57 @@ class _FlatStrategyTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: AppSpacing.md,
+      padding: EdgeInsets.symmetric(
+        vertical: icon != null ? AppSpacing.sm : AppSpacing.md,
         horizontal: AppSpacing.md,
       ),
       child: Row(
         children: [
+          if (icon != null) ...[
+            _SettingsIconBadge(icon: icon!, color: iconColor ?? scheme.primary),
+            const SizedBox(width: AppSpacing.md),
+          ],
           Expanded(
-            child: _FlatTileText(
+            child: _SettingsTileText(
               title: 'Backup scan mode',
               subtitle: _subtitleFor(value),
             ),
           ),
           const SizedBox(width: AppSpacing.md),
-          DropdownButton<GalleryBackupIndexingStrategy>(
-            value: value,
-            underline: const SizedBox.shrink(),
-            items: GalleryBackupIndexingStrategy.values
-                .map(
-                  (strategy) => DropdownMenuItem(
-                    value: strategy,
-                    child: Text(strategy.label),
-                  ),
-                )
-                .toList(),
-            onChanged: (next) {
-              if (next != null) onChanged(next);
-            },
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: 4,
+            ),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHigh,
+              borderRadius: AppRadii.smR,
+            ),
+            child: DropdownButton<GalleryBackupIndexingStrategy>(
+              value: value,
+              isDense: true,
+              underline: const SizedBox.shrink(),
+              borderRadius: AppRadii.mdR,
+              dropdownColor: scheme.surfaceContainerHigh,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: scheme.onSurface,
+              ),
+              items: GalleryBackupIndexingStrategy.values
+                  .map(
+                    (strategy) => DropdownMenuItem(
+                      value: strategy,
+                      child: Text(strategy.label),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (next) {
+                if (next != null) onChanged(next);
+              },
+            ),
           ),
         ],
       ),
@@ -236,44 +313,51 @@ class _FlatStrategyTile extends StatelessWidget {
   }
 }
 
-class _FlatActionTile extends StatelessWidget {
-  const _FlatActionTile({
+class _SettingsActionTile extends StatelessWidget {
+  const _SettingsActionTile({
     required this.title,
-    required this.subtitle,
+    this.subtitle,
+    this.icon,
+    this.iconColor,
     required this.onTap,
+    this.enabled = true,
   });
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
+  final IconData? icon;
+  final Color? iconColor;
   final VoidCallback onTap;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: AppSpacing.md,
-            horizontal: AppSpacing.md,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: _FlatTileText(title: title, subtitle: subtitle),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: scheme.onSurfaceVariant.withValues(alpha: 0.4),
-                size: 24,
-              ),
-            ],
-          ),
+    final content = Row(
+      children: [
+        if (icon != null) ...[
+          _SettingsIconBadge(icon: icon!, color: iconColor ?? scheme.primary),
+          const SizedBox(width: AppSpacing.md),
+        ],
+        Expanded(child: _SettingsTileText(title: title, subtitle: subtitle)),
+        const SizedBox(width: AppSpacing.md),
+        Icon(
+          Icons.chevron_right_rounded,
+          color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
+          size: 20,
         ),
+      ],
+    );
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          vertical: icon != null ? AppSpacing.sm : AppSpacing.md,
+          horizontal: AppSpacing.md,
+        ),
+        child: enabled ? content : Opacity(opacity: 0.55, child: content),
       ),
     );
   }

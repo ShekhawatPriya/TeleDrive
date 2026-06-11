@@ -1,20 +1,152 @@
 part of '../settings_screen.dart';
 
-class _SettingsTile extends StatelessWidget {
-  const _SettingsTile({
+/// Rounded card grouping a column of settings rows, with hairline inset
+/// dividers automatically inserted between children. A row that owns a
+/// footnote should be passed as a single `Column` child so no divider
+/// splits the pair.
+class _SettingsGroupCard extends StatelessWidget {
+  const _SettingsGroupCard({
+    required this.children,
+    this.dividerIndent = AppSpacing.md,
+  });
+
+  final List<Widget> children;
+  final double dividerIndent;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
+
+    final rows = <Widget>[];
+    for (var i = 0; i < children.length; i++) {
+      if (i > 0) {
+        rows.add(
+          Divider(
+            height: 1,
+            thickness: 1,
+            indent: dividerIndent,
+            color: scheme.outlineVariant.withValues(
+              alpha: isDark ? 0.16 : 0.35,
+            ),
+          ),
+        );
+      }
+      rows.add(children[i]);
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: AppRadii.lgR,
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: isDark ? 0.18 : 0.5),
+        ),
+        boxShadow: isDark
+            ? null
+            : AppElevation.shadowFor(AppElevation.level1, Brightness.light),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: Column(mainAxisSize: MainAxisSize.min, children: rows),
+      ),
+    );
+  }
+}
+
+/// Tinted rounded-square badge that anchors a settings row's icon.
+class _SettingsIconBadge extends StatelessWidget {
+  const _SettingsIconBadge({
+    required this.icon,
+    required this.color,
+    this.size = 40,
+    this.child,
+  });
+
+  final IconData icon;
+  final Color color;
+  final double size;
+
+  /// Optional replacement for the icon (e.g. a progress spinner).
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(size * 0.3),
+      ),
+      child: Center(child: child ?? Icon(icon, color: color, size: size * 0.5)),
+    );
+  }
+}
+
+/// Compact stadium pill with a colored dot and label, used for live status.
+class _SettingsStatusPill extends StatelessWidget {
+  const _SettingsStatusPill({
+    super.key,
+    required this.label,
+    required this.color,
+  });
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.colorScheme.brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 3, 8, 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isDark ? 0.16 : 0.12),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Navigation row inside a [_SettingsGroupCard]: icon badge, title/subtitle,
+/// optional trailing widget (status pill or text), and a chevron.
+class _SettingsMenuTile extends StatelessWidget {
+  const _SettingsMenuTile({
     required this.icon,
     required this.iconColor,
     required this.title,
-    required this.subtitle,
-    this.statusText,
+    this.subtitle,
+    this.trailing,
     required this.onTap,
   });
 
   final IconData icon;
   final Color iconColor;
   final String title;
-  final String subtitle;
-  final String? statusText;
+  final String? subtitle;
+  final Widget? trailing;
   final VoidCallback onTap;
 
   @override
@@ -25,12 +157,14 @@ class _SettingsTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, color: iconColor, size: 24),
-            const SizedBox(width: 20),
+            _SettingsIconBadge(icon: icon, color: iconColor),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,27 +177,25 @@ class _SettingsTile extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
-                      height: 1.3,
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
+                        height: 1.35,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            if (statusText != null) ...[
-              Text(
-                statusText!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
+            if (trailing != null) ...[
+              trailing!,
+              const SizedBox(width: AppSpacing.xs),
             ],
             Icon(
               Icons.chevron_right_rounded,
@@ -73,25 +205,6 @@ class _SettingsTile extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _SettingsDivider extends StatelessWidget {
-  const _SettingsDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Divider(
-      color: scheme.outlineVariant.withValues(
-        alpha: scheme.brightness == Brightness.dark ? 0.18 : 0.5,
-      ),
-      height: 1,
-      thickness: 1,
-      indent: 64,
-      endIndent: 0,
     );
   }
 }

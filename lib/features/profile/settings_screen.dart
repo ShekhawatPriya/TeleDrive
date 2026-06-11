@@ -37,6 +37,7 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(
         elevation: 0,
         scrolledUnderElevation: 0,
+        centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           tooltip: 'Back',
@@ -46,93 +47,181 @@ class SettingsScreen extends ConsumerWidget {
       ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.only(top: 8, bottom: AppSpacing.xxl),
+        padding: const EdgeInsets.only(
+          top: AppSpacing.xs,
+          bottom: AppSpacing.xxl,
+        ),
         children: [
-          _settingsSectionHeader(context, 'Categories'),
-          _ServerConnectionSettingsTile(),
-          const _SettingsDivider(),
-          _SettingsTile(
-            icon: Icons.cloud_outlined,
-            iconColor: const Color(0xFF6E7C97),
-            title: 'Upload Settings',
-            subtitle: 'Manage manual upload limits, network usage, & renaming',
-            onTap: () => Navigator.of(context).push(
-              CupertinoPageRoute(builder: (_) => const UploadSettingsScreen()),
+          _StaggeredEntrance(
+            index: 0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _settingsSectionHeader(context, 'Connectivity'),
+                _SettingsGroupCard(
+                  dividerIndent: 72,
+                  children: [_ServerConnectionSettingsTile()],
+                ),
+              ],
             ),
           ),
-          const _SettingsDivider(),
-          _SettingsTile(
-            icon: Icons.backup_outlined,
-            iconColor: const Color(0xFF4C8F87),
-            title: 'Backup',
-            subtitle: 'Configure gallery backup scans and queue behavior',
-            onTap: () => Navigator.of(context).push(
-              CupertinoPageRoute(builder: (_) => const BackupSettingsScreen()),
+          _StaggeredEntrance(
+            index: 1,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _settingsSectionHeader(context, 'Uploads & Backup'),
+                _SettingsGroupCard(
+                  dividerIndent: 72,
+                  children: [
+                    _SettingsMenuTile(
+                      icon: Icons.cloud_outlined,
+                      iconColor: _accentUploads,
+                      title: 'Uploads',
+                      subtitle: 'Limits, mobile data, and duplicate renaming',
+                      onTap: () => Navigator.of(context).push(
+                        CupertinoPageRoute(
+                          builder: (_) => const UploadSettingsScreen(),
+                        ),
+                      ),
+                    ),
+                    _SettingsMenuTile(
+                      icon: Icons.backup_outlined,
+                      iconColor: _accentBackup,
+                      title: 'Backup',
+                      subtitle: 'Gallery backup scans and queue behavior',
+                      onTap: () => Navigator.of(context).push(
+                        CupertinoPageRoute(
+                          builder: (_) => const BackupSettingsScreen(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          const _SettingsDivider(),
-          _SettingsTile(
-            icon: Icons.cleaning_services_outlined,
-            iconColor: const Color(0xFFDCA15D),
-            title: 'Cache & Storage Settings',
-            subtitle: 'Reclaim phone storage and clean local file cache',
-            statusText: cache.isLoading
-                ? 'Scanning...'
-                : _formatBytes(cache.totalSize),
-            onTap: () => Navigator.of(context).push(
-              CupertinoPageRoute(
-                builder: (_) => const CacheStorageSettingsScreen(),
-              ),
+          _StaggeredEntrance(
+            index: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _settingsSectionHeader(context, 'Storage & Privacy'),
+                _SettingsGroupCard(
+                  dividerIndent: 72,
+                  children: [
+                    _SettingsMenuTile(
+                      icon: Icons.cleaning_services_outlined,
+                      iconColor: _accentCache,
+                      title: 'Cache & Storage',
+                      subtitle: 'Reclaim space from the local file cache',
+                      trailing: AnimatedSwitcher(
+                        duration: AppDurations.medium2,
+                        switchInCurve: AppEasing.standard,
+                        switchOutCurve: AppEasing.standard,
+                        child: Text(
+                          cache.isLoading
+                              ? 'Scanning...'
+                              : _formatBytes(cache.totalSize),
+                          key: ValueKey(
+                            cache.isLoading
+                                ? 'scanning'
+                                : '${cache.totalSize}',
+                          ),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      onTap: () => Navigator.of(context).push(
+                        CupertinoPageRoute(
+                          builder: (_) => const CacheStorageSettingsScreen(),
+                        ),
+                      ),
+                    ),
+                    _SettingsMenuTile(
+                      icon: Icons.shield_outlined,
+                      iconColor: _accentPrivacy,
+                      title: 'Privacy & Security',
+                      subtitle: 'Trash bin, share links, and sign-out cache',
+                      onTap: () => Navigator.of(context).push(
+                        CupertinoPageRoute(
+                          builder: (_) => const PrivacySecuritySettingsScreen(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          const _SettingsDivider(),
-          _SettingsTile(
-            icon: Icons.shield_outlined,
-            iconColor: const Color(0xFF8BA698),
-            title: 'Privacy & Security Settings',
-            subtitle:
-                'Configure trash bin, share link permissions, & sign out cache',
-            onTap: () => Navigator.of(context).push(
-              CupertinoPageRoute(
-                builder: (_) => const PrivacySecuritySettingsScreen(),
-              ),
+          _StaggeredEntrance(
+            index: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _settingsSectionHeader(context, 'Alerts & Updates'),
+                _SettingsGroupCard(
+                  dividerIndent: 72,
+                  children: [
+                    _SettingsMenuTile(
+                      icon: Icons.notifications_none_outlined,
+                      iconColor: _accentAlerts,
+                      title: 'Notifications',
+                      subtitle: 'Alerts for completed or failed uploads',
+                      onTap: () => Navigator.of(context).push(
+                        CupertinoPageRoute(
+                          builder: (_) => const NotificationsSettingsScreen(),
+                        ),
+                      ),
+                    ),
+                    _AppUpdatesSettingsTile(),
+                  ],
+                ),
+              ],
             ),
           ),
-          const _SettingsDivider(),
-          _SettingsTile(
-            icon: Icons.notifications_none_outlined,
-            iconColor: const Color(0xFFC393B5),
-            title: 'Notifications Settings',
-            subtitle: 'Set up push alerts for completed or failed uploads',
-            onTap: () => Navigator.of(context).push(
-              CupertinoPageRoute(
-                builder: (_) => const NotificationsSettingsScreen(),
-              ),
+          _StaggeredEntrance(
+            index: 4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _settingsSectionHeader(context, 'Appearance'),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                  ),
+                  child: ThemePickerCards(
+                    mode: ref.watch(themeControllerProvider).mode,
+                    onChanged: ref.read(themeControllerProvider).setMode,
+                  ),
+                ),
+              ],
             ),
           ),
-          const _SettingsDivider(),
-          _AppUpdatesSettingsTile(),
-          const _SettingsDivider(),
-          const SizedBox(height: 24),
-          _settingsSectionHeader(context, 'Appearance'),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: ThemePickerCards(
-              mode: ref.watch(themeControllerProvider).mode,
-              onChanged: ref.read(themeControllerProvider).setMode,
+          _StaggeredEntrance(
+            index: 5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _settingsSectionHeader(context, 'About'),
+                _SettingsGroupCard(
+                  dividerIndent: 72,
+                  children: [
+                    _SettingsMenuTile(
+                      icon: Icons.workspaces_outline,
+                      iconColor: _accentProject,
+                      title: 'Project',
+                      subtitle: 'Open source, changelog, and about TeleDrive',
+                      onTap: () => context.push('/settings/project'),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 28),
-          _settingsSectionHeader(context, 'Project'),
-          _SettingsTile(
-            icon: Icons.workspaces_outline,
-            iconColor: const Color(0xFF6E7C97),
-            title: 'Project',
-            subtitle: 'Open source, changelog, and about TeleDrive',
-            onTap: () => context.push('/settings/project'),
-          ),
-          const SizedBox(height: AppSpacing.xxl),
+          const SizedBox(height: AppSpacing.xl),
           Center(
             child: Text(
               'TeleDrive - A DevsDoCode Project',
