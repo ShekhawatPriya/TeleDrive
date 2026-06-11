@@ -12,9 +12,30 @@ class AppConfig {
   static String get _fallbackUpdateManifestUrl =>
       'https://github.com/$githubOwner/$githubRepo/releases/latest/download/latest.json';
 
+  /// Static backend address from build config. Besides serving as the initial
+  /// fallback, this value is hashed into stable identities (TDLib database
+  /// directories, secure-storage keys), so it must NOT change when the network
+  /// changes. Runtime networking resolves the live address through
+  /// BackendResolver instead.
   static String get apiBaseUrl {
     return _value('API_BASE_URL') ?? _fallbackApiBaseUrl;
   }
+
+  /// API_BASE_URL exactly as provided in .env.local, or null when unset.
+  /// When set, BackendResolver treats it as a pinned address and skips
+  /// auto-discovery.
+  static String? get configuredApiBaseUrl => _value('API_BASE_URL');
+
+  /// Port the backend listens on; used when discovering or scanning for it.
+  static int get backendPort => _int('BACKEND_PORT', fallback: 8000);
+
+  /// Path prefix all backend API routes live under.
+  static String get backendApiPrefix => _value('BACKEND_API_PREFIX') ?? '/api';
+
+  /// UDP port of the backend's discovery responder. Shares the API's port
+  /// number by default (UDP and TCP port spaces are independent).
+  static int get discoveryPort =>
+      _int('BACKEND_DISCOVERY_PORT', fallback: backendPort);
 
   static int? get telegramApiId {
     final value = _value('TELEGRAM_API_ID');
@@ -131,9 +152,18 @@ class AppConfig {
     }
   }
 
-  static Uri apiUri(String path, [Map<String, dynamic>? query]) {
+  static Uri apiUri(String path, [Map<String, dynamic>? query]) =>
+      buildApiUri(apiBaseUrl, path, query);
+
+  /// Builds an absolute API URI for [path] against an arbitrary [base], so
+  /// callers holding a runtime-resolved base URL share the same query logic.
+  static Uri buildApiUri(
+    String base,
+    String path, [
+    Map<String, dynamic>? query,
+  ]) {
     final normalized = path.startsWith('/') ? path : '/$path';
-    final uri = Uri.parse('$apiBaseUrl$normalized');
+    final uri = Uri.parse('$base$normalized');
     if (query == null || query.isEmpty) return uri;
     return uri.replace(
       queryParameters: {

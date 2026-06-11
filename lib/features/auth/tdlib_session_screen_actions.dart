@@ -7,11 +7,21 @@ extension _TdlibSessionScreenActions on _TdlibSessionScreenState {
   }) async {
     if (_autoStarted && !restartOtpWindow && !force) return;
     final auth = ref.read(authControllerProvider);
+    // On a cold start that lands directly on this screen the session restore
+    // is still in flight; wait for it instead of racing ahead with a null
+    // user/account and dead-ending the automation.
+    var waitedMs = 0;
+    while (auth.loading && waitedMs < 15000) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      waitedMs += 100;
+      if (!mounted || _disposed || _navigating) return;
+    }
     final active = auth.activeAccount;
     final phone =
         auth.pendingCandidatePhone ?? active?.phoneNumber ?? _phone.text;
-    final telegramUserId = auth.user?.telegramId != 0
-        ? auth.user?.telegramId ?? 0
+    final userTelegramId = auth.user?.telegramId ?? 0;
+    final telegramUserId = userTelegramId != 0
+        ? userTelegramId
         : active?.telegramId ?? 0;
     final backendUserId = auth.user?.userId ?? active?.userId ?? 0;
     if (phone.isEmpty || telegramUserId == 0 || backendUserId == 0) {

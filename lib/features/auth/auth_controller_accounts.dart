@@ -79,6 +79,17 @@ extension _AuthControllerAccounts on AuthController {
           await _repo.saveVault(vault);
           continue;
         }
+        if (err.response == null) {
+          // Backend unreachable right now (network change, tunnel down,
+          // server still booting). The token is locally valid, so restore the
+          // session from the vault instead of dumping the user to the welcome
+          // screen; data loads recover as soon as requests succeed.
+          _repo.setApiToken(account.token);
+          token = account.token;
+          user = account.toAuthUser();
+          vault = vault.upsert(account, makeActive: true);
+          return;
+        }
         rethrow;
       }
     }
@@ -230,7 +241,10 @@ extension _AuthControllerAccounts on AuthController {
       firstName: bootstrap.user.firstName,
       lastName: bootstrap.user.lastName,
       username: bootstrap.user.username,
-      phoneNumber: bootstrap.phoneNumber ?? existing?.phoneNumber,
+      phoneNumber:
+          bootstrap.phoneNumber ??
+          existing?.phoneNumber ??
+          pendingCandidatePhone,
       photoUrl: bootstrap.user.photoUrl,
       localPhotoPath: localPhotoPath,
       token: nextToken,

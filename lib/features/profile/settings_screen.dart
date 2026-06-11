@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/app_config.dart';
+import '../../core/network/backend_resolver.dart';
 import '../../core/notifications/upload_notification_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/auth_controller.dart';
@@ -13,6 +15,7 @@ import 'theme_controller.dart';
 import 'widgets/theme_picker_cards.dart';
 
 part 'settings/settings_helpers.dart';
+part 'settings/server_connection_settings.dart';
 part 'settings/upload_backup_settings.dart';
 part 'settings/cache_privacy_settings.dart';
 part 'settings/notification_settings.dart';
@@ -46,6 +49,8 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.only(top: 8, bottom: AppSpacing.xxl),
         children: [
           _settingsSectionHeader(context, 'Categories'),
+          _ServerConnectionSettingsTile(),
+          const _SettingsDivider(),
           _SettingsTile(
             icon: Icons.cloud_outlined,
             iconColor: const Color(0xFF6E7C97),

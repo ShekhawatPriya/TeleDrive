@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../core/network/api_client.dart';
+import '../../core/network/backend_resolver.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../core/config/app_config.dart';
 import '../../core/telegram/pending_telegram_commit_queue.dart';
@@ -21,7 +22,9 @@ part 'auth_controller_status.dart';
 part 'auth_controller_session_actions.dart';
 part 'auth_controller_pending.dart';
 
-final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
+final apiClientProvider = Provider<ApiClient>(
+  (ref) => ApiClient(ref.watch(backendResolverProvider)),
+);
 final secureStorageProvider = Provider<SecureStorageService>(
   (ref) => SecureStorageService(),
 );

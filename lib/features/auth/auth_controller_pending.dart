@@ -93,6 +93,21 @@ extension _AuthControllerPending on AuthController {
       clearEphemeralTelegramCloudPassword(telegramUserId: candidateTelegramId);
     }
     _clearPendingAccountAuthorization();
+    if (mode == null && isAuthenticated) {
+      // Not inside a login transaction: the user opened TDLib setup from an
+      // already-restored session (e.g. after an app restart) and backed out.
+      // Keep them signed in instead of nuking the whole vault.
+      this._emitChange();
+      if (returnTo != null &&
+          returnTo.isNotEmpty &&
+          returnTo != '/tdlib-session' &&
+          returnTo != '/login' &&
+          returnTo != '/welcome' &&
+          returnTo != '/') {
+        return returnTo;
+      }
+      return '/drive';
+    }
     if ((mode == PendingTdlibMode.addAccount ||
             mode == PendingTdlibMode.reauthenticateAccount) &&
         previousUserId != null &&
