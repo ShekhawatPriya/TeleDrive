@@ -5,6 +5,7 @@ extension _DriveShelfMutations on DriveController {
     String id, {
     required _ShelfKind kind,
     required bool archive,
+    String? originFolderId,
   }) async {
     final previousState = state;
     if (archive) {
@@ -31,6 +32,13 @@ extension _DriveShelfMutations on DriveController {
       }
       _bumpShelfRevision(kind);
       _markActiveAndAncestorsStale();
+      if (!archive) {
+        // Unarchiving/unlocking returns the file to its origin folder's
+        // listing. Archived/locked files are already counted in recursive
+        // totals, so no count change — just mark the origin stale so its
+        // listing refetches and shows the file on next visit.
+        _markFolderAndAncestorsStale(originFolderId);
+      }
       await refreshFolder(state.activeFolderId);
     } catch (err) {
       if (archive) {

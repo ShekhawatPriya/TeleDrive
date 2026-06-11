@@ -81,17 +81,9 @@ extension _DriveFolderHelpers on DriveController {
     required int sizeDelta,
     bool markStale = true,
   }) {
-    if (markStale) {
-      _staleFolderIds.add(null);
-      _staleFolderIds.add(folderId);
-    }
+    if (markStale) _markFolderAndAncestorsStale(folderId);
     if (folderId == null) return;
     final chain = folderPath(folderId);
-    if (markStale) {
-      for (final f in chain) {
-        _staleFolderIds.add(f.id);
-      }
-    }
     // Unknown metadata (e.g. destination never visited): stale marking above
     // is all we can do — the next fetch reconciles.
     if (chain.isEmpty) return;

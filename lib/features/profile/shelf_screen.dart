@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/media_thumb.dart';
 import '../drive/components/drive_dialogs.dart';
 import '../drive/components/selection_mode_mixin.dart';
 import '../drive/drive_controller.dart';
@@ -110,37 +111,49 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
 
   Future<void> _restoreOne(String id) async {
     final controller = ref.read(driveControllerProvider);
-    if (widget.kind == ShelfKind.archive) {
-      await controller.unarchiveFile(id);
-    } else {
-      await controller.unlockFile(id);
+    final match = _files.where((f) => f.id == id).toList();
+    final origin = match.isEmpty ? null : match.first.parentId;
+    setState(() => _files = _files.where((f) => f.id != id).toList());
+    try {
+      if (widget.kind == ShelfKind.archive) {
+        await controller.unarchiveFile(id, originFolderId: origin);
+      } else {
+        await controller.unlockFile(id, originFolderId: origin);
+      }
+    } catch (_) {
+      if (mounted) await _load(showSpinner: false);
     }
-    await _load(showSpinner: false);
   }
 
   Future<void> _trashOne(String id) async {
     final ok = await confirmDelete(context, 1, trashEnabled: true);
     if (!ok || !mounted) return;
     final controller = ref.read(driveControllerProvider);
-    await controller.deleteItems(fileIds: [id]);
-    await _load(showSpinner: false);
+    setState(() => _files = _files.where((f) => f.id != id).toList());
+    try {
+      await controller.deleteItems(fileIds: [id]);
+    } catch (_) {
+      if (mounted) await _load(showSpinner: false);
+    }
   }
 
   Future<void> _bulkRestore() async {
     final controller = ref.read(driveControllerProvider);
-    final ids = selectedFileIds.toList();
-    for (final id in ids) {
-      try {
-        if (widget.kind == ShelfKind.archive) {
-          await controller.unarchiveFile(id);
-        } else {
-          await controller.unlockFile(id);
-        }
-      } catch (_) {}
-    }
-    if (!mounted) return;
+    final idSet = selectedFileIds.toSet();
+    final files = _files.where((f) => idSet.contains(f.id)).toList();
     exitSelect();
-    await _load(showSpinner: false);
+    setState(() => _files = _files.where((f) => !idSet.contains(f.id)).toList());
+    try {
+      for (final file in files) {
+        if (widget.kind == ShelfKind.archive) {
+          await controller.unarchiveFile(file.id, originFolderId: file.parentId);
+        } else {
+          await controller.unlockFile(file.id, originFolderId: file.parentId);
+        }
+      }
+    } catch (_) {
+      if (mounted) await _load(showSpinner: false);
+    }
   }
 
   Future<void> _bulkTrash() async {
@@ -148,10 +161,14 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
     if (!ok || !mounted) return;
     final controller = ref.read(driveControllerProvider);
     final ids = selectedFileIds.toList();
-    await controller.deleteItems(fileIds: ids);
-    if (!mounted) return;
+    final idSet = ids.toSet();
     exitSelect();
-    await _load(showSpinner: false);
+    setState(() => _files = _files.where((f) => !idSet.contains(f.id)).toList());
+    try {
+      await controller.deleteItems(fileIds: ids);
+    } catch (_) {
+      if (mounted) await _load(showSpinner: false);
+    }
   }
 
   bool _isFileSelected(String id) => selectedFileIds.contains(id);
@@ -265,7 +282,7 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
           key: ValueKey('file-${file.id}'),
           title: file.name,
           subtitle: formatFileSize(file.size),
-          icon: _fileIcon(file.kind),
+          file: file,
           selectMode: selectMode,
           selected: _isFileSelected(file.id),
           onTap: () => toggleFileSelection(file.id),
@@ -308,7 +325,7 @@ class _ShelfTile extends StatelessWidget {
   const _ShelfTile({
     required this.title,
     required this.subtitle,
-    required this.icon,
+    required this.file,
     required this.selectMode,
     required this.selected,
     required this.onTap,
@@ -322,7 +339,7 @@ class _ShelfTile extends StatelessWidget {
 
   final String title;
   final String subtitle;
-  final IconData icon;
+  final DriveFile file;
   final bool selectMode;
   final bool selected;
   final VoidCallback onTap;
@@ -366,8 +383,10 @@ class _ShelfTile extends StatelessWidget {
                           size: 22,
                         ),
                       )
-                    : Center(
-                        child: Icon(icon, color: scheme.primary, size: 24),
+                    : MediaThumb(
+                        file: file,
+                        fit: BoxFit.cover,
+                        radius: AppRadii.sm,
                       ),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -423,13 +442,3 @@ class _ShelfTile extends StatelessWidget {
   }
 }
 
-IconData _fileIcon(FileKind kind) {
-  return switch (kind) {
-    FileKind.image => Icons.image_outlined,
-    FileKind.video => Icons.play_circle_outline,
-    FileKind.audio => Icons.audiotrack,
-    FileKind.pdf => Icons.picture_as_pdf,
-    FileKind.folder => Icons.folder_outlined,
-    _ => Icons.insert_drive_file_outlined,
-  };
-}

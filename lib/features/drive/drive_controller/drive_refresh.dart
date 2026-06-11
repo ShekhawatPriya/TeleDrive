@@ -105,10 +105,16 @@ extension _DriveRefresh on DriveController {
   }
 
   void _markActiveAndAncestorsStale() {
-    _staleFolderIds.add(state.activeFolderId);
-    if (state.activeFolderId != null) {
-      final parents = folderPath(state.activeFolderId!);
-      for (final p in parents) {
+    _markFolderAndAncestorsStale(state.activeFolderId);
+  }
+
+  /// Marks [folderId], its ancestor chain, and root stale so each refetches
+  /// fresh on next visit. Safe when the folder's metadata isn't known yet —
+  /// the unloaded page will fetch on navigation regardless.
+  void _markFolderAndAncestorsStale(String? folderId) {
+    _staleFolderIds.add(folderId);
+    if (folderId != null) {
+      for (final p in folderPath(folderId)) {
         _staleFolderIds.add(p.id);
       }
     }

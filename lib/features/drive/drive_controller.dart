@@ -179,15 +179,37 @@ class DriveController extends ChangeNotifier {
     List<String> folderIds = const [],
   }) => _deleteItems(fileIds: fileIds, folderIds: folderIds);
 
-  Future<void> restoreFile(String id) async {
+  Future<void> restoreFile(
+    String id, {
+    String? originFolderId,
+    int sizeBytes = 0,
+  }) async {
     await _repo.restoreFile(id);
     _bumpTrashRevision();
+    // A restored file re-enters its origin folder. Trashed files are excluded
+    // from recursive counts, so bump that chain and mark it stale so the
+    // origin listing refetches and shows the file on next visit.
+    _bumpFolderAggregates(
+      originFolderId,
+      fileCountDelta: 1,
+      sizeDelta: sizeBytes,
+    );
     await refresh(silent: true, force: true);
   }
 
-  Future<void> restoreFolder(String id) async {
+  Future<void> restoreFolder(
+    String id, {
+    String? originParentId,
+    int fileCount = 0,
+    int sizeBytes = 0,
+  }) async {
     await _repo.restoreFolder(id);
     _bumpTrashRevision();
+    _bumpFolderAggregates(
+      originParentId,
+      fileCountDelta: fileCount,
+      sizeDelta: sizeBytes,
+    );
     await refresh(silent: true, force: true);
   }
 
@@ -212,14 +234,22 @@ class DriveController extends ChangeNotifier {
   Future<void> archiveFile(String id) =>
       _moveToShelf(id, kind: _ShelfKind.archive, archive: true);
 
-  Future<void> unarchiveFile(String id) =>
-      _moveToShelf(id, kind: _ShelfKind.archive, archive: false);
+  Future<void> unarchiveFile(String id, {String? originFolderId}) => _moveToShelf(
+    id,
+    kind: _ShelfKind.archive,
+    archive: false,
+    originFolderId: originFolderId,
+  );
 
   Future<void> lockFile(String id) =>
       _moveToShelf(id, kind: _ShelfKind.locked, archive: true);
 
-  Future<void> unlockFile(String id) =>
-      _moveToShelf(id, kind: _ShelfKind.locked, archive: false);
+  Future<void> unlockFile(String id, {String? originFolderId}) => _moveToShelf(
+    id,
+    kind: _ShelfKind.locked,
+    archive: false,
+    originFolderId: originFolderId,
+  );
 
   Future<void> toggleStar(String id, {bool folder = false}) =>
       _toggleStar(id, folder: folder);

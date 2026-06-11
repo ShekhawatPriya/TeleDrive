@@ -8,6 +8,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/google_drive_icon.dart';
+import '../../widgets/media_thumb.dart';
 import '../drive/components/drive_dialogs.dart';
 import '../drive/components/selection_mode_mixin.dart';
 import '../drive/drive_controller.dart';
@@ -82,13 +84,38 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
   bool _isFileSelected(String id) => selectedFileIds.contains(id);
 
   Future<void> _restoreFile(String id) async {
-    await ref.read(driveControllerProvider).restoreFile(id);
-    await _load();
+    final match = _files.where((f) => f.id == id).toList();
+    final file = match.isEmpty ? null : match.first;
+    setState(() => _files = _files.where((f) => f.id != id).toList());
+    try {
+      await ref
+          .read(driveControllerProvider)
+          .restoreFile(
+            id,
+            originFolderId: file?.parentId,
+            sizeBytes: file?.size ?? 0,
+          );
+    } catch (_) {
+      if (mounted) await _load(showSpinner: false);
+    }
   }
 
   Future<void> _restoreFolder(String id) async {
-    await ref.read(driveControllerProvider).restoreFolder(id);
-    await _load();
+    final match = _folders.where((f) => f.id == id).toList();
+    final folder = match.isEmpty ? null : match.first;
+    setState(() => _folders = _folders.where((f) => f.id != id).toList());
+    try {
+      await ref
+          .read(driveControllerProvider)
+          .restoreFolder(
+            id,
+            originParentId: folder?.parentId,
+            fileCount: folder?.recursiveFileCount ?? 0,
+            sizeBytes: folder?.recursiveSize ?? 0,
+          );
+    } catch (_) {
+      if (mounted) await _load(showSpinner: false);
+    }
   }
 
   Future<void> _purgeFile(String id) async {
@@ -107,15 +134,36 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
 
   Future<void> _bulkRestore() async {
     final controller = ref.read(driveControllerProvider);
-    final folderIds = selectedFolderIds.toList();
-    final fileIds = selectedFileIds.toList();
-    await Future.wait([
-      ...folderIds.map(controller.restoreFolder),
-      ...fileIds.map(controller.restoreFile),
-    ]);
-    if (!mounted) return;
+    final folderIds = selectedFolderIds.toSet();
+    final fileIds = selectedFileIds.toSet();
+    final folders = _folders.where((f) => folderIds.contains(f.id)).toList();
+    final files = _files.where((f) => fileIds.contains(f.id)).toList();
     exitSelect();
-    await _load();
+    setState(() {
+      _folders = _folders.where((f) => !folderIds.contains(f.id)).toList();
+      _files = _files.where((f) => !fileIds.contains(f.id)).toList();
+    });
+    try {
+      await Future.wait([
+        ...folders.map(
+          (f) => controller.restoreFolder(
+            f.id,
+            originParentId: f.parentId,
+            fileCount: f.recursiveFileCount,
+            sizeBytes: f.recursiveSize,
+          ),
+        ),
+        ...files.map(
+          (f) => controller.restoreFile(
+            f.id,
+            originFolderId: f.parentId,
+            sizeBytes: f.size,
+          ),
+        ),
+      ]);
+    } catch (_) {
+      if (mounted) await _load(showSpinner: false);
+    }
   }
 
   Future<void> _bulkPurge() async {
@@ -260,7 +308,8 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
           key: ValueKey('folder-${folder.id}'),
           title: folder.name,
           subtitle: '${folder.recursiveFileCount} items',
-          icon: Icons.folder_outlined,
+          isFolder: true,
+          shared: folder.shared,
           selectMode: selectMode,
           selected: _isFolderSelected(folder.id),
           onTap: () => toggleFolderSelection(folder.id),
@@ -278,7 +327,8 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
           key: ValueKey('file-${file.id}'),
           title: file.name,
           subtitle: formatFileSize(file.size),
-          icon: _fileIcon(file.kind),
+          file: file,
+          shared: file.shared,
           selectMode: selectMode,
           selected: _isFileSelected(file.id),
           onTap: () => toggleFileSelection(file.id),
@@ -319,19 +369,23 @@ class _TrashTile extends StatelessWidget {
   const _TrashTile({
     required this.title,
     required this.subtitle,
-    required this.icon,
     required this.selectMode,
     required this.selected,
     required this.onTap,
     required this.onLongPress,
     required this.onRestore,
     required this.onPurge,
+    this.file,
+    this.isFolder = false,
+    this.shared = false,
     super.key,
   });
 
   final String title;
   final String subtitle;
-  final IconData icon;
+  final DriveFile? file;
+  final bool isFolder;
+  final bool shared;
   final bool selectMode;
   final bool selected;
   final VoidCallback onTap;
@@ -373,8 +427,14 @@ class _TrashTile extends StatelessWidget {
                           size: 22,
                         ),
                       )
-                    : Center(
-                        child: Icon(icon, color: scheme.primary, size: 24),
+                    : isFolder
+                    ? Center(
+                        child: GoogleDriveIcon.folder(isShared: shared, size: 30),
+                      )
+                    : MediaThumb(
+                        file: file!,
+                        fit: BoxFit.cover,
+                        radius: AppRadii.sm,
                       ),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -430,13 +490,3 @@ class _TrashTile extends StatelessWidget {
   }
 }
 
-IconData _fileIcon(FileKind kind) {
-  return switch (kind) {
-    FileKind.image => Icons.image_outlined,
-    FileKind.video => Icons.play_circle_outline,
-    FileKind.audio => Icons.audiotrack,
-    FileKind.pdf => Icons.picture_as_pdf,
-    FileKind.folder => Icons.folder_outlined,
-    _ => Icons.insert_drive_file_outlined,
-  };
-}
