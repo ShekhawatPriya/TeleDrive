@@ -62,26 +62,42 @@ extension _AccountSheetCards on _AccountBottomSheetState {
                 ],
               ),
               const SizedBox(height: AppSpacing.sm),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(100),
-                child: Container(
-                  height: 10,
-                  color: scheme.brightness == Brightness.dark
-                      ? Colors.grey[850]
-                      : Colors.grey[300],
-                  child: used == 0 || activeCategories.isEmpty
-                      ? const SizedBox.expand()
-                      : Row(
-                          children: activeCategories.map((cat) {
-                            return Expanded(
-                              flex: (cat.size / totalCategorizedSize * 10000)
-                                  .clamp(1, 10000)
-                                  .toInt(),
-                              child: Container(color: cat.color),
-                            );
-                          }).toList(),
+              SizedBox(
+                height: 12,
+                child: activeCategories.isEmpty
+                    ? Container(
+                        decoration: BoxDecoration(
+                          color: scheme.onSurface.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                ),
+                      )
+                    : Row(
+                        children: [
+                          for (
+                            var i = 0;
+                            i < activeCategories.length;
+                            i++
+                          ) ...[
+                            if (i > 0) const SizedBox(width: 3),
+                            Expanded(
+                              // Floor at 4% so tiny categories still render
+                              // as visible rounded pills.
+                              flex:
+                                  (activeCategories[i].size /
+                                          totalCategorizedSize *
+                                          1000)
+                                      .round()
+                                      .clamp(40, 1000),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: activeCategories[i].color,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
               ),
               const SizedBox(height: AppSpacing.sm),
               Wrap(
@@ -93,8 +109,8 @@ extension _AccountSheetCards on _AccountBottomSheetState {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 6,
-                        height: 6,
+                        width: 8,
+                        height: 8,
                         decoration: BoxDecoration(
                           color: cat.color,
                           shape: BoxShape.circle,
@@ -105,7 +121,7 @@ extension _AccountSheetCards on _AccountBottomSheetState {
                         cat.name,
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: scheme.onSurfaceVariant,
-                          fontSize: 11,
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -156,7 +172,7 @@ extension _AccountSheetCards on _AccountBottomSheetState {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: (backupOn ? scheme.primary : scheme.outlineVariant)
                     .withValues(alpha: 0.15),
@@ -168,7 +184,7 @@ extension _AccountSheetCards on _AccountBottomSheetState {
                 size: 24,
               ),
             ),
-            const SizedBox(width: AppSpacing.xs),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,7 +209,7 @@ extension _AccountSheetCards on _AccountBottomSheetState {
                   const SizedBox(height: AppSpacing.md),
                   Align(
                     alignment: Alignment.centerRight,
-                    child: FilledButton.tonal(
+                    child: FilledButton(
                       onPressed: () async {
                         final next = !backupOn;
                         await ref

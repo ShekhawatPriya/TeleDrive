@@ -89,6 +89,30 @@ class _ProjectScreenState extends ConsumerState<ProjectScreen> {
           const SizedBox(height: AppSpacing.sm),
           const _DeveloperCard(),
           const SizedBox(height: AppSpacing.xl),
+          _SectionLabel('Legal'),
+          const SizedBox(height: AppSpacing.sm),
+          _CategoryCard(
+            icon: Icon(
+              Icons.shield_outlined,
+              size: 22,
+              color: scheme.primary,
+            ),
+            title: 'Privacy Policy',
+            subtitle: 'How TeleDrive handles your data',
+            onTap: () => context.push('/privacy'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _CategoryCard(
+            icon: Icon(
+              Icons.description_outlined,
+              size: 22,
+              color: scheme.primary,
+            ),
+            title: 'Terms of Service',
+            subtitle: 'Rules for using TeleDrive',
+            onTap: () => context.push('/terms'),
+          ),
+          const SizedBox(height: AppSpacing.xl),
           Center(
             child: Text(
               'Made with care · TeleDrive',

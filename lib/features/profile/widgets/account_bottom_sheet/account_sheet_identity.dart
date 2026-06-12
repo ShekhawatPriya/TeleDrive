@@ -131,33 +131,42 @@ extension _AccountSheetIdentity on _AccountBottomSheetState {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md + 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildSocialIconButton(
-                        context,
-                        icon: GitHubIcon(size: 22, color: scheme.onSurface),
-                        onTap: AppConfig.openRepository,
-                      ),
-                      const SizedBox(width: AppSpacing.xxs),
-                      _buildSocialIconButton(
-                        context,
-                        icon: InstagramIcon(size: 22, color: scheme.onSurface),
-                        onTap: AppConfig.openInstagram,
-                      ),
-                      const SizedBox(width: AppSpacing.xxs),
-                      _buildSocialIconButton(
-                        context,
-                        icon: XIcon(size: 22, color: scheme.onSurface),
-                        onTap: AppConfig.openTwitter,
-                      ),
-                      const SizedBox(width: AppSpacing.xxs),
-                      _buildSocialIconButton(
-                        context,
-                        icon: YouTubeIcon(size: 22, color: scheme.onSurface),
-                        onTap: AppConfig.openYouTube,
-                      ),
-                    ],
+                  // Scales down proportionally if the right column is too
+                  // narrow for four 40dp buttons (small devices).
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildSocialIconButton(
+                          context,
+                          icon: GitHubIcon(size: 22, color: scheme.onSurface),
+                          onTap: AppConfig.openRepository,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        _buildSocialIconButton(
+                          context,
+                          icon: InstagramIcon(
+                            size: 22,
+                            color: scheme.onSurface,
+                          ),
+                          onTap: AppConfig.openInstagram,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        _buildSocialIconButton(
+                          context,
+                          icon: XIcon(size: 22, color: scheme.onSurface),
+                          onTap: AppConfig.openTwitter,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        _buildSocialIconButton(
+                          context,
+                          icon: YouTubeIcon(size: 22, color: scheme.onSurface),
+                          onTap: AppConfig.openYouTube,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -175,42 +184,15 @@ extension _AccountSheetIdentity on _AccountBottomSheetState {
   }) {
     final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: Colors.transparent,
+      color: _profileSectionColor(scheme),
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        customBorder: const CircleBorder(),
         splashColor: scheme.primary.withValues(alpha: 0.12),
         highlightColor: scheme.primary.withValues(alpha: 0.06),
-        child: Padding(padding: const EdgeInsets.all(6.0), child: icon),
+        child: SizedBox(width: 40, height: 40, child: Center(child: icon)),
       ),
-    );
-  }
-
-  Widget _buildLegalFooter(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final style = theme.textTheme.bodySmall?.copyWith(
-      color: scheme.onSurfaceVariant,
-      fontWeight: FontWeight.normal,
-      decoration: TextDecoration.none,
-    );
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        GestureDetector(
-          onTap: () => context.safePush('/privacy'),
-          child: Text('Privacy Policy', style: style),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: Text('•', style: TextStyle(color: scheme.onSurfaceVariant)),
-        ),
-        GestureDetector(
-          onTap: () => context.safePush('/terms'),
-          child: Text('Terms of Service', style: style),
-        ),
-      ],
     );
   }
 }

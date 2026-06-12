@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/app_config.dart';
@@ -40,17 +39,16 @@ class _CompactPillAction {
     required this.onTap,
   });
 
-  final Widget icon;
+  final IconData icon;
   final String label;
   final VoidCallback onTap;
 }
 
 class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
     with SingleTickerProviderStateMixin {
-  static const _sectionRadius = 32.0;
+  static const _sectionRadius = 28.0;
   static const _sectionSpacing = 14.0;
   static const _sheetHorizontalPadding = AppSpacing.lg;
-  static const _compactActionRowHeight = 68.0;
 
   bool _isExpanded = false;
 
@@ -152,55 +150,28 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                         context,
                         actions: [
                           _CompactPillAction(
-                            icon: Image.asset(
-                              'assets/icon/icons/broom.png',
-                              width: 22,
-                              height: 22,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                            ),
+                            icon: Icons.image_outlined,
                             label: 'Free up backed-up media',
                             onTap: () {
                               context.safePush('/profile/free-up-space');
                             },
                           ),
                           _CompactPillAction(
-                            icon: Icon(
-                              Icons.settings_outlined,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                              size: 22,
-                            ),
+                            icon: Icons.settings_outlined,
                             label: 'Settings',
                             onTap: () {
                               context.safePush('/settings');
                             },
                           ),
                           _CompactPillAction(
-                            icon: SvgPicture.asset(
-                              'assets/icon/icons/add_chart_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg',
-                              width: 22,
-                              height: 22,
-                              colorFilter: ColorFilter.mode(
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                                BlendMode.srcIn,
-                              ),
-                            ),
+                            icon: Icons.bar_chart_rounded,
                             label: 'My Data in Telegram Drive',
                             onTap: () {
                               context.safePush('/profile/my-data');
                             },
                           ),
                           _CompactPillAction(
-                            icon: Icon(
-                              Icons.help_outline_rounded,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                              size: 22,
-                            ),
+                            icon: Icons.help_outline_rounded,
                             label: 'Help & Feedback',
                             onTap: () {
                               _showHelpFeedbackDialog(context);
@@ -208,8 +179,6 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                           ),
                         ],
                       ),
-                      const SizedBox(height: AppSpacing.lg),
-                      _buildLegalFooter(context),
                       const SizedBox(height: 12),
                     ],
                   ),
@@ -244,12 +213,20 @@ SavedAccount? _activeAccountSnapshot(SavedAccount? saved, AuthUser? user) {
   );
 }
 
+/// Background for the account sheet itself. Public so the
+/// `showModalBottomSheet` call site can paint the sheet's own Material —
+/// in dark mode the sheet sits near-black while the cards float lighter.
+Color accountSheetBackgroundColor(ColorScheme scheme) {
+  return scheme.brightness == Brightness.dark
+      ? scheme.surfaceContainerLowest
+      : scheme.surfaceContainerLow;
+}
+
 Color _profileSectionColor(ColorScheme scheme) {
   if (scheme.brightness == Brightness.dark) {
-    return Color.alphaBlend(
-      Colors.black.withValues(alpha: 0.42),
-      scheme.surfaceContainerLow,
-    );
+    // Tonal surface (not a flat white overlay) so the cards carry the
+    // theme's tint and stay visibly lighter than the near-black sheet.
+    return scheme.surfaceContainerHigh;
   }
 
   return Color.alphaBlend(
@@ -265,9 +242,13 @@ Color _profileSectionDividerColor(ColorScheme scheme) {
 }
 
 class _ProfileSheetSection extends StatelessWidget {
-  const _ProfileSheetSection({required this.child});
+  const _ProfileSheetSection({required this.child, this.borderRadius});
 
   final Widget child;
+
+  /// Per-corner override so segmented groups can round only their outer
+  /// edges; falls back to the uniform section radius.
+  final BorderRadius? borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -278,9 +259,9 @@ class _ProfileSheetSection extends StatelessWidget {
       elevation: 0,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(
-          _AccountBottomSheetState._sectionRadius,
-        ),
+        borderRadius:
+            borderRadius ??
+            BorderRadius.circular(_AccountBottomSheetState._sectionRadius),
         side: scheme.brightness == Brightness.light
             ? BorderSide(
                 color: scheme.outlineVariant.withValues(alpha: 0.5),

@@ -34,7 +34,7 @@ extension _AccountSheetSwitcher on _AccountBottomSheetState {
             child: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.lg,
-                vertical: 22,
+                vertical: 18,
               ),
               child: Row(
                 children: [

@@ -68,6 +68,8 @@ class TabHeader extends ConsumerWidget {
               useSafeArea: true,
               useRootNavigator: true,
               showDragHandle: false,
+              backgroundColor: accountSheetBackgroundColor(scheme),
+              elevation: 0,
               constraints: BoxConstraints(maxHeight: maxSheetHeight),
               builder: (context) => const AccountBottomSheet(),
             );
