@@ -1,9 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AppConfig {
-  static const _fallbackApiBaseUrl = 'http://10.0.2.2:8000/api';
+  // 10.0.2.2 is the Android-emulator loopback alias; the iOS simulator shares
+  // the host's loopback directly. Per-platform values keep the hashed stable
+  // identity consistent within each platform.
+  static String get _fallbackApiBaseUrl => Platform.isAndroid
+      ? 'http://10.0.2.2:8000/api'
+      : 'http://127.0.0.1:8000/api';
 
   // GitHub repository that hosts the source code AND the published Releases
   // (APK + latest.json) that drive both the Changelog and the in-app updater.

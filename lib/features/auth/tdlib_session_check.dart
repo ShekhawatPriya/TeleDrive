@@ -27,7 +27,7 @@ extension _TdlibSessionCheck on TdlibSessionController {
         state = const TdlibSessionState(
           status: TdlibSessionStatus.unavailable,
           message:
-              'TeleDrive requires a supported 64-bit Android device for local TDLib file transfer.',
+              'TeleDrive requires a supported Android or iOS device for local TDLib file transfer.',
         );
         _emitChange();
         return;
@@ -304,7 +304,7 @@ extension _TdlibSessionCheck on TdlibSessionController {
     if (err is TelegramClientUnavailableException &&
         (err.code == 'tdlib_unavailable' ||
             err.code == 'tdlib_bridge_missing')) {
-      return 'TeleDrive requires a supported 64-bit Android device for local TDLib file transfer.';
+      return 'TeleDrive requires a supported Android or iOS device for local TDLib file transfer.';
     }
     final raw = '$err'.trim();
     return raw.isEmpty

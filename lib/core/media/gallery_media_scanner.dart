@@ -245,7 +245,7 @@ class GalleryMediaScanner {
       return GalleryMediaDeleteResult.fromJson(result ?? const {});
     } on PlatformException catch (err) {
       throw GalleryMediaScannerException(
-        err.message ?? 'Android could not remove the selected media.',
+        err.message ?? 'The selected media could not be removed.',
       );
     }
   }
@@ -280,10 +280,25 @@ class GalleryMediaScanner {
   }
 
   static bool isConcreteMediaStoreContentUri(String value) {
+    if (_isConcretePhAssetUri(value)) return true;
     if (!value.startsWith('content://media/')) return false;
     if (!value.contains('/images/media/') && !value.contains('/video/media/')) {
       return false;
     }
     return int.tryParse(value.split('/').last) != null;
+  }
+
+  /// iOS PhotoKit asset URIs minted by the Swift bridge:
+  /// `phasset://image/<localIdentifier>` or `phasset://video/<localIdentifier>`.
+  /// PHAsset localIdentifiers contain `/`, so only the first two segments are
+  /// structural — everything after `phasset://<type>/` is the identifier.
+  static bool _isConcretePhAssetUri(String value) {
+    const prefixes = ['phasset://image/', 'phasset://video/'];
+    for (final prefix in prefixes) {
+      if (value.startsWith(prefix) && value.length > prefix.length) {
+        return true;
+      }
+    }
+    return false;
   }
 }

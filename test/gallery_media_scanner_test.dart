@@ -121,6 +121,70 @@ void main() {
     },
   );
 
+  test('isConcreteMediaStoreContentUri accepts iOS phasset URIs', () {
+    expect(
+      GalleryMediaScanner.isConcreteMediaStoreContentUri(
+        'phasset://image/8B3D2F5A-1C7E-4F2B-9D6A-0123456789AB/L0/001',
+      ),
+      isTrue,
+    );
+    expect(
+      GalleryMediaScanner.isConcreteMediaStoreContentUri(
+        'phasset://video/8B3D2F5A-1C7E-4F2B-9D6A-0123456789AB/L0/001',
+      ),
+      isTrue,
+    );
+    // Missing identifier or unknown media type must be rejected.
+    expect(
+      GalleryMediaScanner.isConcreteMediaStoreContentUri('phasset://image/'),
+      isFalse,
+    );
+    expect(
+      GalleryMediaScanner.isConcreteMediaStoreContentUri('phasset://audio/id'),
+      isFalse,
+    );
+    // Android URIs still validate as before.
+    expect(
+      GalleryMediaScanner.isConcreteMediaStoreContentUri(
+        'content://media/external/images/media/10',
+      ),
+      isTrue,
+    );
+    expect(
+      GalleryMediaScanner.isConcreteMediaStoreContentUri(
+        'content://media/external/images/media',
+      ),
+      isFalse,
+    );
+  });
+
+  test('deleteMediaUris forwards phasset URIs to the platform', () async {
+    Object? sentUris;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          sentUris = call.arguments['contentUris'];
+          return {
+            'requested': 1,
+            'deleted': 1,
+            'failed': 0,
+            'userCancelled': false,
+            'deletedUris': ['phasset://image/ABC-123/L0/001'],
+            'failedUris': [],
+          };
+        });
+
+    const scanner = GalleryMediaScanner(mediaChannel: channel);
+    final result = await scanner.deleteMediaUris([
+      'phasset://image/ABC-123/L0/001',
+      'phasset://image/',
+      'file:///var/mobile/photo.jpg',
+    ]);
+
+    expect(sentUris, ['phasset://image/ABC-123/L0/001']);
+    expect(result.deleted, 1);
+    expect(result.deletedUris, ['phasset://image/ABC-123/L0/001']);
+  });
+
   test(
     'deleteMediaUris returns no-op when no safe MediaStore item URI exists',
     () async {

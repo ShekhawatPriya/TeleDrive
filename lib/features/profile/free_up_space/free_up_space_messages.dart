@@ -140,7 +140,7 @@ class _FreeUpBottomBar extends StatelessWidget {
     final label = state.scanning
         ? 'Scanning device…'
         : state.deleting
-        ? 'Waiting for Android confirmation…'
+        ? 'Waiting for confirmation…'
         : state.permissionDenied
         ? 'Allow photo access'
         : state.eligibleBytes <= 0

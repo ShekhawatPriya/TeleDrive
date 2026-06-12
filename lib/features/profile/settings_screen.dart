@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -176,7 +178,9 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    _AppUpdatesSettingsTile(),
+                    // APK self-update is Android-only; iOS updates ship via
+                    // the App Store.
+                    if (Platform.isAndroid) _AppUpdatesSettingsTile(),
                   ],
                 ),
               ],

@@ -21,7 +21,14 @@ class UploadNotificationService with WidgetsBindingObserver {
     if (_initialized) return;
     WidgetsBinding.instance.addObserver(this);
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const settings = InitializationSettings(android: android);
+    // Permission prompts are deferred to requestPermission(); initialize() runs
+    // at app launch and must not surface a system dialog.
+    const darwin = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    const settings = InitializationSettings(android: android, iOS: darwin);
     await _plugin.initialize(settings: settings);
     const channel = AndroidNotificationChannel(
       'upload_status',
@@ -43,7 +50,22 @@ class UploadNotificationService with WidgetsBindingObserver {
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
-    return await android?.requestNotificationsPermission() ?? true;
+    if (android != null) {
+      return await android.requestNotificationsPermission() ?? true;
+    }
+    final ios = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
+    if (ios != null) {
+      return await ios.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: true,
+          ) ??
+          true;
+    }
+    return true;
   }
 
   bool get isForeground => _lifecycleState == AppLifecycleState.resumed;
@@ -83,6 +105,11 @@ class UploadNotificationService with WidgetsBindingObserver {
         channelDescription: 'Upload completion and failure alerts',
         importance: Importance.defaultImportance,
         priority: Priority.defaultPriority,
+      ),
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBanner: true,
+        presentSound: false,
       ),
     );
     await _plugin.show(

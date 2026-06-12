@@ -2,7 +2,7 @@ part of 'gallery_backup_controller.dart';
 
 extension _GalleryBackupControllerHelpers on GalleryBackupController {
   Future<bool> _canScan() async {
-    if (!Platform.isAndroid) return false;
+    if (!Platform.isAndroid && !Platform.isIOS) return false;
     if (!_settings.state.loaded || !_settings.state.galleryBackupEnabled) {
       return false;
     }
@@ -23,6 +23,14 @@ extension _GalleryBackupControllerHelpers on GalleryBackupController {
   }
 
   Future<({bool images, bool videos})> _mediaPermissions() async {
+    if (Platform.isIOS) {
+      // One photo-library permission covers photos and videos on iOS.
+      // Permission.videos has no iOS strategy (reports permanently denied) and
+      // Permission.storage is always granted there, which would mask denial.
+      final photos = await Permission.photos.request();
+      final granted = photos.isGranted || photos.isLimited;
+      return (images: granted, videos: granted);
+    }
     final photos = await Permission.photos.request();
     final videos = await Permission.videos.request();
     var imagesGranted = photos.isGranted || photos.isLimited;

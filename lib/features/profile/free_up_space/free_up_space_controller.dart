@@ -34,7 +34,7 @@ class FreeUpSpaceController extends ChangeNotifier {
     required this._drive,
     this._scanner = const GalleryMediaScanner(),
     this._assetStore = const GalleryBackupAssetStore(),
-    this._isAndroid = _defaultIsAndroid,
+    this._isSupportedPlatform = _defaultIsSupportedPlatform,
   });
 
   final AuthController _auth;
@@ -42,7 +42,7 @@ class FreeUpSpaceController extends ChangeNotifier {
   final DriveRepository _drive;
   final GalleryMediaScanner _scanner;
   final GalleryBackupAssetStore _assetStore;
-  final bool Function() _isAndroid;
+  final bool Function() _isSupportedPlatform;
 
   FreeUpSpaceState state = const FreeUpSpaceState();
 
@@ -154,8 +154,8 @@ class FreeUpSpaceController extends ChangeNotifier {
           await _assetStore.markCleanupFailed(
             scope,
             candidate.fingerprint,
-            failureCode: 'android_delete_failed',
-            failureMessage: 'Android could not remove this local media item.',
+            failureCode: 'media_delete_failed',
+            failureMessage: 'This local media item could not be removed.',
           );
         }
       }

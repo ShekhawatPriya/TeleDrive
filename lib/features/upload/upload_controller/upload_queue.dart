@@ -67,7 +67,7 @@ extension _UploadQueue on UploadController {
     }
     if (!await _telegram.isAvailable) {
       throw const TelegramClientUnavailableException(
-        'TeleDrive requires a supported 64-bit Android device for local TDLib file transfer.',
+        'TeleDrive requires a supported Android or iOS device for local TDLib file transfer.',
         code: 'tdlib_unavailable',
       );
     }

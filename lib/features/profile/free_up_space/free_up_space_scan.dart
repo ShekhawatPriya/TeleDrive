@@ -8,7 +8,7 @@ extension _FreeUpSpaceScan on FreeUpSpaceController {
         error: 'Sign in before freeing space on this device.',
       );
     }
-    if (!_isAndroid()) {
+    if (!_isSupportedPlatform()) {
       return FreeUpSpaceState(lastScanAt: DateTime.now());
     }
 
@@ -148,6 +148,14 @@ extension _FreeUpSpaceScan on FreeUpSpaceController {
   }
 
   Future<({bool images, bool videos, bool limited})> _mediaPermissions() async {
+    if (Platform.isIOS) {
+      // One photo-library permission covers photos and videos on iOS.
+      // Permission.videos has no iOS strategy (reports permanently denied) and
+      // Permission.storage is always granted there, which would mask denial.
+      final photos = await Permission.photos.request();
+      final granted = photos.isGranted || photos.isLimited;
+      return (images: granted, videos: granted, limited: photos.isLimited);
+    }
     final photos = await Permission.photos.request();
     final videos = await Permission.videos.request();
     var imagesGranted = photos.isGranted || photos.isLimited;
@@ -194,4 +202,4 @@ extension _FreeUpSpaceScan on FreeUpSpaceController {
   }
 }
 
-bool _defaultIsAndroid() => Platform.isAndroid;
+bool _defaultIsSupportedPlatform() => Platform.isAndroid || Platform.isIOS;

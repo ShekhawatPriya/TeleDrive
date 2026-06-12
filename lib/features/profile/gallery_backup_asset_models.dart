@@ -62,7 +62,9 @@ class GalleryBackupAssetRecord {
   bool get isUploaded => status == GalleryBackupAssetStatus.uploaded;
   bool get isCleaned => cleanedAtMillis != null;
   bool get hasMediaStoreUri =>
-      contentUri != null && contentUri!.startsWith('content://');
+      contentUri != null &&
+      (contentUri!.startsWith('content://') ||
+          contentUri!.startsWith('phasset://'));
   bool get isAutoBackupCleanableHint =>
       isUploaded &&
       !isCleaned &&

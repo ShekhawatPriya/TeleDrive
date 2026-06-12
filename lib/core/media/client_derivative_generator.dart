@@ -125,7 +125,7 @@ class ClientDerivativeGenerator {
         requiresPreview: requiresPreview,
       );
     }
-    if (Platform.isAndroid) {
+    if (Platform.isAndroid || Platform.isIOS) {
       final native = await _tryNativeImageSet(
         localId: localId,
         originalPath: originalPath,
