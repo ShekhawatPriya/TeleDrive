@@ -118,7 +118,7 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
         children: [
           _PreviewCard(
             file: file,
@@ -195,7 +195,9 @@ class _StarButton extends ConsumerWidget {
         await ref.read(driveControllerProvider).toggleStar(file.id);
       },
       icon: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 180),
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
         transitionBuilder: (c, a) => ScaleTransition(scale: a, child: c),
         child: Icon(
           starred ? Icons.star_rounded : Icons.star_outline_rounded,

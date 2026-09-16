@@ -40,7 +40,7 @@ class _SettingsGroupCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
-        borderRadius: AppRadii.lgR,
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: scheme.outlineVariant.withValues(alpha: isDark ? 0.18 : 0.5),
         ),

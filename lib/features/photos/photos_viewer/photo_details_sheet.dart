@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
+import '../../../widgets/media_thumb.dart';
 
 class PhotoDetailsSheet extends StatelessWidget {
   const PhotoDetailsSheet({
@@ -54,25 +55,72 @@ class PhotoDetailsSheet extends StatelessWidget {
                 AppSpacing.xl,
               ),
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                  child: Text(
-                    file.name,
-                    style: theme.textTheme.titleLarge,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (modified != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                    child: Text(
-                      DateFormat('EEE, MMM d, y · h:mm a').format(modified),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 72,
+                      height: 88,
+                      child: MediaThumb(
+                        file: file,
+                        fit: BoxFit.cover,
+                        radius: 16,
                       ),
                     ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'FILE DETAILS',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(file.name, style: theme.textTheme.titleLarge),
+                          const SizedBox(height: 6),
+                          if (created != null)
+                            Text(
+                              DateFormat('MMMM d, yyyy').format(created),
+                              style: theme.textTheme.bodySmall,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                LayoutBuilder(
+                  builder: (context, constraints) => Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _FactCard(
+                        label: 'File size',
+                        value: formatFileSize(file.size),
+                        width: MediaQuery.textScalerOf(context).scale(14) > 22
+                            ? constraints.maxWidth
+                            : (constraints.maxWidth - 10) / 2,
+                        icon: Icons.data_usage_rounded,
+                      ),
+                      _FactCard(
+                        label: file.duration != null ? 'Duration' : 'Format',
+                        value: file.duration != null
+                            ? formatDuration(file.duration!)
+                            : formatLabel(file),
+                        width: MediaQuery.textScalerOf(context).scale(14) > 22
+                            ? constraints.maxWidth
+                            : (constraints.maxWidth - 10) / 2,
+                        icon: file.duration != null
+                            ? Icons.play_circle_outline
+                            : Icons.image_outlined,
+                      ),
+                    ],
                   ),
+                ),
+                const SizedBox(height: 28),
                 _SectionTitle('Details'),
                 if (file.widthPx != null && file.heightPx != null)
                   _DetailRow(
@@ -81,23 +129,12 @@ class PhotoDetailsSheet extends StatelessWidget {
                     value: _dimensions(file),
                   ),
                 _DetailRow(
-                  icon: Icons.sd_storage_outlined,
-                  label: 'Size',
-                  value: formatFileSize(file.size),
-                ),
-                _DetailRow(
-                  icon: Icons.code,
+                  icon: Icons.description_outlined,
                   label: 'Type',
                   value: file.mimeType ?? formatLabel(file),
                 ),
-                if (file.duration != null)
-                  _DetailRow(
-                    icon: Icons.timer_outlined,
-                    label: 'Duration',
-                    value: formatDuration(file.duration!),
-                  ),
                 const SizedBox(height: AppSpacing.md),
-                _SectionTitle('Location'),
+                _SectionTitle('Stored in'),
                 _DetailRow(
                   icon: Icons.folder_outlined,
                   label: 'Folder',
@@ -196,7 +233,7 @@ class _DetailRow extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs + 2),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -204,11 +241,11 @@ class _DetailRow extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: scheme.secondaryContainer,
+              color: scheme.surfaceContainer,
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: Icon(icon, size: 18, color: scheme.onSecondaryContainer),
+            child: Icon(icon, size: 18, color: scheme.onSurfaceVariant),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -226,6 +263,42 @@ class _DetailRow extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FactCard extends StatelessWidget {
+  const _FactCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.width,
+  });
+  final String label;
+  final String value;
+  final IconData icon;
+  final double width;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: scheme.primary, size: 22),
+          const SizedBox(height: 16),
+          Text(value, style: theme.textTheme.titleLarge),
+          const SizedBox(height: 4),
+          Text(label, style: theme.textTheme.bodySmall),
         ],
       ),
     );

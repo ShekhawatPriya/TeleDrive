@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../core/theme/app_theme.dart';
 import '../features/search/search_controller.dart';
 import 'account_button.dart';
 import 'ios_more_menu.dart';
@@ -35,22 +34,47 @@ class TeleDriveTopBar extends StatelessWidget {
       SearchScope.starred => 'Starred',
       SearchScope.shared => 'Shared',
     };
+    final theme = Theme.of(context);
+    final ios = theme.platform == TargetPlatform.iOS;
+    final subtitle = switch (scope) {
+      SearchScope.drive => 'YOUR EVERYDAY SPACE',
+      SearchScope.photos => 'THE MOMENTS YOU KEEP',
+      SearchScope.starred => 'ALWAYS WITHIN REACH',
+      SearchScope.shared => 'GOOD THINGS, SHARED',
+    };
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 8, 16, 12),
+        padding: const EdgeInsets.fromLTRB(24, 12, 20, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
                 Expanded(
-                  child: Semantics(
-                    header: true,
-                    child: Text(
-                      title,
-                      style: Theme.of(context).textTheme.headlineLarge,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        subtitle,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          letterSpacing: 1.5,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Semantics(
+                        header: true,
+                        child: Text(
+                          title,
+                          style: theme.textTheme.headlineLarge?.copyWith(
+                            fontSize: ios ? 34 : 36,
+                            letterSpacing: -1.3,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 if (menuSections != null)
@@ -61,7 +85,7 @@ class TeleDriveTopBar extends StatelessWidget {
                 const AccountButton(),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
             DriveSearchField(key: ValueKey(scope), scope: scope),
           ],
         ),
@@ -132,11 +156,15 @@ class _DriveSearchFieldState extends ConsumerState<DriveSearchField> {
                 },
               ),
         border: OutlineInputBorder(
-          borderRadius: AppRadii.smR,
+          borderRadius: BorderRadius.circular(
+            Theme.of(context).platform == TargetPlatform.iOS ? 16 : 28,
+          ),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: AppRadii.smR,
+          borderRadius: BorderRadius.circular(
+            Theme.of(context).platform == TargetPlatform.iOS ? 16 : 28,
+          ),
           borderSide: BorderSide.none,
         ),
         contentPadding: const EdgeInsets.symmetric(

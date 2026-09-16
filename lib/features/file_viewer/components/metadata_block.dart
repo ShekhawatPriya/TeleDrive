@@ -33,9 +33,8 @@ class MetadataBlock extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: scheme.surface,
+        color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: .9)),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadii.lg),
@@ -43,7 +42,13 @@ class MetadataBlock extends StatelessWidget {
           children: [
             for (var i = 0; i < rows.length; i++) ...[
               if (i != 0)
-                Divider(height: 1, thickness: 1, color: scheme.outlineVariant),
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  indent: 18,
+                  endIndent: 18,
+                  color: scheme.outlineVariant.withValues(alpha: .4),
+                ),
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 18,
@@ -52,8 +57,7 @@ class MetadataBlock extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      width: 110,
+                    Expanded(
                       child: Text(
                         rows[i].label,
                         style: theme.textTheme.bodyMedium?.copyWith(
@@ -65,8 +69,10 @@ class MetadataBlock extends StatelessWidget {
                       child: Text(
                         rows[i].value,
                         textAlign: TextAlign.end,
+                        overflow: TextOverflow.visible,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
+                          color: scheme.onSurface,
                         ),
                       ),
                     ),

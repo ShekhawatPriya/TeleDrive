@@ -49,11 +49,11 @@ class FileCardTile extends StatelessWidget {
       margin: EdgeInsets.zero,
       color: scheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
-        borderRadius: AppRadii.mdR,
+        borderRadius: BorderRadius.circular(24),
         side: borderSide,
       ),
       child: InkWell(
-        borderRadius: AppRadii.mdR,
+        borderRadius: BorderRadius.circular(24),
         onTap: onTap,
         onLongPress: onLongPress,
         child: Column(
@@ -67,11 +67,11 @@ class FileCardTile extends StatelessWidget {
                     child: UploadingShimmer(
                       enabled: isUploading,
                       borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(AppRadii.md),
+                        top: Radius.circular(24),
                       ),
                       child: ClipRRect(
                         borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(AppRadii.md),
+                          top: Radius.circular(24),
                         ),
                         child: MediaThumb(file: file, fit: BoxFit.cover),
                       ),
@@ -89,7 +89,7 @@ class FileCardTile extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: scheme.errorContainer.withValues(alpha: .55),
                           borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(AppRadii.md),
+                            top: Radius.circular(24),
                           ),
                         ),
                         child: Center(
@@ -143,7 +143,7 @@ class FileCardTile extends StatelessWidget {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.bodyLarge?.copyWith(
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.w600,
                                     color: isFailed
                                         ? scheme.error
                                         : scheme.onSurface,
@@ -248,7 +248,7 @@ class _CompactIconButton extends StatelessWidget {
       tooltip: tooltip,
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
-      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      constraints: const BoxConstraints.tightFor(width: 48, height: 48),
     );
   }
 }
@@ -285,7 +285,7 @@ class _StatusChip extends StatelessWidget {
               label,
               style: theme.textTheme.labelSmall?.copyWith(
                 color: scheme.onSurface,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],

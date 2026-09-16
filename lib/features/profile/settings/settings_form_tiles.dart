@@ -78,7 +78,7 @@ class _SettingsSwitchTile extends StatelessWidget {
               child: _SettingsTileText(title: title, subtitle: subtitle),
             ),
             const SizedBox(width: AppSpacing.md),
-            Switch(value: value, onChanged: onChanged),
+            Switch.adaptive(value: value, onChanged: onChanged),
           ],
         ),
       ),

@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/adaptive_surface.dart';
 import '../../widgets/media_thumb.dart';
 import '../drive/components/drive_dialogs.dart';
 import '../drive/components/selection_mode_mixin.dart';
@@ -142,11 +143,16 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
     final idSet = selectedFileIds.toSet();
     final files = _files.where((f) => idSet.contains(f.id)).toList();
     exitSelect();
-    setState(() => _files = _files.where((f) => !idSet.contains(f.id)).toList());
+    setState(
+      () => _files = _files.where((f) => !idSet.contains(f.id)).toList(),
+    );
     try {
       for (final file in files) {
         if (widget.kind == ShelfKind.archive) {
-          await controller.unarchiveFile(file.id, originFolderId: file.parentId);
+          await controller.unarchiveFile(
+            file.id,
+            originFolderId: file.parentId,
+          );
         } else {
           await controller.unlockFile(file.id, originFolderId: file.parentId);
         }
@@ -163,7 +169,9 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
     final ids = selectedFileIds.toList();
     final idSet = ids.toSet();
     exitSelect();
-    setState(() => _files = _files.where((f) => !idSet.contains(f.id)).toList());
+    setState(
+      () => _files = _files.where((f) => !idSet.contains(f.id)).toList(),
+    );
     try {
       await controller.deleteItems(fileIds: ids);
     } catch (_) {
@@ -300,20 +308,11 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(bottom: AppSpacing.xl),
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.sm,
-            AppSpacing.md,
-            AppSpacing.md,
-          ),
-          child: Text(
-            _footerCaption,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-              height: 1.4,
-            ),
-          ),
+        CollectionIntro(
+          title: _title,
+          description: _footerCaption,
+          icon: _emptyIcon,
+          detail: '${_files.length} items',
         ),
         ...tiles,
       ],
@@ -441,4 +440,3 @@ class _ShelfTile extends StatelessWidget {
     );
   }
 }
-

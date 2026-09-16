@@ -1,196 +1,168 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/safe_navigation.dart';
 import '../../../models/share_models.dart';
 
 class ShareListTile extends StatelessWidget {
   const ShareListTile({required this.share, super.key});
-
   final Share share;
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    return Container(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: 6,
-      ),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      child: Material(
         color: scheme.surfaceContainerLow,
-        borderRadius: AppRadii.mdR,
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.7),
-          width: 0.8,
-        ),
-      ),
-      child: InkWell(
-        borderRadius: AppRadii.mdR,
-        onTap: () => context.safePush('/shared/${share.id}'),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          child: Row(
-            children: [
-              _Thumb(share: share),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
+        borderRadius: BorderRadius.circular(24),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => context.safePush('/shared/${share.id}'),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      share.primaryName ?? 'Untitled share',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onSurface,
+                    _Thumb(share: share),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            share.primaryName ?? 'Untitled share',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${share.itemCount ?? share.items.length} items · ${share.permission.label}',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _subtitle(share),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.arrow_outward_rounded,
+                      color: scheme.onSurfaceVariant,
+                      size: 18,
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _CounterBadge(
-                    icon: Icons.visibility_outlined,
-                    value: share.viewCount,
-                    color: scheme.primary.withValues(alpha: 0.08),
-                    textColor: scheme.primary,
-                  ),
-                  const SizedBox(width: 6),
-                  _CounterBadge(
-                    icon: Icons.file_download_outlined,
-                    value: share.downloadCount,
-                    color: Colors.teal.withValues(alpha: 0.08),
-                    textColor: Colors.teal.shade700,
-                  ),
-                ],
-              ),
-            ],
+                const SizedBox(height: 18),
+                Wrap(
+                  spacing: 14,
+                  runSpacing: 10,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    _ShareStatus(share: share),
+                    Text(
+                      '${share.viewCount} views',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    Text(
+                      '${share.downloadCount} downloads',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-
-  String _subtitle(Share share) {
-    final count = share.itemCount ?? share.items.length;
-    final countLabel = count == 1 ? '1 item' : '$count items';
-    return '$countLabel · Anyone with link';
-  }
 }
 
 class ShareCardTile extends StatelessWidget {
   const ShareCardTile({required this.share, super.key});
-
   final Share share;
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final count = share.itemCount ?? share.items.length;
-    final countLabel = count == 1 ? '1 item' : '$count items';
-
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: AppRadii.mdR,
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.7),
-          width: 0.8,
+    return Material(
+      color: theme.colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(24),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.safePush('/shared/${share.id}'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _Thumb(share: share, expand: true),
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: _ShareStatus(share: share),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    share.primaryName ?? 'Untitled share',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${share.viewCount} views · ${share.downloadCount} downloads',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
-      child: ClipRRect(
-        borderRadius: AppRadii.mdR,
-        child: InkWell(
-          borderRadius: AppRadii.mdR,
-          onTap: () => context.safePush('/shared/${share.id}'),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Stack(
-                  children: [
-                    Positioned.fill(child: _Thumb(share: share, expand: true)),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.65),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          countLabel,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      share.primaryName ?? 'Untitled share',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _CounterBadge(
-                          icon: Icons.visibility_outlined,
-                          value: share.viewCount,
-                          color: scheme.primary.withValues(alpha: 0.08),
-                          textColor: scheme.primary,
-                        ),
-                        _CounterBadge(
-                          icon: Icons.file_download_outlined,
-                          value: share.downloadCount,
-                          color: Colors.teal.withValues(alpha: 0.08),
-                          textColor: Colors.teal.shade700,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+    );
+  }
+}
+
+class _ShareStatus extends StatelessWidget {
+  const _ShareStatus({required this.share});
+  final Share share;
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: share.isActive
+            ? scheme.secondaryContainer
+            : scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        share.isRevoked
+            ? 'Revoked'
+            : share.isExpired
+            ? 'Expired'
+            : 'Active link',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: share.isActive
+              ? scheme.onSecondaryContainer
+              : scheme.onSurface,
         ),
       ),
     );
@@ -274,46 +246,6 @@ class _Thumb extends StatelessWidget {
         fit: BoxFit.cover,
         placeholder: (_, __) => placeholder,
         errorWidget: (_, __, ___) => placeholder,
-      ),
-    );
-  }
-}
-
-class _CounterBadge extends StatelessWidget {
-  const _CounterBadge({
-    required this.icon,
-    required this.value,
-    required this.color,
-    required this.textColor,
-  });
-
-  final IconData icon;
-  final int value;
-  final Color color;
-  final Color textColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: textColor),
-          const SizedBox(width: 4),
-          Text(
-            '$value',
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
       ),
     );
   }

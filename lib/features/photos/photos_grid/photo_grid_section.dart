@@ -31,23 +31,23 @@ class PhotoGridSection extends StatelessWidget {
         final count = (constraints.crossAxisExtent / (390 / columns))
             .round()
             .clamp(2, 12);
-        final spacing = count >= 4 ? 2.0 : 3.0;
+        final spacing = count >= 4 ? 4.0 : 8.0;
         return SliverMainAxisGroup(
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
                 child: Semantics(
                   header: true,
                   child: Text(
                     section.label,
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
               ),
             ),
             SliverPadding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
               sliver: SliverGrid.builder(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: count,

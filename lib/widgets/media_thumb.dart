@@ -17,6 +17,7 @@ class MediaThumb extends ConsumerStatefulWidget {
     this.fit = BoxFit.contain,
     this.radius = 18,
     this.showBackground = true,
+    this.decodeWidth = 320,
     super.key,
   });
 
@@ -24,6 +25,7 @@ class MediaThumb extends ConsumerStatefulWidget {
   final BoxFit fit;
   final double radius;
   final bool showBackground;
+  final int decodeWidth;
 
   @override
   ConsumerState<MediaThumb> createState() => _MediaThumbState();
@@ -61,8 +63,8 @@ class _MediaThumbState extends ConsumerState<MediaThumb> {
                   return Image.file(
                     localFile,
                     fit: widget.fit,
-                    cacheWidth: 320,
-                    cacheHeight: 320,
+                    cacheWidth: widget.decodeWidth,
+
                     errorBuilder: (_, err, _) {
                       _debug('Local thumbnail decode failed', err);
                       return _fallback(context);
@@ -103,16 +105,16 @@ class _MediaThumbState extends ConsumerState<MediaThumb> {
             ? Image.file(
                 File(url),
                 fit: widget.fit,
-                cacheWidth: 320,
-                cacheHeight: 320,
+                cacheWidth: widget.decodeWidth,
+
                 errorBuilder: (_, err, _) => _urlError(context, url, err),
               )
             : CachedNetworkImage(
                 cacheManager: TeleDriveThumbnailCacheManager.instance,
                 imageUrl: url,
                 fit: widget.fit,
-                memCacheWidth: 320,
-                memCacheHeight: 320,
+                memCacheWidth: widget.decodeWidth,
+
                 placeholder: (_, __) => const Center(
                   child: SizedBox(
                     width: 18,

@@ -111,7 +111,9 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
       body: SafeArea(
         child: TweenAnimationBuilder<double>(
           tween: Tween<double>(begin: 0.0, end: 1.0),
-          duration: const Duration(milliseconds: 500),
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 500),
           curve: Curves.easeOutCubic,
           builder: (context, value, child) {
             return Opacity(

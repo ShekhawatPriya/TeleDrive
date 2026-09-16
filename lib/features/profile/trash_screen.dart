@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/adaptive_surface.dart';
 import '../../widgets/google_drive_icon.dart';
 import '../../widgets/media_thumb.dart';
 import '../drive/components/drive_dialogs.dart';
@@ -344,20 +345,12 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(bottom: AppSpacing.xl),
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.sm,
-            AppSpacing.md,
-            AppSpacing.md,
-          ),
-          child: Text(
-            'Items here still exist in Telegram storage until you delete them forever.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-              height: 1.4,
-            ),
-          ),
+        CollectionIntro(
+          title: 'Room to reconsider.',
+          description:
+              'Restore these items or delete them forever. Until then, they still use Telegram storage.',
+          icon: Icons.restore_from_trash_outlined,
+          detail: '$_totalCount items',
         ),
         ...tiles,
       ],
@@ -429,7 +422,10 @@ class _TrashTile extends StatelessWidget {
                       )
                     : isFolder
                     ? Center(
-                        child: GoogleDriveIcon.folder(isShared: shared, size: 30),
+                        child: GoogleDriveIcon.folder(
+                          isShared: shared,
+                          size: 30,
+                        ),
                       )
                     : MediaThumb(
                         file: file!,
@@ -489,4 +485,3 @@ class _TrashTile extends StatelessWidget {
     );
   }
 }
-

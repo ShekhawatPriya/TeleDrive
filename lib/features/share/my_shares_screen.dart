@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/share_models.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/adaptive_surface.dart';
 import '../drive/view_preferences_controller.dart';
 import '../search/search_controller.dart';
 import 'components/share_list_tile.dart';
@@ -58,10 +59,11 @@ class _MySharesScreenState extends ConsumerState<MySharesScreen>
     final controller = ref.watch(shareControllerProvider);
     final prefs = ref.watch(viewPreferencesProvider);
     final query = ref.watch(searchQueryProvider(SearchScope.shared)).query;
-    final theme = Theme.of(context);
     final filtered = _applyQuery(controller.shares, query);
     final shareCount = filtered.length;
-    final grid = prefs.layout == LayoutMode.grid;
+    final grid =
+        prefs.layout == LayoutMode.grid &&
+        MediaQuery.textScalerOf(context).scale(14) <= 22;
 
     return Scaffold(
       body: RefreshIndicator(
@@ -73,21 +75,16 @@ class _MySharesScreenState extends ConsumerState<MySharesScreen>
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.sm,
-                  AppSpacing.md,
-                  AppSpacing.sm,
-                ),
-                child: Text(
-                  query.isNotEmpty
-                      ? '$shareCount match${shareCount == 1 ? '' : 'es'}'
-                      : (shareCount == 0
-                            ? 'My shared links'
-                            : '$shareCount link${shareCount == 1 ? '' : 's'}'),
-                  style: theme.textTheme.bodyMedium,
-                ),
+              child: CollectionIntro(
+                title: query.isEmpty
+                    ? 'A link brings it together.'
+                    : 'Search results',
+                description: query.isEmpty
+                    ? 'Manage access and see how your files are being shared.'
+                    : 'Shared links matching your search.',
+                icon: Icons.link_rounded,
+                detail:
+                    '$shareCount ${query.isEmpty ? 'shared links' : 'matches'}',
               ),
             ),
             ..._buildBody(controller, filtered, query, grid),
@@ -155,7 +152,7 @@ class _MySharesScreenState extends ConsumerState<MySharesScreen>
                 AppSpacing.md,
                 0,
                 AppSpacing.md,
-                AppSpacing.lg,
+                160,
               ),
               sliver: SliverGrid.builder(
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -171,7 +168,7 @@ class _MySharesScreenState extends ConsumerState<MySharesScreen>
           ]
         : [
             SliverPadding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+              padding: const EdgeInsets.only(bottom: 160),
               sliver: SliverList.builder(
                 itemCount: filtered.length,
                 itemBuilder: (_, i) => ShareListTile(share: filtered[i]),

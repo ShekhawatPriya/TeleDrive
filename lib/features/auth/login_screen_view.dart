@@ -20,11 +20,12 @@ extension _LoginScreenView on _LoginScreenState {
     };
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           title,
-          style: theme.textTheme.headlineSmall,
-          textAlign: TextAlign.center,
+          style: theme.textTheme.headlineLarge,
+          textAlign: TextAlign.start,
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
@@ -32,7 +33,7 @@ extension _LoginScreenView on _LoginScreenState {
           style: theme.textTheme.bodyMedium?.copyWith(
             color: scheme.onSurfaceVariant,
           ),
-          textAlign: TextAlign.center,
+          textAlign: TextAlign.start,
         ),
       ],
     );
@@ -136,7 +137,7 @@ extension _LoginScreenView on _LoginScreenState {
           keyboardType: TextInputType.number,
           autofillHints: const [AutofillHints.oneTimeCode],
           enabled: !_loading,
-          textAlign: TextAlign.center,
+          textAlign: TextAlign.start,
           maxLength: 6,
           autofocus: true,
           inputFormatters: [

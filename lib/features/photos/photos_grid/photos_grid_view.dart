@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/drive_models.dart';
 import 'photo_date_grouping.dart';
+import '../components/photo_library_cover.dart';
 import 'photo_grid_density.dart';
 import 'photo_grid_section.dart';
 import 'photo_pan_selector.dart';
@@ -9,6 +10,7 @@ import 'photo_pan_selector.dart';
 class PhotosGridView extends StatefulWidget {
   const PhotosGridView({
     required this.files,
+    this.showCover = true,
     required this.density,
     required this.onLoadMore,
     required this.loadingMore,
@@ -21,6 +23,7 @@ class PhotosGridView extends StatefulWidget {
   });
 
   final List<DriveFile> files;
+  final bool showCover;
   final PhotoGridDensity density;
   final VoidCallback onLoadMore;
   final bool loadingMore;
@@ -68,6 +71,15 @@ class _PhotosGridViewState extends State<PhotosGridView> {
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
+                  if (widget.showCover &&
+                      !widget.selectMode &&
+                      widget.files.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: PhotoLibraryCover(
+                        file: widget.files.first,
+                        onTap: () => widget.onTileTap(widget.files.first.id),
+                      ),
+                    ),
                   for (final section in sections)
                     PhotoGridSection(
                       section: section,

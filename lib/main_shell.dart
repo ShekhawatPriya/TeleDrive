@@ -79,8 +79,11 @@ class _MainShellState extends ConsumerState<MainShell>
     return LayoutBuilder(
       builder: (context, constraints) {
         final expanded = constraints.maxWidth >= 840;
-        final content = _buildTabs(index);
+        final content = Builder(
+          builder: (innerContext) => _buildTabs(innerContext, index),
+        );
         return Scaffold(
+          extendBody: !expanded,
           body: expanded
               ? Row(
                   children: [
@@ -128,7 +131,7 @@ class _MainShellState extends ConsumerState<MainShell>
     widget.navigationShell.goBranch(index);
   }
 
-  Widget _buildTabs(int routeIndex) {
+  Widget _buildTabs(BuildContext context, int routeIndex) {
     final selectState = ref.watch(selectionModeStateProvider);
     final isSelectMode = selectState.isSelectModeForTab(routeIndex);
     return Column(
@@ -145,7 +148,7 @@ class _MainShellState extends ConsumerState<MainShell>
               Positioned(
                 left: AppSpacing.md,
                 right: AppSpacing.md,
-                bottom: AppSpacing.md,
+                bottom: MediaQuery.paddingOf(context).bottom + AppSpacing.md,
                 child: FabAnchorPublisher(
                   child: BottomActionSystem(
                     showFab: routeIndex == 0,

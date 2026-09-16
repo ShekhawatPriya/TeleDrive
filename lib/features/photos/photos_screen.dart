@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,6 +15,7 @@ import 'components/photo_context_menu.dart';
 import 'components/photo_preview_overlay.dart';
 import 'components/photos_selection_bar.dart';
 import 'photos_grid/photo_grid_density.dart';
+import 'photos_filter.dart';
 import 'photos_grid/photos_grid_view.dart';
 
 class PhotosScreen extends ConsumerStatefulWidget {
@@ -25,6 +27,7 @@ class PhotosScreen extends ConsumerStatefulWidget {
 
 class _PhotosScreenState extends ConsumerState<PhotosScreen>
     with SelectionModeMixin<PhotosScreen> {
+  PhotosFilter _filter = PhotosFilter.all;
   @override
   Widget build(BuildContext context) {
     final selectState = ref.read(selectionModeStateProvider);
@@ -39,7 +42,7 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
     final drive = ref.watch(driveControllerProvider);
     final density = ref.watch(photoGridDensityProvider);
     final query = ref.watch(searchQueryProvider(SearchScope.photos)).query;
-    final all = drive.photoFiles('all');
+    final all = drive.photoFiles('all').where(_filter.accepts).toList();
     final files = query.isEmpty
         ? all
         : all.where((f) => f.name.toLowerCase().contains(query)).toList();
@@ -70,17 +73,66 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
               ),
             if (!selectMode)
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-                child: Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Text(
-                    query.isNotEmpty
-                        ? '$allCount matches in loaded photos'
-                        : (allCount == 0
-                              ? 'Your media library'
-                              : '$allCount items'),
-                    style: theme.textTheme.bodyMedium,
-                  ),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (theme.platform == TargetPlatform.iOS &&
+                        MediaQuery.textScalerOf(context).scale(14) <= 22)
+                      SizedBox(
+                        width: double.infinity,
+                        child: CupertinoSlidingSegmentedControl<PhotosFilter>(
+                          groupValue: _filter,
+                          backgroundColor: theme.colorScheme.surfaceContainer,
+                          thumbColor: theme.colorScheme.surfaceContainerLow,
+                          children: {
+                            for (final filter in PhotosFilter.values)
+                              filter: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                  horizontal: 8,
+                                ),
+                                child: Text(
+                                  filter == PhotosFilter.all
+                                      ? 'All media'
+                                      : filter.label,
+                                  style: theme.textTheme.labelLarge,
+                                ),
+                              ),
+                          },
+                          onValueChanged: (filter) {
+                            if (filter != null)
+                              setState(() => _filter = filter);
+                          },
+                        ),
+                      )
+                    else
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          for (final filter in PhotosFilter.values)
+                            ChoiceChip(
+                              label: Text(
+                                filter == PhotosFilter.all
+                                    ? 'All media'
+                                    : filter.label,
+                              ),
+                              selected: _filter == filter,
+                              showCheckmark: false,
+                              onSelected: (_) =>
+                                  setState(() => _filter = filter),
+                            ),
+                        ],
+                      ),
+                    const SizedBox(height: 8),
+                    Text(
+                      query.isNotEmpty
+                          ? '$allCount matches in loaded photos'
+                          : '$allCount items in your loaded library',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
                 ),
               ),
             Expanded(
@@ -89,6 +141,7 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
                 child: files.isNotEmpty
                     ? PhotosGridView(
                         files: files,
+                        showCover: query.isEmpty,
                         density: density,
                         loadingMore: drive.state.loadingMoreMedia,
                         selectMode: selectMode,
@@ -146,7 +199,7 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
       toggleFileSelection(fileId);
       return;
     }
-    context.safePush('/photos/view/$fileId?filter=all');
+    context.safePush('/photos/view/$fileId?filter=${_filter.queryValue}');
   }
 
   void _onTileLongPress(String fileId, GlobalKey key) {

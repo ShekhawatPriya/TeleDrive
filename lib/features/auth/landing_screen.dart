@@ -3,6 +3,7 @@ import '../../core/config/app_config.dart';
 import '../../widgets/brand_mark.dart';
 import '../../core/utils/safe_navigation.dart';
 import 'components/how_it_works_section.dart';
+import 'components/landing_collection_art.dart';
 import 'components/privacy_and_trust_section.dart';
 import 'components/storage_separation_section.dart';
 
@@ -20,7 +21,7 @@ class LandingScreen extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
               children: [
                 Row(
                   children: [
@@ -29,21 +30,44 @@ class LandingScreen extends StatelessWidget {
                     Text('TeleDrive', style: theme.textTheme.titleMedium),
                   ],
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 28),
+                const LandingCollectionArt(),
+                const SizedBox(height: 28),
                 Semantics(
                   header: true,
                   child: Text(
-                    'A little more room.\nFor everything.',
-                    style: theme.textTheme.displayMedium,
+                    'Life, collected.',
+                    style: theme.textTheme.displayMedium?.copyWith(
+                      letterSpacing: -1.6,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Your files, photos and everyday essentials. Organized in one calm space, connected to your Telegram account.',
+                  'A home for your photos, files and everything worth keeping. Connected to your Telegram.',
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: () => context.safePush('/login'),
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  label: const Text('Continue with Telegram'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'You will need access to your Telegram account to sign in.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 24),
                 const SizedBox(height: 32),
                 const _Feature(
                   icon: Icons.folder_outlined,
@@ -60,21 +84,6 @@ class LandingScreen extends StatelessWidget {
                   icon: Icons.link_rounded,
                   title: 'Share on your terms',
                   detail: 'Create links and revoke access when you need to.',
-                ),
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: () => context.safePush('/login'),
-                  icon: const Icon(Icons.arrow_forward_rounded),
-                  label: const Text('Continue with Telegram'),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(54),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'You will need access to your Telegram account to sign in.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: 24),
                 Card(

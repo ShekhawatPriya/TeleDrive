@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../models/drive_models.dart';
+import '../../../widgets/adaptive_surface.dart';
 
-/// Translucent overlay top bar for the photo viewer. Surface uses the
-/// theme's `inverseSurface` (black-on-light, white-on-dark) at 60% opacity
-/// so the underlying photo remains visible while the bar is readable.
+/// A floating toolbar with stable contrast over photos in either app theme.
 class PhotoViewerTopBar extends StatelessWidget {
   const PhotoViewerTopBar({
     required this.file,
@@ -28,55 +27,82 @@ class PhotoViewerTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return AnimatedOpacity(
-      duration: AppDurations.short3,
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : AppDurations.short3,
       opacity: visible ? 1 : 0,
       child: IgnorePointer(
         ignoring: !visible,
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Colors.black87, Colors.transparent],
-            ),
-          ),
-          child: SafeArea(
-            bottom: false,
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: onBack,
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  tooltip: 'Back',
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: file == null ? null : onStar,
-                  icon: Icon(
-                    file?.starred == true
-                        ? Icons.star_rounded
-                        : Icons.star_border_rounded,
-                    color: Colors.white,
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            child: Theme(
+              data: theme.copyWith(
+                colorScheme: AppBrand.scheme(Brightness.dark),
+              ),
+              child: AdaptiveSurface(
+                radius: 28,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: onBack,
+                          tooltip: 'Back',
+                          icon: Icon(
+                            theme.platform == TargetPlatform.iOS
+                                ? Icons.chevron_left_rounded
+                                : Icons.arrow_back_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: file == null ? null : onStar,
+                          tooltip: file?.starred == true
+                              ? 'Remove star'
+                              : 'Add star',
+                          icon: Icon(
+                            file?.starred == true
+                                ? Icons.star_rounded
+                                : Icons.star_border_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: file == null ? null : onDownload,
+                          tooltip: 'Download',
+                          icon: const Icon(
+                            Icons.download_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: file == null ? null : onInfo,
+                          tooltip: 'Info',
+                          icon: const Icon(
+                            Icons.info_outline,
+                            color: Colors.white,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: file == null ? null : onMore,
+                          tooltip: 'More',
+                          icon: const Icon(
+                            Icons.more_horiz_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  tooltip: 'Star',
                 ),
-                IconButton(
-                  onPressed: file == null ? null : onDownload,
-                  icon: const Icon(Icons.download_rounded, color: Colors.white),
-                  tooltip: 'Download',
-                ),
-                IconButton(
-                  onPressed: file == null ? null : onInfo,
-                  icon: const Icon(Icons.info_outline, color: Colors.white),
-                  tooltip: 'Info',
-                ),
-                IconButton(
-                  onPressed: file == null ? null : onMore,
-                  icon: const Icon(Icons.more_vert, color: Colors.white),
-                  tooltip: 'More',
-                ),
-              ],
+              ),
             ),
           ),
         ),

@@ -50,7 +50,7 @@ extension _TdlibSessionScreenView on _TdlibSessionScreenState {
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              'Authorize TDLib',
+              'Connect your device',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w800,
               ),

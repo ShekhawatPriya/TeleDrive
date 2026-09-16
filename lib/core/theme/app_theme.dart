@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'tokens/app_color.dart';
@@ -22,6 +23,7 @@ export 'tokens/app_typography.dart' show AppTextThemeExt, buildAppTextTheme;
 /// from [AppBrand.scheme] for consistent light, dark and high-contrast roles.
 ThemeData buildTheme(ColorScheme scheme) {
   final textTheme = buildAppTextTheme(scheme);
+  final ios = defaultTargetPlatform == TargetPlatform.iOS;
 
   return ThemeData(
     useMaterial3: true,
@@ -47,7 +49,7 @@ ThemeData buildTheme(ColorScheme scheme) {
       shadowColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
-      centerTitle: false,
+      centerTitle: ios,
       toolbarHeight: 64,
       titleSpacing: AppSpacing.md,
       titleTextStyle: textTheme.titleLarge,
@@ -61,7 +63,9 @@ ThemeData buildTheme(ColorScheme scheme) {
       shadowColor: scheme.shadow,
       elevation: 0,
       margin: const EdgeInsets.all(AppSpacing.xxs),
-      shape: RoundedRectangleBorder(borderRadius: AppRadii.mdR),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(ios ? 24 : 28),
+      ),
       clipBehavior: Clip.antiAlias,
     ),
 
@@ -254,7 +258,7 @@ ThemeData buildTheme(ColorScheme scheme) {
         color: scheme.onInverseSurface,
       ),
       actionTextColor: scheme.inversePrimary,
-      behavior: SnackBarBehavior.fixed,
+      behavior: SnackBarBehavior.floating,
       elevation: AppElevation.level3,
       shape: RoundedRectangleBorder(borderRadius: AppRadii.smR),
     ),
@@ -271,8 +275,8 @@ ThemeData buildTheme(ColorScheme scheme) {
       secondaryLabelStyle: textTheme.labelLarge?.copyWith(
         color: scheme.onSecondaryContainer,
       ),
-      side: BorderSide(color: scheme.outline),
-      shape: RoundedRectangleBorder(borderRadius: AppRadii.smR),
+      side: BorderSide.none,
+      shape: const StadiumBorder(),
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.xs / 2,

@@ -6,6 +6,7 @@ export 'drive_recents_strip.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
 import '../../../widgets/file_card_tile.dart';
+import '../../../widgets/folder_collection_card.dart';
 import '../../../widgets/file_list_tile.dart';
 import '../../upload/upload_controller.dart';
 import '../drive_controller.dart';
@@ -38,6 +39,31 @@ class DriveFolderSliver extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (!selectMode && MediaQuery.textScalerOf(context).scale(14) <= 22) {
+      return SliverPadding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+        sliver: SliverGrid.builder(
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 280,
+            mainAxisExtent: 170,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+          ),
+          itemCount: folders.length,
+          itemBuilder: (_, i) {
+            final folder = folders[i];
+            return FolderCollectionCard(
+              folder: folder,
+              onTap: () => onFolderTap(folder),
+              onLongPress: folder.isOptimistic
+                  ? null
+                  : () => onFolderLongPress(folder.id),
+              onMore: folder.isOptimistic ? null : () => onFolderMore(folder),
+            );
+          },
+        ),
+      );
+    }
     return SliverList.builder(
       itemCount: folders.length,
       itemBuilder: (_, i) {
@@ -94,9 +120,9 @@ class DriveFilesSliver extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (grid) {
+    if (grid && MediaQuery.textScalerOf(context).scale(14) <= 22) {
       return SliverPadding(
-        padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPadding),
+        padding: EdgeInsets.fromLTRB(20, 12, 20, bottomPadding),
         sliver: SliverGrid.builder(
           gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
             maxCrossAxisExtent: 260,

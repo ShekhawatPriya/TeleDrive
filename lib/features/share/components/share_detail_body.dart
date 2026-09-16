@@ -35,12 +35,12 @@ class ShareDetailBody extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
-        // Premium Share Link Card
+        // Link and access controls.
         Container(
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
             color: scheme.surfaceContainerLow,
-            borderRadius: AppRadii.mdR,
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: scheme.outlineVariant.withValues(alpha: 0.7),
               width: 0.8,
@@ -64,14 +64,26 @@ class ShareDetailBody extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    'Sharing Link',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: scheme.onSurface,
+                  Expanded(
+                    child: Text(
+                      'Share access',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: scheme.onSurface,
+                      ),
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                share.primaryName ?? 'Shared collection',
+                style: theme.textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${share.permission.label} · ${share.isActive ? 'Active link' : 'Link inactive'}',
+                style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: AppSpacing.md),
               Container(
@@ -92,30 +104,19 @@ class ShareDetailBody extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: onCopy,
-                      icon: const Icon(Icons.content_copy_rounded, size: 16),
-                      label: const Text('Copy link'),
-                      style: OutlinedButton.styleFrom(
-                        shape: const StadiumBorder(),
-                        minimumSize: const Size.fromHeight(40),
-                      ),
-                    ),
+                  FilledButton.icon(
+                    onPressed: onCopy,
+                    icon: const Icon(Icons.content_copy_rounded, size: 18),
+                    label: const Text('Copy link'),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: onShare,
-                      icon: const Icon(Icons.share_rounded, size: 16),
-                      label: const Text('Share'),
-                      style: FilledButton.styleFrom(
-                        shape: const StadiumBorder(),
-                        minimumSize: const Size.fromHeight(40),
-                      ),
-                    ),
+                  OutlinedButton.icon(
+                    onPressed: onShare,
+                    icon: const Icon(Icons.ios_share_rounded, size: 18),
+                    label: const Text('Share'),
                   ),
                 ],
               ),
@@ -124,18 +125,18 @@ class ShareDetailBody extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.lg),
 
-        // Beautiful Redesigned Analytics counters
+        // Activity totals.
         ShareCounters(share: share, stats: stats),
         const SizedBox(height: AppSpacing.lg),
 
-        // Country breakdowns list inside a gorgeous container
+        // Country breakdown.
         if (byCountry.isNotEmpty) ...[
           _buildSectionHeader(context, 'By country', Icons.public_rounded),
           const SizedBox(height: AppSpacing.xs),
           Container(
             decoration: BoxDecoration(
               color: scheme.surfaceContainerLow,
-              borderRadius: AppRadii.mdR,
+              borderRadius: BorderRadius.circular(24),
               border: Border.all(
                 color: scheme.outlineVariant.withValues(alpha: 0.7),
                 width: 0.8,
@@ -223,11 +224,13 @@ class ShareDetailBody extends StatelessWidget {
         children: [
           Icon(icon, size: 20, color: scheme.primary),
           const SizedBox(width: 8),
-          Text(
-            title,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: scheme.onSurface,
-              fontWeight: FontWeight.bold,
+          Flexible(
+            child: Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: scheme.onSurface,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -251,7 +254,11 @@ class ShareCounters extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Row(
+    return Flex(
+      direction: MediaQuery.textScalerOf(context).scale(14) > 22
+          ? Axis.vertical
+          : Axis.horizontal,
+      mainAxisSize: MainAxisSize.min,
       children: [
         _Counter(
           label: 'Views',
@@ -264,14 +271,14 @@ class ShareCounters extends StatelessWidget {
           label: 'Downloads',
           value: share.downloadCount,
           icon: Icons.file_download_outlined,
-          iconColor: Colors.teal.shade700,
+          iconColor: scheme.tertiary,
           bgColor: Colors.teal.withValues(alpha: 0.08),
         ),
         _Counter(
           label: 'Unique',
           value: stats?.uniqueViewers ?? 0,
           icon: Icons.people_outline_rounded,
-          iconColor: Colors.indigo.shade700,
+          iconColor: scheme.secondary,
           bgColor: Colors.indigo.withValues(alpha: 0.08),
         ),
       ],
@@ -298,47 +305,54 @@ class _Counter extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.xs,
-          vertical: AppSpacing.md,
-        ),
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerLow,
-          borderRadius: AppRadii.mdR,
-          border: Border.all(
-            color: scheme.outlineVariant.withValues(alpha: 0.7),
-            width: 0.8,
-          ),
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-              child: Icon(icon, size: 18, color: iconColor),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              '$value',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: scheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
+    final card = Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.7),
+          width: 0.8,
         ),
       ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+            child: Icon(icon, size: 18, color: iconColor),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '$value',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: scheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
+    return MediaQuery.textScalerOf(context).scale(14) > 22
+        ? SizedBox(
+            width: double.infinity,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: card,
+            ),
+          )
+        : Expanded(child: card);
   }
 }

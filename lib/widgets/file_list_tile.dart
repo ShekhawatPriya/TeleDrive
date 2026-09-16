@@ -118,7 +118,7 @@ class FileListTile extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodyLarge?.copyWith(
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
           color: isFailed ? scheme.error : scheme.onSurface,
         ),
       ),
@@ -165,14 +165,15 @@ class FileListTile extends StatelessWidget {
           : Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                IconButton(
-                  onPressed: onStar,
-                  icon: Icon(
-                    starred ? Icons.star_rounded : Icons.star_border_rounded,
-                    color: starred ? scheme.primary : scheme.onSurfaceVariant,
+                if (onStar != null)
+                  IconButton(
+                    onPressed: onStar,
+                    icon: Icon(
+                      starred ? Icons.star_rounded : Icons.star_border_rounded,
+                      color: starred ? scheme.primary : scheme.onSurfaceVariant,
+                    ),
+                    tooltip: starred ? 'Unstar $name' : 'Star $name',
                   ),
-                  tooltip: starred ? 'Unstar $name' : 'Star $name',
-                ),
                 IconButton(
                   onPressed: onMore,
                   icon: const Icon(Icons.more_vert),
@@ -183,8 +184,13 @@ class FileListTile extends StatelessWidget {
     );
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-      child: tile,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      child: Material(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: tile,
+      ),
     );
   }
 }

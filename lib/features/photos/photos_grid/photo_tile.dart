@@ -26,37 +26,44 @@ class PhotoTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final selectedWash = scheme.primary.withValues(alpha: .12);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: Hero(
-        tag: 'photo-${file.id}',
-        flightShuttleBuilder: (_, __, ___, ____, _____) {
-          return MediaThumb(file: file, fit: BoxFit.cover, radius: 0);
-        },
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            AnimatedContainer(
-              duration: AppDurations.short3,
-              curve: AppEasing.standardDecelerate,
-              padding: selected ? const EdgeInsets.all(8) : EdgeInsets.zero,
-              color: selected ? selectedWash : Colors.transparent,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(selected ? AppRadii.xs : 0),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    _thumb(selectedWash),
-                    if (isVideoFile(file)) _videoBadge(),
-                    if (file.shared && !file.isOptimistic) _sharedBadge(),
-                  ],
+    return Semantics(
+      button: true,
+      label: file.name,
+      selected: selected,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Hero(
+          tag: 'photo-${file.id}',
+          flightShuttleBuilder: (_, __, ___, ____, _____) {
+            return MediaThumb(file: file, fit: BoxFit.cover, radius: 0);
+          },
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              AnimatedContainer(
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : AppDurations.short3,
+                curve: AppEasing.standardDecelerate,
+                padding: selected ? const EdgeInsets.all(8) : EdgeInsets.zero,
+                color: selected ? selectedWash : Colors.transparent,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _thumb(selectedWash),
+                      if (isVideoFile(file)) _videoBadge(),
+                      if (file.shared && !file.isOptimistic) _sharedBadge(),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            if (selectMode) _selectionMark(context),
-          ],
+              if (selectMode) _selectionMark(context),
+            ],
+          ),
         ),
       ),
     );
@@ -122,7 +129,9 @@ class PhotoTile extends StatelessWidget {
       top: 6,
       left: 6,
       child: AnimatedContainer(
-        duration: AppDurations.short3,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : AppDurations.short3,
         width: 24,
         height: 24,
         decoration: BoxDecoration(

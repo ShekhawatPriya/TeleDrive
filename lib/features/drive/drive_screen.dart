@@ -224,16 +224,6 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(0, AppSpacing.xs, 0, 0),
-                  child: DriveQuickActions(
-                    onTrashTap: () => context.safePush('/settings/trash'),
-                    onArchiveTap: () => context.safePush('/settings/archive'),
-                    onLockedTap: () => context.safePush('/settings/locked'),
-                  ),
-                ),
-              ),
               if (!loaded && loading)
                 const SliverFillRemaining(child: SkeletonList()),
               if (error != null) _ErrorBanner(error),
@@ -253,12 +243,28 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                   ),
                 ),
               if (recent.isNotEmpty && query.isEmpty) ...[
-                const DriveSectionHeader('Recent', topPadding: AppSpacing.sm),
+                const DriveSectionHeader(
+                  'Pick up where you left off',
+                  topPadding: AppSpacing.sm,
+                ),
                 SliverToBoxAdapter(
                   child: DriveRecentsStrip(
                     files: recent,
                     onFileTap: (f) => openDriveFile(context, ref, f),
                     onMore: (f) => DriveItemActions.openFile(context, ref, f),
+                  ),
+                ),
+              ],
+              if (query.isEmpty) ...[
+                const DriveSectionHeader('Your spaces'),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(0, AppSpacing.xs, 0, 0),
+                    child: DriveQuickActions(
+                      onTrashTap: () => context.safePush('/settings/trash'),
+                      onArchiveTap: () => context.safePush('/settings/archive'),
+                      onLockedTap: () => context.safePush('/settings/locked'),
+                    ),
                   ),
                 ),
               ],

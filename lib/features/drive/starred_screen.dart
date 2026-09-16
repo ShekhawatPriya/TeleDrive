@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme/app_theme.dart';
 import '../../core/utils/safe_navigation.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/adaptive_surface.dart';
 import '../../widgets/file_card_tile.dart';
 import '../../widgets/file_list_tile.dart';
 import '../../widgets/skeletons.dart';
@@ -58,8 +58,9 @@ class _StarredScreenState extends ConsumerState<StarredScreen> {
       ascending: prefs.ascending,
     );
     final totalItems = starredFiles.length + starredFolders.length;
-    final theme = Theme.of(context);
-    final grid = prefs.layout == LayoutMode.grid;
+    final grid =
+        prefs.layout == LayoutMode.grid &&
+        MediaQuery.textScalerOf(context).scale(14) <= 22;
     final loaded = snapshot.loaded;
     final loading = snapshot.loading;
     final hasMore = snapshot.hasMore;
@@ -86,21 +87,17 @@ class _StarredScreenState extends ConsumerState<StarredScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.md,
-                    AppSpacing.sm,
-                    AppSpacing.md,
-                    AppSpacing.sm,
-                  ),
-                  child: Text(
-                    query.isNotEmpty
-                        ? '$totalItems match${totalItems == 1 ? '' : 'es'}'
-                        : (totalItems == 0
-                              ? 'Quick access to favourites'
-                              : '$totalItems item${totalItems == 1 ? '' : 's'}'),
-                    style: theme.textTheme.bodyMedium,
-                  ),
+                child: CollectionIntro(
+                  title: query.isEmpty
+                      ? 'The important things.'
+                      : 'Search results',
+                  description: query.isEmpty
+                      ? 'Your handpicked files and folders, together in one place.'
+                      : 'Matches from the starred items loaded on this device.',
+                  icon: Icons.star_rounded,
+                  detail: loaded
+                      ? '$totalItems${hasMore ? '+' : ''} ${query.isEmpty ? 'saved items' : 'matches'}'
+                      : 'Your collection',
                 ),
               ),
               if (!loaded && loading)
@@ -164,7 +161,12 @@ class _StarredScreenState extends ConsumerState<StarredScreen> {
                 ),
               if (starredFiles.isNotEmpty)
                 SliverPadding(
-                  padding: const EdgeInsets.only(bottom: 120),
+                  padding: EdgeInsets.fromLTRB(
+                    grid ? 20 : 0,
+                    8,
+                    grid ? 20 : 0,
+                    160,
+                  ),
                   sliver: grid
                       ? SliverGrid.builder(
                           gridDelegate:

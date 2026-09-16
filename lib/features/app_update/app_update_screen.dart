@@ -74,7 +74,9 @@ class _AppUpdateScreenState extends ConsumerState<AppUpdateScreen> {
       body: SafeArea(
         top: false,
         child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 280),
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 280),
           switchInCurve: Curves.easeOutCubic,
           switchOutCurve: Curves.easeInCubic,
           transitionBuilder: (child, animation) => FadeTransition(

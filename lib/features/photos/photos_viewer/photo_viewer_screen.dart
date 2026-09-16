@@ -103,7 +103,9 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
             right: 0,
             bottom: 0,
             child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 180),
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 180),
               opacity: _chromeVisible ? 1 : 0,
               child: IgnorePointer(
                 ignoring: !_chromeVisible,
@@ -126,16 +128,35 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
                           colors: [Colors.black87, Colors.transparent],
                         ),
                       ),
-                      child: const Column(
+                      child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: Text(
+                              current.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(color: Colors.white),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${index + 1} of ${files.length}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const Icon(
                             Icons.keyboard_arrow_up,
                             color: Colors.white70,
                             size: 20,
                           ),
-                          SizedBox(height: 2),
-                          Text(
+                          const SizedBox(height: 2),
+                          const Text(
                             'Swipe up for details',
                             style: TextStyle(
                               color: Colors.white70,

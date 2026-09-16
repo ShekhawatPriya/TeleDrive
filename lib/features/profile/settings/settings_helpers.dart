@@ -84,43 +84,22 @@ class _SettingsPageHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final isDark = scheme.brightness == Brightness.dark;
-
+    final ios = theme.platform == TargetPlatform.iOS;
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      padding: const EdgeInsets.all(AppSpacing.md),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: AppRadii.lgR,
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: isDark ? 0.18 : 0.5),
-        ),
+        color: ios ? scheme.surfaceContainerLow : scheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(ios ? 24 : 28),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SettingsIconBadge(icon: icon, color: color, size: 48),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  description,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const SizedBox(height: 18),
+          Text(title, style: theme.textTheme.headlineSmall),
+          const SizedBox(height: 8),
+          Text(description, style: theme.textTheme.bodyMedium),
         ],
       ),
     );

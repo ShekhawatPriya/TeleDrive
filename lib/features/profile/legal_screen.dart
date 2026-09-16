@@ -43,7 +43,9 @@ class _LegalScreenState extends State<LegalScreen> {
       if (_pageController.hasClients) {
         _pageController.animateToPage(
           widget.kind.index,
-          duration: AppDurations.medium3,
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : AppDurations.medium3,
           curve: AppEasing.emphasizedDecelerate,
         );
       }
@@ -59,7 +61,9 @@ class _LegalScreenState extends State<LegalScreen> {
     if (_pageController.hasClients) {
       _pageController.animateToPage(
         target.index,
-        duration: AppDurations.medium3,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : AppDurations.medium3,
         curve: AppEasing.emphasizedDecelerate,
       );
     }

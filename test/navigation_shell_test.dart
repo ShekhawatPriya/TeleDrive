@@ -126,6 +126,10 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(_scope(MaterialApp.router(routerConfig: router)));
     await tester.pumpAndSettle();
+    expect(
+      tester.getRect(find.byType(FloatingActionButton)).bottom,
+      lessThan(tester.getRect(find.byType(FloatingPillNavigationBar)).top),
+    );
     await tester.enterText(
       find.byKey(const ValueKey('edit-drive')),
       'preserved',
