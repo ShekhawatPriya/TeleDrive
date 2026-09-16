@@ -23,7 +23,10 @@ part 'auth_controller_session_actions.dart';
 part 'auth_controller_pending.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) {
-  final client = ApiClient(ref.watch(backendResolverProvider));
+  // Requests consult the live resolver themselves. Watch its identity, not its
+  // status notifications: rebuilding this chain discards API credentials and
+  // replaces AuthController behind the router's existing listeners.
+  final client = ApiClient(ref.watch(backendResolverProvider.notifier));
   ref.onDispose(() => client.dio.close(force: true));
   return client;
 });
