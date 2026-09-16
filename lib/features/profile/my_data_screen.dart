@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import '../../widgets/ios/ios_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -14,6 +16,7 @@ import '../auth/auth_controller.dart';
 import '../drive/drive_controller.dart';
 import 'storage_summary_controller.dart';
 
+part 'my_data/my_data_ios.dart';
 part 'my_data/my_data_diagnostics_card.dart';
 part 'my_data/my_data_export_dialog.dart';
 part 'my_data/my_data_profile_hero.dart';
@@ -91,6 +94,8 @@ class _MyDataScreenState extends ConsumerState<MyDataScreen> {
         ref.watch(storageSummaryControllerProvider).value ??
         StorageSummary.empty;
 
+    if (theme.platform == TargetPlatform.iOS)
+      return _buildIosData(context, auth, summary);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,

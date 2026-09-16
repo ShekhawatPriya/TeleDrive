@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import '../../widgets/ios/ios_page.dart';
+import '../../widgets/native_glass_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,6 +9,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/file_type_detector.dart';
 import 'free_up_space/free_up_space_controller.dart';
 
+part 'free_up_space/free_up_space_ios.dart';
 part 'free_up_space/free_up_space_breakdown.dart';
 part 'free_up_space/free_up_space_confirmation_sheet.dart';
 part 'free_up_space/free_up_space_dialog.dart';
@@ -47,6 +51,8 @@ class _FreeUpSpaceScreenState extends ConsumerState<FreeUpSpaceScreen> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
+    if (theme.platform == TargetPlatform.iOS)
+      return _buildIosFreeUp(context, controller, state);
     return Scaffold(
       backgroundColor: scheme.surface,
       appBar: AppBar(

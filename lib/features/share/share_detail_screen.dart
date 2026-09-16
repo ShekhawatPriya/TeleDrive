@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import '../../widgets/ios/ios_page.dart';
+import '../../widgets/native_glass_button.dart';
+import 'components/ios_share_detail_content.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
@@ -124,6 +128,36 @@ class _ShareDetailScreenState extends ConsumerState<ShareDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final share = _share;
+    if (Theme.of(context).platform == TargetPlatform.iOS)
+      return IosPage(
+        title: 'Share',
+        trailing: NativeGlassButton(
+          label: 'Revoke',
+          symbol: 'xmark.circle',
+          icon: CupertinoIcons.link,
+          onPressed: share == null || _busy ? null : _revoke,
+        ),
+        children: [
+          if (share == null)
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: _error == null
+                  ? const Center(child: CupertinoActivityIndicator())
+                  : Text(_error!),
+            )
+          else
+            IosShareDetailContent(
+              share: share,
+              stats: _stats,
+              accesses: _accesses,
+              loading: _accessesLoading,
+              hasMore: _accessesHasMore,
+              onLoadMore: _loadMoreAccesses,
+              onCopy: _copyLink,
+              onShare: _shareLink,
+            ),
+        ],
+      );
     return Scaffold(
       appBar: AppBar(
         title: Text(share?.primaryName ?? 'Share'),

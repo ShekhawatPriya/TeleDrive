@@ -9,6 +9,7 @@ TextTheme buildAppTextTheme(ColorScheme scheme) {
           defaultTargetPlatform == TargetPlatform.macOS
       ? '.SF Pro Text'
       : 'Roboto';
+  final ios = defaultTargetPlatform == TargetPlatform.iOS;
   const base = TextTheme();
   final onSurface = scheme.onSurface;
   final onSurfaceVariant = scheme.onSurfaceVariant;
@@ -63,9 +64,19 @@ TextTheme buildAppTextTheme(ColorScheme scheme) {
       letter: -0.4,
     ),
     titleLarge: s(size: 20, height: 26, weight: FontWeight.w600, letter: -0.3),
-    titleMedium: s(size: 16, height: 24, weight: FontWeight.w500, letter: 0.15),
+    titleMedium: s(
+      size: ios ? 17 : 16,
+      height: 24,
+      weight: FontWeight.w500,
+      letter: 0,
+    ),
     titleSmall: s(size: 14, height: 20, weight: FontWeight.w500, letter: 0.10),
-    bodyLarge: s(size: 16, height: 24, weight: FontWeight.w400, letter: 0),
+    bodyLarge: s(
+      size: ios ? 17 : 16,
+      height: 24,
+      weight: FontWeight.w400,
+      letter: 0,
+    ),
     bodyMedium: s(
       size: 14,
       height: 20,

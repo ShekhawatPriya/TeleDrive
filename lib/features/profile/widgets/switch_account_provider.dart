@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
@@ -292,6 +293,28 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
   }
 
   Future<bool?> _confirmRemove(BuildContext context, SavedAccount account) {
+    if (Theme.of(context).platform == TargetPlatform.iOS) {
+      return showCupertinoDialog<bool>(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Remove from this device?'),
+          content: Text(
+            'Remove ${account.displayName} from this iPhone? Your cloud files and Telegram session are not deleted.',
+          ),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            CupertinoDialogAction(
+              isDestructiveAction: true,
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Remove'),
+            ),
+          ],
+        ),
+      );
+    }
     return showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(

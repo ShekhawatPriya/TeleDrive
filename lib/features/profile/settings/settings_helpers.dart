@@ -85,11 +85,26 @@ class _SettingsPageHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final ios = theme.platform == TargetPlatform.iOS;
+    if (ios)
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(32, 8, 32, 20),
+        child: Column(
+          children: [
+            _SettingsIconBadge(icon: icon, color: color, size: 56),
+            const SizedBox(height: 16),
+            Text(
+              description,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium,
+            ),
+          ],
+        ),
+      );
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: ios ? scheme.surfaceContainerLow : scheme.surfaceContainer,
+        color: ios ? Colors.transparent : scheme.surfaceContainer,
         borderRadius: BorderRadius.circular(ios ? 24 : 28),
       ),
       child: Column(

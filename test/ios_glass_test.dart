@@ -5,12 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_m_fsdk/widgets/adaptive_surface.dart';
 
 void main() {
-  testWidgets('iOS navigation transmits backdrop color with reduced motion', (
+  testWidgets('iOS navigation transmits color while sheets remain opaque', (
     tester,
   ) async {
     Future<List<int>> sample(
       Color background, {
       bool highContrast = false,
+      GlassRole role = GlassRole.navigation,
     }) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -26,13 +27,13 @@ void main() {
                 child: Stack(
                   children: [
                     Positioned.fill(child: ColoredBox(color: background)),
-                    const Center(
+                    Center(
                       child: SizedBox(
                         width: 260,
                         height: 80,
                         child: AdaptiveSurface(
-                          role: GlassRole.navigation,
-                          child: SizedBox.expand(),
+                          role: role,
+                          child: const SizedBox.expand(),
                         ),
                       ),
                     ),
@@ -67,6 +68,10 @@ void main() {
     expect((warm[0] - cool[0]).abs(), greaterThan(100));
     expect((warm[2] - cool[2]).abs(), greaterThan(100));
     expect(find.byType(BackdropFilter), findsOneWidget);
+    final sheetWarm = await sample(Colors.red, role: GlassRole.sheet);
+    final sheetCool = await sample(Colors.blue, role: GlassRole.sheet);
+    expect(sheetWarm, sheetCool);
+    expect(find.byType(BackdropFilter), findsNothing);
     final solidWarm = await sample(Colors.red, highContrast: true);
     final solidCool = await sample(Colors.blue, highContrast: true);
     expect(solidWarm, solidCool);

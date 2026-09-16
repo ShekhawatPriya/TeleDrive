@@ -9,13 +9,17 @@ extension _AccountSheetTdlibChip on _AccountBottomSheetState {
 
     final (label, dotColor, background, foreground) = switch (connected) {
       true => (
-        'TDLib Connected',
-        scheme.tertiary,
-        scheme.tertiaryContainer,
-        scheme.onTertiaryContainer,
+        'Telegram connected',
+        const Color(0xFF248A3D),
+        scheme.brightness == Brightness.dark
+            ? const Color(0xFF12351E)
+            : const Color(0xFFE7F3E9),
+        scheme.brightness == Brightness.dark
+            ? const Color(0xFF8BE5A2)
+            : const Color(0xFF176C2D),
       ),
       false => (
-        'TDLib Disconnected',
+        'Telegram disconnected',
         scheme.error,
         scheme.errorContainer,
         scheme.onErrorContainer,
@@ -48,11 +52,13 @@ extension _AccountSheetTdlibChip on _AccountBottomSheetState {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                label,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: foreground,
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  label,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: foreground,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               const SizedBox(width: 6),

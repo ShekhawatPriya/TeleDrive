@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../native_glass_button.dart';
 import 'ios_menu_models.dart';
 import 'ios_menu_overlay.dart';
+import 'native_menu_payload.dart';
 
 /// Three-dot overflow button rendered in the M3 style: a 40 dp `IconButton`
 /// using the surrounding [IconButtonTheme]. Opens a Material 3 menu anchored
@@ -31,6 +33,7 @@ class IosMoreButton extends StatefulWidget {
 
 class _IosMoreButtonState extends State<IosMoreButton> {
   final GlobalKey _anchorKey = GlobalKey();
+  Map<String, VoidCallback> _menuActions = {};
 
   @override
   Widget build(BuildContext context) {
@@ -38,15 +41,30 @@ class _IosMoreButtonState extends State<IosMoreButton> {
       key: _anchorKey,
       width: widget.size,
       height: widget.size,
-      child: IconButton(
-        tooltip: widget.tooltip,
-        onPressed: _open,
-        icon: Icon(
-          Theme.of(context).platform == TargetPlatform.iOS
-              ? Icons.more_horiz_rounded
-              : Icons.more_vert,
-        ),
-      ),
+      child: Theme.of(context).platform == TargetPlatform.iOS
+          ? NativeGlassButton(
+              label: widget.tooltip,
+              symbol: 'ellipsis',
+              icon: Icons.more_horiz_rounded,
+              onPressed: _open,
+              menuBuilder: () {
+                final payload = NativeMenuPayload(
+                  widget.sectionsBuilder(context),
+                );
+                _menuActions = payload.actions;
+                return payload.sections;
+              },
+              onMenuAction: (id) => _menuActions[id]?.call(),
+            )
+          : IconButton(
+              tooltip: widget.tooltip,
+              onPressed: _open,
+              icon: Icon(
+                Theme.of(context).platform == TargetPlatform.iOS
+                    ? Icons.more_horiz_rounded
+                    : Icons.more_vert,
+              ),
+            ),
     );
   }
 

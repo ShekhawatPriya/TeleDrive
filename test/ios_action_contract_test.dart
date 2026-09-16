@@ -7,6 +7,66 @@ import 'package:flutter_m_fsdk/widgets/ios_menu/ios_menu_overlay.dart';
 import 'package:flutter_m_fsdk/widgets/ios_menu/ios_menu_models.dart';
 
 void main() {
+  for (final keyboard in [0.0, 260.0]) {
+    testWidgets(
+      'iOS sheet corners clear the home indicator and keyboard $keyboard',
+      (tester) async {
+        tester.view.physicalSize = const Size(402, 874);
+        tester.view.devicePixelRatio = 1;
+        tester.view.viewPadding = const FakeViewPadding(top: 62, bottom: 34);
+        tester.view.padding = FakeViewPadding(
+          top: 62,
+          bottom: keyboard == 0 ? 34 : 0,
+        );
+        tester.view.viewInsets = FakeViewPadding(bottom: keyboard);
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.view.resetPadding);
+        addTearDown(tester.view.resetViewPadding);
+        addTearDown(tester.view.resetViewInsets);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(platform: TargetPlatform.iOS),
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => TextButton(
+                  onPressed: () => showAdaptiveSheet<void>(
+                    context: context,
+                    builder: (_) => Column(
+                      children: [
+                        for (var i = 0; i < 30; i++)
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Text('Action $i'),
+                          ),
+                      ],
+                    ),
+                  ),
+                  child: const Text('Open'),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Open'));
+        await tester.pumpAndSettle();
+        final rect = tester.getRect(
+          find.byKey(const ValueKey('ios-action-sheet-surface')),
+        );
+        expect(rect.left, 12);
+        expect(rect.right, 390);
+        expect(rect.top, greaterThanOrEqualTo(62));
+        expect(
+          rect.bottom,
+          lessThanOrEqualTo(874 - keyboard - (keyboard == 0 ? 34 : 12)),
+        );
+        expect(find.byType(ClipRSuperellipse), findsOneWidget);
+        await tester.ensureVisible(find.text('Action 29'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
   testWidgets('iOS item sheet preserves every action at large text', (
     tester,
   ) async {
@@ -99,7 +159,7 @@ void main() {
     );
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
-    expect(find.byType(BackdropFilter), findsOneWidget);
+    expect(find.byType(BackdropFilter), findsNothing);
     await tester.tap(find.text('Newest first'));
     await tester.pumpAndSettle();
     expect(selected, isTrue);

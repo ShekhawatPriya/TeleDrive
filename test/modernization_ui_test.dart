@@ -1,3 +1,18 @@
+import 'package:flutter_m_fsdk/widgets/file_card_tile.dart';
+import 'package:flutter_m_fsdk/features/drive/components/drive_action_sheet.dart';
+import 'package:flutter_m_fsdk/features/profile/my_data_screen.dart';
+import 'package:flutter_m_fsdk/features/profile/profile_screen.dart';
+import 'package:flutter_m_fsdk/features/profile/free_up_space_screen.dart';
+import 'package:flutter_m_fsdk/features/profile/free_up_space/free_up_space_controller.dart';
+import 'package:flutter_m_fsdk/widgets/account_button.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_m_fsdk/features/profile/widgets/account_bottom_sheet.dart';
+import 'package:flutter_m_fsdk/features/profile/settings_screen.dart';
+import 'package:flutter_m_fsdk/features/profile/storage_summary_controller.dart';
+import 'package:flutter_m_fsdk/features/profile/app_settings_controller.dart';
+import 'package:flutter_m_fsdk/features/profile/cache_controller.dart';
+import 'package:flutter_m_fsdk/core/network/backend_resolver.dart';
+import 'package:flutter_m_fsdk/models/account_vault.dart';
 import 'dart:io';
 
 import 'dart:ui' as ui;
@@ -206,7 +221,54 @@ Widget _tabPreview(SearchScope scope, Widget screen) => Scaffold(
   ),
 );
 
+class _DesignFreeSpace extends ChangeNotifier implements FreeUpSpaceController {
+  @override
+  FreeUpSpaceState get state => const FreeUpSpaceState();
+  @override
+  Future<void> scan() async {}
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _DesignCache extends CacheController {
+  @override
+  Future<void> refreshCacheStats() async {}
+}
+
+class _DesignStorage extends ChangeNotifier
+    implements StorageSummaryController {
+  @override
+  StorageSummary? get value => StorageSummary.empty;
+  @override
+  Future<void> ensureLoaded({bool force = false}) async {}
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _DesignSettings extends ChangeNotifier implements AppSettingsController {
+  @override
+  AppSettingsState get state => const AppSettingsState(loaded: true);
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _DesignBackend extends ChangeNotifier implements BackendResolver {
+  @override
+  BackendStatus get status => BackendStatus.connected;
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
 class _Auth extends ChangeNotifier implements AuthController {
+  @override
+  AccountVault get vault => const AccountVault.empty();
+  @override
+  bool? get telegramConnected => true;
+  @override
+  Future<void> refreshProfile() async {}
+  @override
+  Future<void> refreshSavedAccountSnapshots() async {}
+
   @override
   AuthUser? get user =>
       const AuthUser(userId: 1, telegramId: 1, firstName: 'Alex');
@@ -275,6 +337,11 @@ Future<void> _pump(
     ProviderScope(
       overrides: [
         authControllerProvider.overrideWith((_) => _Auth()),
+        storageSummaryControllerProvider.overrideWith((_) => _DesignStorage()),
+        appSettingsControllerProvider.overrideWith((_) => _DesignSettings()),
+        backendResolverProvider.overrideWith((_) => _DesignBackend()),
+        cacheControllerProvider.overrideWith((_) => _DesignCache()),
+        freeUpSpaceControllerProvider.overrideWith((_) => _DesignFreeSpace()),
         driveControllerProvider.overrideWith((_) => _DesignDrive()),
         driveSearchProvider.overrideWith((_) => _DesignSearch()),
         shareControllerProvider.overrideWith((_) => _DesignShares()),
@@ -303,6 +370,7 @@ Future<void> _pump(
 
 void main() {
   setUpAll(() async {
+    dotenv.testLoad(fileInput: "");
     final codec = await ui.instantiateImageCodec(
       File(_fixturePath).readAsBytesSync(),
     );
@@ -313,6 +381,8 @@ void main() {
       'Inter',
       'Roboto',
       '.SF Pro Text',
+      'CupertinoSystemText',
+      'CupertinoSystemDisplay',
       'JetBrains Mono',
     ]) {
       final loader = FontLoader(family)
@@ -386,6 +456,90 @@ void main() {
     );
   }
   testWidgets(
+    'open account sheet follows light appearance after a theme change',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      const home = Scaffold(body: Center(child: AccountButton()));
+      await _pump(tester, home, brightness: Brightness.dark);
+      await tester.tap(find.byType(AccountButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(AccountBottomSheet), findsOneWidget);
+      await _pump(tester, home, brightness: Brightness.light);
+      final sheet = find.descendant(
+        of: find.byType(AccountBottomSheet),
+        matching: find.byType(Scaffold),
+      );
+      final theme = Theme.of(tester.element(sheet));
+      expect(theme.brightness, Brightness.light);
+      expect(
+        tester.widget<Scaffold>(sheet).backgroundColor,
+        theme.colorScheme.surface,
+      );
+      expect(theme.colorScheme.surface.computeLuminance(), greaterThan(.8));
+      expect(tester.takeException(), isNull);
+    },
+  );
+  for (final page in <(String, Widget)>[
+    ('storage', const ProfileScreen()),
+    ('my-data', const MyDataScreen()),
+    ('free-space', const FreeUpSpaceScreen()),
+  ]) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('iOS ${page.$1} fits at text $scale', (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        await _pump(
+          tester,
+          page.$2,
+          width: scale == 1 ? 390 : 320,
+          scale: scale,
+        );
+        expect(tester.takeException(), isNull);
+        await _preview(tester, 'ios-${page.$1}-$scale');
+        await tester.drag(
+          find.byType(CustomScrollView).first,
+          const Offset(0, -700),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+  for (final brightness in Brightness.values) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets(
+        'account and settings fit small iPhone ${brightness.name} $scale',
+        (tester) async {
+          SharedPreferences.setMockInitialValues({});
+          await _pump(
+            tester,
+            const Scaffold(body: AccountBottomSheet()),
+            width: scale == 1 ? 390 : 320,
+            scale: scale,
+            brightness: brightness,
+          );
+          expect(tester.takeException(), isNull);
+          expect(find.text('Alex'), findsOneWidget);
+          await _preview(tester, 'account-${brightness.name}-$scale');
+          await tester.drag(
+            find.byType(CustomScrollView).first,
+            const Offset(0, -650),
+          );
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          await _pump(
+            tester,
+            const SettingsScreen(),
+            width: scale == 1 ? 390 : 320,
+            scale: scale,
+            brightness: brightness,
+          );
+          expect(tester.takeException(), isNull);
+          await _preview(tester, 'settings-${brightness.name}-$scale');
+        },
+      );
+    }
+  }
+  testWidgets(
     'photo viewer toolbar actions remain reachable on a small phone',
     (tester) async {
       final calls = <String>[];
@@ -393,14 +547,25 @@ void main() {
         tester,
         Scaffold(
           backgroundColor: Colors.black,
-          body: PhotoViewerTopBar(
-            file: _media.first,
-            visible: true,
-            onBack: () => calls.add('Back'),
-            onStar: () => calls.add('Remove star'),
-            onInfo: () => calls.add('Info'),
-            onDownload: () => calls.add('Download'),
-            onMore: () => calls.add('More'),
+          body: Column(
+            children: [
+              PhotoViewerTopBar(
+                file: _media.first,
+                visible: true,
+                onBack: () => calls.add('Back'),
+                onStar: () => calls.add('Remove star'),
+                onInfo: () => calls.add('Info'),
+                onDownload: () => calls.add('Download'),
+                onMore: () => calls.add('More'),
+              ),
+              const Spacer(),
+              PhotoViewerActions(
+                file: _media.first,
+                onStar: () => calls.add('Remove star'),
+                onInfo: () => calls.add('Info'),
+                onDownload: () => calls.add('Download'),
+              ),
+            ],
           ),
         ),
         width: 320,
@@ -578,6 +743,127 @@ void main() {
     expect(opened, 1);
     expect(actions, 1);
   });
+  for (final brightness in Brightness.values) {
+    testWidgets('dense iOS files and opaque actions in ${brightness.name}', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        Scaffold(
+          body: ListView(
+            children: [
+              for (final file in _media)
+                FileListTile(
+                  name: file.name,
+                  subtitle: '',
+                  file: file,
+                  starred: file.starred,
+                  onTap: () {},
+                  onMore: () {},
+                  onStar: () {},
+                ),
+            ],
+          ),
+        ),
+        brightness: brightness,
+      );
+      expect(
+        tester.getSize(find.byType(FileListTile).first).height,
+        lessThanOrEqualTo(76),
+      );
+      expect(find.textContaining('JPG · 2.3 MB · 14 Sep 2026'), findsWidgets);
+      expect(tester.takeException(), isNull);
+      await _preview(tester, 'ios-file-list-${brightness.name}');
+      await _pump(
+        tester,
+        Scaffold(
+          body: GridView.count(
+            crossAxisCount: 2,
+            childAspectRatio: .72,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            padding: const EdgeInsets.all(20),
+            children: [
+              for (final file in _media.take(4))
+                FileCardTile(file: file, onTap: () {}, onMore: () {}),
+            ],
+          ),
+        ),
+        brightness: brightness,
+      );
+      expect(tester.takeException(), isNull);
+      await _preview(tester, 'ios-file-grid-${brightness.name}');
+      await _pump(
+        tester,
+        Scaffold(
+          body: Stack(
+            children: [
+              const Positioned.fill(child: ColoredBox(color: Colors.blue)),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: AdaptiveSurface(
+                  child: DriveActionSheet(
+                    title: 'Summer photos',
+                    folder: _folders.first,
+                    actions: const [
+                      SheetActionItem(
+                        id: 'share',
+                        label: 'Share',
+                        icon: Icons.share,
+                      ),
+                      SheetActionItem(
+                        id: 'star',
+                        label: 'Star',
+                        icon: Icons.star,
+                      ),
+                      SheetActionItem(
+                        id: 'rename',
+                        label: 'Rename',
+                        icon: Icons.edit,
+                      ),
+                      SheetActionItem(
+                        id: 'move',
+                        label: 'Move',
+                        icon: Icons.folder,
+                      ),
+                      SheetActionItem(
+                        id: 'delete',
+                        label: 'Delete',
+                        icon: Icons.delete,
+                        destructive: true,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        brightness: brightness,
+      );
+      expect(find.byType(BackdropFilter), findsNothing);
+      expect(tester.takeException(), isNull);
+      await _preview(tester, 'ios-item-sheet-${brightness.name}');
+      await _pump(
+        tester,
+        Scaffold(
+          body: ShareDetailBody(
+            share: _shares.first,
+            stats: null,
+            accesses: const [],
+            accessesLoading: false,
+            accessesHasMore: false,
+            onLoadMore: () {},
+            onCopy: () {},
+            onShare: () {},
+          ),
+        ),
+        brightness: brightness,
+      );
+      expect(tester.takeException(), isNull);
+      await _preview(tester, 'ios-share-${brightness.name}');
+    });
+  }
   testWidgets('metadata is readable at large text', (tester) async {
     await _pump(
       tester,
@@ -594,7 +880,12 @@ void main() {
   ) async {
     await _pump(
       tester,
-      const Scaffold(body: AdaptiveSurface(child: Text('Controls'))),
+      const Scaffold(
+        body: AdaptiveSurface(
+          role: GlassRole.navigation,
+          child: Text('Controls'),
+        ),
+      ),
       reduceEffects: false,
     );
     expect(find.byType(BackdropFilter), findsOneWidget);

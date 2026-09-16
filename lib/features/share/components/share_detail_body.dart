@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/share_models.dart';
 import 'access_log_list.dart';
+import 'ios_share_detail_content.dart';
 
 class ShareDetailBody extends StatelessWidget {
   const ShareDetailBody({
@@ -32,6 +33,22 @@ class ShareDetailBody extends StatelessWidget {
     final scheme = theme.colorScheme;
     final byCountry = stats?.byCountry ?? const {};
 
+    if (theme.platform == TargetPlatform.iOS)
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        children: [
+          IosShareDetailContent(
+            share: share,
+            stats: stats,
+            accesses: accesses,
+            loading: accessesLoading,
+            hasMore: accessesHasMore,
+            onLoadMore: onLoadMore,
+            onCopy: onCopy,
+            onShare: onShare,
+          ),
+        ],
+      );
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../core/theme/app_theme.dart';
 import '../core/utils/file_type_detector.dart';
@@ -47,7 +48,9 @@ class FileCardTile extends StatelessWidget {
 
     return Card(
       margin: EdgeInsets.zero,
-      color: scheme.surfaceContainerLow,
+      color: theme.platform == TargetPlatform.iOS
+          ? Colors.transparent
+          : scheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
         side: borderSide,
@@ -70,9 +73,11 @@ class FileCardTile extends StatelessWidget {
                         top: Radius.circular(24),
                       ),
                       child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(24),
-                        ),
+                        borderRadius: theme.platform == TargetPlatform.iOS
+                            ? BorderRadius.circular(18)
+                            : const BorderRadius.vertical(
+                                top: Radius.circular(24),
+                              ),
                         child: MediaThumb(file: file, fit: BoxFit.cover),
                       ),
                     ),
@@ -204,7 +209,9 @@ class FileCardTile extends StatelessWidget {
                                     )
                                   else
                                     _CompactIconButton(
-                                      icon: Icons.more_vert,
+                                      icon: theme.platform == TargetPlatform.iOS
+                                          ? CupertinoIcons.ellipsis
+                                          : Icons.more_vert,
                                       color: scheme.onSurfaceVariant,
                                       tooltip: 'More',
                                       onPressed: onMore,

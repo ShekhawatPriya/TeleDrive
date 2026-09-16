@@ -102,12 +102,10 @@ class _ServerConnectionSettingsScreenState
   Widget build(BuildContext context) {
     final resolver = ref.watch(backendResolverProvider);
 
-    return Scaffold(
+    return _SettingsScaffold(
       appBar: AppBar(
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Back',
+        leading: AdaptivePageBackButton(
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text('Server Connection'),

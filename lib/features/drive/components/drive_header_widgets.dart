@@ -40,7 +40,9 @@ class DriveQuickActions extends StatelessWidget {
                       ? constraints.maxWidth
                       : (constraints.maxWidth - 20) / 3,
                   child: Material(
-                    color: scheme.surfaceContainerLow,
+                    color: theme.platform == TargetPlatform.iOS
+                        ? Colors.transparent
+                        : scheme.surfaceContainerLow,
                     borderRadius: BorderRadius.circular(22),
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(

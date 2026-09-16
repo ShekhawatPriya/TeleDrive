@@ -20,12 +20,23 @@ class FolderCollectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final ios = theme.platform == TargetPlatform.iOS;
+    final dark = theme.brightness == Brightness.dark;
+    final folderSurface = dark ? Colors.black : const Color(0xFFE4F1FE);
+    final folderInk = ios
+        ? CupertinoColors.systemBlue.resolveFrom(context)
+        : scheme.primary;
     return Material(
       color: theme.platform == TargetPlatform.iOS
-          ? scheme.surfaceContainerLow
+          ? folderSurface
           : scheme.surfaceContainer,
       shape: theme.platform == TargetPlatform.iOS
-          ? RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(24))
+          ? RoundedSuperellipseBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: dark
+                  ? const BorderSide(color: Color(0xFF303033), width: .75)
+                  : BorderSide.none,
+            )
           : RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -97,7 +108,7 @@ class FolderCollectionCard extends StatelessWidget {
                                   ? Icons.folder_shared_rounded
                                   : Icons.folder_rounded),
                         size: 64,
-                        color: scheme.primary,
+                        color: folderInk,
                       ),
                       if (folder.starred)
                         Positioned(
@@ -105,7 +116,9 @@ class FolderCollectionCard extends StatelessWidget {
                           bottom: 0,
                           child: DecoratedBox(
                             decoration: BoxDecoration(
-                              color: scheme.surfaceContainer,
+                              color: ios
+                                  ? folderSurface
+                                  : scheme.surfaceContainer,
                               shape: BoxShape.circle,
                             ),
                             child: Padding(

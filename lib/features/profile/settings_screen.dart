@@ -1,9 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import '../../widgets/ios/ios_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../widgets/native_glass_button.dart';
 import '../../core/config/app_config.dart';
 import '../../core/network/backend_resolver.dart';
 import '../../core/notifications/upload_notification_service.dart';
@@ -14,7 +17,9 @@ import 'cache_controller.dart';
 import 'gallery_backup_controller.dart';
 import 'theme_controller.dart';
 import 'widgets/theme_picker_cards.dart';
+import 'widgets/ios_appearance_picker.dart';
 
+part 'settings/ios_settings_page.dart';
 part 'settings/settings_helpers.dart';
 part 'settings/server_connection_settings.dart';
 part 'settings/upload_backup_settings.dart';
@@ -34,16 +39,13 @@ class SettingsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
+    if (theme.platform == TargetPlatform.iOS) return _iosSettings(context, ref);
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          tooltip: 'Back',
-          onPressed: () => context.pop(),
-        ),
+        leading: AdaptivePageBackButton(onPressed: () => context.pop()),
         title: const Text('Settings'),
       ),
       body: ListView(

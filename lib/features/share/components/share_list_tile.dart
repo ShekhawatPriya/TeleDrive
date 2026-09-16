@@ -14,7 +14,9 @@ class ShareListTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
       child: Material(
-        color: scheme.surfaceContainerLow,
+        color: theme.platform == TargetPlatform.iOS
+            ? Colors.transparent
+            : scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(24),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -90,7 +92,9 @@ class ShareCardTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Material(
-      color: theme.colorScheme.surfaceContainerLow,
+      color: theme.platform == TargetPlatform.iOS
+          ? Colors.transparent
+          : theme.colorScheme.surfaceContainerLow,
       borderRadius: BorderRadius.circular(24),
       clipBehavior: Clip.antiAlias,
       child: InkWell(

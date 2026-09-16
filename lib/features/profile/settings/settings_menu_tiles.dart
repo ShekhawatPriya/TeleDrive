@@ -24,7 +24,7 @@ class _SettingsGroupCard extends StatelessWidget {
         rows.add(
           Divider(
             height: 1,
-            thickness: 1,
+            thickness: 0.5,
             indent: dividerIndent,
             color: scheme.outlineVariant.withValues(
               alpha: isDark ? 0.16 : 0.35,
@@ -35,15 +35,35 @@ class _SettingsGroupCard extends StatelessWidget {
       rows.add(children[i]);
     }
 
+    if (Theme.of(context).platform == TargetPlatform.iOS) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: CupertinoListSection.insetGrouped(
+          margin: EdgeInsets.zero,
+          backgroundColor: Colors.transparent,
+          additionalDividerMargin: 0,
+          dividerMargin: dividerIndent,
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          children: children,
+        ),
+      );
+    }
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: isDark ? 0.18 : 0.5),
-        ),
+        border: Theme.of(context).platform == TargetPlatform.iOS
+            ? null
+            : Border.all(
+                color: scheme.outlineVariant.withValues(
+                  alpha: isDark ? 0.18 : 0.5,
+                ),
+              ),
       ),
       child: Material(
         color: Colors.transparent,
@@ -58,7 +78,7 @@ class _SettingsIconBadge extends StatelessWidget {
   const _SettingsIconBadge({
     required this.icon,
     required this.color,
-    this.size = 40,
+    this.size = 36,
     this.child,
   });
 
@@ -75,11 +95,21 @@ class _SettingsIconBadge extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
+        color: Theme.of(context).platform == TargetPlatform.iOS
+            ? color
+            : color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(size * 0.3),
       ),
       child: Center(
-        child: child ?? Icon(icon, color: color, size: size * 0.5),
+        child:
+            child ??
+            Icon(
+              icon,
+              color: Theme.of(context).platform == TargetPlatform.iOS
+                  ? Colors.white
+                  : color,
+              size: size * 0.55,
+            ),
       ),
     );
   }
@@ -180,22 +210,21 @@ class _SettingsMenuTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle!,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                         height: 1.35,
                       ),
                     ),
                   ],
+                  if (trailing != null) ...[
+                    const SizedBox(height: 6),
+                    trailing!,
+                  ],
                 ],
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            if (trailing != null) ...[
-              trailing!,
-              const SizedBox(width: AppSpacing.xs),
-            ],
             Icon(
               Icons.chevron_right_rounded,
               color: scheme.onSurfaceVariant.withValues(alpha: 0.55),

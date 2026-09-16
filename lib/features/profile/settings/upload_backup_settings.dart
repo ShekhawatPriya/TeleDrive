@@ -10,12 +10,10 @@ class UploadSettingsScreen extends ConsumerWidget {
     final thresholdMbStr =
         '${(auth.largeUploadThresholdBytes / (1024 * 1024)).toStringAsFixed(0)} MB';
 
-    return Scaffold(
+    return _SettingsScaffold(
       appBar: AppBar(
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Back',
+        leading: AdaptivePageBackButton(
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text('Uploads'),
@@ -104,12 +102,10 @@ class BackupSettingsScreen extends ConsumerWidget {
     final backup = ref.watch(galleryBackupControllerProvider);
     final controller = ref.read(appSettingsControllerProvider);
 
-    return Scaffold(
+    return _SettingsScaffold(
       appBar: AppBar(
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Back',
+        leading: AdaptivePageBackButton(
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text('Backup'),

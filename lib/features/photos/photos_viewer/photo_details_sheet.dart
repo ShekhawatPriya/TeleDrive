@@ -27,7 +27,7 @@ class PhotoDetailsSheet extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
+        color: scheme.surface,
         borderRadius: AppRadii.sheetTop,
       ),
       child: Column(
@@ -73,13 +73,18 @@ class PhotoDetailsSheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'FILE DETAILS',
+                            'Information',
                             style: theme.textTheme.labelSmall?.copyWith(
-                              letterSpacing: 1.5,
+                              color: scheme.onSurfaceVariant,
                             ),
                           ),
                           const SizedBox(height: 6),
-                          Text(file.name, style: theme.textTheme.titleLarge),
+                          Text(
+                            file.name,
+                            style: theme.textTheme.titleLarge,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           const SizedBox(height: 6),
                           if (created != null)
                             Text(
@@ -122,38 +127,56 @@ class PhotoDetailsSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 28),
                 _SectionTitle('Details'),
-                if (file.widthPx != null && file.heightPx != null)
-                  _DetailRow(
-                    icon: Icons.photo_size_select_actual_outlined,
-                    label: 'Dimensions',
-                    value: _dimensions(file),
-                  ),
-                _DetailRow(
-                  icon: Icons.description_outlined,
-                  label: 'Type',
-                  value: file.mimeType ?? formatLabel(file),
+                _MetadataGroup(
+                  children: [
+                    if (file.widthPx != null && file.heightPx != null)
+                      _DetailRow(
+                        icon: Icons.photo_size_select_actual_outlined,
+                        label: 'Dimensions',
+                        value: _dimensions(file),
+                      ),
+                    _DetailRow(
+                      icon: Icons.description_outlined,
+                      label: 'Type',
+                      value: file.mimeType ?? formatLabel(file),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: 24),
                 _SectionTitle('Stored in'),
-                _DetailRow(
-                  icon: Icons.folder_outlined,
-                  label: 'Folder',
-                  value: folderName ?? 'My Drive',
+                _MetadataGroup(
+                  children: [
+                    _DetailRow(
+                      icon: Icons.folder_outlined,
+                      label: 'Folder',
+                      value: folderName ?? 'My Drive',
+                    ),
+                  ],
                 ),
-                const SizedBox(height: AppSpacing.md),
-                _SectionTitle('Timeline'),
-                if (created != null)
-                  _DetailRow(
-                    icon: Icons.add_circle_outline,
-                    label: 'Created',
-                    value: DateFormat('MMM d, y · h:mm a').format(created),
+                if (created != null || modified != null) ...[
+                  const SizedBox(height: 24),
+                  _SectionTitle('Timeline'),
+                  _MetadataGroup(
+                    children: [
+                      if (created != null)
+                        _DetailRow(
+                          icon: Icons.add_circle_outline,
+                          label: 'Created',
+                          value: DateFormat(
+                            'MMM d, y · h:mm a',
+                          ).format(created),
+                        ),
+                      if (modified != null)
+                        _DetailRow(
+                          icon: Icons.history,
+                          label: 'Modified',
+                          value: DateFormat(
+                            'MMM d, y · h:mm a',
+                          ).format(modified),
+                        ),
+                    ],
                   ),
-                if (modified != null)
-                  _DetailRow(
-                    icon: Icons.history,
-                    label: 'Modified',
-                    value: DateFormat('MMM d, y · h:mm a').format(modified),
-                  ),
+                ],
                 if ((file.uploadStatus ?? 'available') != 'available' ||
                     _shouldShowPreviewStatus(file)) ...[
                   const SizedBox(height: AppSpacing.md),
@@ -210,7 +233,7 @@ class _SectionTitle extends StatelessWidget {
       child: Text(
         text,
         style: theme.textTheme.titleSmall?.copyWith(
-          color: theme.colorScheme.primary,
+          color: theme.colorScheme.onSurfaceVariant,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -233,7 +256,7 @@ class _DetailRow extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -241,7 +264,7 @@ class _DetailRow extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: scheme.surfaceContainer,
+              color: scheme.surfaceContainerLow,
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
@@ -288,7 +311,7 @@ class _FactCard extends StatelessWidget {
       width: width,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainer,
+        color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
@@ -303,4 +326,24 @@ class _FactCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _MetadataGroup extends StatelessWidget {
+  const _MetadataGroup({required this.children});
+  final List<Widget> children;
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(22),
+    ),
+    child: Column(
+      children: [
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0) const Divider(height: 0.5, thickness: 0.5, indent: 64),
+          children[i],
+        ],
+      ],
+    ),
+  );
 }

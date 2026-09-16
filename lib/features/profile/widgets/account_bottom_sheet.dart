@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:go_router/go_router.dart';
+import '../../../widgets/ios/ios_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -19,6 +22,7 @@ import '../gallery_backup_controller.dart';
 import '../storage_summary_controller.dart';
 import 'switch_account_provider.dart';
 
+part 'account_bottom_sheet/account_sheet_ios.dart';
 part 'account_bottom_sheet/account_sheet_actions.dart';
 part 'account_bottom_sheet/account_sheet_cards.dart';
 part 'account_bottom_sheet/account_sheet_identity.dart';
@@ -26,7 +30,8 @@ part 'account_bottom_sheet/account_sheet_switcher.dart';
 part 'account_bottom_sheet/account_sheet_tdlib_chip.dart';
 
 class AccountBottomSheet extends ConsumerStatefulWidget {
-  const AccountBottomSheet({super.key});
+  const AccountBottomSheet({super.key, this.scrollController});
+  final ScrollController? scrollController;
 
   @override
   ConsumerState<AccountBottomSheet> createState() => _AccountBottomSheetState();
@@ -46,11 +51,13 @@ class _CompactPillAction {
 
 class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
     with SingleTickerProviderStateMixin {
-  static const _sectionRadius = 28.0;
+  static const _sectionRadius = 22.0;
   static const _sectionSpacing = 14.0;
   static const _sheetHorizontalPadding = AppSpacing.lg;
 
   bool _isExpanded = false;
+  bool _backupBusy = false;
+  void _setBackupBusy(bool value) => setState(() => _backupBusy = value);
 
   @override
   void initState() {
@@ -109,7 +116,18 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
         ? '@${activeAccount.username}'
         : 'ID ${activeAccount?.telegramId ?? 0}';
 
+    if (Theme.of(context).platform == TargetPlatform.iOS) {
+      return _buildIosAccount(
+        context,
+        activeAccount,
+        accountLabel,
+        otherAccounts,
+        summary,
+        backupOn,
+      );
+    }
     return Container(
+      color: Theme.of(context).colorScheme.surface,
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
       ),
@@ -179,6 +197,8 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
                           ),
                         ],
                       ),
+                      const SizedBox(height: 20),
+                      _buildAccountFooter(context),
                       const SizedBox(height: 12),
                     ],
                   ),
@@ -255,14 +275,18 @@ class _ProfileSheetSection extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return Material(
-      color: _profileSectionColor(scheme),
+      color: Theme.of(context).platform == TargetPlatform.iOS
+          ? scheme.surfaceContainerLow
+          : _profileSectionColor(scheme),
       elevation: 0,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius:
             borderRadius ??
             BorderRadius.circular(_AccountBottomSheetState._sectionRadius),
-        side: scheme.brightness == Brightness.light
+        side:
+            Theme.of(context).platform != TargetPlatform.iOS &&
+                scheme.brightness == Brightness.light
             ? BorderSide(
                 color: scheme.outlineVariant.withValues(alpha: 0.5),
                 width: 0.5,

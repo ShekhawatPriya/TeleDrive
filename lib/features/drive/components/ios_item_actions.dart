@@ -42,7 +42,7 @@ class IosItemActions extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(22, 4, 22, 20),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -51,8 +51,9 @@ class IosItemActions extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 66,
-                  height: 66,
+                  width: 56,
+                  height: 56,
+                  clipBehavior: Clip.antiAlias,
                   alignment: Alignment.center,
                   decoration: ShapeDecoration(
                     gradient: LinearGradient(
@@ -64,12 +65,12 @@ class IosItemActions extends StatelessWidget {
                       ],
                     ),
                     shape: RoundedSuperellipseBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                   child: folder != null ? const _FolderEmblem() : preview,
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(top: 4),
@@ -86,12 +87,12 @@ class IosItemActions extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           title,
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 23,
-                            letterSpacing: -.6,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 17,
+                            letterSpacing: -.2,
                           ),
                         ),
                         if (details != null) ...[

@@ -59,7 +59,9 @@ class RecentFileCard extends StatelessWidget {
     return SizedBox(
       width: 240,
       child: Material(
-        color: scheme.surfaceContainerLow,
+        color: theme.platform == TargetPlatform.iOS
+            ? Colors.transparent
+            : scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(26),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -74,7 +76,7 @@ class RecentFileCard extends StatelessWidget {
                     MediaThumb(
                       file: file,
                       fit: BoxFit.cover,
-                      radius: 0,
+                      radius: theme.platform == TargetPlatform.iOS ? 18 : 0,
                       decodeWidth: 640,
                     ),
                     if (file.starred)

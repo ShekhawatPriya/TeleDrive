@@ -30,6 +30,7 @@ class PhotoViewerScreen extends ConsumerStatefulWidget {
 class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
   bool _chromeVisible = true;
   bool _downloading = false;
+  bool _infoOpen = false;
   int? _currentIndex;
 
   @override
@@ -149,7 +150,16 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
                               fontSize: 12,
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 16),
+                          PhotoViewerActions(
+                            file: current,
+                            onStar: () => ref
+                                .read(driveControllerProvider)
+                                .toggleStar(current.id),
+                            onInfo: () => _openInfo(context, current),
+                            onDownload: () => _download(context, current),
+                          ),
+                          const SizedBox(height: 10),
                           const Icon(
                             Icons.keyboard_arrow_up,
                             color: Colors.white70,
@@ -177,28 +187,34 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
   }
 
   Future<void> _openInfo(BuildContext context, DriveFile file) async {
-    final folderName = file.parentId == null
-        ? null
-        : ref.read(driveControllerProvider).folder(file.parentId!)?.name;
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useRootNavigator: true,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      showDragHandle: false,
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.55,
-        minChildSize: 0.3,
-        maxChildSize: 0.92,
-        expand: false,
-        builder: (_, controller) => PhotoDetailsSheet(
-          file: file,
-          folderName: folderName,
-          scrollController: controller,
+    if (_infoOpen) return;
+    _infoOpen = true;
+    try {
+      final folderName = file.parentId == null
+          ? null
+          : ref.read(driveControllerProvider).folder(file.parentId!)?.name;
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        useRootNavigator: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        showDragHandle: false,
+        builder: (_) => DraggableScrollableSheet(
+          initialChildSize: 0.55,
+          minChildSize: 0.3,
+          maxChildSize: 0.92,
+          expand: false,
+          builder: (_, controller) => PhotoDetailsSheet(
+            file: file,
+            folderName: folderName,
+            scrollController: controller,
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      _infoOpen = false;
+    }
   }
 
   Future<void> _download(BuildContext context, DriveFile file) async {

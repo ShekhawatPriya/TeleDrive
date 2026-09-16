@@ -59,9 +59,11 @@ ThemeData buildTheme(ColorScheme scheme) {
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: ios,
-      toolbarHeight: 64,
+      toolbarHeight: ios ? 56 : 64,
       titleSpacing: AppSpacing.md,
-      titleTextStyle: textTheme.titleLarge,
+      titleTextStyle: ios
+          ? textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)
+          : textTheme.titleLarge,
       iconTheme: IconThemeData(color: scheme.onSurface, size: 24),
       actionsIconTheme: IconThemeData(color: scheme.onSurfaceVariant, size: 24),
     ),

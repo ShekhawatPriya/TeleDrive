@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'adaptive_surface.dart';
+import 'native_tab_bar.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 
@@ -32,6 +33,11 @@ class FloatingPillNavigationBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final ios = theme.platform == TargetPlatform.iOS;
+    if (ios)
+      return NativeTabBar(
+        selectedIndex: selectedIndex,
+        onSelected: onDestinationSelected,
+      );
     return SafeArea(
       top: false,
       minimum: const EdgeInsets.fromLTRB(16, 6, 16, 10),

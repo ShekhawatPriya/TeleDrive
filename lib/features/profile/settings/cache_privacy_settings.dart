@@ -10,12 +10,10 @@ class CacheStorageSettingsScreen extends ConsumerWidget {
     final scheme = theme.colorScheme;
     final isDark = scheme.brightness == Brightness.dark;
 
-    return Scaffold(
+    return _SettingsScaffold(
       appBar: AppBar(
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Back',
+        leading: AdaptivePageBackButton(
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text('Cache & Storage'),
@@ -121,12 +119,10 @@ class PrivacySecuritySettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(appSettingsControllerProvider).state;
 
-    return Scaffold(
+    return _SettingsScaffold(
       appBar: AppBar(
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Back',
+        leading: AdaptivePageBackButton(
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text('Privacy & Security'),

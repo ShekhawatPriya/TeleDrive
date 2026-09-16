@@ -58,6 +58,14 @@ class _SettingsSwitchTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
+    if (Theme.of(context).platform == TargetPlatform.iOS)
+      return IosRow(
+        title: title,
+        subtitle: subtitle,
+        icon: icon,
+        color: iconColor,
+        trailing: CupertinoSwitch(value: value, onChanged: onChanged),
+      );
     return InkWell(
       onTap: () => onChanged(!value),
       child: Padding(

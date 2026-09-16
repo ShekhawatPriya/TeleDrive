@@ -5,6 +5,28 @@ Future<bool?> showFreeUpSpaceConfirmationSheet(
   FreeUpSpaceState state,
 ) {
   final size = formatFileSize(state.eligibleBytes);
+  if (Theme.of(context).platform == TargetPlatform.iOS) {
+    return showCupertinoModalPopup<bool>(
+      context: context,
+      builder: (ctx) => CupertinoActionSheet(
+        title: Text('Free up $size?'),
+        message: Text(
+          'Remove ${state.eligibleCount} verified Auto Backup copies from this iPhone. Your backed-up files stay in Telegram. iOS will ask you to confirm removal from Photos.',
+        ),
+        actions: [
+          CupertinoActionSheetAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove Local Copies'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
   return showModalBottomSheet<bool>(
     context: context,
     showDragHandle: true,

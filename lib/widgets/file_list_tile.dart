@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:intl/intl.dart';
+import '../core/utils/file_type_detector.dart';
 
 import '../core/theme/app_theme.dart';
 import '../models/drive_models.dart';
@@ -46,6 +48,7 @@ class FileListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final ios = theme.platform == TargetPlatform.iOS;
     final inSelectMode = selected != null;
     final isShared = shared || (file?.shared ?? false);
     final isSelected = selected == true;
@@ -59,17 +62,21 @@ class FileListTile extends StatelessWidget {
       onLongPress: onLongPress,
       selected: isSelected,
       selectedTileColor: scheme.secondaryContainer.withValues(alpha: .35),
-      contentPadding: const EdgeInsetsDirectional.fromSTEB(
-        AppSpacing.md,
-        AppSpacing.xxs,
-        AppSpacing.xs,
-        AppSpacing.xs,
-      ),
-      minLeadingWidth: 48,
-      horizontalTitleGap: AppSpacing.md,
+      minTileHeight: ios ? 64 : null,
+      minVerticalPadding: ios ? 6 : null,
+      contentPadding: ios
+          ? EdgeInsets.zero
+          : const EdgeInsetsDirectional.fromSTEB(
+              AppSpacing.md,
+              AppSpacing.xxs,
+              AppSpacing.xs,
+              AppSpacing.xs,
+            ),
+      minLeadingWidth: ios ? 40 : 48,
+      horizontalTitleGap: ios ? 12 : AppSpacing.md,
       leading: SizedBox(
-        width: 48,
-        height: 48,
+        width: ios ? 40 : 48,
+        height: ios ? 40 : 48,
         child: Stack(
           children: [
             Positioned.fill(
@@ -92,11 +99,21 @@ class FileListTile extends StatelessWidget {
                     : MediaThumb(
                         file: file!,
                         fit: BoxFit.cover,
-                        radius: AppRadii.sm,
+                        radius: ios ? 6 : AppRadii.sm,
                         showBackground: false,
                       ),
               ),
             ),
+            if (ios && starred && !isFailed && !isUploading)
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Icon(
+                  CupertinoIcons.star_fill,
+                  size: 13,
+                  color: scheme.primary,
+                ),
+              ),
             if (isFailed)
               Positioned.fill(
                 child: DecoratedBox(
@@ -125,15 +142,18 @@ class FileListTile extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodyLarge?.copyWith(
-          fontWeight: FontWeight.w600,
+          fontWeight: ios ? FontWeight.w400 : FontWeight.w600,
           color: isFailed ? scheme.error : scheme.onSurface,
         ),
       ),
       subtitle: Text(
-        subtitle,
+        ios && file != null && !isOptimistic
+            ? '${formatLabel(file!)} · ${formatFileSize(file!.size)} · ${_fileDate(file!.modifiedAt)}'
+            : subtitle,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodySmall?.copyWith(
+          fontSize: ios ? 13 : null,
           color: isFailed ? scheme.error : scheme.onSurfaceVariant,
         ),
       ),
@@ -172,7 +192,7 @@ class FileListTile extends StatelessWidget {
           : Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (onStar != null)
+                if (!ios && onStar != null)
                   IconButton(
                     onPressed: onStar,
                     icon: Icon(
@@ -183,13 +203,32 @@ class FileListTile extends StatelessWidget {
                   ),
                 IconButton(
                   onPressed: onMore,
-                  icon: const Icon(Icons.more_vert),
+                  icon: Icon(ios ? CupertinoIcons.ellipsis : Icons.more_vert),
                   tooltip: 'Actions for $name',
                 ),
               ],
             ),
     );
 
+    if (ios) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
+            children: [
+              tile,
+              Divider(
+                height: .5,
+                thickness: .5,
+                indent: 52,
+                color: scheme.outlineVariant.withValues(alpha: .45),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       child: Material(
@@ -200,6 +239,11 @@ class FileListTile extends StatelessWidget {
       ),
     );
   }
+}
+
+String _fileDate(String value) {
+  final date = DateTime.tryParse(value)?.toLocal();
+  return date == null ? 'Unknown date' : DateFormat('d MMM y').format(date);
 }
 
 class SharedBadge extends StatelessWidget {

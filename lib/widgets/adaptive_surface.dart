@@ -20,6 +20,14 @@ class AdaptiveSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    // Sheets carry reading content and actions. An opaque surface prevents
+    // underlying labels bleeding through and needs no decorative glass rim.
+    if (theme.platform == TargetPlatform.iOS && role == GlassRole.sheet) {
+      return ClipRSuperellipse(
+        borderRadius: BorderRadius.circular(radius),
+        child: ColoredBox(color: scheme.surfaceContainerLow, child: child),
+      );
+    }
     final navigation =
         theme.platform == TargetPlatform.iOS && role == GlassRole.navigation;
     final dark = theme.brightness == Brightness.dark;
@@ -44,15 +52,17 @@ class AdaptiveSurface extends StatelessWidget {
               )
             : null,
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(
-          color: MediaQuery.highContrastOf(context)
-              ? scheme.outline
-              : glass
-              ? Colors.white.withValues(
-                  alpha: dark ? .22 : (navigation ? .65 : .7),
-                )
-              : scheme.outlineVariant.withValues(alpha: .45),
-        ),
+        border: glass
+            ? null
+            : Border.all(
+                color: MediaQuery.highContrastOf(context)
+                    ? scheme.outline
+                    : glass
+                    ? Colors.white.withValues(
+                        alpha: dark ? .22 : (navigation ? .65 : .7),
+                      )
+                    : scheme.outlineVariant.withValues(alpha: .45),
+              ),
       ),
       child: child,
     );

@@ -44,19 +44,24 @@ extension _AccountSheetCards on _AccountBottomSheetState {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Telegram Drive',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: scheme.onSurface,
-                      fontWeight: FontWeight.w700,
+                  Expanded(
+                    child: Text(
+                      'Telegram Drive',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                  Text(
-                    '${formatFileSize(used)} of Unlimited used',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
+                  Flexible(
+                    child: Text(
+                      '${formatFileSize(used)} stored · Unlimited',
+                      textAlign: TextAlign.end,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ],
@@ -73,11 +78,7 @@ extension _AccountSheetCards on _AccountBottomSheetState {
                       )
                     : Row(
                         children: [
-                          for (
-                            var i = 0;
-                            i < activeCategories.length;
-                            i++
-                          ) ...[
+                          for (var i = 0; i < activeCategories.length; i++) ...[
                             if (i > 0) const SizedBox(width: 3),
                             Expanded(
                               // Floor at 4% so tiny categories still render
@@ -199,8 +200,8 @@ extension _AccountSheetCards on _AccountBottomSheetState {
                   const SizedBox(height: 4),
                   Text(
                     backupOn
-                        ? 'New photos and videos are scanned and transferred locally through TDLib.'
-                        : 'Turn on photo and video backup. Settings controls limits and indexing only.',
+                        ? 'New photos and videos are backed up to your Telegram account.'
+                        : 'Keep your photos and videos backed up to your Telegram account.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
                       height: 1.3,

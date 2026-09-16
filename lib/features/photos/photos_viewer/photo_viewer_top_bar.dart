@@ -1,10 +1,10 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
-import '../../../core/theme/app_theme.dart';
+import 'package:intl/intl.dart';
 import '../../../models/drive_models.dart';
-import '../../../widgets/adaptive_surface.dart';
+import '../../../widgets/native_glass_button.dart';
 
-/// A floating toolbar with stable contrast over photos in either app theme.
+/// Navigation stays above the image; photo actions live at the bottom edge.
 class PhotoViewerTopBar extends StatelessWidget {
   const PhotoViewerTopBar({
     required this.file,
@@ -16,91 +16,81 @@ class PhotoViewerTopBar extends StatelessWidget {
     required this.onMore,
     super.key,
   });
-
   final DriveFile? file;
   final bool visible;
-  final VoidCallback onBack;
-  final VoidCallback onStar;
-  final VoidCallback onInfo;
-  final VoidCallback onDownload;
-  final VoidCallback onMore;
+  final VoidCallback onBack, onStar, onInfo, onDownload, onMore;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final created = DateTime.tryParse(file?.createdAt ?? '')?.toLocal();
     return AnimatedOpacity(
       duration: MediaQuery.disableAnimationsOf(context)
           ? Duration.zero
-          : AppDurations.short3,
+          : const Duration(milliseconds: 180),
       opacity: visible ? 1 : 0,
       child: IgnorePointer(
         ignoring: !visible,
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-            child: Theme(
-              data: theme.copyWith(
-                colorScheme: AppBrand.scheme(Brightness.dark),
+        child: ExcludeSemantics(
+          excluding: !visible,
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.black87, Colors.transparent],
               ),
-              child: AdaptiveSurface(
-                radius: 28,
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          onPressed: onBack,
-                          tooltip: 'Back',
-                          icon: Icon(
-                            theme.platform == TargetPlatform.iOS
-                                ? Icons.chevron_left_rounded
-                                : Icons.arrow_back_rounded,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          onPressed: file == null ? null : onStar,
-                          tooltip: file?.starred == true
-                              ? 'Remove star'
-                              : 'Add star',
-                          icon: Icon(
-                            file?.starred == true
-                                ? Icons.star_rounded
-                                : Icons.star_border_rounded,
-                            color: Colors.white,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: file == null ? null : onDownload,
-                          tooltip: 'Download',
-                          icon: const Icon(
-                            Icons.download_rounded,
-                            color: Colors.white,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: file == null ? null : onInfo,
-                          tooltip: 'Info',
-                          icon: const Icon(
-                            Icons.info_outline,
-                            color: Colors.white,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: file == null ? null : onMore,
-                          tooltip: 'More',
-                          icon: const Icon(
-                            Icons.more_horiz_rounded,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                child: Row(
+                  children: [
+                    NativeGlassButton(
+                      label: 'Back',
+                      symbol: 'chevron.left',
+                      icon: CupertinoIcons.chevron_back,
+                      onPressed: onBack,
+                      white: true,
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            created == null
+                                ? 'Photo'
+                                : DateFormat.yMMMMd().format(created),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (created != null)
+                            Text(
+                              DateFormat.jm().format(created),
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    NativeGlassButton(
+                      label: 'More',
+                      symbol: 'ellipsis',
+                      icon: CupertinoIcons.ellipsis,
+                      onPressed: file == null ? null : onMore,
+                      white: true,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -109,4 +99,43 @@ class PhotoViewerTopBar extends StatelessWidget {
       ),
     );
   }
+}
+
+class PhotoViewerActions extends StatelessWidget {
+  const PhotoViewerActions({
+    super.key,
+    required this.file,
+    required this.onStar,
+    required this.onInfo,
+    required this.onDownload,
+  });
+  final DriveFile file;
+  final VoidCallback onStar, onInfo, onDownload;
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    children: [
+      NativeGlassButton(
+        label: 'Download',
+        symbol: 'square.and.arrow.down',
+        icon: CupertinoIcons.square_arrow_down,
+        onPressed: onDownload,
+        white: true,
+      ),
+      NativeGlassButton(
+        label: file.starred ? 'Remove star' : 'Add star',
+        symbol: file.starred ? 'star.fill' : 'star',
+        icon: file.starred ? CupertinoIcons.star_fill : CupertinoIcons.star,
+        onPressed: onStar,
+        white: true,
+      ),
+      NativeGlassButton(
+        label: 'Info',
+        symbol: 'info.circle',
+        icon: CupertinoIcons.info_circle,
+        onPressed: onInfo,
+        white: true,
+      ),
+    ],
+  );
 }

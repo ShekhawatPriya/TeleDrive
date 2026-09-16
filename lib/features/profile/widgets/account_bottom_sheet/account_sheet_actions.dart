@@ -7,14 +7,14 @@ extension _AccountSheetActions on _AccountBottomSheetState {
   }) {
     // Segmented group: only the outermost corners of the block are rounded;
     // inner seams stay nearly square so the 2dp gap reads as a hairline.
-    const outer = Radius.circular(16);
-    const inner = Radius.circular(5);
+    const outer = Radius.circular(22);
+    const inner = Radius.zero;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < actions.length; i++) ...[
-          if (i > 0) const SizedBox(height: 2),
+          if (i > 0) const SizedBox(height: 0.5),
           _buildCompactPillRow(
             context,
             icon: actions[i].icon,
@@ -64,12 +64,11 @@ extension _AccountSheetActions on _AccountBottomSheetState {
               Expanded(
                 child: Text(
                   label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: scheme.onSurface,
                     fontWeight: FontWeight.w500,
-                    fontSize: 14.5,
+                    fontSize: theme.platform == TargetPlatform.iOS ? 17 : 14.5,
                     height: 1.1,
                   ),
                 ),
@@ -152,6 +151,31 @@ extension _AccountSheetActions on _AccountBottomSheetState {
   }
 
   void _showHelpFeedbackDialog(BuildContext context) {
+    if (Theme.of(context).platform == TargetPlatform.iOS) {
+      showCupertinoDialog<void>(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Help & Feedback'),
+          content: const Text(
+            'For feedback or bugs, visit the TeleDrive GitHub repository or contact the DevsDoCode support channel.',
+          ),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+            CupertinoDialogAction(
+              onPressed: () {
+                Navigator.pop(ctx);
+                AppConfig.openRepository();
+              },
+              child: const Text('Visit GitHub'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

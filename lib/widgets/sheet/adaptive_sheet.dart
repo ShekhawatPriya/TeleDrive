@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import '../adaptive_surface.dart';
 
-/// One route contract, with an inset iOS material and a Material Android sheet.
-/// The route owns keyboard avoidance, scrolling, drag dismissal and safe areas.
+/// One clipping boundary on iOS, inset from both the screen and home indicator.
 Future<T?> showAdaptiveSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -16,6 +15,8 @@ Future<T?> showAdaptiveSheet<T>({
     isScrollControlled: true,
     backgroundColor: ios ? Colors.transparent : null,
     elevation: ios ? 0 : null,
+    shape: ios ? const RoundedRectangleBorder() : null,
+    clipBehavior: ios ? Clip.none : null,
     showDragHandle: !ios,
     constraints: const BoxConstraints(maxWidth: 600),
     sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
@@ -25,48 +26,66 @@ Future<T?> showAdaptiveSheet<T>({
       final media = MediaQuery.of(context);
       final child = builder(context);
       final body = scrollBody ? SingleChildScrollView(child: child) : child;
-      return Padding(
-        padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight:
-                (media.size.height -
-                        media.viewInsets.bottom -
-                        media.padding.top -
-                        24)
-                    .clamp(80, 1000),
+      if (!ios)
+        return Padding(
+          padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight:
+                  (media.size.height -
+                          media.viewInsets.bottom -
+                          media.padding.top -
+                          24)
+                      .clamp(80, 1000),
+            ),
+            child: body,
           ),
-          child: ios
-              ? Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-                  child: AdaptiveSurface(
-                    radius: 32,
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            child: Container(
-                              width: 36,
-                              height: 5,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant
-                                    .withValues(alpha: .3),
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                            ),
+        );
+      return LayoutBuilder(
+        builder: (context, constraints) => Padding(
+          padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+          child: SafeArea(
+            top: false,
+            minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: constraints.maxWidth - 24,
+                maxHeight:
+                    (constraints.maxHeight -
+                            media.viewInsets.bottom -
+                            media.padding.bottom -
+                            24)
+                        .clamp(0, 1000),
+              ),
+              child: AdaptiveSurface(
+                key: const ValueKey('ios-action-sheet-surface'),
+                radius: 28,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: Container(
+                          width: 36,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant
+                                .withValues(alpha: .3),
+                            borderRadius: BorderRadius.circular(3),
                           ),
-                          Flexible(child: body),
-                        ],
+                        ),
                       ),
-                    ),
+                      Flexible(child: body),
+                    ],
                   ),
-                )
-              : body,
+                ),
+              ),
+            ),
+          ),
         ),
       );
     },

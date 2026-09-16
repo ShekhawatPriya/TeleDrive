@@ -7,192 +7,110 @@ extension _AccountSheetIdentity on _AccountBottomSheetState {
     String accountLabel,
   ) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Left side: Profile picture, username, display name, manage account button
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Stack(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: scheme.outlineVariant.withValues(alpha: 0.3),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: _buildAvatarWidget(activeAccount, size: 76),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: () => _openTelegramProfile(
-                          context,
-                          activeAccount.username,
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: scheme.surface,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.camera_alt_outlined,
-                            size: 16,
-                            color: scheme.primary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  accountLabel,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  'Hi, ${activeAccount.displayName}!',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: scheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _buildTdlibStatusChip(context),
-              ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Semantics(
+              label: 'Open Telegram profile',
+              button: true,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(36),
+                onTap: () =>
+                    _openTelegramProfile(context, activeAccount.username),
+                child: _buildAvatarWidget(activeAccount, size: 68),
+              ),
             ),
-          ),
-          // Vertical Divider
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            child: VerticalDivider(
-              color: scheme.outlineVariant.withValues(alpha: 0.5),
-              width: 1,
-              thickness: 1,
-            ),
-          ),
-          // Right side: Active ID, Version, GitHub/Open Source Link
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: AppSpacing.xs),
+            const SizedBox(width: 16),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Active ID',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
+                    activeAccount.displayName,
+                    style: theme.textTheme.headlineSmall,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'ID: ${activeAccount.telegramId}',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    'Version',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Ver: ${AppConfig.appVersion}',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md + 4),
-                  // Scales down proportionally if the right column is too
-                  // narrow for four 40dp buttons (small devices).
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildSocialIconButton(
-                          context,
-                          icon: GitHubIcon(size: 22, color: scheme.onSurface),
-                          onTap: AppConfig.openRepository,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        _buildSocialIconButton(
-                          context,
-                          icon: InstagramIcon(
-                            size: 22,
-                            color: scheme.onSurface,
-                          ),
-                          onTap: AppConfig.openInstagram,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        _buildSocialIconButton(
-                          context,
-                          icon: XIcon(size: 22, color: scheme.onSurface),
-                          onTap: AppConfig.openTwitter,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        _buildSocialIconButton(
-                          context,
-                          icon: YouTubeIcon(size: 22, color: scheme.onSurface),
-                          onTap: AppConfig.openYouTube,
-                        ),
-                      ],
-                    ),
-                  ),
+                  const SizedBox(height: 4),
+                  Text(accountLabel, style: theme.textTheme.bodyMedium),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            _buildTdlibStatusChip(context),
+            if (!accountLabel.startsWith('ID '))
+              Text(
+                'ID: ${activeAccount.telegramId}',
+                style: theme.textTheme.bodySmall,
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAccountFooter(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 16,
+      runSpacing: 8,
+      children: [
+        Text(
+          'TeleDrive ${AppConfig.appVersion}',
+          style: theme.textTheme.bodySmall,
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildSocialIconButton(
+              context,
+              label: 'GitHub',
+              icon: GitHubIcon(size: 20, color: scheme.onSurface),
+              onTap: AppConfig.openRepository,
+            ),
+            _buildSocialIconButton(
+              context,
+              label: 'Instagram',
+              icon: InstagramIcon(size: 20, color: scheme.onSurface),
+              onTap: AppConfig.openInstagram,
+            ),
+            _buildSocialIconButton(
+              context,
+              label: 'X',
+              icon: XIcon(size: 20, color: scheme.onSurface),
+              onTap: AppConfig.openTwitter,
+            ),
+            _buildSocialIconButton(
+              context,
+              label: 'YouTube',
+              icon: YouTubeIcon(size: 20, color: scheme.onSurface),
+              onTap: AppConfig.openYouTube,
+            ),
+          ],
+        ),
+      ],
     );
   }
 
   Widget _buildSocialIconButton(
     BuildContext context, {
+    required String label,
     required Widget icon,
     required VoidCallback onTap,
-  }) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: _profileSectionColor(scheme),
-      borderRadius: BorderRadius.circular(12),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        splashColor: scheme.primary.withValues(alpha: 0.12),
-        highlightColor: scheme.primary.withValues(alpha: 0.06),
-        child: SizedBox(width: 40, height: 40, child: Center(child: icon)),
-      ),
-    );
-  }
+  }) => IconButton(
+    tooltip: label,
+    onPressed: onTap,
+    icon: icon,
+    constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+  );
 }

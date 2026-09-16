@@ -57,7 +57,9 @@ class LandingScreen extends StatelessWidget {
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(56),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(
+                        theme.platform == TargetPlatform.iOS ? 28 : 18,
+                      ),
                     ),
                   ),
                 ),

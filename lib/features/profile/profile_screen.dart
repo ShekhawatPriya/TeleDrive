@@ -1,3 +1,5 @@
+import 'ios_storage_page.dart';
+import '../../widgets/native_glass_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -30,10 +32,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final controller = ref.watch(storageSummaryControllerProvider);
     final summary = controller.value;
+    if (Theme.of(context).platform == TargetPlatform.iOS)
+      return IosStoragePage(
+        summary: summary,
+        error: controller.error,
+        cache: ref.watch(cacheControllerProvider).state,
+        onRefresh: () async {
+          await Future.wait([
+            controller.ensureLoaded(force: true),
+            ref.read(cacheControllerProvider).refreshCacheStats(),
+          ]);
+        },
+      );
     return Scaffold(
       appBar: AppBar(
         title: const Text('Storage'),
-        leading: BackButton(
+        leading: AdaptivePageBackButton(
           onPressed: () =>
               context.canPop() ? context.pop() : context.go('/drive'),
         ),
