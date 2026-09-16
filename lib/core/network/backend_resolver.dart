@@ -54,7 +54,7 @@ final backendResolverProvider = ChangeNotifierProvider<BackendResolver>((ref) {
 /// whenever a request fails to connect.
 ///
 /// Note: stable identity hashing (TDLib directories, secure-storage keys)
-/// intentionally keeps using the static [AppConfig.apiBaseUrl] so identities
+/// intentionally keeps using the static [AppConfig.storageNamespace] so identities
 /// do not churn when the network changes.
 class BackendResolver extends ChangeNotifier {
   BackendResolver();
@@ -107,7 +107,7 @@ class BackendResolver extends ChangeNotifier {
       case BackendSource.manual:
         return 'Manual address';
       case BackendSource.environment:
-        return 'Pinned by build config (.env.local)';
+        return 'Main TeleDrive server';
       case BackendSource.cached:
         return 'Last known address';
       case BackendSource.sameMachine:
@@ -183,8 +183,8 @@ class BackendResolver extends ChangeNotifier {
         return 'Backend at $_baseUrl is not responding (manual address). '
             'Fix or clear it in Settings > Server Connection.';
       case BackendSource.environment:
-        return 'Backend at $_baseUrl is not responding '
-            '(pinned by API_BASE_URL in .env.local).';
+        return 'The TeleDrive server is temporarily unreachable. '
+            'Check your internet connection and try again.';
       default:
         return 'TeleDrive could not reach its service. Start TeleDrive on your '
             'computer and try again. The app connects automatically over USB '
@@ -211,6 +211,13 @@ class BackendResolver extends ChangeNotifier {
   /// and re-resolves immediately.
   Future<void> setManualUrl(String? raw) async {
     final prefs = await SharedPreferences.getInstance();
+    if (AppConfig.backendPinned && AppConfig.configuredApiBaseUrl != null) {
+      _manualUrl = null;
+      await prefs.remove(_manualUrlKey);
+      _manualLoaded = true;
+      await refresh();
+      return;
+    }
     final trimmed = raw?.trim();
     if (trimmed == null || trimmed.isEmpty) {
       _manualUrl = null;
@@ -230,13 +237,17 @@ class BackendResolver extends ChangeNotifier {
     var value = raw.trim();
     if (!value.contains('://')) value = 'http://$value';
     final uri = Uri.parse(value);
-    final port = uri.hasPort ? uri.port : AppConfig.backendPort;
+    final port = uri.hasPort
+        ? uri.port
+        : (raw.contains('://') ? uri.port : AppConfig.backendPort);
     var path = uri.path;
     if (path.isEmpty || path == '/') path = AppConfig.backendApiPrefix;
     while (path.endsWith('/')) {
       path = path.substring(0, path.length - 1);
     }
-    return '${uri.scheme}://${uri.host}:$port$path';
+    return uri
+        .replace(port: port, path: path, query: null, fragment: null)
+        .toString();
   }
 
   /// Builds an absolute URI for [path] against the currently resolved base.
@@ -251,6 +262,19 @@ class BackendResolver extends ChangeNotifier {
     if (!_manualLoaded) {
       _manualUrl = prefs.getString(_manualUrlKey);
       _manualLoaded = true;
+    }
+
+    if (AppConfig.backendPinned && AppConfig.configuredApiBaseUrl != null) {
+      // A deployment pin supersedes stale per-device LAN settings.
+      _manualUrl = null;
+      await prefs.remove(_manualUrlKey);
+      final url = AppConfig.configuredApiBaseUrl!;
+      final ok = await _isHealthy(url);
+      return _apply(
+        url,
+        BackendSource.environment,
+        ok ? BackendStatus.connected : BackendStatus.unreachable,
+      );
     }
 
     // 1. Manual override always wins, reachable or not, so the user's choice

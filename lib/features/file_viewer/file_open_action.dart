@@ -82,7 +82,7 @@ Future<void> openDriveFileExternally(
       final directory = await getTemporaryDirectory();
       if (!active()) return;
       final cached = await DownloadCache(directory).obtain(
-        backend: AppConfig.apiBaseUrl,
+        backend: AppConfig.storageNamespace,
         userId: user.userId,
         file: file,
         download: (path) async {

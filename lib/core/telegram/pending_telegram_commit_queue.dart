@@ -135,10 +135,10 @@ class PendingTelegramCommitQueue {
     required int backendUserId,
     required int telegramUserId,
   }) {
-    return '${stableHash(AppConfig.apiBaseUrl)}_${backendUserId}_$telegramUserId';
+    return '${stableHash(AppConfig.storageNamespace)}_${backendUserId}_$telegramUserId';
   }
 
-  String get backendBaseUrlHash => stableHash(AppConfig.apiBaseUrl);
+  String get backendBaseUrlHash => stableHash(AppConfig.storageNamespace);
 
   Future<int> pendingCount({
     required int backendUserId,

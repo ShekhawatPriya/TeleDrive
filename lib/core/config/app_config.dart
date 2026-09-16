@@ -19,11 +19,8 @@ class AppConfig {
   static String get _fallbackUpdateManifestUrl =>
       'https://github.com/$githubOwner/$githubRepo/releases/latest/download/latest.json';
 
-  /// Static backend address from build config. Besides serving as the initial
-  /// fallback, this value is hashed into stable identities (TDLib database
-  /// directories, secure-storage keys), so it must NOT change when the network
-  /// changes. Runtime networking resolves the live address through
-  /// BackendResolver instead.
+  /// Static endpoint from build config. Runtime networking resolves through
+  /// BackendResolver; device-local identities use [storageNamespace] instead.
   static String get apiBaseUrl {
     return _value('API_BASE_URL') ?? _fallbackApiBaseUrl;
   }
@@ -32,6 +29,18 @@ class AppConfig {
   /// When set, BackendResolver treats it as a pinned address and skips
   /// auto-discovery.
   static String? get configuredApiBaseUrl => _value('API_BASE_URL');
+
+  /// A migrated database keeps its device-local identity even when its URL moves.
+  /// `legacy-local` preserves the namespace used before the VPS migration.
+  static String get storageNamespace {
+    final identity = _value('BACKEND_IDENTITY');
+    return identity == 'legacy-local'
+        ? _fallbackApiBaseUrl
+        : (identity ?? apiBaseUrl);
+  }
+
+  /// Hosted builds use one server even when an old device has a LAN override.
+  static bool get backendPinned => _bool('BACKEND_PINNED', fallback: false);
 
   /// Port the backend listens on; used when discovering or scanning for it.
   static int get backendPort => _int('BACKEND_PORT', fallback: 8000);

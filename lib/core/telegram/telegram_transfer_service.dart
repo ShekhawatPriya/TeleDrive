@@ -134,7 +134,7 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
     }
     final dir = await getApplicationSupportDirectory();
     final scope =
-        '${stableHash(AppConfig.apiBaseUrl)}_${backendUserId}_$telegramUserId';
+        '${stableHash(AppConfig.storageNamespace)}_${backendUserId}_$telegramUserId';
     var encryptionKey = await _storage.readTdlibKey(scope);
     if (encryptionKey == null || encryptionKey.isEmpty) {
       encryptionKey = _newEncryptionKey();
@@ -147,7 +147,7 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
       }
     }
     final scopedPath =
-        '${dir.path}${Platform.pathSeparator}tdlib${Platform.pathSeparator}${stableHash(AppConfig.apiBaseUrl)}${Platform.pathSeparator}$backendUserId${Platform.pathSeparator}$telegramUserId';
+        '${dir.path}${Platform.pathSeparator}tdlib${Platform.pathSeparator}${stableHash(AppConfig.storageNamespace)}${Platform.pathSeparator}$backendUserId${Platform.pathSeparator}$telegramUserId';
     await _channel.invokeMethod<void>('configure', {
       'databaseDirectory': '$scopedPath/db',
       'filesDirectory': '$scopedPath/files',

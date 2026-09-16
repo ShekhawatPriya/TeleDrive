@@ -76,6 +76,7 @@ jobs:
 
       - name: Verify release configuration and application
         run: |
+          dart run scripts/configure_hosted_backend.dart
           dart run scripts/verify_release_config.dart
           flutter analyze --no-pub
           flutter test --no-pub

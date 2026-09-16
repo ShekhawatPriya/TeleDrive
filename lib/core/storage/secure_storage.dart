@@ -115,13 +115,13 @@ class SecureStorageService {
   Future<void> deleteAllTelegramCloudPasswordsForUser(int backendUserId) async {
     final all = await _storage.readAll();
     final prefix =
-        '$_telegramCloudPasswordPrefix:${stableHash(AppConfig.apiBaseUrl)}:$backendUserId:';
+        '$_telegramCloudPasswordPrefix:${stableHash(AppConfig.storageNamespace)}:$backendUserId:';
     for (final key in all.keys.where((k) => k.startsWith(prefix)).toList()) {
       await _storage.delete(key: key);
     }
   }
 
   String _cloudPasswordKey(int backendUserId, int telegramUserId) {
-    return '$_telegramCloudPasswordPrefix:${stableHash(AppConfig.apiBaseUrl)}:$backendUserId:$telegramUserId';
+    return '$_telegramCloudPasswordPrefix:${stableHash(AppConfig.storageNamespace)}:$backendUserId:$telegramUserId';
   }
 }

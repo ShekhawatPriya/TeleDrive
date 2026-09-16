@@ -39,7 +39,9 @@ class _ServerConnectionSettingsTile extends ConsumerWidget {
       icon: Icons.wifi_find_outlined,
       iconColor: _accentServer,
       title: 'Server Connection',
-      subtitle: 'Auto-discover the backend or pin a fixed address',
+      subtitle: AppConfig.backendPinned
+          ? 'One secure connection across your devices'
+          : 'Auto-discover the backend or pin a fixed address',
       trailing: AnimatedSwitcher(
         duration: AppDurations.short4,
         switchInCurve: AppEasing.standard,
@@ -118,84 +120,111 @@ class _ServerConnectionSettingsScreenState
         ),
         children: [
           _ServerStatusCard(resolver: resolver),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _settingsSectionHeader(context, 'Automatic Connection'),
-              _settingsSectionIntro(
-                context,
-                'TeleDrive finds the backend by itself: last known address, '
-                'same machine, discovery broadcast, then a network scan. It '
-                're-checks whenever you change WiFi networks.',
-              ),
-              _SettingsGroupCard(
-                dividerIndent: 72,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _SettingsActionTile(
-                        title: 'Re-Scan Network',
-                        subtitle:
-                            'Search this network for the backend again now.',
-                        icon: Icons.radar_rounded,
-                        iconColor: _accentServer,
-                        enabled: !_busy,
-                        onTap: _busy
-                            ? () {}
-                            : () => _run(
-                                () =>
-                                    ref.read(backendResolverProvider).refresh(),
-                                'Network scan finished.',
-                              ),
-                      ),
-                      _SettingsInfoNote(
-                        text:
-                            'The phone and the backend PC must be on the '
-                            'same WiFi network or hotspot. Discovery uses '
-                            'the backend\'s UDP responder on port '
-                            '${AppConfig.discoveryPort}; if a network '
-                            'blocks it, the subnet scan still finds the '
-                            'backend in a few seconds.',
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _settingsSectionHeader(context, 'Manual Address'),
-              _settingsSectionIntro(
-                context,
-                'Pin a fixed address instead of auto-discovery, e.g. a '
-                'hosted server or a PC the scan cannot see. Leave empty '
-                'for automatic.',
-              ),
-              _ManualAddressCard(
-                addressController: _addressController,
-                busy: _busy,
-                hasManualUrl: resolver.manualUrl != null,
-                onSave: () => _run(
-                  () => ref
-                      .read(backendResolverProvider)
-                      .setManualUrl(_addressController.text),
-                  _addressController.text.trim().isEmpty
-                      ? 'Switched to automatic discovery.'
-                      : 'Manual address saved.',
+          if (AppConfig.backendPinned) ...[
+            _settingsSectionHeader(context, 'Main server'),
+            _settingsSectionIntro(
+              context,
+              'Your devices connect to the same TeleDrive server over the internet. Your computer can stay off.',
+            ),
+            _SettingsGroupCard(
+              children: [
+                _SettingsActionTile(
+                  title: 'Check connection',
+                  subtitle: 'Reconnect to your TeleDrive server.',
+                  icon: Icons.refresh_rounded,
+                  iconColor: _accentServer,
+                  enabled: !_busy,
+                  onTap: _busy
+                      ? () {}
+                      : () => _run(
+                          () => ref.read(backendResolverProvider).refresh(),
+                          'Connection checked.',
+                        ),
                 ),
-                onUseAutomatic: () {
-                  _addressController.clear();
-                  _run(
-                    () => ref.read(backendResolverProvider).setManualUrl(null),
-                    'Switched to automatic discovery.',
-                  );
-                },
-              ),
-            ],
-          ),
+              ],
+            ),
+          ] else ...[
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _settingsSectionHeader(context, 'Automatic Connection'),
+                _settingsSectionIntro(
+                  context,
+                  'TeleDrive finds the backend by itself: last known address, '
+                  'same machine, discovery broadcast, then a network scan. It '
+                  're-checks whenever you change WiFi networks.',
+                ),
+                _SettingsGroupCard(
+                  dividerIndent: 72,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _SettingsActionTile(
+                          title: 'Re-Scan Network',
+                          subtitle:
+                              'Search this network for the backend again now.',
+                          icon: Icons.radar_rounded,
+                          iconColor: _accentServer,
+                          enabled: !_busy,
+                          onTap: _busy
+                              ? () {}
+                              : () => _run(
+                                  () => ref
+                                      .read(backendResolverProvider)
+                                      .refresh(),
+                                  'Network scan finished.',
+                                ),
+                        ),
+                        _SettingsInfoNote(
+                          text:
+                              'The phone and the backend PC must be on the '
+                              'same WiFi network or hotspot. Discovery uses '
+                              'the backend\'s UDP responder on port '
+                              '${AppConfig.discoveryPort}; if a network '
+                              'blocks it, the subnet scan still finds the '
+                              'backend in a few seconds.',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _settingsSectionHeader(context, 'Manual Address'),
+                _settingsSectionIntro(
+                  context,
+                  'Pin a fixed address instead of auto-discovery, e.g. a '
+                  'hosted server or a PC the scan cannot see. Leave empty '
+                  'for automatic.',
+                ),
+                _ManualAddressCard(
+                  addressController: _addressController,
+                  busy: _busy,
+                  hasManualUrl: resolver.manualUrl != null,
+                  onSave: () => _run(
+                    () => ref
+                        .read(backendResolverProvider)
+                        .setManualUrl(_addressController.text),
+                    _addressController.text.trim().isEmpty
+                        ? 'Switched to automatic discovery.'
+                        : 'Manual address saved.',
+                  ),
+                  onUseAutomatic: () {
+                    _addressController.clear();
+                    _run(
+                      () =>
+                          ref.read(backendResolverProvider).setManualUrl(null),
+                      'Switched to automatic discovery.',
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
