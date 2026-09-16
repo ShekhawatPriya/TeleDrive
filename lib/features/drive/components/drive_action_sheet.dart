@@ -1,22 +1,12 @@
 import 'package:flutter/material.dart';
+import 'drive_sheet_action.dart';
+import 'ios_item_actions.dart';
+export 'drive_sheet_action.dart';
+import '../../../widgets/sheet/sheet_header.dart';
 
 import '../../../models/drive_models.dart';
 import '../../../widgets/google_drive_icon.dart';
 import '../../../widgets/media_thumb.dart';
-
-class SheetActionItem {
-  const SheetActionItem({
-    required this.id,
-    required this.label,
-    required this.icon,
-    this.destructive = false,
-  });
-
-  final String id;
-  final String label;
-  final IconData icon;
-  final bool destructive;
-}
 
 class DriveActionSheet extends StatelessWidget {
   const DriveActionSheet({
@@ -80,6 +70,16 @@ class DriveActionSheet extends StatelessWidget {
       );
     }
 
+    if (theme.platform == TargetPlatform.iOS) {
+      return IosItemActions(
+        title: title,
+        subtitle: subtitle,
+        folder: folder,
+        preview: leadingWidget,
+        actions: actions,
+      );
+    }
+
     // Categorize actions: horizontal quick actions vs vertical list actions
     final quickActionIds = {
       'share',
@@ -102,60 +102,27 @@ class DriveActionSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Top spacing & Drag handle is managed globally by bottomSheetTheme.showDragHandle.
-          // Add a small spacing below the handle.
-          const SizedBox(height: 8),
-
-          // Centered file/folder preview thumbnail
-          if (leadingWidget != null) ...[
-            Center(child: leadingWidget),
-            const SizedBox(height: 16),
-          ],
-
-          // Centered filename
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: scheme.onSurface,
-                fontWeight: FontWeight.w600,
-                fontSize: 18,
-              ),
+          const SizedBox(height: 4),
+          SheetHeader(
+            title: title,
+            subtitle: subtitle,
+            leading: leadingWidget,
+            trailing: IconButton(
+              tooltip: 'Close',
+              icon: const Icon(Icons.close_rounded),
+              onPressed: () => Navigator.pop(context),
             ),
           ),
-
-          // Centered subtitle (metadata)
-          if (subtitle != null && subtitle!.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                subtitle!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
 
           // Horizontal Quick Actions Row (Share, Download, Star)
           if (quickActions.isNotEmpty) ...[
             Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 360),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  runSpacing: 16,
                   children: [
                     for (int i = 0; i < quickActions.length; i++) ...[
                       if (i > 0) const SizedBox(width: 20),
@@ -171,26 +138,28 @@ class DriveActionSheet extends StatelessWidget {
             const SizedBox(height: 24),
           ],
 
-          // Vertical standard list actions (Move, Lock, Archive)
-          for (final action in otherActions)
-            ListActionTile(
-              label: action.label,
-              icon: action.icon,
-              onTap: () => Navigator.pop(context, action.id),
+          if (otherActions.isNotEmpty)
+            _MaterialActionGroup(
+              children: [
+                for (final action in otherActions)
+                  ListActionTile(
+                    label: action.label,
+                    icon: action.icon,
+                    onTap: () => Navigator.pop(context, action.id),
+                  ),
+              ],
             ),
-
-          // Divider before destructive actions (Delete)
-          if (destructiveActions.isNotEmpty &&
-              (quickActions.isNotEmpty || otherActions.isNotEmpty))
-            const Divider(height: 24, thickness: 1, indent: 24, endIndent: 24),
-
-          // Destructive action (Delete)
-          for (final action in destructiveActions)
-            ListActionTile(
-              label: action.label,
-              icon: action.icon,
-              destructive: true,
-              onTap: () => Navigator.pop(context, action.id),
+          if (destructiveActions.isNotEmpty)
+            _MaterialActionGroup(
+              children: [
+                for (final action in destructiveActions)
+                  ListActionTile(
+                    label: action.label,
+                    icon: action.icon,
+                    destructive: true,
+                    onTap: () => Navigator.pop(context, action.id),
+                  ),
+              ],
             ),
 
           const SizedBox(height: 12),
@@ -227,11 +196,11 @@ class QuickActionButton extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: scheme.onSurface.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
+                color: scheme.primary.withValues(alpha: .07),
+                borderRadius: BorderRadius.circular(22),
               ),
               alignment: Alignment.center,
-              child: Icon(action.icon, color: scheme.onSurface, size: 26),
+              child: Icon(action.icon, color: scheme.primary, size: 26),
             ),
             const SizedBox(height: 8),
             Text(
@@ -272,8 +241,8 @@ class ListActionTile extends StatelessWidget {
     final scheme = theme.colorScheme;
 
     final containerColor = destructive
-        ? scheme.error.withValues(alpha: 0.20)
-        : scheme.onSurface.withValues(alpha: 0.08);
+        ? scheme.error.withValues(alpha: 0.08)
+        : scheme.surfaceContainerLow;
 
     final iconColor = destructive ? scheme.error : scheme.onSurface;
 
@@ -282,7 +251,7 @@ class ListActionTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
           children: [
             Container(
@@ -311,4 +280,19 @@ class ListActionTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _MaterialActionGroup extends StatelessWidget {
+  const _MaterialActionGroup({required this.children});
+  final List<Widget> children;
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+    clipBehavior: Clip.antiAlias,
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      borderRadius: BorderRadius.circular(24),
+    ),
+    child: Column(mainAxisSize: MainAxisSize.min, children: children),
+  );
 }

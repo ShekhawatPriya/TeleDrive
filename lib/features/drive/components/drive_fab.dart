@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import '../../../widgets/adaptive_surface.dart';
+import '../../../widgets/sheet/adaptive_sheet.dart';
+import '../../../widgets/sheet/ios_action_group.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../widgets/sheet/sheet_action_tile.dart';
@@ -16,6 +20,20 @@ class DriveFab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (Theme.of(context).platform == TargetPlatform.iOS) {
+      return Semantics(
+        button: true,
+        label: 'Add files or create a folder',
+        child: AdaptiveSurface(
+          radius: 30,
+          child: CupertinoButton(
+            padding: const EdgeInsets.all(16),
+            onPressed: () => _open(context, ref),
+            child: const Icon(CupertinoIcons.plus, size: 28),
+          ),
+        ),
+      );
+    }
     return FloatingActionButton(
       heroTag: null,
       tooltip: 'Add files or create a folder',
@@ -25,10 +43,8 @@ class DriveFab extends ConsumerWidget {
   }
 
   Future<void> _open(BuildContext context, WidgetRef ref) async {
-    final action = await showModalBottomSheet<String>(
+    final action = await showAdaptiveSheet<String>(
       context: context,
-      isScrollControlled: true,
-      useRootNavigator: true,
       builder: (_) => const _AddToDriveSheet(),
     );
     if (!context.mounted) return;
@@ -57,6 +73,47 @@ class _AddToDriveSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    if (Theme.of(context).platform == TargetPlatform.iOS) {
+      return SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SheetHeader(
+              title: 'Add to Drive',
+              subtitle: 'Make room for something new.',
+            ),
+            IosActionGroup(
+              children: [
+                IosActionRow(
+                  label: 'Upload File',
+                  subtitle: 'Choose from your device',
+                  icon: CupertinoIcons.arrow_up_doc,
+                  onPressed: () => Navigator.pop(context, 'upload'),
+                ),
+                IosActionRow(
+                  label: 'Take Photo',
+                  subtitle: 'Capture with your camera',
+                  icon: CupertinoIcons.camera,
+                  onPressed: () => Navigator.pop(context, 'photo'),
+                ),
+              ],
+            ),
+            IosActionGroup(
+              children: [
+                IosActionRow(
+                  label: 'Create Folder',
+                  subtitle: 'Keep related files together',
+                  icon: CupertinoIcons.folder_badge_plus,
+                  onPressed: () => Navigator.pop(context, 'folder'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+          ],
+        ),
+      );
+    }
     return SafeArea(
       top: false,
       child: Column(

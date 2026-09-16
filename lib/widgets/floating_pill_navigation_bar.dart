@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'adaptive_surface.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 
 const driveDestinations = <({String label, IconData icon, IconData selected})>[
@@ -39,19 +40,66 @@ class FloatingPillNavigationBar extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
           child: AdaptiveSurface(
+            role: GlassRole.navigation,
             radius: ios ? 32 : 30,
             child: Padding(
               padding: const EdgeInsets.all(6),
-              child: Row(
+              child: Stack(
                 children: [
-                  for (var index = 0; index < driveDestinations.length; index++)
-                    Expanded(
-                      child: _TabButton(
-                        item: driveDestinations[index],
-                        selected: index == selectedIndex,
-                        onPressed: () => onDestinationSelected(index),
+                  if (ios)
+                    Positioned.fill(
+                      child: AnimatedAlign(
+                        duration: MediaQuery.disableAnimationsOf(context)
+                            ? Duration.zero
+                            : const Duration(milliseconds: 260),
+                        curve: Curves.easeOutCubic,
+                        alignment: Alignment(
+                          -1 +
+                              selectedIndex *
+                                  2 /
+                                  (driveDestinations.length - 1),
+                          0,
+                        ),
+                        child: FractionallySizedBox(
+                          widthFactor: 1 / driveDestinations.length,
+                          heightFactor: 1,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: theme.brightness == Brightness.dark
+                                    ? .13
+                                    : .065,
+                              ),
+                              borderRadius: BorderRadius.circular(27),
+                              border: Border.all(
+                                color: theme.colorScheme.surfaceContainerLow
+                                    .withValues(alpha: .22),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
+                  Row(
+                    children: [
+                      for (
+                        var index = 0;
+                        index < driveDestinations.length;
+                        index++
+                      )
+                        Expanded(
+                          child: _TabButton(
+                            item: driveDestinations[index],
+                            selected: index == selectedIndex,
+                            onPressed: () {
+                              if (index != selectedIndex)
+                                HapticFeedback.selectionClick();
+                              onDestinationSelected(index);
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -78,7 +126,9 @@ class _TabButton extends StatelessWidget {
     final ios = Theme.of(context).platform == TargetPlatform.iOS;
     final color = selected
         ? (ios ? scheme.primary : scheme.onSecondaryContainer)
-        : scheme.onSurfaceVariant;
+        : (ios
+              ? scheme.onSurface.withValues(alpha: .82)
+              : scheme.onSurfaceVariant);
     final content = AnimatedContainer(
       duration: MediaQuery.disableAnimationsOf(context)
           ? Duration.zero
@@ -87,9 +137,7 @@ class _TabButton extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       decoration: BoxDecoration(
         color: selected
-            ? (ios
-                  ? scheme.primary.withValues(alpha: .10)
-                  : scheme.secondaryContainer)
+            ? (ios ? Colors.transparent : scheme.secondaryContainer)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(22),
       ),
@@ -98,7 +146,13 @@ class _TabButton extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(selected ? item.selected : item.icon, size: 23, color: color),
+            Icon(
+              ios
+                  ? _iosIcon(item.label, selected)
+                  : (selected ? item.selected : item.icon),
+              size: 24,
+              color: color,
+            ),
             const SizedBox(height: 3),
             Text(
               item.label,
@@ -133,3 +187,13 @@ class _TabButton extends StatelessWidget {
     );
   }
 }
+
+IconData _iosIcon(String label, bool selected) => switch (label) {
+  'Drive' => selected ? CupertinoIcons.folder_fill : CupertinoIcons.folder,
+  'Photos' =>
+    selected
+        ? CupertinoIcons.photo_fill_on_rectangle_fill
+        : CupertinoIcons.photo_on_rectangle,
+  'Starred' => selected ? CupertinoIcons.star_fill : CupertinoIcons.star,
+  _ => CupertinoIcons.link,
+};

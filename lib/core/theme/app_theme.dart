@@ -9,6 +9,7 @@ import 'tokens/app_shape.dart';
 import 'tokens/app_spacing.dart';
 import 'tokens/app_state.dart';
 import 'tokens/app_typography.dart';
+import 'ios_palette.dart';
 
 // Re-export tokens so existing imports of `app_theme.dart` keep compiling.
 export 'tokens/app_color.dart';
@@ -22,8 +23,9 @@ export 'tokens/app_typography.dart' show AppTextThemeExt, buildAppTextTheme;
 /// Builds the app theme from a [ColorScheme]. Pass a seeded scheme directly
 /// from [AppBrand.scheme] for consistent light, dark and high-contrast roles.
 ThemeData buildTheme(ColorScheme scheme) {
-  final textTheme = buildAppTextTheme(scheme);
   final ios = defaultTargetPlatform == TargetPlatform.iOS;
+  if (ios) scheme = iosPalette(scheme);
+  final textTheme = buildAppTextTheme(scheme);
 
   return ThemeData(
     useMaterial3: true,
@@ -32,7 +34,14 @@ ThemeData buildTheme(ColorScheme scheme) {
     scaffoldBackgroundColor: scheme.surface,
     textTheme: textTheme,
     primaryTextTheme: textTheme,
-    splashFactory: InkRipple.splashFactory,
+    splashFactory: ios ? NoSplash.splashFactory : InkRipple.splashFactory,
+    cupertinoOverrideTheme: CupertinoThemeData(
+      brightness: scheme.brightness,
+      primaryColor: scheme.primary,
+      primaryContrastingColor: scheme.onPrimary,
+      scaffoldBackgroundColor: scheme.surface,
+      textTheme: CupertinoTextThemeData(primaryColor: scheme.primary),
+    ),
     visualDensity: VisualDensity.standard,
     materialTapTargetSize: MaterialTapTargetSize.padded,
     pageTransitionsTheme: const PageTransitionsTheme(

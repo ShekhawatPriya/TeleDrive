@@ -19,6 +19,7 @@ extension _LoginScreenActions on _LoginScreenState {
     try {
       return await fn();
     } catch (err) {
+      if (!mounted) rethrow;
       final repo = ref.read(authRepositoryProvider);
       _setUiState(() => _error = repo.api.errorMessage(err));
       rethrow;
@@ -40,6 +41,7 @@ extension _LoginScreenActions on _LoginScreenState {
             .read(authRepositoryProvider)
             .start('${_selectedCountry.dialCode}$local'),
       );
+      if (!mounted) return;
       _attemptId = (data['attempt_id'] as num).toInt();
       _setStep(_Step.code);
     } catch (_) {}
@@ -57,6 +59,7 @@ extension _LoginScreenActions on _LoginScreenState {
             .read(authRepositoryProvider)
             .verifyCode(_attemptId!, _code.text.trim()),
       );
+      if (!mounted) return;
       if (data['status'] == 'requires_2fa') {
         _setStep(_Step.password);
       } else if (data['token'] != null) {
@@ -77,6 +80,7 @@ extension _LoginScreenActions on _LoginScreenState {
             .read(authRepositoryProvider)
             .verifyPassword(_attemptId!, _password.text.trim()),
       );
+      if (!mounted) return;
       if (data['token'] != null) {
         await _completeLogin(
           '${data['token']}',
@@ -178,7 +182,7 @@ extension _LoginScreenActions on _LoginScreenState {
 
   Future<void> _pickCountry() async {
     final picked = await showCountryPicker(context);
-    if (picked != null) _setUiState(() => _selectedCountry = picked);
+    if (picked != null && mounted) _setUiState(() => _selectedCountry = picked);
   }
 
   String _authenticatedDestination() {

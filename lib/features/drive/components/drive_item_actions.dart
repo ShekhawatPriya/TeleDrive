@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../widgets/sheet/adaptive_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 export 'drive_bulk_actions.dart';
@@ -233,10 +234,8 @@ Future<String?> _showActions(
   DriveFolder? folder,
   required List<SheetActionItem> actions,
 }) {
-  return showModalBottomSheet<String>(
+  return showAdaptiveSheet<String>(
     context: context,
-    isScrollControlled: true,
-    useRootNavigator: true,
     builder: (_) => DriveActionSheet(
       title: title,
       subtitle: subtitle,
@@ -253,10 +252,9 @@ Future<String?> _pickMoveDestination(
   String? movingFolderId,
   String? currentParentId,
 }) {
-  return showModalBottomSheet<String>(
+  return showAdaptiveSheet<String>(
     context: context,
-    isScrollControlled: true,
-    useRootNavigator: true,
+    scrollBody: false,
     builder: (_) => MoveDestinationSheet(
       title: title,
       movingFolderId: movingFolderId,

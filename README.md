@@ -4,6 +4,11 @@ TeleDrive is an Android Flutter client for a Telegram-backed personal drive.
 The app keeps file bytes on Telegram, uses the backend for metadata, and
 performs supported uploads and downloads locally through TDLib.
 
+The current client configuration connects to the hosted VPS over HTTPS; your
+computer does not need to run the backend. See
+[platform design and hosted connection](docs/platform-design-and-vps.md) for the
+Android/iOS refinements, migration compatibility and review screenshots.
+
 ## Architecture
 
 - Flutter feature modules live under `lib/features`.

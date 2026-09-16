@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import '../../widgets/sheet/adaptive_sheet.dart';
 
 import '../../core/theme/app_theme.dart';
 import 'country_data.dart';
 
 Future<Country?> showCountryPicker(BuildContext context) {
-  return showModalBottomSheet<Country>(
+  return showAdaptiveSheet<Country>(
     context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    useRootNavigator: true,
+    scrollBody: false,
     builder: (_) => const _CountryPickerSheet(),
   );
 }
@@ -82,11 +82,21 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
               AppSpacing.md,
               AppSpacing.sm,
             ),
-            child: SearchBar(
-              controller: _searchController,
-              hintText: 'Search country or code',
-              leading: Icon(Icons.search, color: scheme.onSurfaceVariant),
-            ),
+            child: theme.platform == TargetPlatform.iOS
+                ? CupertinoSearchTextField(
+                    controller: _searchController,
+                    placeholder: 'Search country or code',
+                    style: theme.textTheme.bodyLarge,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 13,
+                    ),
+                  )
+                : SearchBar(
+                    controller: _searchController,
+                    hintText: 'Search country or code',
+                    leading: Icon(Icons.search, color: scheme.onSurfaceVariant),
+                  ),
           ),
           Expanded(
             child: _filtered.isEmpty

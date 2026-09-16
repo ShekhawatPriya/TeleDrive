@@ -27,7 +27,14 @@ void main() {
             ? 'android'
             : 'shared';
         final mode = name.contains('-dark') ? 'dark' : 'light';
-        return '<article data-platform="$platform" data-mode="$mode"><h2>$title</h2>'
+        final area = name.startsWith('login-')
+            ? 'login'
+            : name.startsWith('folder-actions-')
+            ? 'actions'
+            : name.startsWith('full-drive-') || name.startsWith('full-photos-')
+            ? 'navigation'
+            : 'other';
+        return '<article data-platform="$platform" data-mode="$mode" data-area="$area"><h2>$title</h2>'
             '<a href="$name" target="_blank"><img loading="lazy" src="$name" alt="$title"></a></article>';
       })
       .join('\n');
@@ -44,17 +51,17 @@ article{min-width:0}article[hidden]{display:none}h2{font-size:14px;text-transfor
 img{display:block;width:100%;border-radius:20px;box-shadow:0 12px 40px #16243b12;border:1px solid #d7dce5}
 footer{padding:24px;text-align:center;color:#535b6b}a{color:#245bdd}a:focus-visible,select:focus-visible{outline:3px solid #245bdd;outline-offset:4px}
 </style>
-<header><small>TELEDRIVE / FRONTEND REVIEW</small><h1>A home for everything you keep.</h1>
+<header><small>TELEDRIVE / FRONTEND REVIEW</small><h1>Designed for the way you use it.</h1>
 <p>Rendered Flutter screens with isolated fixture data. These are local design previews, not screenshots of a live account or proof of native iOS execution. Open a screen to inspect it at full size.</p>
-<nav><label>Platform <select id="platform"><option value="all">All platforms</option><option value="ios">iOS</option><option value="android">Android</option><option value="shared">Shared components</option></select></label>
+<nav><label>Screen <select id="area"><option value="all">All screens</option><option value="navigation">Navigation</option><option value="login">Login flow</option><option value="actions">Folder actions</option></select></label><label>Platform <select id="platform"><option value="all">All platforms</option><option value="ios">iOS</option><option value="android">Android</option><option value="shared">Shared components</option></select></label>
 <label>Appearance <select id="mode"><option value="all">Light + dark</option><option value="light">Light</option><option value="dark">Dark</option></select></label></nav></header>
 <main>$cards</main>
 <footer>Preview photo: <a href="https://commons.wikimedia.org/wiki/File:Fronalpstock_big.jpg">Fronalpstock big · Hannes Röst</a>,
 <a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY-SA 3.0</a>. Cropped for preview; photograph adaptations retain this license. Not bundled in the app.</footer>
 <script>
-const platform=document.querySelector('#platform'),mode=document.querySelector('#mode');
-function filter(){document.querySelectorAll('article').forEach(c=>{c.hidden=(platform.value!=='all'&&platform.value!==c.dataset.platform)||(mode.value!=='all'&&mode.value!==c.dataset.mode);});}
-platform.addEventListener('change',filter);mode.addEventListener('change',filter);
+const platform=document.querySelector('#platform'),mode=document.querySelector('#mode'),area=document.querySelector('#area');
+function filter(){document.querySelectorAll('article').forEach(c=>{c.hidden=(platform.value!=='all'&&platform.value!==c.dataset.platform)||(mode.value!=='all'&&mode.value!==c.dataset.mode)||(area.value!=='all'&&area.value!==c.dataset.area);});}
+platform.addEventListener('change',filter);mode.addEventListener('change',filter);area.addEventListener('change',filter);
 </script></html>''');
   stdout.writeln(
     'Created ${directory.path}/index.html with ${files.length} previews.',

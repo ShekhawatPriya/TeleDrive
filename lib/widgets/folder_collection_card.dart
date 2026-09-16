@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import '../models/drive_models.dart';
 import '../core/utils/file_type_detector.dart';
 
@@ -23,7 +24,9 @@ class FolderCollectionCard extends StatelessWidget {
       color: theme.platform == TargetPlatform.iOS
           ? scheme.surfaceContainerLow
           : scheme.surfaceContainer,
-      borderRadius: BorderRadius.circular(24),
+      shape: theme.platform == TargetPlatform.iOS
+          ? RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(24))
+          : RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -86,9 +89,13 @@ class FolderCollectionCard extends StatelessWidget {
                     clipBehavior: Clip.none,
                     children: [
                       Icon(
-                        folder.shared
-                            ? Icons.folder_shared_rounded
-                            : Icons.folder_rounded,
+                        theme.platform == TargetPlatform.iOS
+                            ? (folder.shared
+                                  ? CupertinoIcons.folder_badge_person_crop
+                                  : CupertinoIcons.folder_fill)
+                            : (folder.shared
+                                  ? Icons.folder_shared_rounded
+                                  : Icons.folder_rounded),
                         size: 64,
                         color: scheme.primary,
                       ),

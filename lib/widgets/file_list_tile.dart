@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../core/theme/app_theme.dart';
 import '../models/drive_models.dart';
@@ -77,10 +78,16 @@ class FileListTile extends StatelessWidget {
                 borderRadius: AppRadii.smR,
                 child: isFolder
                     ? Center(
-                        child: GoogleDriveIcon.folder(
-                          isShared: isShared,
-                          size: 34,
-                        ),
+                        child: theme.platform == TargetPlatform.iOS
+                            ? Icon(
+                                CupertinoIcons.folder_fill,
+                                size: 36,
+                                color: scheme.primary,
+                              )
+                            : GoogleDriveIcon.folder(
+                                isShared: isShared,
+                                size: 34,
+                              ),
                       )
                     : MediaThumb(
                         file: file!,

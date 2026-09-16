@@ -1,56 +1,136 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+enum GlassRole { sheet, navigation }
+
 /// Floating controls use frosted material on iOS; content stays opaque.
 /// Flutter approximation of glass, not a native Liquid Glass implementation.
 class AdaptiveSurface extends StatelessWidget {
-  const AdaptiveSurface({required this.child, this.radius = 28, super.key});
+  const AdaptiveSurface({
+    required this.child,
+    this.radius = 28,
+    this.role = GlassRole.sheet,
+    super.key,
+  });
   final Widget child;
   final double radius;
+  final GlassRole role;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final navigation =
+        theme.platform == TargetPlatform.iOS && role == GlassRole.navigation;
+    final dark = theme.brightness == Brightness.dark;
     final glass =
         theme.platform == TargetPlatform.iOS &&
-        !MediaQuery.highContrastOf(context) &&
-        !MediaQuery.accessibleNavigationOf(context) &&
-        !MediaQuery.disableAnimationsOf(context);
+        !MediaQuery.highContrastOf(context);
     final content = DecoratedBox(
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow.withValues(alpha: glass ? .84 : 1),
+        color: glass ? null : scheme.surfaceContainerLow,
+        gradient: glass
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  scheme.surfaceContainerLow.withValues(
+                    alpha: navigation ? (dark ? .32 : .30) : .88,
+                  ),
+                  scheme.surfaceContainerLow.withValues(
+                    alpha: navigation ? (dark ? .20 : .16) : .78,
+                  ),
+                ],
+              )
+            : null,
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(
           color: MediaQuery.highContrastOf(context)
               ? scheme.outline
+              : glass
+              ? Colors.white.withValues(
+                  alpha: dark ? .22 : (navigation ? .65 : .7),
+                )
               : scheme.outlineVariant.withValues(alpha: .45),
         ),
       ),
       child: child,
     );
+    final clipped = ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: glass
+          ? BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: navigation ? 14 : 24,
+                sigmaY: navigation ? 14 : 24,
+              ),
+              child: content,
+            )
+          : content,
+    );
+    if (glass) {
+      // A normal filled BoxShadow is visible THROUGH a translucent child.
+      // Keep the shadow outside the glass so it cannot muddy the backdrop.
+      return CustomPaint(
+        painter: _GlassShadow(
+          radius: radius,
+          navigation: navigation,
+          color: scheme.shadow.withValues(alpha: navigation ? .13 : .10),
+        ),
+        child: clipped,
+      );
+    }
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
         boxShadow: [
           BoxShadow(
-            color: scheme.shadow.withValues(alpha: .07),
-            blurRadius: 28,
-            offset: const Offset(0, 8),
+            color: scheme.shadow.withValues(alpha: navigation ? .13 : .07),
+            blurRadius: navigation ? 18 : 28,
+            offset: Offset(0, navigation ? 5 : 8),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: glass
-            ? BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                child: content,
-              )
-            : content,
-      ),
+      child: clipped,
     );
   }
+}
+
+class _GlassShadow extends CustomPainter {
+  const _GlassShadow({
+    required this.radius,
+    required this.navigation,
+    required this.color,
+  });
+  final double radius;
+  final bool navigation;
+  final Color color;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final shape = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(radius),
+    );
+    final outside = Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRect((Offset.zero & size).inflate(50))
+      ..addRRect(shape);
+    canvas.save();
+    canvas.clipPath(outside);
+    canvas.drawRRect(
+      shape.shift(Offset(0, navigation ? 5 : 8)),
+      Paint()
+        ..color = color
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, navigation ? 10 : 16),
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _GlassShadow old) =>
+      radius != old.radius ||
+      navigation != old.navigation ||
+      color != old.color;
 }
 
 /// A compact, editorial introduction to a collection, with truthful context.

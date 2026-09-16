@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import '../adaptive_surface.dart';
 
 import '../../core/theme/app_theme.dart';
 import 'ios_menu_models.dart';
 
-/// Material 3 popup menu route. Anchors a tonal-elevation surface near the
-/// triggering button, animates with the M3 emphasized curve, and lays
-/// sections out as `MenuItemButton`-style rows separated by a thin trough.
+/// Anchored platform menu: translucent Cupertino groups on iOS, tonal Material
+/// sections on Android. Both retain the same action and dismissal contract.
 class IosMenuOverlayRoute extends PopupRoute<void> {
   IosMenuOverlayRoute({required this.anchor, required this.sections});
 
@@ -125,6 +126,34 @@ class _MenuCard extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
+    if (theme.platform == TargetPlatform.iOS) {
+      return AdaptiveSurface(
+        radius: 24,
+        child: Material(
+          type: MaterialType.transparency,
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < sections.length; i++) ...[
+                    if (i > 0)
+                      Divider(
+                        height: 9,
+                        thickness: .5,
+                        color: scheme.outlineVariant.withValues(alpha: .6),
+                      ),
+                    ...sections[i].items.map((item) => _MenuRow(item: item)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Material(
       type: MaterialType.card,
       color: scheme.surfaceContainerHigh,
@@ -188,6 +217,47 @@ class _MenuRow extends StatelessWidget {
         : scheme.primary.withValues(alpha: .12);
 
     final leadingIcon = item.leadingIcon;
+
+    if (theme.platform == TargetPlatform.iOS) {
+      return CupertinoButton(
+        padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 14),
+        onPressed: () {
+          Navigator.of(context, rootNavigator: true).pop();
+          item.onTap();
+        },
+        child: Row(
+          children: [
+            if (item.checked) ...[
+              Icon(CupertinoIcons.checkmark, color: scheme.primary, size: 17),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.label,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: labelColor,
+                      fontSize: 16,
+                    ),
+                  ),
+                  if (item.subtitle != null)
+                    Text(item.subtitle!, style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            if (item.trailingIcon != null || leadingIcon != null)
+              Icon(
+                item.trailingIcon ?? leadingIcon,
+                size: 21,
+                color: iconColor,
+              ),
+          ],
+        ),
+      );
+    }
 
     return InkWell(
       onTap: () {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/cupertino.dart';
+import '../../../widgets/sheet/adaptive_sheet.dart';
+import 'folder_editor.dart';
 
 /// Prompts for a new folder name. Returns the trimmed value, or null if
 /// cancelled / left blank.
@@ -9,81 +11,14 @@ Future<String?> promptFolderName(
   String? initial,
   String confirmLabel = 'Create',
 }) {
-  return showDialog<String>(
+  return showAdaptiveSheet<String>(
     context: context,
-    builder: (_) => _FolderNameDialog(
+    builder: (_) => FolderEditor(
       title: title,
       initial: initial,
       confirmLabel: confirmLabel,
     ),
   );
-}
-
-class _FolderNameDialog extends StatefulWidget {
-  const _FolderNameDialog({
-    required this.title,
-    required this.initial,
-    required this.confirmLabel,
-  });
-
-  final String title;
-  final String? initial;
-  final String confirmLabel;
-
-  @override
-  State<_FolderNameDialog> createState() => _FolderNameDialogState();
-}
-
-class _FolderNameDialogState extends State<_FolderNameDialog> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initial);
-    _controller.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  bool get _canSubmit => _controller.text.trim().isNotEmpty;
-
-  void _submit() {
-    if (!_canSubmit) return;
-    Navigator.pop(context, _controller.text.trim());
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.title),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        textInputAction: TextInputAction.done,
-        onSubmitted: (_) => _submit(),
-        inputFormatters: [LengthLimitingTextInputFormatter(120)],
-        decoration: const InputDecoration(
-          labelText: 'Folder name',
-          prefixIcon: Icon(Icons.folder_outlined),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: _canSubmit ? _submit : null,
-          child: Text(widget.confirmLabel),
-        ),
-      ],
-    );
-  }
 }
 
 /// Confirmation dialog. Returns true when the user taps the confirm button.
@@ -95,10 +30,27 @@ Future<bool> confirmAction(
   String confirmLabel = 'Confirm',
   bool destructive = false,
 }) async {
-  final result = await showDialog<bool>(
+  final result = await showAdaptiveDialog<bool>(
     context: context,
     builder: (ctx) {
       final scheme = Theme.of(ctx).colorScheme;
+      if (Theme.of(ctx).platform == TargetPlatform.iOS) {
+        return CupertinoAlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(cancelLabel),
+            ),
+            CupertinoDialogAction(
+              isDestructiveAction: destructive,
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(confirmLabel),
+            ),
+          ],
+        );
+      }
       return AlertDialog(
         title: Text(title),
         content: Text(message),

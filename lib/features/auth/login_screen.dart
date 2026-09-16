@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/theme/app_theme.dart';
 import '../../widgets/premium_toast.dart';
 import 'auth_controller.dart';
 import 'components/login_error_banner.dart';
-import 'components/login_step_indicator.dart';
+import 'components/login_controls.dart';
+import 'components/login_identity.dart';
+import '../../widgets/brand_mark.dart';
+import '../../widgets/adaptive_surface.dart';
 import 'country_data.dart';
 import 'country_picker.dart';
 
@@ -77,57 +80,115 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       },
       child: Scaffold(
         body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.xl,
-              ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 24, 0),
+                child: Row(
                   children: [
-                    const SizedBox(height: AppSpacing.md),
-                    Image.asset(
-                      'assets/icon/app_icon.png',
-                      width: 64,
-                      height: 64,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    _buildHeader(),
-                    const SizedBox(height: AppSpacing.lg),
-                    AnimatedSwitcher(
-                      duration: AppDurations.medium2,
-                      switchInCurve: AppEasing.emphasizedDecelerate,
-                      switchOutCurve: AppEasing.emphasizedAccelerate,
-                      transitionBuilder: (child, anim) => FadeTransition(
-                        opacity: anim,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(0, .04),
-                            end: Offset.zero,
-                          ).animate(anim),
-                          child: child,
+                    AdaptiveSurface(
+                      radius: 24,
+                      role: GlassRole.navigation,
+                      child: IconButton(
+                        tooltip: 'Back',
+                        icon: Icon(
+                          theme.platform == TargetPlatform.iOS
+                              ? CupertinoIcons.chevron_left
+                              : Icons.arrow_back_rounded,
+                          size: 21,
                         ),
-                      ),
-                      child: KeyedSubtree(
-                        key: ValueKey(_step),
-                        child: _buildFormCard(),
+                        onPressed: _loading
+                            ? null
+                            : () {
+                                if (_step != _Step.phone) {
+                                  _setStep(_Step.phone);
+                                } else {
+                                  context.go(_cancelDestination());
+                                }
+                              },
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.lg),
+                    const Spacer(),
+                    const BrandMark(size: 24),
+                    const SizedBox(width: 8),
                     Text(
-                      'Login completes after this device is ready for local TDLib file transfer.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
+                      'TeleDrive',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
-                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
               ),
-            ),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: const EdgeInsets.fromLTRB(28, 28, 28, 28),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: 430,
+                          minHeight: (constraints.maxHeight - 56).clamp(
+                            0,
+                            double.infinity,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: LoginIdentity(step: _step.index),
+                            ),
+                            const SizedBox(height: 28),
+                            _buildHeader(),
+                            const SizedBox(height: 32),
+                            AnimatedSwitcher(
+                              duration: MediaQuery.disableAnimationsOf(context)
+                                  ? Duration.zero
+                                  : const Duration(milliseconds: 180),
+                              child: KeyedSubtree(
+                                key: ValueKey(_step),
+                                child: _buildFormCard(),
+                              ),
+                            ),
+                            const SizedBox(height: 28),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  theme.platform == TargetPlatform.iOS
+                                      ? CupertinoIcons.lock
+                                      : Icons.lock_outline_rounded,
+                                  size: 15,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _step == _Step.phone
+                                        ? 'Use the number linked to your Telegram account. Your files stay in your Telegram storage.'
+                                        : _step == _Step.code
+                                        ? 'Keep Telegram open until you finish signing in.'
+                                        : 'This is your Telegram password, not your device passcode.',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

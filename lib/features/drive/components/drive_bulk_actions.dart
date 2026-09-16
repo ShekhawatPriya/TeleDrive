@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../widgets/sheet/adaptive_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/share_models.dart';
@@ -62,10 +63,9 @@ class DriveBulkActions {
     final movingFolderId = folderIds.length == 1 && fileIds.isEmpty
         ? folderIds.first
         : null;
-    final targetId = await showModalBottomSheet<String>(
+    final targetId = await showAdaptiveSheet<String>(
       context: context,
-      isScrollControlled: true,
-      useRootNavigator: true,
+      scrollBody: false,
       builder: (_) => MoveDestinationSheet(
         title: 'Move ${fileIds.length + folderIds.length} items',
         movingFolderId: movingFolderId,

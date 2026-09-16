@@ -328,6 +328,10 @@ void main() {
     final icons = FontLoader('MaterialIcons')
       ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
     await icons.load();
+    await (FontLoader('packages/cupertino_icons/CupertinoIcons')..addFont(
+          rootBundle.load('packages/cupertino_icons/assets/CupertinoIcons.ttf'),
+        ))
+        .load();
   });
 
   tearDownAll(() => _fixtureImage.dispose());
@@ -595,16 +599,16 @@ void main() {
     );
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
-  testWidgets(
-    'glass has an opaque fallback when accessibility requests reduced effects',
-    (tester) async {
-      await _pump(
-        tester,
-        const Scaffold(body: AdaptiveSurface(child: Text('Controls'))),
-      );
-      expect(find.byType(BackdropFilter), findsNothing);
-    },
-  );
+  testWidgets('glass has an opaque fallback when high contrast is requested', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      const Scaffold(body: AdaptiveSurface(child: Text('Controls'))),
+      highContrast: true,
+    );
+    expect(find.byType(BackdropFilter), findsNothing);
+  });
   for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
     for (final scale in [1.0, 2.0]) {
       testWidgets(

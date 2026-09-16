@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/search/search_controller.dart';
 import 'account_button.dart';
@@ -55,15 +56,16 @@ class TeleDriveTopBar extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        subtitle,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          letterSpacing: 1.5,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
+                      if (!ios)
+                        Text(
+                          subtitle,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            letterSpacing: 1.5,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
+                      if (!ios) const SizedBox(height: 6),
                       Semantics(
                         header: true,
                         child: Text(
@@ -133,6 +135,31 @@ class _DriveSearchFieldState extends ConsumerState<DriveSearchField> {
       SearchScope.starred => 'Search starred items',
       SearchScope.shared => 'Search shared items',
     };
+    if (Theme.of(context).platform == TargetPlatform.iOS) {
+      return CupertinoSearchTextField(
+        controller: _text,
+        placeholder: hint,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+        borderRadius: BorderRadius.circular(14),
+        backgroundColor: Theme.of(
+          context,
+        ).colorScheme.onSurface.withValues(alpha: .055),
+        style: Theme.of(context).textTheme.bodyLarge,
+        placeholderStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+        onChanged: (value) {
+          controller.update(value);
+          setState(() {});
+        },
+        onSuffixTap: () {
+          _text.clear();
+          controller.clear();
+          setState(() {});
+        },
+        onSubmitted: (_) => FocusScope.of(context).unfocus(),
+      );
+    }
     return TextField(
       controller: _text,
       textInputAction: TextInputAction.search,
