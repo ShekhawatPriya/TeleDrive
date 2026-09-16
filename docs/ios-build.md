@@ -64,8 +64,18 @@ In Xcode, one-time setup:
    TestFlight/App Store distribution.
 2. Wait for SPM to finish resolving **TDLibFramework** (status bar). The
    first resolve downloads the zip; subsequent builds use the cache.
-3. On your iPhone: enable **Developer Mode** (Settings → Privacy & Security)
-   and trust the developer certificate after the first install.
+3. Pair the iPhone — the first connection must be **wired**, and iOS hides
+   the Developer Mode toggle until a Mac attempts developer access:
+   connect via USB (data cable), unlock, tap **Trust This Computer**, then
+   open Xcode → Window → **Devices and Simulators** and wait for
+   "Preparing device for development" to finish. Only then does
+   Settings → Privacy & Security → **Developer Mode** appear on the phone
+   (bottom of the screen). Enable it, let the phone restart, confirm.
+   After the first install, also trust the developer certificate
+   (Settings → General → VPN & Device Management). Wireless debugging can
+   be enabled afterwards via "Connect via network" in the Devices window.
+   (The `pod install` warning about `Pods-Runner.profile.xcconfig` is
+   standard Flutter behavior — ignore it.)
 
 Then either run from Xcode or:
 
