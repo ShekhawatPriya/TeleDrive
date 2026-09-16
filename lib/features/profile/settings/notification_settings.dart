@@ -50,42 +50,36 @@ class NotificationsSettingsScreen extends ConsumerWidget {
           bottom: AppSpacing.xxl,
         ),
         children: [
-          const _StaggeredEntrance(
-            index: 0,
-            child: _SettingsPageHeader(
-              icon: Icons.notifications_none_outlined,
-              color: _accentAlerts,
-              title: 'Upload alerts',
-              description:
-                  'Choose which upload events should trigger a system notification on this device.',
-            ),
+          _SettingsPageHeader(
+            icon: Icons.notifications_none_outlined,
+            color: _accentAlerts,
+            title: 'Upload alerts',
+            description:
+                'Choose which upload events should trigger a system notification on this device.',
           ),
           const SizedBox(height: AppSpacing.md),
-          _StaggeredEntrance(
-            index: 1,
-            child: _SettingsGroupCard(
-              dividerIndent: 72,
-              children: [
-                _SettingsSwitchTile(
-                  title: 'Upload completed alerts',
-                  subtitle: 'Show a local alert when uploads finish.',
-                  icon: Icons.check_circle_outline_rounded,
-                  iconColor: _accentAlerts,
-                  value: settings.uploadCompletedAlerts,
-                  onChanged: (value) =>
-                      _setNotificationToggle(context, ref, complete: value),
-                ),
-                _SettingsSwitchTile(
-                  title: 'Upload failed alerts',
-                  subtitle: 'Show a local alert when uploads fail.',
-                  icon: Icons.error_outline_rounded,
-                  iconColor: _accentAlerts,
-                  value: settings.uploadFailedAlerts,
-                  onChanged: (value) =>
-                      _setNotificationToggle(context, ref, failed: value),
-                ),
-              ],
-            ),
+          _SettingsGroupCard(
+            dividerIndent: 72,
+            children: [
+              _SettingsSwitchTile(
+                title: 'Upload completed alerts',
+                subtitle: 'Show a local alert when uploads finish.',
+                icon: Icons.check_circle_outline_rounded,
+                iconColor: _accentAlerts,
+                value: settings.uploadCompletedAlerts,
+                onChanged: (value) =>
+                    _setNotificationToggle(context, ref, complete: value),
+              ),
+              _SettingsSwitchTile(
+                title: 'Upload failed alerts',
+                subtitle: 'Show a local alert when uploads fail.',
+                icon: Icons.error_outline_rounded,
+                iconColor: _accentAlerts,
+                value: settings.uploadFailedAlerts,
+                onChanged: (value) =>
+                    _setNotificationToggle(context, ref, failed: value),
+              ),
+            ],
           ),
         ],
       ),

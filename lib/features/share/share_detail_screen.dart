@@ -89,10 +89,12 @@ class _ShareDetailScreenState extends ConsumerState<ShareDetailScreen> {
     final origin = box == null
         ? Rect.zero
         : box.localToGlobal(Offset.zero) & box.size;
-    await share_plus.Share.share(
-      share.url,
-      subject: share.primaryName ?? 'TeleDrive share',
-      sharePositionOrigin: origin,
+    await share_plus.SharePlus.instance.share(
+      share_plus.ShareParams(
+        text: share.url,
+        subject: share.primaryName ?? 'TeleDrive share',
+        sharePositionOrigin: origin,
+      ),
     );
   }
 

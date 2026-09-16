@@ -127,7 +127,9 @@ class _SettingsNumberTile extends StatelessWidget {
             _SettingsIconBadge(icon: icon!, color: iconColor ?? scheme.primary),
             const SizedBox(width: AppSpacing.md),
           ],
-          Expanded(child: _SettingsTileText(title: title, subtitle: subtitle)),
+          Expanded(
+            child: _SettingsTileText(title: title, subtitle: subtitle),
+          ),
           const SizedBox(width: AppSpacing.md),
           IconButton.filledTonal(
             tooltip: 'Decrease',
@@ -340,7 +342,9 @@ class _SettingsActionTile extends StatelessWidget {
           _SettingsIconBadge(icon: icon!, color: iconColor ?? scheme.primary),
           const SizedBox(width: AppSpacing.md),
         ],
-        Expanded(child: _SettingsTileText(title: title, subtitle: subtitle)),
+        Expanded(
+          child: _SettingsTileText(title: title, subtitle: subtitle),
+        ),
         const SizedBox(width: AppSpacing.md),
         Icon(
           Icons.chevron_right_rounded,

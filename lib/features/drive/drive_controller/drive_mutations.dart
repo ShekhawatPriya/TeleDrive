@@ -4,6 +4,7 @@ enum _ShelfKind { archive, locked }
 
 extension _DriveMutations on DriveController {
   Future<DriveFolder> _createFolder(String name, String? parentId) async {
+    final generation = _accountGeneration;
     final tempId = 'local:${DateTime.now().microsecondsSinceEpoch}';
     final now = DateTime.now().toIso8601String();
     final placeholder = DriveFolder(
@@ -18,10 +19,12 @@ extension _DriveMutations on DriveController {
     _notifyListeners();
     try {
       final created = await _repo.createFolder(name, parentId);
+      if (!_isCurrentAccount(generation)) return created;
       _replaceFolderEverywhere(tempId, created);
       _notifyListeners();
       return created;
     } catch (err) {
+      if (!_isCurrentAccount(generation)) rethrow;
       _removeFolderEverywhere(tempId);
       _notifyListeners();
       rethrow;
@@ -29,7 +32,9 @@ extension _DriveMutations on DriveController {
   }
 
   Future<void> _renameFolder(String id, String name) async {
+    final generation = _accountGeneration;
     await _repo.renameFolder(id, name);
+    if (!_isCurrentAccount(generation)) return;
     final byId = {for (final f in state.folders) f.id: f};
     final existing = byId[id];
     if (existing != null) {
@@ -50,6 +55,7 @@ extension _DriveMutations on DriveController {
   }
 
   Future<void> _moveFile(String fileId, String? targetFolderId) async {
+    final generation = _accountGeneration;
     final previousState = state;
     final source = state.files.firstWhereOrNull((f) => f.id == fileId);
     if (source == null) return;
@@ -100,6 +106,7 @@ extension _DriveMutations on DriveController {
 
     try {
       final updated = await _repo.moveFile(fileId, targetFolderId);
+      if (!_isCurrentAccount(generation)) return;
       // Patch with the server-truth row in the destination page (if loaded)
       // and in mediaFiles.
       final pagesAfter = Map<String?, DriveFolderPage>.of(state.folderPages);
@@ -119,6 +126,7 @@ extension _DriveMutations on DriveController {
       );
       this._refreshFlatAggregates();
     } catch (err) {
+      if (!_isCurrentAccount(generation)) return;
       state = previousState.copyWith(
         error: _repo.api.errorMessage(err, 'Move failed.'),
       );
@@ -128,6 +136,7 @@ extension _DriveMutations on DriveController {
   }
 
   Future<void> _moveFolder(String folderId, String? targetParentId) async {
+    final generation = _accountGeneration;
     if (folderId == targetParentId) return;
     final folder = this.folder(folderId);
     if (folder == null) return;
@@ -176,9 +185,11 @@ extension _DriveMutations on DriveController {
 
     try {
       final updated = await _repo.moveFolder(folderId, targetParentId);
+      if (!_isCurrentAccount(generation)) return;
       _replaceFolderEverywhere(folderId, updated);
       _notifyListeners();
     } catch (err) {
+      if (!_isCurrentAccount(generation)) return;
       // The backend rejects cycles via `assert_can_move_folder` — surface
       // the error and roll back optimistic state.
       state = previousState.copyWith(

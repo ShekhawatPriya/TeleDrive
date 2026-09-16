@@ -5,6 +5,7 @@ extension _DriveDeleteMutations on DriveController {
     List<String> fileIds = const [],
     List<String> folderIds = const [],
   }) async {
+    final generation = _accountGeneration;
     final total = fileIds.length + folderIds.length;
     if (total == 0) return;
     var completed = 0;
@@ -83,12 +84,14 @@ extension _DriveDeleteMutations on DriveController {
     this._notifyListeners();
 
     for (final id in fileIds) {
+      if (!_isCurrentAccount(generation)) return;
       try {
         if (_settings.state.trashEnabled) {
           await _repo.deleteFile(id);
         } else {
           await _repo.purgeFile(id);
         }
+        if (!_isCurrentAccount(generation)) return;
         final meta = fileMetaById[id];
         if (meta != null) {
           _bumpFolderAggregates(
@@ -98,26 +101,35 @@ extension _DriveDeleteMutations on DriveController {
           );
         }
       } catch (error, stackTrace) {
+        if (!_isCurrentAccount(generation)) return;
         failed++;
         failedFileIds.add(id);
         lastError = _repo.api.errorMessage(error, 'Delete failed.');
         debugPrint('Delete file $id failed: $error');
         debugPrintStack(stackTrace: stackTrace);
       } finally {
-        completed++;
-        state = state.copyWith(
-          deleteProgress: (completed: completed, failed: failed, total: total),
-        );
-        this._notifyListeners();
+        if (_isCurrentAccount(generation)) {
+          completed++;
+          state = state.copyWith(
+            deleteProgress: (
+              completed: completed,
+              failed: failed,
+              total: total,
+            ),
+          );
+          this._notifyListeners();
+        }
       }
     }
     for (final id in folderIds) {
+      if (!_isCurrentAccount(generation)) return;
       try {
         if (_settings.state.trashEnabled) {
           await _repo.deleteFolder(id);
         } else {
           await _repo.purgeFolder(id);
         }
+        if (!_isCurrentAccount(generation)) return;
         final meta = folderMetaById[id];
         if (meta != null) {
           _bumpFolderAggregates(
@@ -127,17 +139,24 @@ extension _DriveDeleteMutations on DriveController {
           );
         }
       } catch (error, stackTrace) {
+        if (!_isCurrentAccount(generation)) return;
         failed++;
         failedFolderIds.add(id);
         lastError = _repo.api.errorMessage(error, 'Delete failed.');
         debugPrint('Delete folder $id failed: $error');
         debugPrintStack(stackTrace: stackTrace);
       } finally {
-        completed++;
-        state = state.copyWith(
-          deleteProgress: (completed: completed, failed: failed, total: total),
-        );
-        this._notifyListeners();
+        if (_isCurrentAccount(generation)) {
+          completed++;
+          state = state.copyWith(
+            deleteProgress: (
+              completed: completed,
+              failed: failed,
+              total: total,
+            ),
+          );
+          this._notifyListeners();
+        }
       }
     }
     if (failed > 0) {
@@ -182,6 +201,7 @@ extension _DriveDeleteMutations on DriveController {
       await refreshFolder(state.activeFolderId);
     } catch (_) {}
     await Future<void>.delayed(Duration(milliseconds: failed > 0 ? 1800 : 700));
+    if (!_isCurrentAccount(generation)) return;
     state = state.copyWith(clearDeleteProgress: true);
     _notifyListeners();
   }

@@ -82,7 +82,11 @@ class _BackupDiagnosticsCard extends StatelessWidget {
         isError: false,
       ),
       if (diagnostics.lastError != null)
-        (label: 'Last scan error', value: diagnostics.lastError!, isError: true),
+        (
+          label: 'Last scan error',
+          value: diagnostics.lastError!,
+          isError: true,
+        ),
       if (diagnostics.lastEnqueueError != null)
         (
           label: 'Last enqueue error',

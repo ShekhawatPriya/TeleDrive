@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -35,7 +35,7 @@ import 'shared/splash_screen.dart';
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.read(authControllerProvider);
   final tdlib = ref.read(tdlibSessionControllerProvider);
-  return GoRouter(
+  final router = GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/',
     refreshListenable: Listenable.merge([auth, tdlib]),
@@ -127,13 +127,38 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/community-setup',
         builder: (_, __) => const CommunityOnboardingScreen(),
       ),
-      ShellRoute(
-        builder: (context, state, child) => MainShell(child: child),
-        routes: [
-          GoRoute(path: '/drive', builder: (_, __) => const DriveScreen()),
-          GoRoute(path: '/photos', builder: (_, __) => const PhotosScreen()),
-          GoRoute(path: '/starred', builder: (_, __) => const StarredScreen()),
-          GoRoute(path: '/shared', builder: (_, __) => const MySharesScreen()),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) => MainShell(navigationShell: shell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/drive', builder: (_, __) => const DriveScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/photos',
+                builder: (_, __) => const PhotosScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/starred',
+                builder: (_, __) => const StarredScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/shared',
+                builder: (_, __) => const MySharesScreen(),
+              ),
+            ],
+          ),
         ],
       ),
       GoRoute(
@@ -141,7 +166,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) {
           final scrollToStorage =
               state.uri.queryParameters['scrollToStorage'] == 'true';
-          return CupertinoPage(
+          return MaterialPage(
             key: state.pageKey,
             child: ProfileScreen(scrollToStorage: scrollToStorage),
           );
@@ -150,47 +175,47 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile/my-data',
         pageBuilder: (context, state) =>
-            CupertinoPage(key: state.pageKey, child: const MyDataScreen()),
+            MaterialPage(key: state.pageKey, child: const MyDataScreen()),
       ),
       GoRoute(
         path: '/profile/free-up-space',
         pageBuilder: (context, state) =>
-            CupertinoPage(key: state.pageKey, child: const FreeUpSpaceScreen()),
+            MaterialPage(key: state.pageKey, child: const FreeUpSpaceScreen()),
       ),
       GoRoute(
         path: '/settings',
         pageBuilder: (context, state) =>
-            CupertinoPage(key: state.pageKey, child: const SettingsScreen()),
+            MaterialPage(key: state.pageKey, child: const SettingsScreen()),
       ),
       GoRoute(
         path: '/settings/app-update',
         pageBuilder: (context, state) =>
-            CupertinoPage(key: state.pageKey, child: const AppUpdateScreen()),
+            MaterialPage(key: state.pageKey, child: const AppUpdateScreen()),
       ),
       GoRoute(
         path: '/settings/project',
         pageBuilder: (context, state) =>
-            CupertinoPage(key: state.pageKey, child: const ProjectScreen()),
+            MaterialPage(key: state.pageKey, child: const ProjectScreen()),
       ),
       GoRoute(
         path: '/settings/project/changelog',
         pageBuilder: (context, state) =>
-            CupertinoPage(key: state.pageKey, child: const ChangelogScreen()),
+            MaterialPage(key: state.pageKey, child: const ChangelogScreen()),
       ),
       GoRoute(
         path: '/settings/trash',
         pageBuilder: (context, state) =>
-            CupertinoPage(key: state.pageKey, child: const TrashScreen()),
+            MaterialPage(key: state.pageKey, child: const TrashScreen()),
       ),
       GoRoute(
         path: '/settings/archive',
         pageBuilder: (context, state) =>
-            CupertinoPage(key: state.pageKey, child: const ArchiveScreen()),
+            MaterialPage(key: state.pageKey, child: const ArchiveScreen()),
       ),
       GoRoute(
         path: '/settings/locked',
         pageBuilder: (context, state) =>
-            CupertinoPage(key: state.pageKey, child: const LockedScreen()),
+            MaterialPage(key: state.pageKey, child: const LockedScreen()),
       ),
       GoRoute(
         path: '/folder/:id',
@@ -216,18 +241,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/privacy',
-        pageBuilder: (context, state) => CupertinoPage(
+        pageBuilder: (context, state) => MaterialPage(
           key: state.pageKey,
           child: const LegalScreen(kind: LegalKind.privacy),
         ),
       ),
       GoRoute(
         path: '/terms',
-        pageBuilder: (context, state) => CupertinoPage(
+        pageBuilder: (context, state) => MaterialPage(
           key: state.pageKey,
           child: const LegalScreen(kind: LegalKind.terms),
         ),
       ),
     ],
   );
+  ref.onDispose(router.dispose);
+  return router;
 });

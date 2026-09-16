@@ -51,6 +51,18 @@ class DriveController extends ChangeNotifier {
   final AppSettingsController _settings;
   final AuthController _auth;
   DriveState state = const DriveState();
+  int _accountGeneration = 0;
+  bool _disposed = false;
+  bool _isCurrentAccount(int generation) =>
+      !_disposed && generation == _accountGeneration;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _accountGeneration++;
+    super.dispose();
+  }
+
   Map<String, String> _recent = {};
   Future<void>? _refreshing;
   DateTime? _lastRefreshCompletedAt;
@@ -184,7 +196,9 @@ class DriveController extends ChangeNotifier {
     String? originFolderId,
     int sizeBytes = 0,
   }) async {
+    final generation = _accountGeneration;
     await _repo.restoreFile(id);
+    if (!_isCurrentAccount(generation)) return;
     _bumpTrashRevision();
     // A restored file re-enters its origin folder. Trashed files are excluded
     // from recursive counts, so bump that chain and mark it stale so the
@@ -203,7 +217,9 @@ class DriveController extends ChangeNotifier {
     int fileCount = 0,
     int sizeBytes = 0,
   }) async {
+    final generation = _accountGeneration;
     await _repo.restoreFolder(id);
+    if (!_isCurrentAccount(generation)) return;
     _bumpTrashRevision();
     _bumpFolderAggregates(
       originParentId,
@@ -214,19 +230,25 @@ class DriveController extends ChangeNotifier {
   }
 
   Future<void> purgeFile(String id) async {
+    final generation = _accountGeneration;
     await _repo.purgeFile(id);
+    if (!_isCurrentAccount(generation)) return;
     _bumpTrashRevision();
     await refresh(silent: true, force: true);
   }
 
   Future<void> purgeFolder(String id) async {
+    final generation = _accountGeneration;
     await _repo.purgeFolder(id);
+    if (!_isCurrentAccount(generation)) return;
     _bumpTrashRevision();
     await refresh(silent: true, force: true);
   }
 
   Future<void> purgeAllTrash() async {
+    final generation = _accountGeneration;
     await _repo.purgeAllTrash();
+    if (!_isCurrentAccount(generation)) return;
     _bumpTrashRevision();
     await refresh(silent: true, force: true);
   }
@@ -234,12 +256,13 @@ class DriveController extends ChangeNotifier {
   Future<void> archiveFile(String id) =>
       _moveToShelf(id, kind: _ShelfKind.archive, archive: true);
 
-  Future<void> unarchiveFile(String id, {String? originFolderId}) => _moveToShelf(
-    id,
-    kind: _ShelfKind.archive,
-    archive: false,
-    originFolderId: originFolderId,
-  );
+  Future<void> unarchiveFile(String id, {String? originFolderId}) =>
+      _moveToShelf(
+        id,
+        kind: _ShelfKind.archive,
+        archive: false,
+        originFolderId: originFolderId,
+      );
 
   Future<void> lockFile(String id) =>
       _moveToShelf(id, kind: _ShelfKind.locked, archive: true);
@@ -257,7 +280,7 @@ class DriveController extends ChangeNotifier {
   Future<void> markAccessed(String id) => _markAccessed(id);
 
   void _notifyListeners() {
-    notifyListeners();
+    if (!_disposed) notifyListeners();
   }
 
   void syncOptimisticUploads(List<DriveFile> optimistic) =>

@@ -1,16 +1,6 @@
 part of '../drive_controller.dart';
 
 extension _DriveRefresh on DriveController {
-  bool _filesMatch(DriveFile a, DriveFile b) {
-    if (a.id == b.id) return true;
-    if (a.localId != null && b.localId != null && a.localId == b.localId) {
-      return true;
-    }
-    if (a.id == 'local:${b.localId}') return true;
-    if (b.id == 'local:${a.localId}') return true;
-    return false;
-  }
-
   /// True for rows that came from the server and are fully settled — these
   /// are authoritative and must never be replaced by an optimistic upload
   /// copy (which the upload sheet keeps emitting until thumbnails are ready).
@@ -53,23 +43,33 @@ extension _DriveRefresh on DriveController {
     final result = <DriveFile>[];
     final processedIncomingIds = <String>{};
 
+    // Index both server and local identities once. Preserve the first incoming
+    // match when aliases overlap, matching the original reconciliation contract.
+    final byIdentity = <String, int>{};
+    for (var index = 0; index < incoming.length; index++) {
+      final file = incoming[index];
+      byIdentity.putIfAbsent(file.id, () => index);
+      if (file.localId != null)
+        byIdentity.putIfAbsent('local:${file.localId}', () => index);
+    }
     for (final existingFile in existing) {
-      DriveFile? match;
-      for (final inc in incoming) {
-        if (_filesMatch(existingFile, inc)) {
-          match = inc;
-          break;
-        }
-      }
+      final byId = byIdentity[existingFile.id];
+      final byLocal = existingFile.localId == null
+          ? null
+          : byIdentity['local:${existingFile.localId}'];
+      final index = byId == null
+          ? byLocal
+          : byLocal == null || byId < byLocal
+          ? byId
+          : byLocal;
+      final match = index == null ? null : incoming[index];
 
       if (match != null) {
         final localId = match.localId ?? existingFile.localId;
         if (match.isOptimistic && _isSettledServerFile(existingFile)) {
           result.add(existingFile.copyWith(localId: localId));
         } else if (existingFile.isOptimistic && !match.isOptimistic) {
-          result.add(
-            _promoteServerFile(existingFile, match, localId: localId),
-          );
+          result.add(_promoteServerFile(existingFile, match, localId: localId));
         } else {
           result.add(match.copyWith(localId: localId));
         }
@@ -122,7 +122,12 @@ extension _DriveRefresh on DriveController {
   }
 
   Future<void> _loadRecent() async {
-    _recent = await _prefs.recentAccess(userId: _auth.activeAccount?.userId);
+    final generation = _accountGeneration;
+    final recent = await _prefs.recentAccess(
+      userId: _auth.activeAccount?.userId,
+    );
+    if (!_isCurrentAccount(generation)) return;
+    _recent = recent;
     _notifyListeners();
   }
 
@@ -131,6 +136,7 @@ extension _DriveRefresh on DriveController {
   /// in parallel. Other loaded folder pages stay cached and reload fresh on
   /// next visit if marked stale.
   Future<void> _refresh({bool silent = false}) async {
+    final generation = _accountGeneration;
     if (!silent) {
       state = state.copyWith(loading: true, clearError: true);
       _notifyListeners();
@@ -141,12 +147,16 @@ extension _DriveRefresh on DriveController {
       final activeFolderFuture = activeFolderId == null
           ? Future<void>.value()
           : ensureFolderLoaded(activeFolderId, force: true, silent: true);
-      final snapshot = await bootstrapFuture;
-      applyDriveState(snapshot, notify: false);
-      await activeFolderFuture;
+      final results = await Future.wait<Object?>([
+        bootstrapFuture,
+        activeFolderFuture,
+      ]);
+      if (!_isCurrentAccount(generation)) return;
+      applyDriveState(results.first as DriveSnapshot, notify: false);
       state = state.copyWith(loading: false, clearError: true);
       _lastRefreshCompletedAt = DateTime.now();
     } catch (err) {
+      if (!_isCurrentAccount(generation)) return;
       state = state.copyWith(
         loading: false,
         error: _repo.api.errorMessage(err, 'Failed to load drive.'),

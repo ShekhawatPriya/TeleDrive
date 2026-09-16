@@ -22,9 +22,11 @@ part 'auth_controller_status.dart';
 part 'auth_controller_session_actions.dart';
 part 'auth_controller_pending.dart';
 
-final apiClientProvider = Provider<ApiClient>(
-  (ref) => ApiClient(ref.watch(backendResolverProvider)),
-);
+final apiClientProvider = Provider<ApiClient>((ref) {
+  final client = ApiClient(ref.watch(backendResolverProvider));
+  ref.onDispose(() => client.dio.close(force: true));
+  return client;
+});
 final secureStorageProvider = Provider<SecureStorageService>(
   (ref) => SecureStorageService(),
 );

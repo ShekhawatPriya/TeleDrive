@@ -23,11 +23,11 @@ Widget _settingsSectionHeader(BuildContext context, String label) {
       AppSpacing.xs,
     ),
     child: Text(
-      label.toUpperCase(),
+      label,
       style: theme.textTheme.labelSmall?.copyWith(
-        color: scheme.onSurfaceVariant.withValues(alpha: 0.85),
+        color: scheme.onSurfaceVariant,
         fontWeight: FontWeight.w600,
-        letterSpacing: 1.0,
+        letterSpacing: 0,
       ),
     ),
   );
@@ -95,9 +95,6 @@ class _SettingsPageHeader extends StatelessWidget {
         border: Border.all(
           color: scheme.outlineVariant.withValues(alpha: isDark ? 0.18 : 0.5),
         ),
-        boxShadow: isDark
-            ? null
-            : AppElevation.shadowFor(AppElevation.level1, Brightness.light),
       ),
       child: Row(
         children: [
@@ -126,35 +123,6 @@ class _SettingsPageHeader extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// One-shot entrance animation for the main settings sections: each section
-/// fades in and settles upward, staggered by [index].
-class _StaggeredEntrance extends StatelessWidget {
-  const _StaggeredEntrance({required this.index, required this.child});
-
-  final int index;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final start = (index * 0.08).clamp(0.0, 0.4);
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: AppDurations.medium4,
-      curve: Interval(start, 1, curve: AppEasing.emphasizedDecelerate),
-      child: child,
-      builder: (context, t, child) {
-        return Opacity(
-          opacity: t,
-          child: Transform.translate(
-            offset: Offset(0, 10 * (1 - t)),
-            child: child,
-          ),
-        );
-      },
     );
   }
 }

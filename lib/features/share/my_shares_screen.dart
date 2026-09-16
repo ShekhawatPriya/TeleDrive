@@ -55,7 +55,6 @@ class _MySharesScreenState extends ConsumerState<MySharesScreen>
 
   @override
   Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRefresh());
     final controller = ref.watch(shareControllerProvider);
     final prefs = ref.watch(viewPreferencesProvider);
     final query = ref.watch(searchQueryProvider(SearchScope.shared)).query;
@@ -71,6 +70,7 @@ class _MySharesScreenState extends ConsumerState<MySharesScreen>
           await controller.refresh(silent: true);
         },
         child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
@@ -86,7 +86,7 @@ class _MySharesScreenState extends ConsumerState<MySharesScreen>
                       : (shareCount == 0
                             ? 'My shared links'
                             : '$shareCount link${shareCount == 1 ? '' : 's'}'),
-                  style: theme.textTheme.headlineSmall,
+                  style: theme.textTheme.bodyMedium,
                 ),
               ),
             ),
@@ -120,14 +120,14 @@ class _MySharesScreenState extends ConsumerState<MySharesScreen>
     if (controller.error != null && controller.shares.isEmpty) {
       return [
         SliverFillRemaining(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Text(
-                controller.error!,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
+          hasScrollBody: false,
+          child: EmptyState(
+            icon: Icons.cloud_off_outlined,
+            title: 'Could not load shared links',
+            body: controller.error!,
+            action: TextButton(
+              onPressed: () => controller.refresh(),
+              child: const Text('Try again'),
             ),
           ),
         ),
@@ -158,8 +158,8 @@ class _MySharesScreenState extends ConsumerState<MySharesScreen>
                 AppSpacing.lg,
               ),
               sliver: SliverGrid.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 260,
                   childAspectRatio: .72,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,

@@ -114,7 +114,19 @@ class ApiClient {
     if (err is DioException) {
       final data = err.response?.data;
       if (data is Map && data['error'] != null) return '${data['error']}';
-      if (err.message != null) return err.message!;
+      return switch (err.type) {
+        DioExceptionType.connectionError =>
+          _resolver?.unreachableMessage ??
+              'TeleDrive is temporarily unavailable. Please try again.',
+        DioExceptionType.connectionTimeout ||
+        DioExceptionType.sendTimeout ||
+        DioExceptionType.receiveTimeout =>
+          'The request timed out. Please try again.',
+        DioExceptionType.cancel => 'Request cancelled.',
+        DioExceptionType.badCertificate =>
+          'The server could not establish a secure connection.',
+        _ => fallback,
+      };
     }
     if (err is Exception) return err.toString().replaceFirst('Exception: ', '');
     return fallback;

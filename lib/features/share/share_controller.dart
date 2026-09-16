@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -28,12 +30,26 @@ class ShareController extends ChangeNotifier {
   bool _loading = false;
   String? _error;
   Future<void>? _refreshing;
+  int _generation = 0;
+  int _revision = 0;
+  bool _disposed = false;
+
+  bool _current(int generation) => !_disposed && generation == _generation;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _generation++;
+    super.dispose();
+  }
 
   List<Share> get shares => _shares;
   bool get loading => _loading;
   String? get error => _error;
 
   void resetForAccountSwitch() {
+    _generation++;
+    _revision++;
     _shares = const [];
     _loading = false;
     _error = null;
@@ -54,24 +70,34 @@ class ShareController extends ChangeNotifier {
   }
 
   Future<void> _doRefresh({required bool silent}) async {
-    if (!silent) {
+    final generation = _generation;
+    final revision = _revision;
+    if (!silent || _shares.isEmpty) {
       _loading = true;
       _error = null;
       notifyListeners();
     }
     try {
-      _shares = await _repo.listShares();
+      final shares = await _repo.listShares();
+      if (!_current(generation) || revision != _revision) return;
+      _shares = shares;
       _error = null;
     } catch (err) {
-      _error = err.toString();
+      if (_current(generation))
+        _error = 'Could not refresh shared links. Try again.';
     } finally {
-      _loading = false;
-      notifyListeners();
+      if (_current(generation)) {
+        _loading = false;
+        notifyListeners();
+      }
     }
   }
 
   Future<Share> createShare({required List<ShareItemRequest> items}) async {
+    final generation = _generation;
     final created = await _repo.createShare(items: items);
+    if (!_current(generation)) return created;
+    _revision++;
     _shares = [created, ..._shares];
     final fileIds = items
         .where((i) => i.type == ShareItemType.file)
@@ -83,12 +109,15 @@ class ShareController extends ChangeNotifier {
         .toSet();
     _drive.markShared(fileIds: fileIds, folderIds: folderIds);
     notifyListeners();
-    refresh(silent: true);
+    unawaited(refresh(silent: true));
     return created;
   }
 
   Future<int> revokeForFile(String fileId) async {
+    final generation = _generation;
     final count = await _repo.revokeForFile(fileId);
+    if (!_current(generation)) return count;
+    _revision++;
     _shares = _shares
         .where((s) => !s.items.any((it) => it.fileId == fileId))
         .toList();
@@ -98,7 +127,10 @@ class ShareController extends ChangeNotifier {
   }
 
   Future<int> revokeForFolder(String folderId) async {
+    final generation = _generation;
     final count = await _repo.revokeForFolder(folderId);
+    if (!_current(generation)) return count;
+    _revision++;
     _shares = _shares
         .where((s) => !s.items.any((it) => it.folderId == folderId))
         .toList();
@@ -108,14 +140,21 @@ class ShareController extends ChangeNotifier {
   }
 
   Future<void> revokeShare(String id) async {
+    final generation = _generation;
     final previous = _shares;
+    _revision++;
     _shares = previous.where((s) => s.id != id).toList();
     notifyListeners();
     try {
       await _repo.revokeShare(id);
     } catch (err) {
-      _shares = previous;
-      _error = err.toString();
+      if (!_current(generation)) rethrow;
+      _revision++;
+      // Restore only this item; preserve other concurrent revocations.
+      final removed = previous.where((share) => share.id == id);
+      if (!_shares.any((share) => share.id == id))
+        _shares = [..._shares, ...removed];
+      _error = 'Could not revoke this link. Try again.';
       notifyListeners();
       rethrow;
     }

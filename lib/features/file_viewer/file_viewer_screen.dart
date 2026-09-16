@@ -1,21 +1,14 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../../core/telegram/telegram_transfer_service.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/skeletons.dart';
-import '../auth/auth_controller.dart';
-import '../auth/tdlib_session_controller.dart';
 import '../drive/drive_controller.dart';
+import 'file_open_action.dart';
 import 'components/document_preview.dart';
 import 'components/image_preview.dart';
 import 'components/metadata_block.dart';
@@ -33,6 +26,7 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
   // True while we're awaiting `/files/{id}` because the file wasn't yet in
   // any loaded folder page (Starred / Search / deep link path).
   bool _resolving = false;
+  bool _opening = false;
   // True only after a server fetch returned no row \u2014 distinguishes "not yet
   // loaded" from "actually missing." We never set this just because the
   // initial sync lookup missed.
@@ -81,11 +75,12 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
       // Sync miss without an in-flight resolve happens only when an earlier
       // resolve already returned null; surface the existing not-found UI.
       if (_serverSaysMissing) {
-        return const Scaffold(
-          body: EmptyState(
+        return Scaffold(
+          appBar: AppBar(title: const Text('File unavailable')),
+          body: const EmptyState(
             icon: Icons.error_outline,
-            title: 'File not found',
-            body: 'Refresh Drive and try again.',
+            title: 'Could not open this file',
+            body: 'Check your connection, then return to Drive and try again.',
           ),
         );
       }
@@ -116,7 +111,7 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
           _StarButton(file: file),
           IconButton(
             tooltip: 'Download',
-            onPressed: () => _download(context, ref, file),
+            onPressed: _opening ? null : () => _download(context, ref, file),
             icon: const Icon(Icons.file_download_outlined),
           ),
           const SizedBox(width: 4),
@@ -170,72 +165,17 @@ class _FileViewerScreenState extends ConsumerState<FileViewerScreen> {
     WidgetRef ref,
     DriveFile file,
   ) async {
-    final url = file.downloadUrl;
-    final messenger = ScaffoldMessenger.of(context);
+    if (_opening) return;
+    setState(() => _opening = true);
     try {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Preparing file...'),
-          duration: Duration(seconds: 1),
-        ),
+      await openDriveFileExternally(
+        context,
+        ref,
+        file,
+        returnTo: '/file/${file.id}',
       );
-      final api = ref.read(apiClientProvider);
-      final dir = await getTemporaryDirectory();
-      final safeName = file.name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-      final path = '${dir.path}/$safeName';
-      if (file.isClientManaged) {
-        final session = ref.read(tdlibSessionControllerProvider);
-        if (!session.isReadyForActiveUser) {
-          if (!context.mounted) return;
-          context.go('/tdlib-session?returnTo=/file/${file.id}');
-          throw Exception(
-            'Reconnect Telegram on this device to open TDLib-managed files.',
-          );
-        }
-        final media = await ref
-            .read(driveRepositoryProvider)
-            .mediaRef(file.id, variant: 'original');
-        final telegramRef = media.ref;
-        if (telegramRef == null) {
-          throw Exception('Telegram media reference is unavailable.');
-        }
-        final telegram = ref.read(telegramTransferServiceProvider);
-        final user = ref.read(authControllerProvider).user;
-        if (user == null || user.telegramId == 0) {
-          throw Exception('Connect Telegram before opening this file.');
-        }
-        await telegram.configure(
-          backendUserId: '${user.userId}',
-          telegramUserId: user.telegramId,
-        );
-        if (!await telegram.isAuthorized) {
-          if (!context.mounted) return;
-          context.go('/tdlib-session?returnTo=/file/${file.id}');
-          throw Exception('Local TDLib session is not authorized.');
-        }
-        final result = await telegram.downloadToCache(
-          telegramRef,
-          filename: file.name,
-          cacheKey: media.cacheKey,
-        );
-        await OpenFilex.open(result.file.path);
-        return;
-      }
-      if (url == null) return;
-      if (!await File(path).exists()) {
-        await api.dio.download(url, path);
-      }
-      await OpenFilex.open(path);
-    } catch (err) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            ref
-                .read(apiClientProvider)
-                .errorMessage(err, 'Could not open file.'),
-          ),
-        ),
-      );
+    } finally {
+      if (mounted) setState(() => _opening = false);
     }
   }
 }

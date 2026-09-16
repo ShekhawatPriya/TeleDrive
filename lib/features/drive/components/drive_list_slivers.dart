@@ -98,8 +98,8 @@ class DriveFilesSliver extends ConsumerWidget {
       return SliverPadding(
         padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPadding),
         sliver: SliverGrid.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 260,
             childAspectRatio: .72,
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,

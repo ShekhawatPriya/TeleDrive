@@ -1,14 +1,19 @@
 part of 'auth_repository.dart';
 
 extension _AuthRepositoryHelpers on AuthRepository {
-  AuthUser _withLoadablePhotoUrl(AuthUser user) {
+  AuthUser _withLoadablePhotoUrl(AuthUser user, {String? tokenOverride}) {
     final photoUrl = user.photoUrl?.trim();
     if (photoUrl == null || photoUrl.isEmpty || photoUrl.startsWith('data:')) {
       return user;
     }
     final uri = Uri.tryParse(photoUrl);
     if (uri != null && uri.hasScheme) return user;
-    return user.copyWith(photoUrl: api.mediaUrl(photoUrl));
+    return user.copyWith(
+      photoUrl: api.mediaUrl(
+        photoUrl,
+        params: {if (tokenOverride != null) 'token': tokenOverride},
+      ),
+    );
   }
 
   List<CommunityTarget> _communityTargets(Object? raw) {

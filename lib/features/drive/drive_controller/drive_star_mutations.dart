@@ -10,6 +10,7 @@ extension _DriveStarMutations on DriveController {
   }
 
   Future<void> _toggleFolderStar(String id) async {
+    final generation = _accountGeneration;
     final current =
         state.folders.firstWhereOrNull((folder) => folder.id == id) ??
         state.starred.folders.firstWhereOrNull((folder) => folder.id == id);
@@ -34,10 +35,12 @@ extension _DriveStarMutations on DriveController {
     _notifyListeners();
     try {
       final updated = await _repo.setFolderStarred(id, next);
+      if (!_isCurrentAccount(generation)) return;
       _replaceFolderEverywhere(id, updated);
       _patchStarredFolder(updated, starred: next);
       _notifyListeners();
     } catch (err) {
+      if (!_isCurrentAccount(generation)) return;
       state = state.copyWith(
         folders: previousFolders,
         starred: previousStarred,
@@ -48,6 +51,7 @@ extension _DriveStarMutations on DriveController {
   }
 
   Future<void> _toggleFileStar(String id) async {
+    final generation = _accountGeneration;
     final current =
         state.files.firstWhereOrNull((file) => file.id == id) ??
         state.mediaFiles.firstWhereOrNull((file) => file.id == id) ??
@@ -78,6 +82,7 @@ extension _DriveStarMutations on DriveController {
     _notifyListeners();
     try {
       final updated = await _repo.setFileStarred(id, next);
+      if (!_isCurrentAccount(generation)) return;
       final pagesAfter = Map<String?, DriveFolderPage>.of(state.folderPages);
       pagesAfter.forEach((parent, page) {
         if (page.files.any((file) => file.id == id)) {
@@ -98,6 +103,7 @@ extension _DriveStarMutations on DriveController {
       _patchStarredFile(updated, starred: next);
       _notifyListeners();
     } catch (err) {
+      if (!_isCurrentAccount(generation)) return;
       state = previousState.copyWith(
         error: _repo.api.errorMessage(err, 'Could not update star.'),
       );

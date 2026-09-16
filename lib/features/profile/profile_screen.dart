@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../core/theme/app_theme.dart';
+import '../../widgets/empty_state.dart';
+import '../../widgets/skeletons.dart';
 import 'storage_summary_controller.dart';
-import 'widgets/storage_swipe_card.dart';
 import 'widgets/storage_donut_card.dart';
+import 'widgets/local_cache_card.dart';
 import 'cache_controller.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({this.scrollToStorage = false, super.key});
   final bool scrollToStorage;
-
   @override
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
@@ -29,69 +28,73 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final summary =
-        ref.watch(storageSummaryControllerProvider).value ??
-        StorageSummary.empty;
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final used = summary.totalBytes;
-    final categories = buildStorageCategoriesFromSummary(summary);
-
-    final modalRoute = ModalRoute.of(context);
-    final isCurrent = modalRoute?.isCurrent ?? true;
-
-    return PopScope(
-      canPop: !isCurrent || GoRouter.of(context).canPop(),
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-        if (isCurrent) {
-          context.go('/drive');
-        }
-      },
-      child: Scaffold(
-        body: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              pinned: true,
-              titleSpacing: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                tooltip: 'Back',
-                onPressed: () {
-                  if (GoRouter.of(context).canPop()) {
-                    context.pop();
-                  } else {
-                    context.go('/drive');
-                  }
-                },
-              ),
-              title: const Text('Storage'),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.xs,
-                AppSpacing.md,
-                AppSpacing.lg,
-              ),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate.fixed([
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.xxs,
+    final controller = ref.watch(storageSummaryControllerProvider);
+    final summary = controller.value;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Storage'),
+        leading: BackButton(
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/drive'),
+        ),
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await Future.wait([
+            controller.ensureLoaded(force: true),
+            ref.read(cacheControllerProvider).refreshCacheStats(),
+          ]);
+        },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+          children: [
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Everything has its place.',
+                      style: Theme.of(context).textTheme.headlineMedium,
                     ),
-                    child: Text(
-                      'Storage Breakdown',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: scheme.primary,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
+                    const SizedBox(height: 8),
+                    Text(
+                      'Your Telegram library and the space used on this device.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 24),
+                    if (summary == null && controller.error == null)
+                      const SizedBox(height: 280, child: SkeletonList())
+                    else if (summary == null)
+                      EmptyState(
+                        icon: Icons.cloud_off_outlined,
+                        title: 'Storage is unavailable',
+                        body: controller.error!,
+                        action: TextButton(
+                          onPressed: () => controller.ensureLoaded(force: true),
+                          child: const Text('Try again'),
+                        ),
+                      )
+                    else ...[
+                      if (controller.error != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Text(
+                            'Showing your last loaded storage usage. Pull to refresh.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      StorageDonutCard(
+                        used: summary.totalBytes,
+                        categories: buildStorageCategoriesFromSummary(summary),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  StorageSwipeCard(used: used, categories: categories),
-                ]),
+                    ],
+                    const SizedBox(height: 20),
+                    const LocalCacheCard(),
+                  ],
+                ),
               ),
             ),
           ],

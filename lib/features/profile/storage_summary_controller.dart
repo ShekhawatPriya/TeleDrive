@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -107,14 +109,20 @@ class StorageSummaryController extends ChangeNotifier {
   StorageSummaryController(this._repo, this._ref) {
     // Refresh once on any revision bump from the Drive controller. These are
     // the cheapest signals we already emit for trash/archive/lock mutations.
-    _ref.listen<DriveController>(driveControllerProvider, (prev, next) {
-      if (prev == null) return;
-      if (prev.state.trashRevision != next.state.trashRevision ||
-          prev.state.archiveRevision != next.state.archiveRevision ||
-          prev.state.lockedRevision != next.state.lockedRevision) {
-        ensureLoaded(force: true);
-      }
-    });
+    _ref.listen(
+      driveControllerProvider.select(
+        (c) => (
+          trash: c.state.trashRevision,
+          archive: c.state.archiveRevision,
+          locked: c.state.lockedRevision,
+          files: c.state.files,
+          media: c.state.mediaFiles,
+        ),
+      ),
+      (prev, next) {
+        if (prev != null && value != null) ensureLoaded(force: true);
+      },
+    );
   }
 
   final StorageSummaryRepository _repo;
@@ -123,33 +131,59 @@ class StorageSummaryController extends ChangeNotifier {
   bool loading = false;
   String? error;
   Future<void>? _inFlight;
+  int _generation = 0;
+  bool _disposed = false;
+  bool _refreshRequested = false;
 
   Future<void> ensureLoaded({bool force = false}) {
     if (!force && value != null && !loading) return Future.value();
     final inFlight = _inFlight;
-    if (inFlight != null) return inFlight;
+    if (inFlight != null) {
+      _refreshRequested = _refreshRequested || force;
+      return inFlight;
+    }
     final task = _fetch();
     _inFlight = task;
     return task.whenComplete(() {
-      if (identical(_inFlight, task)) _inFlight = null;
+      if (!identical(_inFlight, task)) return;
+      _inFlight = null;
+      if (_refreshRequested && !_disposed) {
+        _refreshRequested = false;
+        unawaited(ensureLoaded(force: true));
+      }
     });
   }
 
   Future<void> _fetch() async {
+    final generation = _generation;
     loading = true;
     error = null;
     notifyListeners();
     try {
-      value = await _repo.fetch();
+      final result = await _repo.fetch();
+      if (_disposed || generation != _generation) return;
+      value = result;
     } catch (err) {
+      if (_disposed || generation != _generation) return;
       error = 'Failed to load storage usage.';
     } finally {
-      loading = false;
-      notifyListeners();
+      if (!_disposed && generation == _generation) {
+        loading = false;
+        notifyListeners();
+      }
     }
   }
 
+  @override
+  void dispose() {
+    _disposed = true;
+    _generation++;
+    super.dispose();
+  }
+
   void resetForAccountSwitch() {
+    _generation++;
+    _refreshRequested = false;
     value = null;
     loading = false;
     error = null;

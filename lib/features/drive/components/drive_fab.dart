@@ -18,6 +18,7 @@ class DriveFab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return FloatingActionButton(
       heroTag: null,
+      tooltip: 'Add files or create a folder',
       onPressed: () => _open(context, ref),
       child: const Icon(Icons.add),
     );

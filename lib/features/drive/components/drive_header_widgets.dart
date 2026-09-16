@@ -4,7 +4,7 @@ import '../../../core/theme/app_theme.dart';
 
 /// Horizontal row of pill-shaped quick action buttons (Trash, Archive, Locked)
 /// shown above the Recent strip on the drive home. Archive and Locked are
-/// visual-only at this stage; only Trash navigates.
+/// available as dedicated recovery and organization destinations.
 class DriveQuickActions extends StatelessWidget {
   const DriveQuickActions({
     this.onTrashTap,
@@ -26,20 +26,20 @@ class DriveQuickActions extends StatelessWidget {
         AppSpacing.md,
         0,
       ),
-      child: Row(
+      child: Wrap(
+        spacing: AppSpacing.xs,
+        runSpacing: AppSpacing.xs,
         children: [
           _QuickActionPill(
             icon: Icons.delete_outline_rounded,
             label: 'Trash',
             onTap: onTrashTap,
           ),
-          const SizedBox(width: AppSpacing.sm),
           _QuickActionPill(
             icon: Icons.inventory_2_outlined,
             label: 'Archive',
             onTap: onArchiveTap,
           ),
-          const SizedBox(width: AppSpacing.sm),
           _QuickActionPill(
             icon: Icons.lock_outline_rounded,
             label: 'Locked',
@@ -63,35 +63,15 @@ class _QuickActionPill extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    return Material(
-      color: Colors.transparent,
-      shape: StadiumBorder(
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.6)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.xs + 2,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 18, color: scheme.onSurfaceVariant),
-              const SizedBox(width: AppSpacing.xs),
-              Text(
-                label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: scheme.onSurface,
-                  height: 1.1,
-                ),
-              ),
-            ],
-          ),
-        ),
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: scheme.onSurfaceVariant,
+        side: BorderSide(color: scheme.outlineVariant),
+        textStyle: theme.textTheme.labelLarge,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
       ),
     );
   }
@@ -121,10 +101,10 @@ class DriveSectionHeader extends StatelessWidget {
         ),
         child: Text(
           title,
-          style: theme.textTheme.titleSmall?.copyWith(
-            color: theme.colorScheme.primary,
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: theme.colorScheme.onSurface,
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
+            letterSpacing: -0.2,
           ),
         ),
       ),

@@ -186,9 +186,9 @@ class BackendResolver extends ChangeNotifier {
         return 'Backend at $_baseUrl is not responding '
             '(pinned by API_BASE_URL in .env.local).';
       default:
-        return 'Backend not found on this network. Make sure the PC running '
-            'the backend is on the same WiFi/hotspot and the server is up, '
-            'then re-scan in Settings > Server Connection.';
+        return 'TeleDrive could not reach its service. Start TeleDrive on your '
+            'computer and try again. The app connects automatically over USB '
+            'or the same Wi-Fi network.';
     }
   }
 
@@ -343,6 +343,10 @@ class BackendResolver extends ChangeNotifier {
     ];
   }
 
+  @visibleForTesting
+  static bool isHealthyPayload(Map<dynamic, dynamic> data) =>
+      data['database_ok'] == true && data['ok'] != false;
+
   Future<bool> _isHealthy(String base, {bool quick = false}) async {
     try {
       final dio = quick ? _scanDio : _probeDio;
@@ -350,7 +354,7 @@ class BackendResolver extends ChangeNotifier {
       final data = response.data;
       return response.statusCode == 200 &&
           data is Map &&
-          (data.containsKey('database_ok') || data.containsKey('ok'));
+          isHealthyPayload(data);
     } catch (_) {
       return false;
     }

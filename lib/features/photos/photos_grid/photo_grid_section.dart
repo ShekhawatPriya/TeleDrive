@@ -25,47 +25,53 @@ class PhotoGridSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final spacing = columns >= 4 ? 2.0 : 3.0;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Text(
-              section.label,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(color: scheme.onSurface),
+    return SliverLayoutBuilder(
+      builder: (context, constraints) {
+        // Preserve the chosen phone density while adding columns on larger screens.
+        final count = (constraints.crossAxisExtent / (390 / columns))
+            .round()
+            .clamp(2, 12);
+        final spacing = count >= 4 ? 2.0 : 3.0;
+        return SliverMainAxisGroup(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    section.label,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ),
             ),
-          ),
-          GridView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-            padding: EdgeInsets.zero,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: columns,
-              mainAxisSpacing: spacing,
-              crossAxisSpacing: spacing,
+            SliverPadding(
+              padding: const EdgeInsets.only(bottom: 12),
+              sliver: SliverGrid.builder(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: count,
+                  mainAxisSpacing: spacing,
+                  crossAxisSpacing: spacing,
+                ),
+                itemCount: section.files.length,
+                itemBuilder: (_, i) {
+                  final file = section.files[i];
+                  final key = tileKeys.putIfAbsent(file.id, () => GlobalKey());
+                  return PhotoTile(
+                    key: key,
+                    file: file,
+                    selectMode: selectMode,
+                    selected: selectedIds.contains(file.id),
+                    onTap: () => onTileTap(file.id),
+                    onLongPress: () => onTileLongPress(file.id, key),
+                  );
+                },
+              ),
             ),
-            itemCount: section.files.length,
-            itemBuilder: (_, i) {
-              final file = section.files[i];
-              final key = tileKeys.putIfAbsent(file.id, () => GlobalKey());
-              return PhotoTile(
-                key: key,
-                file: file,
-                selectMode: selectMode,
-                selected: selectedIds.contains(file.id),
-                onTap: () => onTileTap(file.id),
-                onLongPress: () => onTileLongPress(file.id, key),
-              );
-            },
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 }

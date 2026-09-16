@@ -24,6 +24,7 @@ extension _DriveFolderLoading on DriveController {
   }
 
   Future<void> _resetForAccountSwitch() async {
+    _accountGeneration++;
     state = const DriveState(loading: true);
     _recent = {};
     _refreshing = null;
@@ -81,7 +82,7 @@ extension _DriveFolderLoading on DriveController {
         _repo.listFiles(folderId: folderId, limit: 60),
         _repo.listFolderChildren(parentId: folderId, limit: 200),
       ]);
-      if (_folderLoadGen[folderId] != gen) return;
+      if (_disposed || _folderLoadGen[folderId] != gen) return;
       final fileResult =
           results[0] as ({List<DriveFile> files, String? nextCursor});
       final folderResult =
@@ -120,7 +121,7 @@ extension _DriveFolderLoading on DriveController {
       _lastRefreshCompletedAt = DateTime.now();
       _notifyListeners();
     } catch (err) {
-      if (_folderLoadGen[folderId] != gen) return;
+      if (_disposed || _folderLoadGen[folderId] != gen) return;
       final current = state.folderPages[folderId] ?? const DriveFolderPage();
       _applyFolderPage(
         folderId,
@@ -163,7 +164,7 @@ extension _DriveFolderLoading on DriveController {
               cursor: page.folderCursor,
             );
       final results = await Future.wait([fileFuture, folderFuture]);
-      if (_folderLoadGen[folderId] != gen) return;
+      if (_disposed || _folderLoadGen[folderId] != gen) return;
       final fileResult =
           results[0] as ({List<DriveFile> files, String? nextCursor});
       final folderResult =
@@ -201,7 +202,7 @@ extension _DriveFolderLoading on DriveController {
       );
       _notifyListeners();
     } catch (err) {
-      if (_folderLoadGen[folderId] != gen) return;
+      if (_disposed || _folderLoadGen[folderId] != gen) return;
       final current = state.folderPages[folderId] ?? const DriveFolderPage();
       _applyFolderPage(
         folderId,

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/foundation.dart';
 
-/// Builds the Material 3 reference type scale using Roboto Flex (with
-/// JetBrains Mono kept for `code()`).
-///
-/// All values match the M3 spec exactly — sizes / line heights / weights /
-/// letter spacing — so theme overrides stay minimal and components inherit
-/// correct typography from `Theme.of(context).textTheme.<role>`.
+/// Platform typography without a network font dependency. Display tracking is
+/// tighter than body text; all sizes continue to honor the system text scaler.
 TextTheme buildAppTextTheme(ColorScheme scheme) {
-  final base = GoogleFonts.robotoFlexTextTheme();
+  final family =
+      defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.macOS
+      ? '.SF Pro Text'
+      : 'Roboto';
+  const base = TextTheme();
   final onSurface = scheme.onSurface;
   final onSurfaceVariant = scheme.onSurfaceVariant;
 
@@ -19,7 +20,8 @@ TextTheme buildAppTextTheme(ColorScheme scheme) {
     required double letter,
     Color? color,
   }) {
-    return GoogleFonts.robotoFlex(
+    return TextStyle(
+      fontFamily: family,
       fontSize: size,
       height: height / size,
       fontWeight: weight,
@@ -30,41 +32,61 @@ TextTheme buildAppTextTheme(ColorScheme scheme) {
 
   return base.copyWith(
     displayLarge: s(
-      size: 57,
-      height: 64,
-      weight: FontWeight.w400,
-      letter: -0.25,
+      size: 48,
+      height: 54,
+      weight: FontWeight.w700,
+      letter: -1.5,
     ),
-    displayMedium: s(size: 45, height: 52, weight: FontWeight.w400, letter: 0),
-    displaySmall: s(size: 36, height: 44, weight: FontWeight.w400, letter: 0),
-    headlineLarge: s(size: 32, height: 40, weight: FontWeight.w400, letter: 0),
-    headlineMedium: s(size: 28, height: 36, weight: FontWeight.w400, letter: 0),
-    headlineSmall: s(size: 24, height: 32, weight: FontWeight.w400, letter: 0),
-    titleLarge: s(size: 22, height: 28, weight: FontWeight.w400, letter: 0),
+    displayMedium: s(
+      size: 40,
+      height: 46,
+      weight: FontWeight.w700,
+      letter: -1.2,
+    ),
+    displaySmall: s(size: 34, height: 40, weight: FontWeight.w700, letter: -1),
+    headlineLarge: s(
+      size: 32,
+      height: 38,
+      weight: FontWeight.w700,
+      letter: -0.8,
+    ),
+    headlineMedium: s(
+      size: 28,
+      height: 34,
+      weight: FontWeight.w600,
+      letter: -0.6,
+    ),
+    headlineSmall: s(
+      size: 24,
+      height: 30,
+      weight: FontWeight.w600,
+      letter: -0.4,
+    ),
+    titleLarge: s(size: 20, height: 26, weight: FontWeight.w600, letter: -0.3),
     titleMedium: s(size: 16, height: 24, weight: FontWeight.w500, letter: 0.15),
     titleSmall: s(size: 14, height: 20, weight: FontWeight.w500, letter: 0.10),
-    bodyLarge: s(size: 16, height: 24, weight: FontWeight.w400, letter: 0.50),
+    bodyLarge: s(size: 16, height: 24, weight: FontWeight.w400, letter: 0),
     bodyMedium: s(
       size: 14,
       height: 20,
       weight: FontWeight.w400,
-      letter: 0.25,
+      letter: 0,
       color: onSurfaceVariant,
     ),
     bodySmall: s(
       size: 12,
       height: 16,
       weight: FontWeight.w400,
-      letter: 0.40,
+      letter: 0.1,
       color: onSurfaceVariant,
     ),
     labelLarge: s(size: 14, height: 20, weight: FontWeight.w500, letter: 0.10),
-    labelMedium: s(size: 12, height: 16, weight: FontWeight.w500, letter: 0.50),
+    labelMedium: s(size: 12, height: 16, weight: FontWeight.w500, letter: 0),
     labelSmall: s(
       size: 11,
       height: 16,
       weight: FontWeight.w500,
-      letter: 0.50,
+      letter: 0,
       color: onSurfaceVariant,
     ),
   );

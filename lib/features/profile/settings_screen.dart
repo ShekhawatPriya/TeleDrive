@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -48,182 +47,159 @@ class SettingsScreen extends ConsumerWidget {
         title: const Text('Settings'),
       ),
       body: ListView(
-        physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.only(
           top: AppSpacing.xs,
           bottom: AppSpacing.xxl,
         ),
         children: [
-          _StaggeredEntrance(
-            index: 0,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _settingsSectionHeader(context, 'Connectivity'),
-                _SettingsGroupCard(
-                  dividerIndent: 72,
-                  children: [_ServerConnectionSettingsTile()],
-                ),
-              ],
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _settingsSectionHeader(context, 'Connectivity'),
+              _SettingsGroupCard(
+                dividerIndent: 72,
+                children: [_ServerConnectionSettingsTile()],
+              ),
+            ],
           ),
-          _StaggeredEntrance(
-            index: 1,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _settingsSectionHeader(context, 'Uploads & Backup'),
-                _SettingsGroupCard(
-                  dividerIndent: 72,
-                  children: [
-                    _SettingsMenuTile(
-                      icon: Icons.cloud_outlined,
-                      iconColor: _accentUploads,
-                      title: 'Uploads',
-                      subtitle: 'Limits, mobile data, and duplicate renaming',
-                      onTap: () => Navigator.of(context).push(
-                        CupertinoPageRoute(
-                          builder: (_) => const UploadSettingsScreen(),
-                        ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _settingsSectionHeader(context, 'Uploads & Backup'),
+              _SettingsGroupCard(
+                dividerIndent: 72,
+                children: [
+                  _SettingsMenuTile(
+                    icon: Icons.cloud_outlined,
+                    iconColor: _accentUploads,
+                    title: 'Uploads',
+                    subtitle: 'Limits, mobile data, and duplicate renaming',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const UploadSettingsScreen(),
                       ),
                     ),
-                    _SettingsMenuTile(
-                      icon: Icons.backup_outlined,
-                      iconColor: _accentBackup,
-                      title: 'Backup',
-                      subtitle: 'Gallery backup scans and queue behavior',
-                      onTap: () => Navigator.of(context).push(
-                        CupertinoPageRoute(
-                          builder: (_) => const BackupSettingsScreen(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          _StaggeredEntrance(
-            index: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _settingsSectionHeader(context, 'Storage & Privacy'),
-                _SettingsGroupCard(
-                  dividerIndent: 72,
-                  children: [
-                    _SettingsMenuTile(
-                      icon: Icons.cleaning_services_outlined,
-                      iconColor: _accentCache,
-                      title: 'Cache & Storage',
-                      subtitle: 'Reclaim space from the local file cache',
-                      trailing: AnimatedSwitcher(
-                        duration: AppDurations.medium2,
-                        switchInCurve: AppEasing.standard,
-                        switchOutCurve: AppEasing.standard,
-                        child: Text(
-                          cache.isLoading
-                              ? 'Scanning...'
-                              : _formatBytes(cache.totalSize),
-                          key: ValueKey(
-                            cache.isLoading
-                                ? 'scanning'
-                                : '${cache.totalSize}',
-                          ),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      onTap: () => Navigator.of(context).push(
-                        CupertinoPageRoute(
-                          builder: (_) => const CacheStorageSettingsScreen(),
-                        ),
-                      ),
-                    ),
-                    _SettingsMenuTile(
-                      icon: Icons.shield_outlined,
-                      iconColor: _accentPrivacy,
-                      title: 'Privacy & Security',
-                      subtitle: 'Trash bin, share links, and sign-out cache',
-                      onTap: () => Navigator.of(context).push(
-                        CupertinoPageRoute(
-                          builder: (_) => const PrivacySecuritySettingsScreen(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          _StaggeredEntrance(
-            index: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _settingsSectionHeader(context, 'Alerts & Updates'),
-                _SettingsGroupCard(
-                  dividerIndent: 72,
-                  children: [
-                    _SettingsMenuTile(
-                      icon: Icons.notifications_none_outlined,
-                      iconColor: _accentAlerts,
-                      title: 'Notifications',
-                      subtitle: 'Alerts for completed or failed uploads',
-                      onTap: () => Navigator.of(context).push(
-                        CupertinoPageRoute(
-                          builder: (_) => const NotificationsSettingsScreen(),
-                        ),
-                      ),
-                    ),
-                    // APK self-update is Android-only; iOS updates ship via
-                    // the App Store.
-                    if (Platform.isAndroid) _AppUpdatesSettingsTile(),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          _StaggeredEntrance(
-            index: 4,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _settingsSectionHeader(context, 'Appearance'),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
                   ),
-                  child: ThemePickerCards(
-                    mode: ref.watch(themeControllerProvider).mode,
-                    onChanged: ref.read(themeControllerProvider).setMode,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _StaggeredEntrance(
-            index: 5,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _settingsSectionHeader(context, 'About'),
-                _SettingsGroupCard(
-                  dividerIndent: 72,
-                  children: [
-                    _SettingsMenuTile(
-                      icon: Icons.workspaces_outline,
-                      iconColor: _accentProject,
-                      title: 'Project',
-                      subtitle: 'Open source, changelog, and about TeleDrive',
-                      onTap: () => context.push('/settings/project'),
+                  _SettingsMenuTile(
+                    icon: Icons.backup_outlined,
+                    iconColor: _accentBackup,
+                    title: 'Backup',
+                    subtitle: 'Gallery backup scans and queue behavior',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const BackupSettingsScreen(),
+                      ),
                     ),
-                  ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _settingsSectionHeader(context, 'Storage & Privacy'),
+              _SettingsGroupCard(
+                dividerIndent: 72,
+                children: [
+                  _SettingsMenuTile(
+                    icon: Icons.cleaning_services_outlined,
+                    iconColor: _accentCache,
+                    title: 'Cache & Storage',
+                    subtitle: 'Reclaim space from the local file cache',
+                    trailing: AnimatedSwitcher(
+                      duration: AppDurations.medium2,
+                      switchInCurve: AppEasing.standard,
+                      switchOutCurve: AppEasing.standard,
+                      child: Text(
+                        cache.isLoading
+                            ? 'Scanning...'
+                            : _formatBytes(cache.totalSize),
+                        key: ValueKey(
+                          cache.isLoading ? 'scanning' : '${cache.totalSize}',
+                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const CacheStorageSettingsScreen(),
+                      ),
+                    ),
+                  ),
+                  _SettingsMenuTile(
+                    icon: Icons.shield_outlined,
+                    iconColor: _accentPrivacy,
+                    title: 'Privacy & Security',
+                    subtitle: 'Trash bin, share links, and sign-out cache',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const PrivacySecuritySettingsScreen(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _settingsSectionHeader(context, 'Alerts & Updates'),
+              _SettingsGroupCard(
+                dividerIndent: 72,
+                children: [
+                  _SettingsMenuTile(
+                    icon: Icons.notifications_none_outlined,
+                    iconColor: _accentAlerts,
+                    title: 'Notifications',
+                    subtitle: 'Alerts for completed or failed uploads',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationsSettingsScreen(),
+                      ),
+                    ),
+                  ),
+                  // APK self-update is Android-only; iOS updates ship via
+                  // the App Store.
+                  if (Platform.isAndroid) _AppUpdatesSettingsTile(),
+                ],
+              ),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _settingsSectionHeader(context, 'Appearance'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: ThemePickerCards(
+                  mode: ref.watch(themeControllerProvider).mode,
+                  onChanged: ref.read(themeControllerProvider).setMode,
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _settingsSectionHeader(context, 'About'),
+              _SettingsGroupCard(
+                dividerIndent: 72,
+                children: [
+                  _SettingsMenuTile(
+                    icon: Icons.workspaces_outline,
+                    iconColor: _accentProject,
+                    title: 'Project',
+                    subtitle: 'Open source, changelog, and about TeleDrive',
+                    onTap: () => context.push('/settings/project'),
+                  ),
+                ],
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.xl),
           Center(

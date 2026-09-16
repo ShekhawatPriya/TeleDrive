@@ -10,16 +10,12 @@ import 'features/app_update/app_update_models.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/drive/components/drive_menu_builder.dart';
 import 'features/drive/drive_controller.dart';
-import 'features/drive/drive_screen.dart';
 import 'features/drive/drive_tab_commands.dart';
-import 'features/drive/starred_screen.dart';
 import 'features/photos/components/photos_menu_builder.dart';
 import 'features/photos/photos_grid/photo_grid_density.dart';
-import 'features/photos/photos_screen.dart';
 import 'features/profile/gallery_backup_asset_store.dart';
 import 'features/profile/gallery_backup_controller.dart';
 import 'features/search/search_controller.dart';
-import 'features/share/my_shares_screen.dart';
 import 'features/share/share_controller.dart';
 import 'features/upload/ui/components/bottom_action_system.dart';
 import 'widgets/ios_more_menu.dart';
@@ -29,8 +25,8 @@ import 'widgets/floating_pill_navigation_bar.dart';
 import 'widgets/teledrive_app_bar.dart';
 
 class MainShell extends ConsumerStatefulWidget {
-  const MainShell({required this.child, super.key});
-  final Widget child;
+  const MainShell({required this.navigationShell, super.key});
+  final StatefulNavigationShell navigationShell;
 
   @override
   ConsumerState<MainShell> createState() => _MainShellState();
@@ -38,22 +34,10 @@ class MainShell extends ConsumerStatefulWidget {
 
 class _MainShellState extends ConsumerState<MainShell>
     with WidgetsBindingObserver {
-  static const _tabPaths = ['/drive', '/photos', '/starred', '/shared'];
-  static const _tabPages = [
-    _KeepAliveTab(child: DriveScreen()),
-    _KeepAliveTab(child: PhotosScreen()),
-    _KeepAliveTab(child: StarredScreen()),
-    _KeepAliveTab(child: MySharesScreen()),
-  ];
-
-  int _selectedIndex = 0;
-  late final PageController _pageController;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _pageController = PageController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(galleryBackupControllerProvider);
@@ -71,7 +55,6 @@ class _MainShellState extends ConsumerState<MainShell>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _pageController.dispose();
     super.dispose();
   }
 
@@ -92,47 +75,57 @@ class _MainShellState extends ConsumerState<MainShell>
 
   @override
   Widget build(BuildContext context) {
-    final location = GoRouterState.of(context).matchedLocation;
-    final routeIndex = _tabIndexFor(location);
-    final showingTab = routeIndex >= 0;
-    if (showingTab && routeIndex != _selectedIndex) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _selectedIndex = routeIndex;
-        if (_pageController.hasClients) _pageController.jumpToPage(routeIndex);
-        setState(() {});
-      });
-    }
-    if (showingTab && routeIndex == 0 && location == '/drive') {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ref.read(driveControllerProvider).setActiveFolderId(null);
-      });
-    }
-
-    return Scaffold(
-      body: showingTab ? _buildTabs(routeIndex) : widget.child,
-      bottomNavigationBar: showingTab
-          ? FloatingPillNavigationBar(
-              selectedIndex: routeIndex.clamp(0, _tabPaths.length - 1),
-              onDestinationSelected: _handleDestinationSelected,
-            )
-          : null,
+    final index = widget.navigationShell.currentIndex;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final expanded = constraints.maxWidth >= 840;
+        final content = _buildTabs(index);
+        return Scaffold(
+          body: expanded
+              ? Row(
+                  children: [
+                    NavigationRail(
+                      selectedIndex: index,
+                      onDestinationSelected: _handleDestinationSelected,
+                      labelType: NavigationRailLabelType.all,
+                      leading: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Icon(
+                          Icons.cloud_outlined,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      destinations: [
+                        for (final item in driveDestinations)
+                          NavigationRailDestination(
+                            icon: Icon(item.icon),
+                            selectedIcon: Icon(item.selected),
+                            label: Text(item.label),
+                          ),
+                      ],
+                    ),
+                    const VerticalDivider(width: 1),
+                    Expanded(child: content),
+                  ],
+                )
+              : content,
+          bottomNavigationBar: expanded
+              ? null
+              : FloatingPillNavigationBar(
+                  selectedIndex: index,
+                  onDestinationSelected: _handleDestinationSelected,
+                ),
+        );
+      },
     );
   }
 
-  int _tabIndexFor(String location) =>
-      _tabPaths.indexWhere(location.startsWith);
-
   void _handleDestinationSelected(int index) {
-    if (index == _selectedIndex) return;
-    setState(() => _selectedIndex = index);
-    _pageController.animateToPage(
-      index,
-      duration: AppDurations.medium3,
-      curve: AppEasing.emphasizedDecelerate,
-    );
-    context.go(_tabPaths[index]);
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (index == 0) ref.read(driveControllerProvider).setActiveFolderId(null);
+    if (index == 3)
+      unawaited(ref.read(shareControllerProvider).refresh(silent: true));
+    widget.navigationShell.goBranch(index);
   }
 
   Widget _buildTabs(int routeIndex) {
@@ -148,12 +141,7 @@ class _MainShellState extends ConsumerState<MainShell>
         Expanded(
           child: Stack(
             children: [
-              PageView(
-                controller: _pageController,
-                physics: const ClampingScrollPhysics(),
-                onPageChanged: _handlePageChanged,
-                children: _tabPages,
-              ),
+              widget.navigationShell,
               Positioned(
                 left: AppSpacing.md,
                 right: AppSpacing.md,
@@ -170,12 +158,6 @@ class _MainShellState extends ConsumerState<MainShell>
         ),
       ],
     );
-  }
-
-  void _handlePageChanged(int index) {
-    if (index == _selectedIndex) return;
-    setState(() => _selectedIndex = index);
-    context.go(_tabPaths[index]);
   }
 
   SearchScope _scopeFor(int index) => switch (index) {
@@ -211,25 +193,5 @@ class _MainShellState extends ConsumerState<MainShell>
         ...buildLayoutMenuSection(ref),
       ],
     };
-  }
-}
-
-class _KeepAliveTab extends StatefulWidget {
-  const _KeepAliveTab({required this.child});
-  final Widget child;
-
-  @override
-  State<_KeepAliveTab> createState() => _KeepAliveTabState();
-}
-
-class _KeepAliveTabState extends State<_KeepAliveTab>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return widget.child;
   }
 }

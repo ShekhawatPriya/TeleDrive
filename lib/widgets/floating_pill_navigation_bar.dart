@@ -1,207 +1,98 @@
 import 'dart:ui';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+const driveDestinations = <({String label, IconData icon, IconData selected})>[
+  (label: 'Drive', icon: Icons.folder_outlined, selected: Icons.folder_rounded),
+  (
+    label: 'Photos',
+    icon: Icons.photo_library_outlined,
+    selected: Icons.photo_library_rounded,
+  ),
+  (
+    label: 'Starred',
+    icon: Icons.star_outline_rounded,
+    selected: Icons.star_rounded,
+  ),
+  (label: 'Shared', icon: Icons.link_rounded, selected: Icons.link_rounded),
+];
+
+/// Platform navigation that adapts to width and the user's text size.
 class FloatingPillNavigationBar extends StatelessWidget {
   const FloatingPillNavigationBar({
     required this.selectedIndex,
     required this.onDestinationSelected,
     super.key,
   });
-
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final scheme = theme.colorScheme;
-
-    // Theme-correct dynamic Material 3 colors with elegant opacity
-    final Color pillBgColor = scheme.surfaceContainerHigh.withValues(
-      alpha: isDark ? 0.82 : 0.90,
-    );
-    final Color activeBgColor = scheme.secondaryContainer;
-    final Color activeContentColor = scheme.onSecondaryContainer;
-    final Color inactiveTextColor = scheme.onSurfaceVariant.withValues(
-      alpha: 0.85,
-    );
-
-    final bool isLeftActive = selectedIndex >= 0 && selectedIndex < 3;
-
-    // Double-layered premium shadow system for realistic depth projection
-    final List<BoxShadow> premiumShadows = [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.08),
-        blurRadius: 20,
-        offset: const Offset(0, 8),
-      ),
-      BoxShadow(
-        color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.03),
-        blurRadius: 6,
-        offset: const Offset(0, 2),
-      ),
-    ];
-
-    // Hardware-refined outline border side
-    final BorderSide microBorderSide = BorderSide(
-      color: isDark
-          ? scheme.outlineVariant.withValues(alpha: 0.18)
-          : scheme.outline.withValues(alpha: 0.08),
-      width: 1.0,
-    );
-
-    // Premium cubic bezier decelerate animation curve
-    const Curve transitionCurve = Cubic(0.05, 0.7, 0.1, 1.0);
-
-    final double bottomPadding = MediaQuery.paddingOf(context).bottom;
-    final double barHeight = 74.0 + bottomPadding;
-
-    return SizedBox(
-      height: barHeight,
-      child: SafeArea(
-        top: false,
-        bottom: true,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Left Pill (Drive, Photos, Starred) - Tighter, Compact Center Design
-                Container(
-                  width: 276,
-                  decoration: ShapeDecoration(
-                    shape: const StadiumBorder(),
-                    shadows: premiumShadows,
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(9999),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
-                      child: Container(
-                        height: 62,
-                        decoration: ShapeDecoration(
-                          shape: StadiumBorder(side: microBorderSide),
-                          color: pillBgColor,
-                        ),
-                        child: Stack(
-                          children: [
-                            // Sliding Active Indicator Bubble
-                            AnimatedAlign(
-                              duration: const Duration(milliseconds: 280),
-                              curve: transitionCurve,
-                              alignment: Alignment(
-                                -1.0 +
-                                    (isLeftActive ? selectedIndex * 1.0 : 0.0),
-                                0.0,
-                              ),
-                              child: FractionallySizedBox(
-                                widthFactor: 1 / 3,
-                                child: AnimatedScale(
-                                  duration: const Duration(milliseconds: 200),
-                                  scale: isLeftActive ? 1.0 : 0.0,
-                                  curve: Curves.easeInOut,
-                                  child: AnimatedOpacity(
-                                    duration: const Duration(milliseconds: 150),
-                                    opacity: isLeftActive ? 1.0 : 0.0,
-                                    child: Container(
-                                      margin: const EdgeInsets.all(5),
-                                      decoration: ShapeDecoration(
-                                        shape: const StadiumBorder(),
-                                        color: activeBgColor,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            // Tab Items Row
-                            Row(
-                              children: [
-                                _TabItem(
-                                  label: 'Drive',
-                                  activeIcon: Icons.folder,
-                                  inactiveIcon: Icons.folder_outlined,
-                                  isActive: selectedIndex == 0,
-                                  activeColor: activeContentColor,
-                                  inactiveColor: inactiveTextColor,
-                                  onTap: () => onDestinationSelected(0),
-                                ),
-                                _TabItem(
-                                  label: 'Photos',
-                                  activeIcon: Icons.photo_library,
-                                  inactiveIcon: Icons.photo_library_outlined,
-                                  isActive: selectedIndex == 1,
-                                  activeColor: activeContentColor,
-                                  inactiveColor: inactiveTextColor,
-                                  onTap: () => onDestinationSelected(1),
-                                ),
-                                _TabItem(
-                                  label: 'Starred',
-                                  activeIcon: Icons.star_rounded,
-                                  inactiveIcon: Icons.star_border_rounded,
-                                  isActive: selectedIndex == 2,
-                                  activeColor: activeContentColor,
-                                  inactiveColor: inactiveTextColor,
-                                  onTap: () => onDestinationSelected(2),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+    if (theme.platform != TargetPlatform.iOS) {
+      return NavigationBar(
+        selectedIndex: selectedIndex,
+        onDestinationSelected: onDestinationSelected,
+        destinations: [
+          for (final item in driveDestinations)
+            NavigationDestination(
+              icon: Icon(item.icon),
+              selectedIcon: Icon(item.selected),
+              label: item.label,
+            ),
+        ],
+      );
+    }
+    final accessible =
+        MediaQuery.highContrastOf(context) ||
+        MediaQuery.accessibleNavigationOf(context);
+    final bar = Material(
+      color: scheme.surfaceContainerLow.withValues(alpha: accessible ? 1 : .94),
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: Row(
+          children: [
+            for (var index = 0; index < driveDestinations.length; index++)
+              Expanded(
+                child: _TabButton(
+                  item: driveDestinations[index],
+                  selected: index == selectedIndex,
+                  onPressed: () => onDestinationSelected(index),
                 ),
-                const SizedBox(width: 12),
-                // Right Detached Shared Pill (Perfect Circle, Icon Only)
-                Container(
-                  width: 62,
-                  height: 62,
-                  decoration: ShapeDecoration(
-                    shape: const StadiumBorder(),
-                    shadows: premiumShadows,
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(9999),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
-                      child: Center(
-                        child: GestureDetector(
-                          onTap: () => onDestinationSelected(3),
-                          behavior: HitTestBehavior.opaque,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 280),
-                            curve: transitionCurve,
-                            width: 62,
-                            height: 62,
-                            decoration: ShapeDecoration(
-                              shape: StadiumBorder(side: microBorderSide),
-                              color: selectedIndex == 3
-                                  ? activeBgColor.withValues(
-                                      alpha: isDark ? 0.85 : 0.95,
-                                    )
-                                  : pillBgColor,
-                            ),
-                            child: Center(
-                              child: Icon(
-                                selectedIndex == 3
-                                    ? Icons.group
-                                    : Icons.group_outlined,
-                                color: selectedIndex == 3
-                                    ? activeContentColor
-                                    : inactiveTextColor,
-                                size: 21,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+              ),
+          ],
+        ),
+      ),
+    );
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      child: Center(
+        heightFactor: 1,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: scheme.outlineVariant),
+              boxShadow: [
+                BoxShadow(
+                  color: scheme.shadow.withValues(alpha: .06),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
                 ),
               ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: accessible
+                  ? bar
+                  : BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                      child: bar,
+                    ),
             ),
           ),
         ),
@@ -210,51 +101,62 @@ class FloatingPillNavigationBar extends StatelessWidget {
   }
 }
 
-class _TabItem extends StatelessWidget {
-  const _TabItem({
-    required this.label,
-    required this.activeIcon,
-    required this.inactiveIcon,
-    required this.isActive,
-    required this.activeColor,
-    required this.inactiveColor,
-    required this.onTap,
+class _TabButton extends StatelessWidget {
+  const _TabButton({
+    required this.item,
+    required this.selected,
+    required this.onPressed,
   });
-
-  final String label;
-  final IconData activeIcon;
-  final IconData inactiveIcon;
-  final bool isActive;
-  final Color activeColor;
-  final Color inactiveColor;
-  final VoidCallback onTap;
+  final ({String label, IconData icon, IconData selected}) item;
+  final bool selected;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                isActive ? activeIcon : inactiveIcon,
-                color: isActive ? activeColor : inactiveColor,
-                size: 19,
-              ),
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isActive ? activeColor : inactiveColor,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                  fontSize: 13,
+    final scheme = Theme.of(context).colorScheme;
+    final color = selected ? scheme.primary : scheme.onSurfaceVariant;
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: item.label,
+      onTap: onPressed,
+      excludeSemantics: true,
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        onPressed: onPressed,
+        child: AnimatedContainer(
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 180),
+          constraints: const BoxConstraints(minHeight: 56),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          decoration: BoxDecoration(
+            color: selected
+                ? scheme.primary.withValues(alpha: .09)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  selected ? item.selected : item.icon,
+                  size: 23,
+                  color: color,
                 ),
-              ),
-            ],
+                const SizedBox(height: 3),
+                Text(
+                  item.label,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: color,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

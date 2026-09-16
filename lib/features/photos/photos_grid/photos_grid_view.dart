@@ -38,6 +38,15 @@ class _PhotosGridViewState extends State<PhotosGridView> {
   final Map<String, GlobalKey> _tileKeys = <String, GlobalKey>{};
 
   @override
+  void didUpdateWidget(covariant PhotosGridView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.files, widget.files)) {
+      final ids = widget.files.map((file) => file.id).toSet();
+      _tileKeys.removeWhere((id, _) => !ids.contains(id));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: widget.density,
@@ -56,26 +65,30 @@ class _PhotosGridViewState extends State<PhotosGridView> {
                 }
                 return false;
               },
-              child: ListView.builder(
-                padding: const EdgeInsets.only(bottom: 120),
-                itemCount: sections.length + (widget.loadingMore ? 1 : 0),
-                itemBuilder: (context, i) {
-                  if (i >= sections.length) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-                  return PhotoGridSection(
-                    section: sections[i],
-                    columns: widget.density.columns,
-                    selectMode: widget.selectMode,
-                    selectedIds: widget.selectedIds,
-                    tileKeys: _tileKeys,
-                    onTileTap: widget.onTileTap,
-                    onTileLongPress: widget.onTileLongPress,
-                  );
-                },
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  for (final section in sections)
+                    PhotoGridSection(
+                      section: section,
+                      columns: widget.density.columns,
+                      selectMode: widget.selectMode,
+                      selectedIds: widget.selectedIds,
+                      tileKeys: _tileKeys,
+                      onTileTap: widget.onTileTap,
+                      onTileLongPress: widget.onTileLongPress,
+                    ),
+                  if (widget.loadingMore)
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: CircularProgressIndicator.adaptive(),
+                        ),
+                      ),
+                    ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 120)),
+                ],
               ),
             ),
           ),

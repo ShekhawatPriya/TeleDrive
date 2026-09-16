@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,6 +7,7 @@ import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/skeletons.dart';
 import '../search/search_controller.dart';
+import '../search/drive_search_controller.dart';
 import 'components/drive_header_widgets.dart';
 import 'components/drive_item_actions.dart';
 import 'components/drive_list_slivers.dart';
@@ -29,19 +28,6 @@ class DriveScreen extends ConsumerStatefulWidget {
 class _DriveScreenState extends ConsumerState<DriveScreen>
     with SelectionModeMixin<DriveScreen> {
   int _handledSelectRequests = 0;
-
-  // Server-backed file search state (G6). When the query is non-empty we
-  // hit `/files?query=&scope=all` instead of filtering the local page,
-  // because page contents are intentionally incomplete.
-  Timer? _searchDebounce;
-  String _activeSearchQuery = '';
-  // Tracks the latest query queued for a post-frame _runServerSearch dispatch.
-  // Reading state during build() must never call setState directly; this
-  // value de-duplicates back-to-back schedules and lets us drop stale ones.
-  String? _scheduledSearchQuery;
-  List<DriveFile>? _serverSearchFiles;
-  bool _searchLoading = false;
-  String? _searchError;
 
   List<DriveFile>? _sortedFiles;
   ({List<DriveFile> source, SortField sort, bool ascending, String query})?
@@ -94,58 +80,10 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
 
   @override
   void dispose() {
-    _searchDebounce?.cancel();
     try {
       ref.read(selectionModeStateProvider).setDriveSelectMode(false);
     } catch (_) {}
     super.dispose();
-  }
-
-  void _runServerSearch(String query) {
-    _searchDebounce?.cancel();
-    if (query.isEmpty) {
-      final alreadyClear =
-          _activeSearchQuery.isEmpty &&
-          _serverSearchFiles == null &&
-          !_searchLoading &&
-          _searchError == null;
-      if (alreadyClear) return;
-      setState(() {
-        _activeSearchQuery = '';
-        _serverSearchFiles = null;
-        _searchLoading = false;
-        _searchError = null;
-      });
-      return;
-    }
-    _searchDebounce = Timer(const Duration(milliseconds: 250), () async {
-      if (!mounted) return;
-      setState(() {
-        _activeSearchQuery = query;
-        _searchLoading = true;
-        _searchError = null;
-      });
-      try {
-        final repo = ref.read(driveRepositoryProvider);
-        final result = await repo.listFiles(
-          allFolders: true,
-          query: query,
-          limit: 60,
-        );
-        if (!mounted || _activeSearchQuery != query) return;
-        setState(() {
-          _serverSearchFiles = result.files;
-          _searchLoading = false;
-        });
-      } catch (err) {
-        if (!mounted || _activeSearchQuery != query) return;
-        setState(() {
-          _searchLoading = false;
-          _searchError = 'Search failed.';
-          _serverSearchFiles = const [];
-        });
-      }
-    });
   }
 
   @override
@@ -167,6 +105,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
       });
     }
 
+    final search = ref.watch(driveSearchProvider);
     final prefs = ref.watch(viewPreferencesProvider);
     final query = ref.watch(searchQueryProvider(SearchScope.drive)).query;
     final snapshot = ref.watch(
@@ -176,23 +115,11 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
       driveControllerProvider.select((c) => c.recentsSnapshot()),
     );
 
-    if (query != _activeSearchQuery && query != _scheduledSearchQuery) {
-      _scheduledSearchQuery = query;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        // Drop stale schedules: another build cycle has already queued a
-        // newer query. Only the latest pending query runs.
-        if (_scheduledSearchQuery != query) return;
-        _scheduledSearchQuery = null;
-        _runServerSearch(query);
-      });
-    }
-
     var folders = snapshot.folders;
     var files = snapshot.files;
     if (query.isNotEmpty) {
       // Server-backed file search across the entire drive (G6).
-      files = _serverSearchFiles ?? const <DriveFile>[];
+      files = search.files;
       // Folder search filters cumulative metadata only — see banner below.
       folders = ref
           .read(driveControllerProvider)
@@ -235,7 +162,9 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
               ),
               Expanded(
                 child: RefreshIndicator(
-                  onRefresh: ref.read(driveControllerProvider).refresh,
+                  onRefresh: query.isNotEmpty
+                      ? search.refresh
+                      : ref.read(driveControllerProvider).refresh,
                   child: CustomScrollView(
                     slivers: [
                       if (folders.isNotEmpty)
@@ -273,9 +202,16 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
 
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: ref.read(driveControllerProvider).refresh,
+        onRefresh: query.isNotEmpty
+            ? search.refresh
+            : ref.read(driveControllerProvider).refresh,
         child: NotificationListener<ScrollNotification>(
           onNotification: (notification) {
+            if (query.isNotEmpty &&
+                notification.metrics.extentAfter < 200 &&
+                search.error == null) {
+              search.loadMore();
+            }
             if (notification.metrics.pixels >=
                     notification.metrics.maxScrollExtent - 200 &&
                 hasMore &&
@@ -301,8 +237,21 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
               if (!loaded && loading)
                 const SliverFillRemaining(child: SkeletonList()),
               if (error != null) _ErrorBanner(error),
-              if (_searchError != null && query.isNotEmpty)
-                _ErrorBanner(_searchError!),
+              if (search.error != null && query.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        Text(search.error!),
+                        TextButton(
+                          onPressed: search.loadMore,
+                          child: const Text('Try again'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               if (recent.isNotEmpty && query.isEmpty) ...[
                 const DriveSectionHeader('Recent', topPadding: AppSpacing.sm),
                 SliverToBoxAdapter(
@@ -313,7 +262,10 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                   ),
                 ),
               ],
-              if (loaded && !_searchLoading && folders.isEmpty && files.isEmpty)
+              if ((query.isEmpty ? loaded : search.loaded) &&
+                  !search.loading &&
+                  folders.isEmpty &&
+                  files.isEmpty)
                 SliverFillRemaining(
                   child: EmptyState(
                     icon: query.isEmpty ? Icons.folder_open : Icons.search_off,
@@ -355,7 +307,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                     child: Center(child: CircularProgressIndicator()),
                   ),
                 ),
-              if (_searchLoading && query.isNotEmpty)
+              if (search.loading && query.isNotEmpty)
                 const SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.symmetric(vertical: 16),

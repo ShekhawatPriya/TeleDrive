@@ -18,40 +18,40 @@ class UploadPickerHelper {
 
   static Future<UploadPickerResult> pickFiles({required int maxFiles}) async {
     try {
-      final result = await FilePicker.platform.pickFiles(
-        allowMultiple: true,
-        withData: false,
-      );
-      if (result == null || result.files.isEmpty) {
-        return UploadPickerResult();
-      }
-      if (result.files.length > maxFiles) {
+      final files = await FilePicker.pickFiles();
+      if (files.isEmpty) return UploadPickerResult();
+      if (files.length > maxFiles)
         return UploadPickerResult(
           error: 'Select at most $maxFiles files at once.',
         );
-      }
-      final usableFiles = result.files.where((f) => f.path != null).toList();
-      if (usableFiles.isEmpty) {
-        return UploadPickerResult(
-          error:
-              'The selected file did not expose a local path. Try picking from device storage or Downloads.',
-        );
-      }
       final sessionId = _uuid.v4();
-      final items = usableFiles.map((file) {
-        final mime =
-            lookupMimeType(file.path!, headerBytes: null) ??
-            'application/octet-stream';
-        return UploadItem(
-          localId: _uuid.v4(),
-          uploadClientId: _uuid.v4(),
-          name: file.name,
-          size: file.size,
-          mimeType: mime,
-          path: file.path!,
-          status: UploadStatus.selected,
+      final items = <UploadItem>[];
+      for (final file in files) {
+        final path = file.path;
+        if (path == null || path.isEmpty) {
+          return UploadPickerResult(
+            error:
+                'A selected file could not be accessed. Save it to device storage and try again.',
+          );
+        }
+        final size = file.lengthSync() ?? await file.length();
+        if (size == null)
+          return UploadPickerResult(
+            error:
+                'Could not read the size of ${file.name}. Try selecting it again.',
+          );
+        items.add(
+          UploadItem(
+            localId: _uuid.v4(),
+            uploadClientId: _uuid.v4(),
+            name: file.name,
+            size: size,
+            mimeType: lookupMimeType(path) ?? 'application/octet-stream',
+            path: path,
+            status: UploadStatus.selected,
+          ),
         );
-      }).toList();
+      }
       return UploadPickerResult(items: items, sessionId: sessionId);
     } catch (err) {
       return UploadPickerResult(error: err.toString());

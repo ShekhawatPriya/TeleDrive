@@ -8,8 +8,7 @@ plugins {
 }
 
 // Release signing is loaded from android/key.properties when present (used by CI
-// and for production builds). When it is absent, the build falls back to the
-// debug keys so `flutter run --release` keeps working locally without a keystore.
+// and for production builds). Release validation below requires this identity.
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 val hasReleaseSigning = keystorePropertiesFile.exists()
@@ -62,7 +61,7 @@ android {
         }
         release {
             // Sign with the dedicated release key when key.properties is present
-            // (CI / production); otherwise fall back to debug keys for local runs.
+            // (CI / production). The validation task rejects a missing release identity.
             signingConfig = if (hasReleaseSigning) {
                 signingConfigs.getByName("release")
             } else {
@@ -88,4 +87,23 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+}
+
+// A release must never silently ship with a debug identity or private client assets.
+val validateReleaseConfiguration = tasks.register("validateReleaseConfiguration") {
+    doLast {
+        check(hasReleaseSigning) { "Release signing requires android/key.properties. Use a debug build for local development." }
+        val configFile = rootProject.file("../.env.local")
+        check(configFile.exists()) { "Release client configuration is missing." }
+        val forbidden = setOf("GITHUB_TOKEN", "JWT_SECRET", "DATABASE_URL", "TELEGRAM_SESSION_ENCRYPTION_KEY")
+        val invalid = configFile.readLines().mapNotNull { line ->
+            val parts = line.trim().removePrefix("export ").split("=", limit = 2)
+            if (parts.size != 2 || parts[0].trim() !in forbidden) null
+            else parts[1].substringBefore("#").trim().trim('\"', '\'').takeIf { it.isNotEmpty() }?.let { parts[0].trim() }
+        }
+        check(invalid.isEmpty()) { "Private/server credential keys cannot be bundled in a release: ${invalid.joinToString()}" }
+    }
+}
+tasks.configureEach {
+    if (name == "preReleaseBuild") dependsOn(validateReleaseConfiguration)
 }

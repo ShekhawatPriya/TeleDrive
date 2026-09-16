@@ -52,6 +52,7 @@ extension _DriveStateBootstrap on DriveController {
   }
 
   Future<void> _loadMoreMedia() async {
+    final generation = _accountGeneration;
     if (state.mediaCursor == null || state.loadingMoreMedia) return;
     state = state.copyWith(loadingMoreMedia: true);
     _notifyListeners();
@@ -62,6 +63,7 @@ extension _DriveStateBootstrap on DriveController {
         limit: 60,
         allFolders: true,
       );
+      if (!_isCurrentAccount(generation)) return;
       final ids = state.mediaFiles.map((f) => f.id).toSet();
       state = state.copyWith(
         mediaFiles: [
@@ -72,6 +74,7 @@ extension _DriveStateBootstrap on DriveController {
         loadingMoreMedia: false,
       );
     } catch (_) {
+      if (!_isCurrentAccount(generation)) return;
       state = state.copyWith(loadingMoreMedia: false);
     }
     _notifyListeners();

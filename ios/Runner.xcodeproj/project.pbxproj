@@ -311,7 +311,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build";
+			shellScript = "if [ \"$CONFIGURATION\" = \"Release\" ]; then\n  \"$FLUTTER_ROOT/bin/dart\" \"$SRCROOT/../scripts/verify_release_config.dart\" \"$SRCROOT/../.env.local\" || exit 1\nfi\n/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build";
 		};
 /* End PBXShellScriptBuildPhase section */
 

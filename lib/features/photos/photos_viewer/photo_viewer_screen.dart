@@ -2,16 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
 
-import '../../../core/telegram/telegram_transfer_service.dart';
 import '../../../models/drive_models.dart';
 import '../../../widgets/empty_state.dart';
-import '../../auth/auth_controller.dart';
-import '../../auth/tdlib_session_controller.dart';
 import '../../drive/components/drive_item_actions.dart';
 import '../../drive/drive_controller.dart';
+import '../../file_viewer/file_open_action.dart';
 import '../photos_filter.dart';
 import 'photo_details_sheet.dart';
 import 'photo_viewer_pager.dart';
@@ -33,6 +29,7 @@ class PhotoViewerScreen extends ConsumerStatefulWidget {
 
 class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
   bool _chromeVisible = true;
+  bool _downloading = false;
   int? _currentIndex;
 
   @override
@@ -68,7 +65,8 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
           final idx = files.indexWhere((f) => f.id == widget.startId);
           return idx < 0 ? 0 : idx;
         }();
-    final current = files[initialIndex.clamp(0, files.length - 1)];
+    final index = initialIndex.clamp(0, files.length - 1);
+    final current = files[index];
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -77,7 +75,7 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
         children: [
           PhotoViewerPager(
             files: files,
-            initialIndex: initialIndex,
+            initialIndex: index,
             onPageChanged: (i) {
               setState(() => _currentIndex = i);
               final id = files[i].id;
@@ -183,64 +181,17 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
   }
 
   Future<void> _download(BuildContext context, DriveFile file) async {
-    final url = file.downloadUrl;
-    final messenger = ScaffoldMessenger.of(context);
+    if (_downloading) return;
+    setState(() => _downloading = true);
     try {
-      messenger.showSnackBar(const SnackBar(content: Text('Downloading...')));
-      final api = ref.read(apiClientProvider);
-      final dir = await getTemporaryDirectory();
-      final safeName = file.name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-      final path = '${dir.path}/$safeName';
-      if (file.isClientManaged) {
-        final session = ref.read(tdlibSessionControllerProvider);
-        if (!session.isReadyForActiveUser) {
-          if (!context.mounted) return;
-          context.go('/tdlib-session?returnTo=/photos/view/${file.id}');
-          throw Exception(
-            'Reconnect Telegram on this device to download TDLib-managed files.',
-          );
-        }
-        final media = await ref
-            .read(driveRepositoryProvider)
-            .mediaRef(file.id, variant: 'original');
-        final telegramRef = media.ref;
-        if (telegramRef == null) {
-          throw Exception('Telegram media reference is unavailable.');
-        }
-        final telegram = ref.read(telegramTransferServiceProvider);
-        final user = ref.read(authControllerProvider).user;
-        if (user == null || user.telegramId == 0) {
-          throw Exception('Connect Telegram before opening this file.');
-        }
-        await telegram.configure(
-          backendUserId: '${user.userId}',
-          telegramUserId: user.telegramId,
-        );
-        if (!await telegram.isAuthorized) {
-          if (!context.mounted) return;
-          context.go('/tdlib-session?returnTo=/photos/view/${file.id}');
-          throw Exception('Local TDLib session is not authorized.');
-        }
-        final result = await telegram.downloadToCache(
-          telegramRef,
-          filename: file.name,
-          cacheKey: media.cacheKey,
-        );
-        await OpenFilex.open(result.file.path);
-        return;
-      }
-      if (url == null) return;
-      await api.dio.download(url, path);
-      await OpenFilex.open(path);
-    } catch (err) {
-      if (!context.mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            ref.read(apiClientProvider).errorMessage(err, 'Download failed.'),
-          ),
-        ),
+      await openDriveFileExternally(
+        context,
+        ref,
+        file,
+        returnTo: '/photos/view/${file.id}',
       );
+    } finally {
+      if (mounted) setState(() => _downloading = false);
     }
   }
 

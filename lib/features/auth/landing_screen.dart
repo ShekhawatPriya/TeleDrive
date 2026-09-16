@@ -1,91 +1,161 @@
 import 'package:flutter/material.dart';
-
-import '../../core/theme/app_theme.dart';
-import 'components/fade_in_slide.dart';
-import 'components/final_cta_and_footer.dart';
-import 'components/hero_section.dart';
+import '../../core/config/app_config.dart';
+import '../../widgets/brand_mark.dart';
+import '../../core/utils/safe_navigation.dart';
 import 'components/how_it_works_section.dart';
-import 'components/open_source_section.dart';
 import 'components/privacy_and_trust_section.dart';
 import 'components/storage_separation_section.dart';
 
-/// A premium pre-login landing screen that introduces TeleDrive,
-/// explains storage concepts, and guides unauthenticated users.
-class LandingScreen extends StatefulWidget {
+/// A focused introduction. Detailed storage and privacy explanations are
+/// available before sign-in without competing with the primary action.
+class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
-
-  @override
-  State<LandingScreen> createState() => _LandingScreenState();
-}
-
-class _LandingScreenState extends State<LandingScreen> {
-  final _scrollController = ScrollController();
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          controller: _scrollController,
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.xl,
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // 1. Hero Section
-                  FadeInSlide(delay: Duration.zero, child: HeroSection()),
-                  SizedBox(height: AppSpacing.xxl),
-
-                  // 2. How it works Section
-                  FadeInSlide(
-                    delay: Duration(milliseconds: 150),
-                    child: HowItWorksSection(),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
+              children: [
+                Row(
+                  children: [
+                    const BrandMark(size: 36),
+                    const SizedBox(width: 12),
+                    Text('TeleDrive', style: theme.textTheme.titleMedium),
+                  ],
+                ),
+                const SizedBox(height: 48),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    'A little more room.\nFor everything.',
+                    style: theme.textTheme.displayMedium,
                   ),
-                  SizedBox(height: AppSpacing.xxl),
-
-                  // 3. Storage Separation Section
-                  FadeInSlide(
-                    delay: Duration(milliseconds: 300),
-                    child: StorageSeparationSection(),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Your files, photos and everyday essentials. Organized in one calm space, connected to your Telegram account.',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: scheme.onSurfaceVariant,
                   ),
-                  SizedBox(height: AppSpacing.xxl),
-
-                  // 4. Privacy & Trust Section
-                  FadeInSlide(
-                    delay: Duration(milliseconds: 450),
-                    child: PrivacyAndTrustSection(),
+                ),
+                const SizedBox(height: 32),
+                const _Feature(
+                  icon: Icons.folder_outlined,
+                  title: 'Make space for your files',
+                  detail:
+                      'Keep documents in folders and favorites within reach.',
+                ),
+                const _Feature(
+                  icon: Icons.photo_library_outlined,
+                  title: 'Keep your memories together',
+                  detail: 'Browse photos and choose what to back up.',
+                ),
+                const _Feature(
+                  icon: Icons.link_rounded,
+                  title: 'Share on your terms',
+                  detail: 'Create links and revoke access when you need to.',
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: () => context.safePush('/login'),
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  label: const Text('Continue with Telegram'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(54),
                   ),
-                  SizedBox(height: AppSpacing.xxl),
-
-                  // 5. Open Source Section
-                  FadeInSlide(
-                    delay: Duration(milliseconds: 600),
-                    child: OpenSourceSection(),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'You will need access to your Telegram account to sign in.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 24),
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: ExpansionTile(
+                    title: const Text('How your data is stored'),
+                    subtitle: const Text('Storage, privacy and your control'),
+                    childrenPadding: const EdgeInsets.all(20),
+                    children: const [
+                      HowItWorksSection(),
+                      SizedBox(height: 24),
+                      StorageSeparationSection(),
+                      SizedBox(height: 24),
+                      PrivacyAndTrustSection(),
+                    ],
                   ),
-                  SizedBox(height: AppSpacing.xxl),
-
-                  // 6. Final CTA & Footer Section
-                  FadeInSlide(
-                    delay: Duration(milliseconds: 700),
-                    child: FinalCtaAndFooter(),
-                  ),
-                  SizedBox(height: AppSpacing.xl),
-                ],
-              ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
+                    TextButton(
+                      onPressed: () => context.safePush('/privacy'),
+                      child: const Text('Privacy'),
+                    ),
+                    TextButton(
+                      onPressed: () => context.safePush('/terms'),
+                      child: const Text('Terms'),
+                    ),
+                    TextButton(
+                      onPressed: AppConfig.openRepository,
+                      child: const Text('Source code'),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _Feature extends StatelessWidget {
+  const _Feature({
+    required this.icon,
+    required this.title,
+    required this.detail,
+  });
+  final IconData icon;
+  final String title;
+  final String detail;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: theme.colorScheme.primary, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: theme.textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(detail, style: theme.textTheme.bodyMedium),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

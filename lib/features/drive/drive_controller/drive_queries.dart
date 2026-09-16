@@ -20,7 +20,9 @@ extension _DriveQueries on DriveController {
     if (inFlight != null) return inFlight;
     final task = _fetchFile(id);
     _fileFetches[id] = task;
-    return task.whenComplete(() => _fileFetches.remove(id));
+    return task.whenComplete(() {
+      if (identical(_fileFetches[id], task)) _fileFetches.remove(id);
+    });
   }
 
   DriveFolder? _folder(String id) {
@@ -82,7 +84,8 @@ extension _DriveQueries on DriveController {
   List<DriveFolder> _folderPath(String id) {
     final path = <DriveFolder>[];
     DriveFolder? current = folder(id);
-    while (current != null) {
+    final visited = <String>{};
+    while (current != null && visited.add(current.id)) {
       path.insert(0, current);
       current = current.parentId == null ? null : folder(current.parentId!);
     }

@@ -7,6 +7,7 @@ extension _DriveShelfMutations on DriveController {
     required bool archive,
     String? originFolderId,
   }) async {
+    final generation = _accountGeneration;
     final previousState = state;
     if (archive) {
       _removeFileFromAllPages(id);
@@ -30,6 +31,7 @@ extension _DriveShelfMutations on DriveController {
         case (_ShelfKind.locked, false):
           await _repo.unlockFile(id);
       }
+      if (!_isCurrentAccount(generation)) return;
       _bumpShelfRevision(kind);
       _markActiveAndAncestorsStale();
       if (!archive) {
@@ -41,6 +43,7 @@ extension _DriveShelfMutations on DriveController {
       }
       await refreshFolder(state.activeFolderId);
     } catch (err) {
+      if (!_isCurrentAccount(generation)) rethrow;
       if (archive) {
         state = previousState.copyWith(
           error: _repo.api.errorMessage(

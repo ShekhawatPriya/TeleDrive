@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
+import '../../../widgets/selection_toolbar.dart';
 
 /// Contextual top app bar shown when one or more photos are selected.
 class PhotosSelectionBar extends StatelessWidget {
@@ -20,56 +20,17 @@ class PhotosSelectionBar extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final hasSelection = selectedCount > 0;
-    return Material(
-      color: scheme.surfaceContainer,
-      surfaceTintColor: scheme.surfaceTint,
-      elevation: AppElevation.level2,
-      child: SafeArea(
-        bottom: false,
-        child: SizedBox(
-          height: 64,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-            child: Row(
-              children: [
-                IconButton(
-                  tooltip: 'Cancel',
-                  onPressed: onCancel,
-                  icon: const Icon(Icons.close),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                Expanded(
-                  child: Text(
-                    hasSelection ? '$selectedCount selected' : 'Select items',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Share',
-                  onPressed: hasSelection ? onShare : null,
-                  icon: const Icon(Icons.share_outlined),
-                ),
-                IconButton(
-                  tooltip: 'Move',
-                  onPressed: hasSelection ? onMove : null,
-                  icon: const Icon(Icons.drive_file_move_outline),
-                ),
-                IconButton(
-                  tooltip: 'Delete',
-                  onPressed: hasSelection ? onDelete : null,
-                  icon: const Icon(Icons.delete_outline),
-                ),
-              ],
-            ),
-          ),
-        ),
+  Widget build(BuildContext context) => SelectionToolbar(
+    count: selectedCount,
+    onCancel: onCancel,
+    actions: [
+      (label: 'Share', icon: Icons.share_outlined, onPressed: onShare),
+      (label: 'Move', icon: Icons.drive_file_move_outline, onPressed: onMove),
+      (
+        label: 'Delete',
+        icon: Icons.delete_outline_rounded,
+        onPressed: onDelete,
       ),
-    );
-  }
+    ],
+  );
 }

@@ -15,7 +15,7 @@ extension _DriveStarred on DriveController {
         _repo.listStarredFiles(limit: 60),
         _repo.listStarredFolders(limit: 200),
       ]);
-      if (_starredLoadGen != gen) return;
+      if (_disposed || _starredLoadGen != gen) return;
       final fileResult =
           results[0] as ({List<DriveFile> files, String? nextCursor});
       final folderResult =
@@ -35,7 +35,7 @@ extension _DriveStarred on DriveController {
       );
       _notifyListeners();
     } catch (err) {
-      if (_starredLoadGen != gen) return;
+      if (_disposed || _starredLoadGen != gen) return;
       state = state.copyWith(
         starred: state.starred.copyWith(
           loading: false,
@@ -67,7 +67,7 @@ extension _DriveStarred on DriveController {
             ))
           : _repo.listStarredFolders(limit: 200, cursor: cache.folderCursor);
       final results = await Future.wait([fileFuture, folderFuture]);
-      if (_starredLoadGen != gen) return;
+      if (_disposed || _starredLoadGen != gen) return;
       final fileResult =
           results[0] as ({List<DriveFile> files, String? nextCursor});
       final folderResult =
@@ -99,7 +99,7 @@ extension _DriveStarred on DriveController {
       );
       _notifyListeners();
     } catch (err) {
-      if (_starredLoadGen != gen) return;
+      if (_disposed || _starredLoadGen != gen) return;
       state = state.copyWith(
         starred: state.starred.copyWith(
           loadingMore: false,

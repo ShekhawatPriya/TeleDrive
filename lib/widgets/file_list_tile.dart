@@ -64,11 +64,11 @@ class FileListTile extends StatelessWidget {
         AppSpacing.xs,
         AppSpacing.xs,
       ),
-      minLeadingWidth: 40,
+      minLeadingWidth: 48,
       horizontalTitleGap: AppSpacing.md,
       leading: SizedBox(
-        width: 40,
-        height: 40,
+        width: 48,
+        height: 48,
         child: Stack(
           children: [
             Positioned.fill(
@@ -79,7 +79,7 @@ class FileListTile extends StatelessWidget {
                     ? Center(
                         child: GoogleDriveIcon.folder(
                           isShared: isShared,
-                          size: 28,
+                          size: 34,
                         ),
                       )
                     : MediaThumb(
@@ -124,9 +124,9 @@ class FileListTile extends StatelessWidget {
       ),
       subtitle: Text(
         subtitle,
-        maxLines: 1,
+        maxLines: 2,
         overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodyMedium?.copyWith(
+        style: theme.textTheme.bodySmall?.copyWith(
           color: isFailed ? scheme.error : scheme.onSurfaceVariant,
         ),
       ),
@@ -171,12 +171,12 @@ class FileListTile extends StatelessWidget {
                     starred ? Icons.star_rounded : Icons.star_border_rounded,
                     color: starred ? scheme.primary : scheme.onSurfaceVariant,
                   ),
-                  tooltip: 'Star',
+                  tooltip: starred ? 'Unstar $name' : 'Star $name',
                 ),
                 IconButton(
                   onPressed: onMore,
                   icon: const Icon(Icons.more_vert),
-                  tooltip: 'More',
+                  tooltip: 'Actions for $name',
                 ),
               ],
             ),

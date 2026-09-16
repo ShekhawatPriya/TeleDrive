@@ -100,6 +100,8 @@ extension _LoginScreenView on _LoginScreenState {
         TextField(
           controller: _phone,
           keyboardType: TextInputType.phone,
+          autofillHints: const [AutofillHints.telephoneNumberNational],
+          enabled: !_loading,
           textInputAction: TextInputAction.send,
           decoration: InputDecoration(
             labelText: 'Phone number',
@@ -132,6 +134,8 @@ extension _LoginScreenView on _LoginScreenState {
         TextField(
           controller: _code,
           keyboardType: TextInputType.number,
+          autofillHints: const [AutofillHints.oneTimeCode],
+          enabled: !_loading,
           textAlign: TextAlign.center,
           maxLength: 6,
           autofocus: true,
@@ -161,7 +165,7 @@ extension _LoginScreenView on _LoginScreenState {
         ),
         const SizedBox(height: AppSpacing.xs),
         TextButton.icon(
-          onPressed: () => _setStep(_Step.phone),
+          onPressed: _loading ? null : () => _setStep(_Step.phone),
           icon: const Icon(Icons.arrow_back_rounded, size: 18),
           label: const Text('Wrong number?'),
         ),
@@ -176,6 +180,8 @@ extension _LoginScreenView on _LoginScreenState {
         TextField(
           controller: _password,
           keyboardType: TextInputType.visiblePassword,
+          autofillHints: const [AutofillHints.password],
+          enabled: !_loading,
           textInputAction: TextInputAction.done,
           enableSuggestions: false,
           autocorrect: false,
@@ -185,6 +191,7 @@ extension _LoginScreenView on _LoginScreenState {
             labelText: 'Cloud password',
             prefixIcon: const Icon(Icons.lock_outline_rounded),
             suffixIcon: IconButton(
+              tooltip: _obscurePassword ? 'Show password' : 'Hide password',
               icon: Icon(
                 _obscurePassword
                     ? Icons.visibility_off_outlined
@@ -210,7 +217,7 @@ extension _LoginScreenView on _LoginScreenState {
         ),
         const SizedBox(height: AppSpacing.xs),
         TextButton.icon(
-          onPressed: () => _setStep(_Step.phone),
+          onPressed: _loading ? null : () => _setStep(_Step.phone),
           icon: const Icon(Icons.arrow_back_rounded, size: 18),
           label: const Text('Start over'),
         ),

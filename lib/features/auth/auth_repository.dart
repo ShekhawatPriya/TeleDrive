@@ -102,9 +102,13 @@ class AuthRepository {
   Future<AuthBootstrapResult> bootstrap({
     bool includeDrive = true,
     bool persistUser = true,
+    String? tokenOverride,
   }) async {
     final res = await api.dio.get(
       '/frontend/bootstrap',
+      options: tokenOverride == null
+          ? null
+          : Options(headers: {'Authorization': 'Bearer $tokenOverride'}),
       queryParameters: {
         'include_drive': includeDrive,
         'validate_telegram': false,
@@ -115,6 +119,7 @@ class AuthRepository {
       AuthUser.fromMeJson(
         Map<String, dynamic>.from(data['currentUser'] as Map),
       ),
+      tokenOverride: tokenOverride,
     );
     if (persistUser) await storage.saveUser(user);
     final telegram = data['telegram'] is Map
@@ -161,13 +166,11 @@ class AuthRepository {
     String token, {
     bool includeDrive = true,
   }) async {
-    final previous = api.token;
-    api.setToken(token);
-    try {
-      return await bootstrap(includeDrive: includeDrive, persistUser: false);
-    } finally {
-      api.setToken(previous);
-    }
+    return bootstrap(
+      includeDrive: includeDrive,
+      persistUser: false,
+      tokenOverride: token,
+    );
   }
 
   Future<AuthUser> fetchProfile({AuthUser? current}) async {

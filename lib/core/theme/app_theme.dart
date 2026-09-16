@@ -19,12 +19,9 @@ export 'tokens/app_state.dart';
 export 'tokens/app_typography.dart' show AppTextThemeExt, buildAppTextTheme;
 
 /// Builds the app theme from a [ColorScheme]. Pass a seeded scheme directly
-/// (or one harmonized from dynamic_color on Android 12+); `buildTheme` itself
-/// has no opinion on whether the colors come from the wallpaper or the brand
-/// seed [AppBrand.seed].
+/// from [AppBrand.scheme] for consistent light, dark and high-contrast roles.
 ThemeData buildTheme(ColorScheme scheme) {
   final textTheme = buildAppTextTheme(scheme);
-  final isDark = scheme.brightness == Brightness.dark;
 
   return ThemeData(
     useMaterial3: true,
@@ -33,7 +30,7 @@ ThemeData buildTheme(ColorScheme scheme) {
     scaffoldBackgroundColor: scheme.surface,
     textTheme: textTheme,
     primaryTextTheme: textTheme,
-    splashFactory: InkSparkle.splashFactory,
+    splashFactory: InkRipple.splashFactory,
     visualDensity: VisualDensity.standard,
     materialTapTargetSize: MaterialTapTargetSize.padded,
     pageTransitionsTheme: const PageTransitionsTheme(
@@ -46,10 +43,10 @@ ThemeData buildTheme(ColorScheme scheme) {
     appBarTheme: AppBarTheme(
       backgroundColor: scheme.surface,
       foregroundColor: scheme.onSurface,
-      surfaceTintColor: scheme.surfaceTint,
+      surfaceTintColor: Colors.transparent,
       shadowColor: Colors.transparent,
       elevation: 0,
-      scrolledUnderElevation: AppElevation.level2,
+      scrolledUnderElevation: 0,
       centerTitle: false,
       toolbarHeight: 64,
       titleSpacing: AppSpacing.md,
@@ -60,9 +57,9 @@ ThemeData buildTheme(ColorScheme scheme) {
 
     cardTheme: CardThemeData(
       color: scheme.surfaceContainerLow,
-      surfaceTintColor: scheme.surfaceTint,
+      surfaceTintColor: Colors.transparent,
       shadowColor: scheme.shadow,
-      elevation: AppElevation.level1,
+      elevation: 0,
       margin: const EdgeInsets.all(AppSpacing.xxs),
       shape: RoundedRectangleBorder(borderRadius: AppRadii.mdR),
       clipBehavior: Clip.antiAlias,
@@ -76,7 +73,7 @@ ThemeData buildTheme(ColorScheme scheme) {
 
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: scheme.surfaceContainerHighest,
+      fillColor: scheme.surfaceContainerLow,
       hintStyle: textTheme.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
       labelStyle: textTheme.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
       floatingLabelStyle: textTheme.bodySmall?.copyWith(color: scheme.primary),
@@ -91,15 +88,15 @@ ThemeData buildTheme(ColorScheme scheme) {
         vertical: AppSpacing.sm,
       ),
       border: OutlineInputBorder(
-        borderRadius: AppRadii.xsR,
+        borderRadius: AppRadii.smR,
         borderSide: BorderSide(color: scheme.outline),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: AppRadii.xsR,
+        borderRadius: AppRadii.smR,
         borderSide: BorderSide(color: scheme.outline),
       ),
       disabledBorder: OutlineInputBorder(
-        borderRadius: AppRadii.xsR,
+        borderRadius: AppRadii.smR,
         borderSide: BorderSide(
           color: scheme.onSurface.withValues(
             alpha: AppStateLayer.disabledContainer,
@@ -107,15 +104,15 @@ ThemeData buildTheme(ColorScheme scheme) {
         ),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: AppRadii.xsR,
+        borderRadius: AppRadii.smR,
         borderSide: BorderSide(color: scheme.primary, width: 2),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: AppRadii.xsR,
+        borderRadius: AppRadii.smR,
         borderSide: BorderSide(color: scheme.error),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: AppRadii.xsR,
+        borderRadius: AppRadii.smR,
         borderSide: BorderSide(color: scheme.error, width: 2),
       ),
     ),
@@ -130,7 +127,7 @@ ThemeData buildTheme(ColorScheme scheme) {
         disabledForegroundColor: scheme.onSurface.withValues(
           alpha: AppStateLayer.disabledContent,
         ),
-        minimumSize: const Size(64, 40),
+        minimumSize: const Size(64, 48),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
         shape: const StadiumBorder(),
         textStyle: textTheme.labelLarge,
@@ -142,7 +139,7 @@ ThemeData buildTheme(ColorScheme scheme) {
       style: OutlinedButton.styleFrom(
         foregroundColor: scheme.primary,
         side: BorderSide(color: scheme.outline),
-        minimumSize: const Size(64, 40),
+        minimumSize: const Size(64, 48),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
         shape: const StadiumBorder(),
         textStyle: textTheme.labelLarge,
@@ -152,7 +149,7 @@ ThemeData buildTheme(ColorScheme scheme) {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: scheme.primary,
-        minimumSize: const Size(64, 40),
+        minimumSize: const Size(64, 48),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
         shape: const StadiumBorder(),
         textStyle: textTheme.labelLarge,
@@ -182,7 +179,7 @@ ThemeData buildTheme(ColorScheme scheme) {
     navigationBarTheme: NavigationBarThemeData(
       height: 80,
       backgroundColor: scheme.surfaceContainer,
-      surfaceTintColor: scheme.surfaceTint,
+      surfaceTintColor: Colors.transparent,
       shadowColor: Colors.transparent,
       indicatorColor: scheme.secondaryContainer,
       indicatorShape: const StadiumBorder(),
@@ -222,7 +219,7 @@ ThemeData buildTheme(ColorScheme scheme) {
 
     dialogTheme: DialogThemeData(
       backgroundColor: scheme.surfaceContainerHigh,
-      surfaceTintColor: scheme.surfaceTint,
+      surfaceTintColor: Colors.transparent,
       shadowColor: scheme.shadow,
       elevation: AppElevation.level3,
       shape: RoundedRectangleBorder(borderRadius: AppRadii.xlR),
@@ -241,8 +238,8 @@ ThemeData buildTheme(ColorScheme scheme) {
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: scheme.surfaceContainerLow,
       modalBackgroundColor: scheme.surfaceContainerLow,
-      surfaceTintColor: scheme.surfaceTint,
-      elevation: AppElevation.level1,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
       modalElevation: AppElevation.level1,
       shape: const RoundedRectangleBorder(borderRadius: AppRadii.sheetTop),
       clipBehavior: Clip.antiAlias,
@@ -259,7 +256,7 @@ ThemeData buildTheme(ColorScheme scheme) {
       actionTextColor: scheme.inversePrimary,
       behavior: SnackBarBehavior.fixed,
       elevation: AppElevation.level3,
-      shape: RoundedRectangleBorder(borderRadius: AppRadii.xsR),
+      shape: RoundedRectangleBorder(borderRadius: AppRadii.smR),
     ),
 
     chipTheme: ChipThemeData(
@@ -349,7 +346,7 @@ ThemeData buildTheme(ColorScheme scheme) {
     tooltipTheme: TooltipThemeData(
       decoration: BoxDecoration(
         color: scheme.inverseSurface,
-        borderRadius: AppRadii.xsR,
+        borderRadius: AppRadii.smR,
       ),
       textStyle: textTheme.bodySmall?.copyWith(color: scheme.onInverseSurface),
       padding: const EdgeInsets.symmetric(
@@ -363,9 +360,9 @@ ThemeData buildTheme(ColorScheme scheme) {
 
     popupMenuTheme: PopupMenuThemeData(
       color: scheme.surfaceContainer,
-      surfaceTintColor: scheme.surfaceTint,
+      surfaceTintColor: Colors.transparent,
       elevation: AppElevation.level2,
-      shape: RoundedRectangleBorder(borderRadius: AppRadii.xsR),
+      shape: RoundedRectangleBorder(borderRadius: AppRadii.smR),
       textStyle: textTheme.bodyLarge,
     ),
 
@@ -376,7 +373,7 @@ ThemeData buildTheme(ColorScheme scheme) {
         shadowColor: WidgetStateProperty.all(scheme.shadow),
         elevation: WidgetStateProperty.all(AppElevation.level2),
         shape: WidgetStateProperty.all(
-          RoundedRectangleBorder(borderRadius: AppRadii.xsR),
+          RoundedRectangleBorder(borderRadius: AppRadii.smR),
         ),
         padding: WidgetStateProperty.all(
           const EdgeInsets.symmetric(vertical: AppSpacing.xs),
@@ -402,13 +399,13 @@ ThemeData buildTheme(ColorScheme scheme) {
 
     searchViewTheme: SearchViewThemeData(
       backgroundColor: scheme.surface,
-      surfaceTintColor: scheme.surfaceTint,
+      surfaceTintColor: Colors.transparent,
       elevation: AppElevation.level3,
       headerHintStyle: textTheme.bodyLarge?.copyWith(
         color: scheme.onSurfaceVariant,
       ),
       headerTextStyle: textTheme.bodyLarge,
-      shape: RoundedRectangleBorder(borderRadius: AppRadii.xsR),
+      shape: RoundedRectangleBorder(borderRadius: AppRadii.smR),
       dividerColor: scheme.outlineVariant,
     ),
 
@@ -419,7 +416,6 @@ ThemeData buildTheme(ColorScheme scheme) {
         durationLong: AppDurations.long1,
         emphasized: AppEasing.emphasized,
       ),
-      _IsDarkBackdrop(isDark),
     ],
   );
 }
@@ -457,20 +453,4 @@ class AppMotion extends ThemeExtension<AppMotion> {
 
   @override
   AppMotion lerp(ThemeExtension<AppMotion>? other, double t) => this;
-}
-
-/// Internal flag stored as a [ThemeExtension] so a few brightness-conditional
-/// widgets (skeleton shimmer, photo viewer overlay) can read it without a
-/// fresh `Theme.of(context).brightness` lookup.
-class _IsDarkBackdrop extends ThemeExtension<_IsDarkBackdrop> {
-  const _IsDarkBackdrop(this.isDark);
-  final bool isDark;
-  @override
-  ThemeExtension<_IsDarkBackdrop> copyWith({bool? isDark}) =>
-      _IsDarkBackdrop(isDark ?? this.isDark);
-  @override
-  ThemeExtension<_IsDarkBackdrop> lerp(
-    ThemeExtension<_IsDarkBackdrop>? other,
-    double t,
-  ) => this;
 }

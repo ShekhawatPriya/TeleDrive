@@ -35,7 +35,7 @@ jobs:
           # Pinned to the version this project is developed and verified against.
           # Bump this in lockstep with your local `flutter --version` so CI never
           # drifts onto an SDK the code hasn't been tested on.
-          flutter-version: "3.44.0"
+          flutter-version: "3.44.1"
           channel: stable
           cache: true
 
@@ -73,6 +73,12 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Verify release configuration and application
+        run: |
+          dart run scripts/verify_release_config.dart
+          flutter analyze --no-pub
+          flutter test --no-pub
 
       - name: Build release APK
         run: flutter build apk --release

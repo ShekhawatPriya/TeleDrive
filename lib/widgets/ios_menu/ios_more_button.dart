@@ -15,7 +15,7 @@ class IosMoreButton extends StatefulWidget {
   const IosMoreButton({
     required this.sectionsBuilder,
     this.tooltip = 'More',
-    this.size = 40,
+    this.size = 48,
     this.alignToScreenEdge = false,
     super.key,
   });
@@ -41,7 +41,11 @@ class _IosMoreButtonState extends State<IosMoreButton> {
       child: IconButton(
         tooltip: widget.tooltip,
         onPressed: _open,
-        icon: const Icon(Icons.more_vert),
+        icon: Icon(
+          Theme.of(context).platform == TargetPlatform.iOS
+              ? Icons.more_horiz_rounded
+              : Icons.more_vert,
+        ),
       ),
     );
   }

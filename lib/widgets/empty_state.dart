@@ -19,7 +19,7 @@ class EmptyState extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -28,10 +28,10 @@ class EmptyState extends StatelessWidget {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: scheme.secondaryContainer,
+                color: scheme.surfaceContainerHigh,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 32, color: scheme.onSecondaryContainer),
+              child: Icon(icon, size: 32, color: scheme.primary),
             ),
             const SizedBox(height: 24),
             Text(

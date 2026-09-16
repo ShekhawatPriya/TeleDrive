@@ -120,9 +120,7 @@ extension _DriveFolderHelpers on DriveController {
         starred.folders.any((f) => updatedById.containsKey(f.id))) {
       state = state.copyWith(
         starred: starred.copyWith(
-          folders: starred.folders
-              .map((f) => updatedById[f.id] ?? f)
-              .toList(),
+          folders: starred.folders.map((f) => updatedById[f.id] ?? f).toList(),
         ),
       );
     }

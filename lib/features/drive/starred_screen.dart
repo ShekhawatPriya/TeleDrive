@@ -99,13 +99,33 @@ class _StarredScreenState extends ConsumerState<StarredScreen> {
                         : (totalItems == 0
                               ? 'Quick access to favourites'
                               : '$totalItems item${totalItems == 1 ? '' : 's'}'),
-                    style: theme.textTheme.headlineSmall,
+                    style: theme.textTheme.bodyMedium,
                   ),
                 ),
               ),
               if (!loaded && loading)
                 const SliverFillRemaining(child: SkeletonList()),
-              if (loaded && starredFiles.isEmpty && starredFolders.isEmpty)
+              if (snapshot.error != null &&
+                  starredFiles.isEmpty &&
+                  starredFolders.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: EmptyState(
+                    icon: Icons.cloud_off_outlined,
+                    title: 'Could not load starred items',
+                    body: snapshot.error!,
+                    action: TextButton(
+                      onPressed: () => ref
+                          .read(driveControllerProvider)
+                          .ensureStarredLoaded(force: true),
+                      child: const Text('Try again'),
+                    ),
+                  ),
+                ),
+              if (snapshot.error == null &&
+                  loaded &&
+                  starredFiles.isEmpty &&
+                  starredFolders.isEmpty)
                 SliverFillRemaining(
                   child: EmptyState(
                     icon: query.isEmpty
@@ -148,8 +168,8 @@ class _StarredScreenState extends ConsumerState<StarredScreen> {
                   sliver: grid
                       ? SliverGrid.builder(
                           gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
+                              const SliverGridDelegateWithMaxCrossAxisExtent(
+                                maxCrossAxisExtent: 260,
                                 childAspectRatio: .72,
                                 crossAxisSpacing: 10,
                                 mainAxisSpacing: 10,

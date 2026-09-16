@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme/app_theme.dart';
 import '../../core/utils/safe_navigation.dart';
 import '../../widgets/empty_state.dart';
 import '../drive/components/drive_item_actions.dart';
@@ -69,46 +68,26 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
                 onMove: () => bulkMove(context),
                 onDelete: () => bulkDelete(context),
               ),
+            if (!selectMode)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    query.isNotEmpty
+                        ? '$allCount matches in loaded photos'
+                        : (allCount == 0
+                              ? 'Your media library'
+                              : '$allCount items'),
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              ),
             Expanded(
-              child: CustomScrollView(
-                slivers: [
-                  if (!selectMode)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.md,
-                          AppSpacing.sm,
-                          AppSpacing.md,
-                          AppSpacing.sm,
-                        ),
-                        child: Text(
-                          query.isNotEmpty
-                              ? '$allCount match${allCount == 1 ? '' : 'es'}'
-                              : (allCount == 0
-                                    ? 'Your media library'
-                                    : '$allCount item${allCount == 1 ? '' : 's'}'),
-                          style: theme.textTheme.headlineSmall,
-                        ),
-                      ),
-                    ),
-                  if (files.isEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: EmptyState(
-                        icon: query.isEmpty
-                            ? Icons.photo_library_outlined
-                            : Icons.search_off,
-                        title: query.isEmpty
-                            ? 'No photos yet'
-                            : 'No matching photos',
-                        body: query.isEmpty
-                            ? 'Photos and videos appear here after upload.'
-                            : 'Try a different file name.',
-                      ),
-                    )
-                  else
-                    SliverFillRemaining(
-                      child: PhotosGridView(
+              child: RefreshIndicator(
+                onRefresh: () => drive.refresh(force: true),
+                child: files.isNotEmpty
+                    ? PhotosGridView(
                         files: files,
                         density: density,
                         loadingMore: drive.state.loadingMoreMedia,
@@ -119,9 +98,41 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
                         onTilePanSelect: _onTilePanSelect,
                         onLoadMore: () =>
                             ref.read(driveControllerProvider).loadMoreMedia(),
+                      )
+                    : CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: drive.state.loading
+                                ? const Center(
+                                    child: CircularProgressIndicator.adaptive(),
+                                  )
+                                : drive.state.error != null
+                                ? EmptyState(
+                                    icon: Icons.cloud_off_outlined,
+                                    title: 'Could not load your photos',
+                                    body: drive.state.error!,
+                                    action: TextButton(
+                                      onPressed: () =>
+                                          drive.refresh(force: true),
+                                      child: const Text('Try again'),
+                                    ),
+                                  )
+                                : EmptyState(
+                                    icon: query.isEmpty
+                                        ? Icons.photo_library_outlined
+                                        : Icons.search_off,
+                                    title: query.isEmpty
+                                        ? 'No photos yet'
+                                        : 'No matching photos',
+                                    body: query.isEmpty
+                                        ? 'Photos and videos appear here after upload.'
+                                        : 'Try a different name. Search covers photos loaded on this device.',
+                                  ),
+                          ),
+                        ],
                       ),
-                    ),
-                ],
               ),
             ),
           ],

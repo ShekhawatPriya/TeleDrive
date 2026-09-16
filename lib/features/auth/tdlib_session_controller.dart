@@ -28,7 +28,6 @@ final tdlibSessionControllerProvider =
         telegram: ref.read(telegramTransferServiceProvider),
         storage: ref.read(secureStorageProvider),
       );
-      ref.onDispose(controller.dispose);
       unawaited(controller.check());
       return controller;
     });

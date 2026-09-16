@@ -30,7 +30,6 @@ final galleryBackupControllerProvider =
         uploads: ref.read(uploadControllerProvider),
         drive: ref.read(driveRepositoryProvider),
       );
-      ref.onDispose(controller.dispose);
       controller.start();
       return controller;
     });

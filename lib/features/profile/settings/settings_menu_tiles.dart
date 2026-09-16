@@ -44,9 +44,6 @@ class _SettingsGroupCard extends StatelessWidget {
         border: Border.all(
           color: scheme.outlineVariant.withValues(alpha: isDark ? 0.18 : 0.5),
         ),
-        boxShadow: isDark
-            ? null
-            : AppElevation.shadowFor(AppElevation.level1, Brightness.light),
       ),
       child: Material(
         color: Colors.transparent,
@@ -81,7 +78,9 @@ class _SettingsIconBadge extends StatelessWidget {
         color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(size * 0.3),
       ),
-      child: Center(child: child ?? Icon(icon, color: color, size: size * 0.5)),
+      child: Center(
+        child: child ?? Icon(icon, color: color, size: size * 0.5),
+      ),
     );
   }
 }
@@ -184,7 +183,7 @@ class _SettingsMenuTile extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
+                        color: scheme.onSurfaceVariant,
                         height: 1.35,
                       ),
                     ),

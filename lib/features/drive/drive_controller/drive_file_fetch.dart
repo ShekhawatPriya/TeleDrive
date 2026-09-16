@@ -2,8 +2,10 @@ part of '../drive_controller.dart';
 
 extension _DriveFileFetch on DriveController {
   Future<DriveFile?> _fetchFile(String id) async {
+    final generation = _accountGeneration;
     try {
       final fetched = await _repo.getFile(id);
+      if (!_isCurrentAccount(generation)) return null;
       _resolvedFiles[id] = fetched;
       // If the file's parent folder is already loaded, splice it into that
       // page so other consumers (folder view, etc.) see it.

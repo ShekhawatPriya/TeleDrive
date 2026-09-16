@@ -13,11 +13,21 @@ class PhotoGridDensity extends ChangeNotifier {
   final int min;
   final int max;
   int _columns;
+  bool _disposed = false;
+  int _revision = 0;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 
   int get columns => _columns;
 
   Future<void> _load() async {
+    final revision = _revision;
     final prefs = await SharedPreferences.getInstance();
+    if (_disposed || revision != _revision) return;
     final stored = prefs.getInt(_key);
     if (stored != null &&
         stored >= min &&
@@ -31,6 +41,7 @@ class PhotoGridDensity extends ChangeNotifier {
   Future<void> set(int next) async {
     final clamped = next.clamp(min, max);
     if (clamped == _columns) return;
+    _revision++;
     _columns = clamped;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
@@ -45,7 +56,6 @@ final photoGridDensityProvider = ChangeNotifierProvider<PhotoGridDensity>((
   ref,
 ) {
   final density = PhotoGridDensity();
-  ref.onDispose(density.dispose);
   return density;
 });
 
