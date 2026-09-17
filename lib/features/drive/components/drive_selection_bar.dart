@@ -8,6 +8,8 @@ class DriveSelectionBar extends StatelessWidget {
   const DriveSelectionBar({
     required this.selectedCount,
     this.actionsOnly = false,
+    this.onSelectAll,
+    this.onClear,
     required this.onCancel,
     required this.onShare,
     required this.onStar,
@@ -17,6 +19,7 @@ class DriveSelectionBar extends StatelessWidget {
   });
 
   final bool actionsOnly;
+  final VoidCallback? onSelectAll, onClear;
   final int selectedCount;
   final VoidCallback onCancel;
   final VoidCallback onShare;
@@ -28,6 +31,8 @@ class DriveSelectionBar extends StatelessWidget {
   Widget build(BuildContext context) => SelectionToolbar(
     count: selectedCount,
     actionsOnly: actionsOnly,
+    onSelectAll: onSelectAll,
+    onClear: onClear,
     onCancel: onCancel,
     actions: [
       (label: 'Share', icon: Icons.share_outlined, onPressed: onShare),

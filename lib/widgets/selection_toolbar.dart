@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'native_glass_button.dart';
+import 'native_selection_actions.dart';
 
 /// Shared selection controls that wrap instead of squeezing the title on phones.
 class SelectionToolbar extends StatelessWidget {
@@ -9,9 +10,12 @@ class SelectionToolbar extends StatelessWidget {
     required this.onCancel,
     required this.actions,
     this.actionsOnly = false,
+    this.onSelectAll,
+    this.onClear,
     super.key,
   });
   final bool actionsOnly;
+  final VoidCallback? onSelectAll, onClear;
   final int count;
   final VoidCallback onCancel;
   final List<({String label, IconData icon, VoidCallback onPressed})> actions;
@@ -22,62 +26,81 @@ class SelectionToolbar extends StatelessWidget {
         return SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                for (final action in actions)
-                  NativeGlassButton(
-                    label: action.label,
-                    symbol: switch (action.label) {
-                      'Share' => 'square.and.arrow.up',
-                      'Star' => 'star',
-                      'Move' => 'folder',
-                      'Delete' => 'trash',
-                      _ => 'ellipsis',
-                    },
-                    icon: switch (action.label) {
-                      'Share' => CupertinoIcons.share,
-                      'Star' => CupertinoIcons.star,
-                      'Move' => CupertinoIcons.folder,
-                      'Delete' => CupertinoIcons.trash,
-                      _ => CupertinoIcons.ellipsis,
-                    },
-                    onPressed: count > 0 ? action.onPressed : null,
-                  ),
-              ],
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: NativeSelectionActions(
+              actions: actions,
+              enabled: count > 0,
+              onSelectAll: onSelectAll,
+              onClear: onClear,
             ),
           ),
         );
       }
+      final largeText = MediaQuery.textScalerOf(context).scale(17) > 24;
+      final stacked = largeText || MediaQuery.sizeOf(context).width < 360;
+      final title = Semantics(
+        liveRegion: true,
+        header: true,
+        child: Text(
+          count == 1 ? '1 Item' : '$count Items',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+      final selectAll = onSelectAll == null
+          ? const SizedBox(width: 48)
+          : NativeGlassButton(
+              label: 'Select All',
+              symbol: '',
+              icon: CupertinoIcons.check_mark_circled,
+              size: largeText ? 56 : 44,
+              width: largeText ? 180 : 104,
+              onPressed: onSelectAll,
+            );
+      final done = NativeGlassButton(
+        label: 'Done',
+        symbol: 'checkmark',
+        icon: CupertinoIcons.check_mark,
+        size: 44,
+        symbolSize: 24,
+        prominent: true,
+        onPressed: onCancel,
+      );
       return SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-          child: Row(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: Semantics(
-                  liveRegion: true,
-                  header: true,
-                  child: Text(
-                    count > 0 ? '$count selected' : 'Select items',
-                    style: Theme.of(context).textTheme.titleMedium,
+              if (stacked)
+                Row(children: [selectAll, const Spacer(), done])
+              else
+                SizedBox(
+                  height: 44,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 108),
+                        child: title,
+                      ),
+                      Align(alignment: Alignment.centerLeft, child: selectAll),
+                      Align(alignment: Alignment.centerRight, child: done),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                minimumSize: const Size(48, 48),
-                onPressed: onCancel,
-                child: const Text('Done'),
-              ),
+              if (stacked)
+                Padding(padding: const EdgeInsets.only(top: 4), child: title),
             ],
           ),
         ),
       );
     }
+
     if (actionsOnly) return const SizedBox.shrink();
     return Material(
       color: Theme.of(context).colorScheme.surfaceContainerLow,

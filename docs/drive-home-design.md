@@ -30,3 +30,12 @@ flutter test --no-pub test/drive_search_dismissal_test.dart test/modernization_u
 ```
 
 Outputs: `build/modernization/full-drive-iOS-dark.png` and `full-drive-iOS-light.png`. Widget previews use portable fonts and fallback navigation; native glass, device safe areas, and physical-keyboard transitions require a device build to assess exactly.
+
+## Selection and header refinements
+
+iOS selection replaces the tab bar with a grouped native action toolbar and
+overflow. The header keeps Select All, a centered selected count and a blue
+checkmark; scoped search stays available. Select All includes only eligible loaded
+files/folders in the visible scope. The profile avatar is visually larger than
+the 34-point overflow surface, whose hit target remains 44 points. See
+[iOS item menus and selection](ios-design.md#native-item-menus-and-selection).

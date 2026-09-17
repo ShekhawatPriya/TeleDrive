@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 /// A highly-polished, animated selection indicator.
 ///
@@ -30,7 +31,10 @@ class PremiumSelectionIndicator extends StatelessWidget {
     final scheme = theme.colorScheme;
 
     // Harmonized colors for the premium look & feel
-    final activeColor = scheme.primary;
+    final ios = theme.platform == TargetPlatform.iOS;
+    final activeColor = ios
+        ? CupertinoColors.activeBlue.resolveFrom(context)
+        : scheme.primary;
     final inactiveBorderColor = isOverImage
         ? Colors.white.withValues(alpha: 0.9)
         : scheme.onSurfaceVariant.withValues(alpha: 0.38);
@@ -39,7 +43,9 @@ class PremiumSelectionIndicator extends StatelessWidget {
         : Colors.transparent;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 200),
       curve: Curves.easeInOutCubic,
       width: size,
       height: size,
@@ -62,10 +68,16 @@ class PremiumSelectionIndicator extends StatelessWidget {
       ),
       child: AnimatedScale(
         scale: isSelected ? 1.0 : 0.0,
-        duration: const Duration(milliseconds: 240),
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 240),
         curve: Curves.easeOutBack,
         child: Center(
-          child: Icon(Icons.check, size: size * 0.65, color: scheme.onPrimary),
+          child: Icon(
+            ios ? CupertinoIcons.check_mark : Icons.check,
+            size: size * 0.65,
+            color: ios ? Colors.white : scheme.onPrimary,
+          ),
         ),
       ),
     );

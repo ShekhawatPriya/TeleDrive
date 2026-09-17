@@ -15,6 +15,9 @@ import 'package:flutter_m_fsdk/features/drive/components/drive_selection_bar.dar
 import 'package:flutter_m_fsdk/models/auth_user.dart';
 import 'package:flutter_m_fsdk/models/drive_models.dart';
 import 'package:flutter_m_fsdk/widgets/native_glass_button.dart';
+import 'package:flutter_m_fsdk/widgets/ios_more_menu.dart';
+import 'package:flutter_m_fsdk/widgets/profile_avatar.dart';
+import 'package:flutter_m_fsdk/widgets/account_button.dart';
 import 'package:flutter_m_fsdk/widgets/file_list_tile.dart';
 import 'package:flutter_m_fsdk/features/photos/photos_viewer/photo_viewer_top_bar.dart';
 import 'package:flutter_m_fsdk/widgets/native_item_context_menu.dart';
@@ -28,6 +31,23 @@ const fixtureFile = DriveFile(
   createdAt: '',
   parentId: null,
   starred: false,
+);
+
+DriveFile _selectionFile({
+  required String name,
+  required FileKind kind,
+  required int size,
+  String? thumbnailUrl,
+}) => DriveFile(
+  id: name,
+  name: name,
+  kind: kind,
+  size: size,
+  modifiedAt: fixtureFile.modifiedAt,
+  createdAt: '',
+  parentId: null,
+  starred: false,
+  thumbnailUrl: thumbnailUrl,
 );
 
 class _Auth extends ChangeNotifier implements AuthController {
@@ -65,14 +85,28 @@ Future<void> _pump(
   TargetPlatform platform = TargetPlatform.iOS,
   _Auth? auth,
   _Drive? drive,
+  double width = 320,
+  bool highContrast = false,
 }) async {
-  tester.view.physicalSize = const Size(320, 740);
+  tester.view.physicalSize = Size(width, 874);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
   debugDefaultTargetPlatformOverride = platform;
   final theme = buildTheme(AppBrand.scheme(brightness));
   debugDefaultTargetPlatformOverride = null;
+  // Decode the local fixture before Image.file starts work in the fake-async
+  // test zone, so exported previews contain the actual photograph.
+  await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+  await tester.runAsync(
+    () => precacheImage(
+      ResizeImage(
+        FileImage(File('test/fixtures/design/alpine.jpg').absolute),
+        width: 320,
+      ),
+      tester.element(find.byType(SizedBox).first),
+    ),
+  );
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -85,6 +119,7 @@ Future<void> _pump(
           data: MediaQuery.of(context).copyWith(
             textScaler: TextScaler.linear(scale),
             disableAnimations: true,
+            highContrast: highContrast,
           ),
           child: RepaintBoundary(key: const ValueKey('preview'), child: child!),
         ),
@@ -128,15 +163,23 @@ void main() {
     }
   });
   for (final brightness in Brightness.values) {
-    for (final scale in [1.0, 2.0]) {
+    for (final scenario in [
+      (320.0, 1.0),
+      (320.0, 2.0),
+      (402.0, 1.0),
+      (402.0, 2.0),
+    ]) {
+      final (width, scale) = scenario;
       testWidgets(
-        'iOS selection header and bottom actions ${brightness.name} $scale',
+        'iOS selection header and bottom actions ${brightness.name} $width $scale',
         (tester) async {
           final calls = <String>[];
           Widget bar(bool actions) => DriveSelectionBar(
             selectedCount: 3,
             actionsOnly: actions,
             onCancel: () => calls.add('Done'),
+            onSelectAll: () => calls.add('Select All'),
+            onClear: () => calls.add('Deselect All'),
             onShare: () => calls.add('Share'),
             onStar: () => calls.add('Star'),
             onMove: () => calls.add('Move'),
@@ -150,15 +193,30 @@ void main() {
                 Expanded(
                   child: ListView(
                     children: [
-                      for (final name in [
-                        'Travel notes.pdf',
-                        'September plans.pdf',
-                        'Project brief.pdf',
+                      for (final file in [
+                        _selectionFile(
+                          name: 'Account statement.pdf',
+                          kind: FileKind.pdf,
+                          size: 298000,
+                        ),
+                        _selectionFile(
+                          name: 'Monthly budget.xls',
+                          kind: FileKind.sheet,
+                          size: 298000,
+                        ),
+                        _selectionFile(
+                          name: 'Alpine afternoon.jpg',
+                          kind: FileKind.image,
+                          size: 1600000,
+                          thumbnailUrl: File(
+                            'test/fixtures/design/alpine.jpg',
+                          ).absolute.path,
+                        ),
                       ])
                         FileListTile(
-                          name: name,
-                          subtitle: 'PDF · 2.4 MB',
-                          file: fixtureFile,
+                          name: file.name,
+                          subtitle: 'File details',
+                          file: file,
                           selected: true,
                           onTap: () {},
                         ),
@@ -170,23 +228,65 @@ void main() {
             ),
             brightness: brightness,
             scale: scale,
+            width: width,
+            highContrast: scale == 2,
           );
           expect(find.byType(TextButton), findsNothing);
-          expect(tester.getRect(find.text('3 selected')).top, lessThan(100));
+          expect(tester.getRect(find.text('3 Items')).top, lessThan(100));
           for (final label in ['Share', 'Star', 'Move', 'Delete']) {
             final target = find.byTooltip(label);
             expect(tester.getRect(target).top, greaterThan(600));
             expect(tester.getSize(target).height, greaterThanOrEqualTo(48));
             await tester.tap(target);
           }
-          await tester.tap(find.text('Done'));
-          expect(calls, ['Share', 'Star', 'Move', 'Delete', 'Done']);
-          await preview(tester, 'ios-selection-${brightness.name}-$scale');
+          await tester.tap(find.byTooltip('Done'));
+          await tester.tap(find.text('Select All'));
+          expect(calls, [
+            'Share',
+            'Star',
+            'Move',
+            'Delete',
+            'Done',
+            'Select All',
+          ]);
+          await preview(
+            tester,
+            'ios-selection-${brightness.name}-$width-$scale',
+          );
           expect(tester.takeException(), isNull);
         },
       );
     }
   }
+  testWidgets(
+    'header overflow is visually smaller than avatar with a 44-point target',
+    (tester) async {
+      await _pump(
+        tester,
+        Row(
+          children: [
+            IosMoreButton(size: 44, visualSize: 34, sectionsBuilder: (_) => []),
+            const AccountButton(avatarSize: 44),
+          ],
+        ),
+      );
+      expect(
+        tester.getSize(find.byType(NativeGlassButton)),
+        const Size(44, 44),
+      );
+      expect(
+        tester.getSize(
+          find.descendant(
+            of: find.byType(NativeGlassButton),
+            matching: find.byType(Container),
+          ),
+        ),
+        const Size(34, 34),
+      );
+      expect(tester.getSize(find.byType(ProfileAvatar)), const Size(44, 44));
+    },
+  );
+
   testWidgets('iOS photo actions expose Share, Star, Info and Delete', (
     tester,
   ) async {

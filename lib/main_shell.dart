@@ -77,6 +77,11 @@ class _MainShellState extends ConsumerState<MainShell>
   @override
   Widget build(BuildContext context) {
     final index = widget.navigationShell.currentIndex;
+    final selecting = ref
+        .watch(selectionModeStateProvider)
+        .isSelectModeForTab(index);
+    final hideNavigation =
+        selecting && Theme.of(context).platform == TargetPlatform.iOS;
     // Read above Scaffold: its resized body removes the keyboard inset.
     final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return LayoutBuilder(
@@ -96,32 +101,33 @@ class _MainShellState extends ConsumerState<MainShell>
           body: expanded
               ? Row(
                   children: [
-                    NavigationRail(
-                      selectedIndex: index,
-                      onDestinationSelected: _handleDestinationSelected,
-                      labelType: NavigationRailLabelType.all,
-                      leading: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24),
-                        child: Icon(
-                          Icons.cloud_outlined,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                      destinations: [
-                        for (final item in driveDestinations)
-                          NavigationRailDestination(
-                            icon: Icon(item.icon),
-                            selectedIcon: Icon(item.selected),
-                            label: Text(item.label),
+                    if (!hideNavigation)
+                      NavigationRail(
+                        selectedIndex: index,
+                        onDestinationSelected: _handleDestinationSelected,
+                        labelType: NavigationRailLabelType.all,
+                        leading: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Icon(
+                            Icons.cloud_outlined,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
-                      ],
-                    ),
-                    const VerticalDivider(width: 1),
+                        ),
+                        destinations: [
+                          for (final item in driveDestinations)
+                            NavigationRailDestination(
+                              icon: Icon(item.icon),
+                              selectedIcon: Icon(item.selected),
+                              label: Text(item.label),
+                            ),
+                        ],
+                      ),
+                    if (!hideNavigation) const VerticalDivider(width: 1),
                     Expanded(child: content),
                   ],
                 )
               : content,
-          bottomNavigationBar: expanded
+          bottomNavigationBar: expanded || hideNavigation
               ? null
               : FloatingPillNavigationBar(
                   selectedIndex: index,

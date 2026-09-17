@@ -1,5 +1,7 @@
 import 'dart:ui' as ui;
 
+import 'package:dio/dio.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -11,8 +13,8 @@ import 'ios_menu/ios_menu_models.dart';
 import 'ios_menu/native_menu_payload.dart';
 
 /// A lazy tile keeps its Flutter content and media cache. UIKit owns the hold,
-/// lift, preview, menu, haptics and dismissal. Only a bounded rendered snapshot
-/// crosses the bridge; this control never reads or downloads the original file.
+/// lift, preview, menu, haptics and dismissal. Source snapshots animate the lift;
+/// a separate cancellable loader supplies actual preview content.
 class NativeItemContextMenu extends StatefulWidget {
   const NativeItemContextMenu({
     required this.child,
@@ -21,6 +23,11 @@ class NativeItemContextMenu extends StatefulWidget {
     required this.onOpen,
     required this.sectionsBuilder,
     this.trailingClearance = 0,
+    this.previewLoader,
+    this.previewSymbol = 'doc',
+    this.subtitle = '',
+    this.previewRevision = '',
+    this.hasVisualPreview = false,
     super.key,
   });
   final Widget child;
@@ -28,6 +35,9 @@ class NativeItemContextMenu extends StatefulWidget {
   final VoidCallback onOpen;
   final List<IosMenuSection> Function() sectionsBuilder;
   final double trailingClearance;
+  final Future<Map<String, String>?> Function(CancelToken)? previewLoader;
+  final String previewSymbol, subtitle, previewRevision;
+  final bool hasVisualPreview;
 
   @override
   State<NativeItemContextMenu> createState() => _NativeItemContextMenuState();
@@ -40,11 +50,16 @@ class _NativeItemContextMenuState extends State<NativeItemContextMenu> {
   bool _previewActive = false;
   bool _checked = false;
   int _generation = 0;
+  CancelToken? _previewToken;
   Map<String, VoidCallback> _actions = {};
 
   Map<String, Object> get _configuration => {
     'identity': widget.identity,
     'title': widget.title,
+    'symbol': widget.previewSymbol,
+    'subtitle': widget.subtitle,
+    'visualPreview': widget.hasVisualPreview,
+    'revision': widget.previewRevision,
     'dark': Theme.of(context).brightness == Brightness.dark,
   };
 
@@ -76,7 +91,9 @@ class _NativeItemContextMenuState extends State<NativeItemContextMenu> {
   @override
   void didUpdateWidget(NativeItemContextMenu oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.identity != widget.identity) {
+    if (oldWidget.identity != widget.identity ||
+        oldWidget.previewRevision != widget.previewRevision) {
+      _previewToken?.cancel();
       _generation++;
       _previewActive = false;
       _actions = {};
@@ -97,7 +114,25 @@ class _NativeItemContextMenuState extends State<NativeItemContextMenu> {
       _actions = payload.actions;
       return payload.sections;
     }
+    if (call.method == 'previewCancel') {
+      _previewToken?.cancel();
+      return null;
+    }
     if (call.method == 'previewRequest') {
+      _previewToken?.cancel();
+      final token = _previewToken = CancelToken();
+      final generation = _generation;
+      Map<String, String>? preview;
+      try {
+        preview = await widget.previewLoader?.call(token);
+      } catch (_) {
+        /* Unavailable sources retain the native identity card. */
+      }
+      if (!mounted || token.isCancelled || generation != _generation)
+        return null;
+      return preview;
+    }
+    if (call.method == 'snapshotRequest') {
       final generation = _generation;
       final boundary = _snapshotKey.currentContext?.findRenderObject();
       if (boundary is! RenderRepaintBoundary ||
@@ -124,6 +159,7 @@ class _NativeItemContextMenuState extends State<NativeItemContextMenu> {
   @override
   void dispose() {
     _generation++;
+    _previewToken?.cancel();
     _channel?.setMethodCallHandler(null);
     super.dispose();
   }

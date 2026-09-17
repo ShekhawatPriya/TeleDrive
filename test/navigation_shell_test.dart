@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_m_fsdk/main_shell.dart';
+import 'package:flutter_m_fsdk/features/drive/drive_tab_commands.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/upload_sheet.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/components/upload_collapsed_bar.dart';
 import 'package:flutter_m_fsdk/features/share/share_controller.dart';
@@ -139,6 +140,43 @@ class _EditorState extends State<_Editor> {
 }
 
 void main() {
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    testWidgets(
+      'selection replaces only iOS navigation and restores tab state $platform',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final router = _router();
+        addTearDown(router.dispose);
+        await tester.pumpWidget(
+          _scope(
+            MaterialApp.router(
+              routerConfig: router,
+              theme: ThemeData(platform: platform),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final editor = find.byKey(const ValueKey('edit-drive'));
+        await tester.enterText(editor, 'retained selection scope');
+        final container = ProviderScope.containerOf(tester.element(editor));
+        container.read(selectionModeStateProvider).setDriveSelectMode(true);
+        await tester.pumpAndSettle();
+        expect(
+          find.byType(FloatingPillNavigationBar),
+          platform == TargetPlatform.iOS ? findsNothing : findsOneWidget,
+        );
+        container.read(selectionModeStateProvider).setDriveSelectMode(false);
+        await tester.pumpAndSettle();
+        expect(find.byType(FloatingPillNavigationBar), findsOneWidget);
+        expect(find.text('retained selection scope'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('router owns tabs, restores state and opens detail routes', (
     tester,
   ) async {

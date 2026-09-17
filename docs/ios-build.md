@@ -156,7 +156,7 @@ The test runner checks its fixture marker before interacting. Find a booted
 simulator UUID with `xcrun simctl list devices` and substitute it below:
 
 ```sh
-flutter build ios --simulator --debug --no-pub -t tools/ios_item_preview.dart --dart-define="PHOTO_PREVIEW_PATH=$PWD/test/fixtures/design/alpine.jpg"
+flutter build ios --simulator --debug --no-pub -t tools/ios_item_preview.dart --dart-define="PHOTO_PREVIEW_PATH=$PWD/test/fixtures/design/alpine.jpg" --dart-define="PDF_PREVIEW_PATH=$PWD/test/fixtures/design/menu-preview.pdf"
 xcrun simctl install <simulator-uuid> build/ios/iphonesimulator/Runner.app
 ruby scripts/test_ios_item_menus.rb <simulator-uuid>
 ```

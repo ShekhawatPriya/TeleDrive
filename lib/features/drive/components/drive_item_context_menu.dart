@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/drive_models.dart';
+import '../../../core/media/item_preview_loader.dart';
+import '../../../core/utils/file_type_detector.dart';
 import '../../../widgets/ios_more_menu.dart';
 import '../../../widgets/native_item_context_menu.dart';
 import '../../auth/auth_controller.dart';
@@ -58,6 +60,41 @@ class DriveItemContextMenu extends ConsumerWidget {
     return NativeItemContextMenu(
       identity: '$account:${file == null ? 'folder' : 'file'}:$id',
       title: file?.name ?? folder!.name,
+      previewRevision: file == null
+          ? ''
+          : '${file!.modifiedAt}:${file!.thumbnailVersion}:${file!.previewVersion}',
+      subtitle: file == null
+          ? 'Folder'
+          : '${file!.kind.name.toUpperCase()} · ${formatFileSize(file!.size)}',
+      previewSymbol: switch (file?.kind) {
+        null => 'folder.fill',
+        FileKind.image => 'photo',
+        FileKind.video => 'video',
+        FileKind.sheet => 'tablecells',
+        FileKind.pdf => 'doc.richtext',
+        _ => 'doc',
+      },
+      hasVisualPreview:
+          file != null &&
+          {
+            FileKind.image,
+            FileKind.video,
+            FileKind.pdf,
+            FileKind.doc,
+            FileKind.sheet,
+            FileKind.slides,
+          }.contains(file!.kind),
+      previewLoader: file == null
+          ? null
+          : (token) async {
+              if (!valid()) return null;
+              final current =
+                  ref.read(driveControllerProvider).file(id) ?? file!;
+              final result = await ref
+                  .read(itemPreviewLoaderProvider)
+                  .load(current, token);
+              return valid() ? result : null;
+            },
       trailingClearance: trailingClearance,
       onOpen: () {
         if (valid()) onOpen();

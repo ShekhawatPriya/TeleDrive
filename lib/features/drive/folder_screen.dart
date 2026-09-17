@@ -122,13 +122,16 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
           ? PreferredSize(
               preferredSize: Size.fromHeight(
                 Theme.of(context).platform == TargetPlatform.iOS
-                    ? (MediaQuery.textScalerOf(context).scale(17) > 24
-                          ? 96
+                    ? ((MediaQuery.textScalerOf(context).scale(17) > 24 ||
+                              MediaQuery.sizeOf(context).width < 360)
+                          ? 112
                           : 56)
                     : 64,
               ),
               child: DriveSelectionBar(
                 selectedCount: selectedCount,
+                onSelectAll: () => selectAllItems(files, folders),
+                onClear: clearSelection,
                 onCancel: exitSelect,
                 onShare: () => bulkShare(context),
                 onStar: bulkStar,
@@ -229,6 +232,8 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
               child: DriveSelectionBar(
                 actionsOnly: true,
                 selectedCount: selectedCount,
+                onSelectAll: () => selectAllItems(files, folders),
+                onClear: clearSelection,
                 onCancel: exitSelect,
                 onShare: () => bulkShare(context),
                 onStar: bulkStar,
@@ -237,20 +242,21 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
                 onDelete: () => bulkDelete(context),
               ),
             ),
-          Positioned(
-            left: AppSpacing.md,
-            right: AppSpacing.md,
-            bottom: 16,
-            child: SafeArea(
-              top: false,
-              child: FabAnchorPublisher(
-                child: BottomActionSystem(
-                  showFab: !selectMode,
-                  parentId: widget.folderId,
+          if (!(selectMode && Theme.of(context).platform == TargetPlatform.iOS))
+            Positioned(
+              left: AppSpacing.md,
+              right: AppSpacing.md,
+              bottom: 16,
+              child: SafeArea(
+                top: false,
+                child: FabAnchorPublisher(
+                  child: BottomActionSystem(
+                    showFab: !selectMode,
+                    parentId: widget.folderId,
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

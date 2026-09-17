@@ -12,6 +12,9 @@ class NativeGlassButton extends StatefulWidget {
     required this.icon,
     required this.onPressed,
     this.white = false,
+    this.prominent = false,
+    this.width,
+    this.visualSize,
     this.size = 48,
     this.symbolSize = 19,
     this.menuBuilder,
@@ -20,7 +23,8 @@ class NativeGlassButton extends StatefulWidget {
   final String label, symbol;
   final IconData icon;
   final VoidCallback? onPressed;
-  final bool white;
+  final bool white, prominent;
+  final double? width, visualSize;
   final double size, symbolSize;
   final List<Map<String, Object?>> Function()? menuBuilder;
   final ValueChanged<String>? onMenuAction;
@@ -38,6 +42,8 @@ class _NativeGlassButtonState extends State<NativeGlassButton> {
     'symbolSize': widget.symbolSize,
     'enabled': widget.onPressed != null,
     'white': widget.white,
+    'prominent': widget.prominent,
+    'visualSize': widget.visualSize ?? widget.size,
     'hasMenu': widget.menuBuilder != null,
     'dark': Theme.of(context).brightness == Brightness.dark || widget.white,
     'textScale': MediaQuery.textScalerOf(context).scale(17) / 17,
@@ -87,7 +93,7 @@ class _NativeGlassButtonState extends State<NativeGlassButton> {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: widget.size,
+    width: widget.width ?? widget.size,
     height: widget.size,
     child: _available
         ? UiKitView(
@@ -111,20 +117,37 @@ class _NativeGlassButtonState extends State<NativeGlassButton> {
             message: widget.label,
             child: CupertinoButton(
               padding: EdgeInsets.zero,
-              borderRadius: BorderRadius.circular(24),
-              color: widget.white
-                  ? const Color(0xCC252529)
-                  : Theme.of(context).colorScheme.surfaceContainerLow,
+              minimumSize: Size(widget.width ?? widget.size, widget.size),
               onPressed: widget.onPressed,
-              child: Icon(
-                widget.icon,
-                size: widget.symbolSize,
-                color:
-                    (widget.white
-                            ? Colors.white
-                            : Theme.of(context).colorScheme.onSurface)
-                        .withValues(alpha: widget.onPressed == null ? .3 : 1),
-                semanticLabel: widget.label,
+              child: Container(
+                width: widget.width ?? widget.visualSize ?? widget.size,
+                height: widget.visualSize ?? widget.size,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: widget.prominent
+                      ? CupertinoColors.activeBlue.resolveFrom(context)
+                      : widget.white
+                      ? const Color(0xCC252529)
+                      : Theme.of(context).colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: widget.symbol.isEmpty
+                    ? Text(
+                        widget.label,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      )
+                    : Icon(
+                        widget.icon,
+                        size: widget.symbolSize,
+                        color:
+                            (widget.white || widget.prominent
+                                    ? Colors.white
+                                    : Theme.of(context).colorScheme.onSurface)
+                                .withValues(
+                                  alpha: widget.onPressed == null ? .3 : 1,
+                                ),
+                        semanticLabel: widget.label,
+                      ),
               ),
             ),
           ),

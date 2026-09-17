@@ -6,6 +6,7 @@ import '../../core/utils/safe_navigation.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/skeletons.dart';
+import '../../widgets/teledrive_app_bar.dart';
 import '../search/search_controller.dart';
 import '../search/drive_search_controller.dart';
 import 'components/drive_header_widgets.dart';
@@ -154,12 +155,22 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
             children: [
               DriveSelectionBar(
                 selectedCount: selectedCount,
+                onSelectAll: () => selectAllItems(files, folders),
+                onClear: clearSelection,
                 onCancel: exitSelect,
                 onShare: () => bulkShare(context),
                 onStar: bulkStar,
                 onMove: () => bulkMove(context),
                 onDelete: () => bulkDelete(context),
               ),
+              if (Theme.of(context).platform == TargetPlatform.iOS)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
+                  child: DriveSearchField(
+                    scope: SearchScope.drive,
+                    selectionMode: true,
+                  ),
+                ),
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: query.isNotEmpty
@@ -198,6 +209,8 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                 DriveSelectionBar(
                   actionsOnly: true,
                   selectedCount: selectedCount,
+                  onSelectAll: () => selectAllItems(files, folders),
+                  onClear: clearSelection,
                   onCancel: exitSelect,
                   onShare: () => bulkShare(context),
                   onStar: bulkStar,

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/safe_navigation.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/teledrive_app_bar.dart';
 import '../drive/components/drive_item_actions.dart';
 import '../drive/components/selection_mode_mixin.dart';
 import '../drive/components/share_helpers.dart';
@@ -66,10 +67,20 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
             if (selectMode)
               PhotosSelectionBar(
                 selectedCount: selectedCount,
+                onSelectAll: () => selectAllItems(files),
+                onClear: clearSelection,
                 onCancel: exitSelect,
                 onShare: () => bulkShare(context),
                 onMove: () => bulkMove(context),
                 onDelete: () => bulkDelete(context),
+              ),
+            if (selectMode && theme.platform == TargetPlatform.iOS)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
+                child: DriveSearchField(
+                  scope: SearchScope.photos,
+                  selectionMode: true,
+                ),
               ),
             if (!selectMode)
               Padding(
@@ -193,6 +204,8 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
               PhotosSelectionBar(
                 actionsOnly: true,
                 selectedCount: selectedCount,
+                onSelectAll: () => selectAllItems(files),
+                onClear: clearSelection,
                 onCancel: exitSelect,
                 onShare: () => bulkShare(context),
                 onMove: () => bulkMove(context),

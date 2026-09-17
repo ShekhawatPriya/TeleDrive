@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'drive_item_actions.dart';
+import '../../../models/drive_models.dart';
 import '../../auth/auth_controller.dart';
 
 /// Mixin for screens that support a multi-select mode. Tracks
@@ -43,6 +44,26 @@ mixin SelectionModeMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
       selectedFolderIds.clear();
     });
   }
+
+  /// Select the loaded, visible scope; never claim unloaded library items.
+  void selectAllItems(
+    Iterable<DriveFile> files, [
+    Iterable<DriveFolder> folders = const [],
+  ]) {
+    setState(() {
+      selectedFileIds.addAll(
+        files.where((f) => !f.isOptimistic).map((f) => f.id),
+      );
+      selectedFolderIds.addAll(
+        folders.where((f) => !f.isOptimistic).map((f) => f.id),
+      );
+    });
+  }
+
+  void clearSelection() => setState(() {
+    selectedFileIds.clear();
+    selectedFolderIds.clear();
+  });
 
   void toggleFileSelection(String id) {
     setState(() {

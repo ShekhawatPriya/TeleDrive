@@ -99,8 +99,13 @@ class TeleDriveTopBar extends StatelessWidget {
 }
 
 class DriveSearchField extends ConsumerStatefulWidget {
-  const DriveSearchField({required this.scope, super.key});
+  const DriveSearchField({
+    required this.scope,
+    this.selectionMode = false,
+    super.key,
+  });
   final SearchScope scope;
+  final bool selectionMode;
   @override
   ConsumerState<DriveSearchField> createState() => _DriveSearchFieldState();
 }
@@ -155,12 +160,14 @@ class _DriveSearchFieldState extends ConsumerState<DriveSearchField> {
               child: CupertinoSearchTextField(
                 controller: _text,
                 focusNode: _focus,
-                placeholder: hint,
-                padding: const EdgeInsets.symmetric(
+                placeholder: widget.selectionMode ? 'Search' : hint,
+                padding: EdgeInsets.symmetric(
                   horizontal: 12,
-                  vertical: 13,
+                  vertical: widget.selectionMode ? 12 : 13,
                 ),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(
+                  widget.selectionMode ? 24 : 14,
+                ),
                 backgroundColor: Theme.of(
                   context,
                 ).colorScheme.onSurface.withValues(alpha: .055),

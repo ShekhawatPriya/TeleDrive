@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../native_glass_button.dart';
 import 'ios_menu_models.dart';
@@ -49,8 +50,9 @@ class _IosMoreButtonState extends State<IosMoreButton> {
               label: widget.tooltip,
               white: widget.white,
               symbol: 'ellipsis',
-              icon: Icons.more_horiz_rounded,
+              icon: CupertinoIcons.ellipsis,
               size: widget.size,
+              visualSize: widget.visualSize,
               onPressed: _open,
               menuBuilder: () {
                 final payload = NativeMenuPayload(

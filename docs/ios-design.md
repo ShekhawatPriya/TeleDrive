@@ -224,12 +224,30 @@ Flutter tap recognizer must not intercept it and present the fallback overlay.
 `UIMenu` requests a fresh state snapshot on every opening; View as and Sort by
 remain native submenus with the current checkmark.
 
-Selection uses a compact system-type count/Done header and a bottom row of
-48-point native glass action controls. Share, Star, Move and Delete retain their
-existing batch handlers. Actions disable when no items are selected. The shell
-hides the floating Add/upload controls while iOS selection is active. Android
-retains its wrapping Material action bar. Folder headers grow for accessibility
-text; both Drive and Photos keep actions clear of bottom navigation.
+Selection follows the Files reference: a leading Select All capsule, centered
+item count and a prominent blue checkmark to finish. The normal header uses a
+104-point Select All capsule and a 44-point finish control; the bottom toolbar
+is 48 points high with system-managed action grouping. At constrained widths or
+large text the count gets its own centered line. Search remains available.
+iOS list selection indicators sit at the leading edge with 12-point inner
+padding. Selected rows use a quiet opaque fill and continuous 16-point corners,
+with four-point vertical margins separating adjacent rows instead of creating a
+solid rectangular block. Selection mode omits row dividers; unselected rows keep
+the same geometry to avoid movement on tap. High contrast adds a visible outline,
+and reduced motion removes the fill transition. Metadata can wrap fully at large
+text sizes. Normal browsing rows and Android keep their existing treatment. Select All applies to eligible loaded items in the current
+folder/search/filter scope, not unloaded library totals.
+
+The shell replaces its tab bar with selection controls while selecting on iOS.
+A native `UIToolbar` groups Share, Star, Move and Delete in one glass capsule,
+with a separate overflow for Select All / Deselect All. Photos retains its
+existing Share, Move and Delete actions. Empty selections disable batch actions;
+Done restores the same tab state. Floating upload controls hide during selection.
+Android retains its Material selection and navigation behavior.
+
+The header overflow has a 34-point visual diameter inside a 44-point target;
+the adjacent profile avatar stays 44 points. Native glass buttons use the same
+size contract as their Flutter fallbacks.
 
 On iOS, holding a loaded Drive file/folder, recent item or photo opens a real
 `UIContextMenuInteraction`. UIKit owns the hold, targeted lift/dismissal preview,
@@ -237,15 +255,24 @@ menu placement, haptics and animation. Flutter reserves only the long-press
 gesture for the platform view, leaving scrolling to its existing scroll view.
 Selection mode and optimistic items bypass the native context interaction.
 
-The preview is a bounded, ephemeral snapshot of the rendered tile. It is not a
-new original-media download or a backend preview request. The source is hidden
-while UIKit presents it, then restored on dismissal. Tapping the native preview
-opens the existing item route; actions run after dismissal and use the shared
-item handlers, confirmations and move rules. Fresh menu state includes Star /
-Unstar and Share / Revoke share. Callbacks and asynchronous snapshots are tied to
-the item and active backend-user/Telegram identity. Disposed/recycled tiles reject
-stale results. Missing bridges retain a Cupertino context-menu fallback and
-accessible item actions.
+A source snapshot serves only the lift/dismissal animation. The content preview
+is separate: the existing scoped thumbnail loader supplies a local image/video
+poster, and UIKit downsamples it to a bounded image. Preview proportions follow
+the image and available device space; UIKit owns menu scrolling, preview
+compression, continuous corners, spring transitions and dismissal.
+
+PDF and common office-document originals up to 20 MB can load on hold through
+the existing private Telegram media service (15-second transfer timeout), then
+render through Quick Look thumbnailing. Unsupported, oversized or unavailable
+content uses an honest icon/name/metadata card with the existing Open action.
+No file bytes go through a backend fallback. Preview requests cancel on dismissal,
+recycling or account change; late results cannot replace another item's preview.
+The same thumbnail scheduler keeps downloads bounded and shared with visible tiles.
+
+Tapping the native preview opens the existing item route; actions run after
+dismissal and use the shared handlers, confirmations and move rules. Fresh menu
+state includes Star / Unstar and Share / Revoke share. Missing bridges retain a
+functional Cupertino context menu and accessible item actions.
 
 In the iOS full-screen photo viewer, Share, Star, Info and Delete sit along the
 bottom. The top overflow is native; Download and organization actions remain
@@ -254,6 +281,9 @@ local-cache-first image/video pipeline remain shared Flutter behavior. This does
 not claim to embed Apple's private Photos app or replace the media engine.
 
 References:
+- [Apple toolbars](https://developer.apple.com/design/human-interface-guidelines/toolbars)
+- [UIKit toolbar grouping](https://developer.apple.com/documentation/uikit/customizing-your-app-s-navigation-bar)
+- [Quick Look thumbnail generation](https://developer.apple.com/documentation/quicklookthumbnailing/qlthumbnailgenerator)
 - [Apple context menus](https://developer.apple.com/design/human-interface-guidelines/context-menus)
 - [Adding context menus in UIKit](https://developer.apple.com/documentation/uikit/adding-context-menus-in-your-app)
 - [Context-menu preview and animation lifecycle](https://developer.apple.com/documentation/uikit/uicontextmenuinteractiondelegate)
@@ -262,6 +292,16 @@ References:
 `test/ios_item_interaction_test.dart` covers iOS selection controls at 320 points
 and 200% text, disabled actions, fresh context state, account changes and Android
 fallback behavior. `test/native/ItemContextMenuUITests.swift` exercises actual
-UIKit interaction on the simulator: a 0.7-second press, preview commit, Select,
+UIKit interaction on the simulator: a sustained press, preview commit, Select,
 Star/Unstar, scrolling, native overflow and disabled selection actions. See the
 [iOS build guide](ios-build.md) for the isolated native fixture workflow.
+
+Reference refinement verification (September 17, 2026): analyzer clean and 318
+Flutter tests passed. Populated Flutter previews cover both themes and constrained
+text layouts. The iOS 26.5 simulator exercised photo/PDF previews, unsupported-file
+fallback, preview commit, fresh menu state, selection/overflow and disabled actions.
+A separate menu drag check verifies that the PDF preview shrinks while the menu
+stays open and Delete becomes reachable. Native screenshots were inspected.
+Both simulator and unsigned production-device debug builds compiled; the device
+build uses `lib/main.dart`. Physical iPhone gesture feel and VoiceOver were not
+verified in this pass.

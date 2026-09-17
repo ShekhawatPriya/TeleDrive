@@ -58,15 +58,79 @@ class FileListTile extends StatelessWidget {
         isOptimistic && (status == 'failed' || status == 'cancelled');
     final isUploading = isOptimistic && !isFailed && status != 'uploaded';
 
+    final thumbnail = SizedBox(
+      width: ios ? 40 : 48,
+      height: ios ? 40 : 48,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: UploadingShimmer(
+              enabled: isUploading,
+              borderRadius: AppRadii.smR,
+              child: isFolder
+                  ? Center(
+                      child: theme.platform == TargetPlatform.iOS
+                          ? Icon(
+                              CupertinoIcons.folder_fill,
+                              size: 36,
+                              color: scheme.primary,
+                            )
+                          : GoogleDriveIcon.folder(
+                              isShared: isShared,
+                              size: 34,
+                            ),
+                    )
+                  : MediaThumb(
+                      file: file!,
+                      fit: BoxFit.cover,
+                      radius: ios ? 6 : AppRadii.sm,
+                      showBackground: false,
+                    ),
+            ),
+          ),
+          if (starred && !isFailed && !isUploading)
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: StarredBadge(backgroundColor: scheme.surface),
+            ),
+          if (isFailed)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: scheme.errorContainer.withValues(alpha: .55),
+                  borderRadius: AppRadii.smR,
+                ),
+                child: Icon(
+                  Icons.error_outline_rounded,
+                  color: scheme.onErrorContainer,
+                  size: 20,
+                ),
+              ),
+            ),
+          if (isShared && !isOptimistic)
+            Positioned(
+              right: 0,
+              bottom: starred ? 22 : 0,
+              child: SharedBadge(size: 14),
+            ),
+        ],
+      ),
+    );
+
     final tile = ListTile(
       onTap: onTap,
       onLongPress: onLongPress,
       selected: isSelected,
-      selectedTileColor: scheme.secondaryContainer.withValues(alpha: .35),
+      selectedTileColor: ios
+          ? Colors.transparent
+          : scheme.secondaryContainer.withValues(alpha: .35),
       minTileHeight: ios ? 64 : null,
       minVerticalPadding: ios ? 6 : null,
       contentPadding: ios
-          ? EdgeInsets.zero
+          ? (inSelectMode
+                ? const EdgeInsets.symmetric(horizontal: AppSpacing.sm)
+                : EdgeInsets.zero)
           : const EdgeInsetsDirectional.fromSTEB(
               AppSpacing.md,
               AppSpacing.xxs,
@@ -75,65 +139,16 @@ class FileListTile extends StatelessWidget {
             ),
       minLeadingWidth: ios ? 40 : 48,
       horizontalTitleGap: ios ? 12 : AppSpacing.md,
-      leading: SizedBox(
-        width: ios ? 40 : 48,
-        height: ios ? 40 : 48,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: UploadingShimmer(
-                enabled: isUploading,
-                borderRadius: AppRadii.smR,
-                child: isFolder
-                    ? Center(
-                        child: theme.platform == TargetPlatform.iOS
-                            ? Icon(
-                                CupertinoIcons.folder_fill,
-                                size: 36,
-                                color: scheme.primary,
-                              )
-                            : GoogleDriveIcon.folder(
-                                isShared: isShared,
-                                size: 34,
-                              ),
-                      )
-                    : MediaThumb(
-                        file: file!,
-                        fit: BoxFit.cover,
-                        radius: ios ? 6 : AppRadii.sm,
-                        showBackground: false,
-                      ),
-              ),
-            ),
-            if (starred && !isFailed && !isUploading)
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: StarredBadge(backgroundColor: scheme.surface),
-              ),
-            if (isFailed)
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: scheme.errorContainer.withValues(alpha: .55),
-                    borderRadius: AppRadii.smR,
-                  ),
-                  child: Icon(
-                    Icons.error_outline_rounded,
-                    color: scheme.onErrorContainer,
-                    size: 20,
-                  ),
-                ),
-              ),
-            if (isShared && !isOptimistic)
-              Positioned(
-                right: 0,
-                bottom: starred ? 22 : 0,
-                child: SharedBadge(size: 14),
-              ),
-          ],
-        ),
-      ),
+      leading: ios && inSelectMode
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                PremiumSelectionIndicator(isSelected: isSelected),
+                const SizedBox(width: 16),
+                thumbnail,
+              ],
+            )
+          : thumbnail,
       title: Text(
         name,
         maxLines: 1,
@@ -147,14 +162,18 @@ class FileListTile extends StatelessWidget {
         ios && file != null && !isOptimistic
             ? '${formatLabel(file!)} · ${formatFileSize(file!.size)} · ${_fileDate(file!.modifiedAt)}'
             : subtitle,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
+        maxLines: ios && inSelectMode ? null : 2,
+        overflow: ios && inSelectMode
+            ? TextOverflow.visible
+            : TextOverflow.ellipsis,
         style: theme.textTheme.bodySmall?.copyWith(
           fontSize: ios ? 13 : null,
           color: isFailed ? scheme.error : scheme.onSurfaceVariant,
         ),
       ),
-      trailing: inSelectMode
+      trailing: ios && inSelectMode
+          ? null
+          : inSelectMode
           ? Padding(
               padding: const EdgeInsetsDirectional.only(end: AppSpacing.sm),
               child: PremiumSelectionIndicator(isSelected: isSelected),
@@ -207,6 +226,33 @@ class FileListTile extends StatelessWidget {
             ),
     );
 
+    if (ios && inSelectMode) {
+      final highContrast = MediaQuery.highContrastOf(context);
+      return Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: AppSpacing.xxs,
+        ),
+        child: Material(
+          color: isSelected
+              ? (highContrast
+                    ? scheme.secondaryContainer
+                    : scheme.surfaceContainerLow)
+              : Colors.transparent,
+          shape: RoundedSuperellipseBorder(
+            borderRadius: AppRadii.lgR,
+            side: highContrast && isSelected
+                ? BorderSide(color: scheme.outline, width: 1.5)
+                : BorderSide.none,
+          ),
+          clipBehavior: Clip.antiAlias,
+          animationDuration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : AppDurations.short3,
+          child: tile,
+        ),
+      );
+    }
     if (ios) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
