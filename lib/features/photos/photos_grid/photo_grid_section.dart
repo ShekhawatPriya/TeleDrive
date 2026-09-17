@@ -12,6 +12,7 @@ class PhotoGridSection extends StatelessWidget {
     required this.tileKeys,
     required this.onTileTap,
     required this.onTileLongPress,
+    this.onTileSelect,
     super.key,
   });
 
@@ -21,6 +22,7 @@ class PhotoGridSection extends StatelessWidget {
   final Set<String> selectedIds;
   final Map<String, GlobalKey> tileKeys;
   final void Function(String fileId) onTileTap;
+  final ValueChanged<String>? onTileSelect;
   final void Function(String fileId, GlobalKey key) onTileLongPress;
 
   @override
@@ -65,6 +67,9 @@ class PhotoGridSection extends StatelessWidget {
                     selected: selectedIds.contains(file.id),
                     onTap: () => onTileTap(file.id),
                     onLongPress: () => onTileLongPress(file.id, key),
+                    onSelect: onTileSelect == null
+                        ? null
+                        : () => onTileSelect!(file.id),
                   );
                 },
               ),

@@ -12,13 +12,24 @@ class UploadSheetHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final ios = theme.platform == TargetPlatform.iOS;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Uploads', style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 8),
+          if (ios)
+            Center(
+              child: Text(
+                'Uploads',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            )
+          else
+            Text('Uploads', style: theme.textTheme.headlineSmall),
+          SizedBox(height: ios ? 20 : 8),
           Text(
             summary.statusTitle,
             style: theme.textTheme.bodyLarge?.copyWith(

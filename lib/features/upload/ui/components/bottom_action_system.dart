@@ -7,7 +7,7 @@ import '../../../drive/components/delete_progress_pill.dart';
 import '../../../drive/components/drive_fab.dart';
 import '../../../drive/drive_controller.dart';
 import 'upload_collapsed_bar.dart';
-import '../upload_sheet.dart';
+import '../upload_panel_host.dart';
 
 /// Keeps status controls beside Add, stacking concurrent operations so their
 /// text remains readable on compact screens.

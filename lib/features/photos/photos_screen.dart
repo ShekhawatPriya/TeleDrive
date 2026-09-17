@@ -148,6 +148,7 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
                         selectedIds: selectedFileIds,
                         onTileTap: _onTileTap,
                         onTileLongPress: _onTileLongPress,
+                        onTileSelect: (id) => enterSelect(fileId: id),
                         onTilePanSelect: _onTilePanSelect,
                         onLoadMore: () =>
                             ref.read(driveControllerProvider).loadMoreMedia(),
@@ -188,6 +189,15 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
                       ),
               ),
             ),
+            if (selectMode && theme.platform == TargetPlatform.iOS)
+              PhotosSelectionBar(
+                actionsOnly: true,
+                selectedCount: selectedCount,
+                onCancel: exitSelect,
+                onShare: () => bulkShare(context),
+                onMove: () => bulkMove(context),
+                onDelete: () => bulkDelete(context),
+              ),
           ],
         ),
       ),

@@ -119,9 +119,11 @@ class _NativeGlassButtonState extends State<NativeGlassButton> {
               child: Icon(
                 widget.icon,
                 size: widget.symbolSize,
-                color: widget.white
-                    ? Colors.white
-                    : Theme.of(context).colorScheme.onSurface,
+                color:
+                    (widget.white
+                            ? Colors.white
+                            : Theme.of(context).colorScheme.onSurface)
+                        .withValues(alpha: widget.onPressed == null ? .3 : 1),
                 semanticLabel: widget.label,
               ),
             ),

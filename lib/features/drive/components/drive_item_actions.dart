@@ -9,6 +9,7 @@ import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
 import '../../profile/app_settings_controller.dart';
 import '../drive_controller.dart';
+import '../../file_viewer/file_open_action.dart';
 import '../folder_delete_guard.dart';
 import '../move_destination_sheet.dart';
 import 'drive_action_sheet.dart';
@@ -21,28 +22,30 @@ import 'share_helpers.dart';
 class DriveItemActions {
   DriveItemActions._();
 
+  static List<SheetActionItem> fileActions(DriveFile file) => <SheetActionItem>[
+    _shareAction(file.shared),
+    const SheetActionItem(
+      id: 'download',
+      label: 'Download',
+      icon: Icons.download,
+    ),
+    const SheetActionItem(
+      id: 'move',
+      label: 'Move',
+      icon: Icons.drive_file_move_outline,
+    ),
+    _lockAction,
+    _archiveAction,
+    _starAction(file.starred),
+    _deleteAction,
+  ];
+
   static Future<void> openFile(
     BuildContext context,
     WidgetRef ref,
     DriveFile file,
   ) async {
-    final actions = <SheetActionItem>[
-      _shareAction(file.shared),
-      const SheetActionItem(
-        id: 'download',
-        label: 'Download',
-        icon: Icons.download,
-      ),
-      const SheetActionItem(
-        id: 'move',
-        label: 'Move',
-        icon: Icons.drive_file_move_outline,
-      ),
-      _lockAction,
-      _archiveAction,
-      _starAction(file.starred),
-      _deleteAction,
-    ];
+    final actions = fileActions(file);
     final action = await _showActions(
       context,
       title: file.name,
@@ -50,12 +53,24 @@ class DriveItemActions {
       file: file,
       actions: actions,
     );
+    if (action != null && context.mounted)
+      await performFileAction(context, ref, file, action);
+  }
+
+  static Future<void> performFileAction(
+    BuildContext context,
+    WidgetRef ref,
+    DriveFile file,
+    String action,
+  ) async {
     if (!context.mounted) return;
     final controller = ref.read(driveControllerProvider);
     if (action == 'share') {
       await openShareFile(context, file.id);
     } else if (action == 'revoke_share') {
       await revokeFileShares(context, ref, file);
+    } else if (action == 'download') {
+      await openDriveFileExternally(context, ref, file, returnTo: '/drive');
     } else if (action == 'move') {
       final targetId = await _pickMoveDestination(
         context,
@@ -104,28 +119,33 @@ class DriveItemActions {
     }
   }
 
+  static List<SheetActionItem> folderActions(
+    DriveFolder folder, {
+    bool allowRename = true,
+  }) => <SheetActionItem>[
+    _shareAction(folder.shared),
+    if (allowRename)
+      const SheetActionItem(
+        id: 'rename',
+        label: 'Rename',
+        icon: Icons.edit_outlined,
+      ),
+    const SheetActionItem(
+      id: 'move',
+      label: 'Move',
+      icon: Icons.drive_file_move_outline,
+    ),
+    _starAction(folder.starred),
+    _deleteAction,
+  ];
+
   static Future<void> openFolder(
     BuildContext context,
     WidgetRef ref,
     DriveFolder folder, {
     bool allowRename = true,
   }) async {
-    final actions = <SheetActionItem>[
-      _shareAction(folder.shared),
-      if (allowRename)
-        const SheetActionItem(
-          id: 'rename',
-          label: 'Rename',
-          icon: Icons.edit_outlined,
-        ),
-      const SheetActionItem(
-        id: 'move',
-        label: 'Move',
-        icon: Icons.drive_file_move_outline,
-      ),
-      _starAction(folder.starred),
-      _deleteAction,
-    ];
+    final actions = folderActions(folder, allowRename: allowRename);
     final action = await _showActions(
       context,
       title: folder.name,
@@ -133,6 +153,16 @@ class DriveItemActions {
       folder: folder,
       actions: actions,
     );
+    if (action != null && context.mounted)
+      await performFolderAction(context, ref, folder, action);
+  }
+
+  static Future<void> performFolderAction(
+    BuildContext context,
+    WidgetRef ref,
+    DriveFolder folder,
+    String action,
+  ) async {
     if (!context.mounted) return;
     final controller = ref.read(driveControllerProvider);
     if (action == 'share') {

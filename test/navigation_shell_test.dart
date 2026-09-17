@@ -228,7 +228,12 @@ void main() {
         final nav = find.byType(FloatingPillNavigationBar);
         expect(
           tester.getRect(panel).bottom,
-          closeTo(tester.getRect(nav).top, 1),
+          closeTo(
+            platform == TargetPlatform.iOS
+                ? tester.getRect(nav).bottom
+                : tester.getRect(nav).top,
+            1,
+          ),
         );
         await tester.drag(find.text('Uploads'), const Offset(0, -450));
         await tester.pumpAndSettle();
@@ -240,7 +245,12 @@ void main() {
         expect(find.byType(UploadSheet), findsOneWidget);
         expect(
           tester.getRect(panel).bottom,
-          closeTo(tester.getRect(nav).top, 1),
+          closeTo(
+            platform == TargetPlatform.iOS
+                ? tester.getRect(nav).bottom
+                : tester.getRect(nav).top,
+            1,
+          ),
         );
         await tester.drag(find.text('Uploads'), const Offset(0, 1000));
         await tester.pumpAndSettle();

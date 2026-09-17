@@ -150,11 +150,14 @@ device checks.
 ## Upload presentation
 
 Upload details use an opaque, edge-attached panel with continuous top corners.
-The panel belongs to the current scaffold and ends at the navigation bar's actual
-upper edge. Tabs remain visible and usable at every expansion; no second safe-area
-inset creates an empty strip underneath. On screens without bottom navigation,
-home-indicator clearance is inside the surface. The collapsed upload/Add controls
-hide while details are open and return when minimized; the queue is preserved.
+In the iOS shell, `UploadPanelHost` places the panel inside the extended content
+body. Its opaque background continues behind the native floating tab bar to the
+bottom of the screen, eliminating the straight cutoff and exposed library strip.
+The scrollable content reserves the tab bar's actual layout height, so file rows
+and actions remain reachable above navigation. Tabs remain visible and usable
+at every expansion. Android and standalone screens keep the scaffold sheet;
+home-indicator clearance is inside the surface when navigation is absent.
+The collapsed upload/Add controls hide while details are open and return when minimized; the queue is preserved.
 
 One or two uploads open at the measured height of the header, actions and rows,
 including wrapped text and errors. Larger queues retain the spacious opening
@@ -168,6 +171,24 @@ This nonmodal composition follows Apple's [sheet customization guidance](https:/
 [layout guidance](https://developer.apple.com/design/human-interface-guidelines/layout)
 and [button guidance](https://developer.apple.com/design/human-interface-guidelines/buttons).
 The panel itself is Flutter; UIKit continues to own native tab rendering.
+iOS uses a centered, semibold 17-point panel title and continuous top corners.
+The surface moves as one layer during opening and dismissal, with no separate
+footer transition. System Back, semantic dismissal and queue completion remove
+the panel's local route history; reduced motion skips presentation movement.
+
+Apple's [layout guidance](https://developer.apple.com/design/human-interface-guidelines/layout)
+and [materials guidance](https://developer.apple.com/design/human-interface-guidelines/materials)
+place floating navigation above a continuous content layer. Glass stays on the
+existing native tab bar; the upload content remains opaque and legible.
+
+The upload presentation suite samples pixels around the navigation boundary over
+a contrasting page, checks compact and expanded geometry, and covers dismissal
+during animation. For native UIKit visual QA, use the isolated simulator entry
+point `tools/ios_upload_preview.dart`; use `lib/main.dart` for physical devices.
+The iOS 26.5 simulator was used to inspect the real UIKit tabs in light/dark,
+resize the panel, and switch tabs while expanded. Native captures are generated
+under `build/modernization/upload-native-*.png`. This is fixture-based simulator
+verification, not a live transfer check on the physical iOS 27 device.
 
 Files use 40-point thumbnails, unboxed rows, inset hairline dividers, quiet
 completion marks, and thin progress lines aligned to the filename. Available
@@ -195,3 +216,52 @@ dart run scripts/build_design_gallery.dart
 The `upload-*` images under `build/modernization/` are Flutter fixtures with
 portable fonts and navigation fallbacks. UIKit rendering, live transfers and
 physical-device VoiceOver remain separate verification steps.
+
+## Native item menus and selection
+
+The iOS overflow button gives UIKit sole ownership of its tap region. An outer
+Flutter tap recognizer must not intercept it and present the fallback overlay.
+`UIMenu` requests a fresh state snapshot on every opening; View as and Sort by
+remain native submenus with the current checkmark.
+
+Selection uses a compact system-type count/Done header and a bottom row of
+48-point native glass action controls. Share, Star, Move and Delete retain their
+existing batch handlers. Actions disable when no items are selected. The shell
+hides the floating Add/upload controls while iOS selection is active. Android
+retains its wrapping Material action bar. Folder headers grow for accessibility
+text; both Drive and Photos keep actions clear of bottom navigation.
+
+On iOS, holding a loaded Drive file/folder, recent item or photo opens a real
+`UIContextMenuInteraction`. UIKit owns the hold, targeted lift/dismissal preview,
+menu placement, haptics and animation. Flutter reserves only the long-press
+gesture for the platform view, leaving scrolling to its existing scroll view.
+Selection mode and optimistic items bypass the native context interaction.
+
+The preview is a bounded, ephemeral snapshot of the rendered tile. It is not a
+new original-media download or a backend preview request. The source is hidden
+while UIKit presents it, then restored on dismissal. Tapping the native preview
+opens the existing item route; actions run after dismissal and use the shared
+item handlers, confirmations and move rules. Fresh menu state includes Star /
+Unstar and Share / Revoke share. Callbacks and asynchronous snapshots are tied to
+the item and active backend-user/Telegram identity. Disposed/recycled tiles reject
+stale results. Missing bridges retain a Cupertino context-menu fallback and
+accessible item actions.
+
+In the iOS full-screen photo viewer, Share, Star, Info and Delete sit along the
+bottom. The top overflow is native; Download and organization actions remain
+there. Tap-to-hide controls, paging, zoom, the existing Hero transition and the
+local-cache-first image/video pipeline remain shared Flutter behavior. This does
+not claim to embed Apple's private Photos app or replace the media engine.
+
+References:
+- [Apple context menus](https://developer.apple.com/design/human-interface-guidelines/context-menus)
+- [Adding context menus in UIKit](https://developer.apple.com/documentation/uikit/adding-context-menus-in-your-app)
+- [Context-menu preview and animation lifecycle](https://developer.apple.com/documentation/uikit/uicontextmenuinteractiondelegate)
+- [Viewing photos on iPhone](https://support.apple.com/en-gb/guide/iphone/iph3d267610/ios)
+
+`test/ios_item_interaction_test.dart` covers iOS selection controls at 320 points
+and 200% text, disabled actions, fresh context state, account changes and Android
+fallback behavior. `test/native/ItemContextMenuUITests.swift` exercises actual
+UIKit interaction on the simulator: a 0.7-second press, preview commit, Select,
+Star/Unstar, scrolling, native overflow and disabled selection actions. See the
+[iOS build guide](ios-build.md) for the isolated native fixture workflow.

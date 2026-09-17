@@ -18,6 +18,7 @@ class PhotosGridView extends StatefulWidget {
     required this.selectedIds,
     required this.onTileTap,
     required this.onTileLongPress,
+    this.onTileSelect,
     required this.onTilePanSelect,
     super.key,
   });
@@ -30,6 +31,7 @@ class PhotosGridView extends StatefulWidget {
   final bool selectMode;
   final Set<String> selectedIds;
   final void Function(String fileId) onTileTap;
+  final ValueChanged<String>? onTileSelect;
   final void Function(String fileId, GlobalKey key) onTileLongPress;
   final void Function(String fileId) onTilePanSelect;
 
@@ -89,6 +91,7 @@ class _PhotosGridViewState extends State<PhotosGridView> {
                       tileKeys: _tileKeys,
                       onTileTap: widget.onTileTap,
                       onTileLongPress: widget.onTileLongPress,
+                      onTileSelect: widget.onTileSelect,
                     ),
                   if (widget.loadingMore)
                     const SliverToBoxAdapter(

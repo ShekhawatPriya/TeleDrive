@@ -147,3 +147,26 @@ Run through `docs/tdlib-real-device-verification.md`. iOS-specific additions:
 - **Linker errors for `td_*` symbols**: the TDLibFramework product is
   missing from Runner → General → Frameworks; re-add the package product to
   the Runner target.
+
+## Native item-interaction fixture
+
+Use a simulator for this isolated fixture, never a physical device. It uses
+fixture models, a local photo and callbacks that do not mutate a live account.
+The test runner checks its fixture marker before interacting. Find a booted
+simulator UUID with `xcrun simctl list devices` and substitute it below:
+
+```sh
+flutter build ios --simulator --debug --no-pub -t tools/ios_item_preview.dart --dart-define="PHOTO_PREVIEW_PATH=$PWD/test/fixtures/design/alpine.jpg"
+xcrun simctl install <simulator-uuid> build/ios/iphonesimulator/Runner.app
+ruby scripts/test_ios_item_menus.rb <simulator-uuid>
+```
+
+The Ruby helper uses CocoaPods' `xcodeproj` gem to generate an isolated XCTest
+runner under `build/native-item-tests-*`; its result bundle includes native menu
+and selection screenshots. It does not modify the production Xcode project.
+The iOS 26.5 simulator checks holding an item, committing its preview, native
+menu actions, state refresh, scrolling and selection. Physical iPhone gesture
+feel and VoiceOver remain separate checks.
+
+After fixture work, restore the production entry point for device builds:
+`flutter build ios --release --no-pub -t lib/main.dart`.

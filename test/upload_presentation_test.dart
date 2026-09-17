@@ -17,6 +17,7 @@ import 'package:flutter_m_fsdk/features/upload/ui/components/bottom_action_syste
 import 'package:flutter_m_fsdk/features/upload/ui/components/upload_card.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/components/upload_collapsed_bar.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/upload_sheet.dart';
+import 'package:flutter_m_fsdk/features/upload/ui/upload_panel_host.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/upload_status_label.dart';
 import 'package:flutter_m_fsdk/widgets/floating_pill_navigation_bar.dart';
 
@@ -133,6 +134,9 @@ Future<void> _pump(
   double width = 402,
   double height = 874,
   bool navigation = true,
+  Widget? tabBarOverride,
+  Color? backdropColor,
+  bool reducedMotion = true,
   double scale = 1,
   bool contrast = false,
   Widget? body,
@@ -170,7 +174,7 @@ Future<void> _pump(
           data: MediaQuery.of(context).copyWith(
             textScaler: TextScaler.linear(scale),
             highContrast: contrast,
-            disableAnimations: true,
+            disableAnimations: reducedMotion,
             padding: const EdgeInsets.only(top: 24, bottom: 34),
           ),
           child: RepaintBoundary(
@@ -183,36 +187,50 @@ Future<void> _pump(
           appBar: AppBar(title: const Text('Your drive')),
           body:
               body ??
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+              UploadPanelHost(
+                child: Stack(
                   children: [
-                    const SizedBox(height: 16),
-                    Text('Files', style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 12),
-                    for (final item in uploads.items.take(3))
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.insert_drive_file_outlined),
-                        title: Text(
-                          item.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: const Text('In your drive'),
+                    if (backdropColor != null)
+                      Positioned.fill(child: ColoredBox(color: backdropColor)),
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(height: 16),
+                          Text('Files', style: theme.textTheme.titleLarge),
+                          const SizedBox(height: 12),
+                          for (final item in uploads.items.take(3))
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(
+                                Icons.insert_drive_file_outlined,
+                              ),
+                              title: Text(
+                                item.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: const Text('In your drive'),
+                            ),
+                        ],
                       ),
+                    ),
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      bottom: 110,
+                      child: const BottomActionSystem(showFab: true),
+                    ),
                   ],
                 ),
               ),
-          floatingActionButton: body == null
-              ? const BottomActionSystem(showFab: true)
-              : null,
           bottomNavigationBar: body == null && navigation
-              ? FloatingPillNavigationBar(
-                  selectedIndex: 0,
-                  onDestinationSelected: onTabSelected ?? (_) {},
-                )
+              ? tabBarOverride ??
+                    FloatingPillNavigationBar(
+                      selectedIndex: 0,
+                      onDestinationSelected: onTabSelected ?? (_) {},
+                    )
               : null,
         ),
       ),
@@ -376,6 +394,108 @@ void main() {
     }
   }
 
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'iOS surface continues behind floating tabs ${brightness.name}',
+      (tester) async {
+        await _pump(
+          tester,
+          _Uploads([_item(0, UploadStatus.waitingForWifi)]),
+          brightness: brightness,
+          backdropColor: const Color(0xFFFF0033),
+          tabBarOverride: const SizedBox(
+            key: ValueKey('floating-tabs-fixture'),
+            height: 98,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20, 8, 20, 28),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Color(0x66777777),
+                  borderRadius: BorderRadius.all(Radius.circular(30)),
+                ),
+                child: Center(
+                  child: Text('Drive       Photos       Starred       Shared'),
+                ),
+              ),
+            ),
+          ),
+        );
+        await _open(tester);
+        Future<void> checkSurface() async {
+          await tester.runAsync(() async {
+            final boundary = tester.renderObject<RenderRepaintBoundary>(
+              find.byKey(const ValueKey('upload-preview')),
+            );
+            final image = await boundary.toImage(pixelRatio: 1);
+            final bytes = (await image.toByteData(
+              format: ui.ImageByteFormat.rawRgba,
+            ))!;
+            final seam = tester
+                .getRect(find.byKey(const ValueKey('floating-tabs-fixture')))
+                .top
+                .round();
+            final scheme = Theme.of(
+              tester.element(find.byType(UploadSheet)),
+            ).colorScheme;
+            final argb = scheme.surfaceContainerLow.toARGB32();
+            final expected = [
+              (argb >> 16) & 255,
+              (argb >> 8) & 255,
+              argb & 255,
+              255,
+            ];
+            for (final y in [seam - 2, seam + 2, 872]) {
+              final offset = (y * image.width + 2) * 4;
+              expect(
+                bytes.buffer.asUint8List(offset, 4),
+                expected,
+                reason: 'No exposed page or seam at y=$y',
+              );
+            }
+            image.dispose();
+          });
+        }
+
+        await checkSurface();
+        await _preview(tester, 'upload-continuous-tabs-${brightness.name}');
+        await tester.drag(find.text('Uploads'), const Offset(0, -450));
+        await tester.pumpAndSettle();
+        await checkSurface();
+        await _preview(tester, 'upload-continuous-expanded-${brightness.name}');
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets(
+    'iOS panel closes when queue clears and restores the collapsed control',
+    (tester) async {
+      final uploads = _Uploads([_item(0, UploadStatus.waitingForWifi)]);
+      await _pump(tester, uploads);
+      await _open(tester);
+      uploads.items.clear();
+      uploads.notifyListeners();
+      await tester.pumpAndSettle();
+      expect(find.byType(UploadSheet), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('iOS host can be disposed during its opening animation', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _Uploads([_item(0, UploadStatus.waitingForWifi)]),
+      reducedMotion: false,
+    );
+    await tester.tap(find.byType(UploadCollapsedBar));
+    await tester.pump(const Duration(milliseconds: 20));
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
   for (final count in [1, 2]) {
     for (final brightness in Brightness.values) {
       for (final waiting in [false, true]) {
@@ -403,11 +523,11 @@ void main() {
             final nav = find.byType(FloatingPillNavigationBar);
             expect(
               tester.getRect(surface).bottom,
-              closeTo(tester.getRect(nav).top, 1),
+              closeTo(tester.getRect(nav).bottom, 1),
             );
             final lastRow = find.byType(UploadCard).last;
             expect(
-              tester.getRect(surface).bottom - tester.getRect(lastRow).bottom,
+              tester.getRect(nav).top - tester.getRect(lastRow).bottom,
               closeTo(16, 1),
             );
             expect(find.byType(UploadCollapsedBar), findsNothing);
@@ -431,7 +551,7 @@ void main() {
             await tester.pumpAndSettle();
             expect(
               tester.getRect(surface).bottom,
-              closeTo(tester.getRect(nav).top, 1),
+              closeTo(tester.getRect(nav).bottom, 1),
             );
             await tester.tap(
               find.descendant(of: nav, matching: find.text('Photos')),

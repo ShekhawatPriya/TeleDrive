@@ -5,6 +5,7 @@ import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
 import '../../../widgets/file_list_tile.dart';
 import '../../../widgets/media_thumb.dart';
+import '../../drive/components/drive_item_context_menu.dart';
 
 class PhotoTile extends StatelessWidget {
   const PhotoTile({
@@ -13,6 +14,7 @@ class PhotoTile extends StatelessWidget {
     required this.selected,
     required this.onTap,
     required this.onLongPress,
+    this.onSelect,
     super.key,
   });
 
@@ -21,48 +23,58 @@ class PhotoTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+  final VoidCallback? onSelect;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final selectedWash = scheme.primary.withValues(alpha: .12);
-    return Semantics(
-      button: true,
-      label: file.name,
-      selected: selected,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: Hero(
-          tag: 'photo-${file.id}',
-          flightShuttleBuilder: (_, __, ___, ____, _____) {
-            return MediaThumb(file: file, fit: BoxFit.cover, radius: 0);
-          },
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              AnimatedContainer(
-                duration: MediaQuery.disableAnimationsOf(context)
-                    ? Duration.zero
-                    : AppDurations.short3,
-                curve: AppEasing.standardDecelerate,
-                padding: selected ? const EdgeInsets.all(8) : EdgeInsets.zero,
-                color: selected ? selectedWash : Colors.transparent,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      _thumb(selectedWash),
-                      if (isVideoFile(file)) _videoBadge(),
-                      if (file.shared && !file.isOptimistic) _sharedBadge(),
-                    ],
+    return DriveItemContextMenu(
+      file: file,
+      enabled: !selectMode,
+      onOpen: onTap,
+      onSelect: onSelect ?? onLongPress,
+      child: Semantics(
+        button: true,
+        label: file.name,
+        selected: selected,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          onLongPress:
+              Theme.of(context).platform == TargetPlatform.iOS && !selectMode
+              ? null
+              : onLongPress,
+          child: Hero(
+            tag: 'photo-${file.id}',
+            flightShuttleBuilder: (_, __, ___, ____, _____) {
+              return MediaThumb(file: file, fit: BoxFit.cover, radius: 0);
+            },
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                AnimatedContainer(
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : AppDurations.short3,
+                  curve: AppEasing.standardDecelerate,
+                  padding: selected ? const EdgeInsets.all(8) : EdgeInsets.zero,
+                  color: selected ? selectedWash : Colors.transparent,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        _thumb(selectedWash),
+                        if (isVideoFile(file)) _videoBadge(),
+                        if (file.shared && !file.isOptimistic) _sharedBadge(),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              if (selectMode) _selectionMark(context),
-            ],
+                if (selectMode) _selectionMark(context),
+              ],
+            ),
           ),
         ),
       ),

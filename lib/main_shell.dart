@@ -18,6 +18,7 @@ import 'features/profile/gallery_backup_controller.dart';
 import 'features/search/search_controller.dart';
 import 'features/share/share_controller.dart';
 import 'features/upload/ui/components/bottom_action_system.dart';
+import 'features/upload/ui/upload_panel_host.dart';
 import 'widgets/ios_more_menu.dart';
 import 'widgets/main_tab_menu_sections.dart';
 import 'widgets/fab_anchor.dart';
@@ -81,9 +82,14 @@ class _MainShellState extends ConsumerState<MainShell>
     return LayoutBuilder(
       builder: (context, constraints) {
         final expanded = constraints.maxWidth >= 840;
-        final content = Builder(
-          builder: (innerContext) =>
-              _buildTabs(innerContext, index, keyboardVisible: keyboardVisible),
+        final content = UploadPanelHost(
+          child: Builder(
+            builder: (innerContext) => _buildTabs(
+              innerContext,
+              index,
+              keyboardVisible: keyboardVisible,
+            ),
+          ),
         );
         return Scaffold(
           extendBody: !expanded,
@@ -152,7 +158,9 @@ class _MainShellState extends ConsumerState<MainShell>
           child: Stack(
             children: [
               widget.navigationShell,
-              if (!keyboardVisible)
+              if (!keyboardVisible &&
+                  !(isSelectMode &&
+                      Theme.of(context).platform == TargetPlatform.iOS))
                 Positioned(
                   left: AppSpacing.md,
                   right: AppSpacing.md,

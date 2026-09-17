@@ -8,32 +8,6 @@ import '../upload_controller.dart';
 import 'components/upload_card.dart';
 import 'components/upload_sheet_header.dart';
 
-/// A persistent panel belongs to the current scaffold, keeping its navigation
-/// visible and interactive. Scaffold supplies the actual navigation clearance.
-Future<void> showUploadPanel(BuildContext context) {
-  FocusManager.instance.primaryFocus?.unfocus();
-  final scaffold = Scaffold.of(context);
-  final bottomInset = scaffold.widget.bottomNavigationBar == null
-      ? MediaQuery.viewPaddingOf(scaffold.context).bottom
-      : 0.0;
-  late PersistentBottomSheetController panel;
-  panel = scaffold.showBottomSheet(
-    (context) =>
-        UploadSheet(onMinimize: () => panel.close(), bottomInset: bottomInset),
-    backgroundColor: Colors.transparent,
-    elevation: 0,
-    shape: const RoundedRectangleBorder(),
-    clipBehavior: Clip.none,
-    enableDrag: false,
-    showDragHandle: false,
-    constraints: const BoxConstraints(maxWidth: 600),
-    sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
-        ? AnimationStyle.noAnimation
-        : null,
-  );
-  return panel.closed;
-}
-
 /// The header and lazy list share a scroll controller, including sheet drags.
 class UploadSheet extends ConsumerStatefulWidget {
   const UploadSheet({
@@ -194,8 +168,8 @@ class _UploadSheetState extends ConsumerState<UploadSheet> {
                 ],
               ),
             );
-            // Edge attached above navigation; safe-area clearance is supplied by
-            // the host once, never as a floating gap below the sheet surface.
+            // The iOS shell extends this surface behind native navigation.
+            // Its measured navigation inset belongs inside scrollable content.
             if (ios) {
               return ClipRSuperellipse(
                 key: const ValueKey('upload-panel-surface'),

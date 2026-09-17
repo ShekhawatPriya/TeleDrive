@@ -6,6 +6,7 @@ import '../../../widgets/selection_toolbar.dart';
 class PhotosSelectionBar extends StatelessWidget {
   const PhotosSelectionBar({
     required this.selectedCount,
+    this.actionsOnly = false,
     required this.onCancel,
     required this.onShare,
     required this.onMove,
@@ -13,6 +14,7 @@ class PhotosSelectionBar extends StatelessWidget {
     super.key,
   });
 
+  final bool actionsOnly;
   final int selectedCount;
   final VoidCallback onCancel;
   final VoidCallback onShare;
@@ -22,6 +24,7 @@ class PhotosSelectionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SelectionToolbar(
     count: selectedCount,
+    actionsOnly: actionsOnly,
     onCancel: onCancel,
     actions: [
       (label: 'Share', icon: Icons.share_outlined, onPressed: onShare),

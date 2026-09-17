@@ -1160,7 +1160,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('selection actions wrap and remain reachable', (tester) async {
+  testWidgets('Android selection actions wrap and remain reachable', (
+    tester,
+  ) async {
     var deleted = false;
 
     await _pump(
@@ -1175,6 +1177,7 @@ void main() {
           onDelete: () => deleted = true,
         ),
       ),
+      platform: TargetPlatform.android,
       width: 320,
       scale: 2,
     );

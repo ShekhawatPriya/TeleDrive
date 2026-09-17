@@ -120,7 +120,13 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
     return Scaffold(
       appBar: selectMode
           ? PreferredSize(
-              preferredSize: const Size.fromHeight(64),
+              preferredSize: Size.fromHeight(
+                Theme.of(context).platform == TargetPlatform.iOS
+                    ? (MediaQuery.textScalerOf(context).scale(17) > 24
+                          ? 96
+                          : 56)
+                    : 64,
+              ),
               child: DriveSelectionBar(
                 selectedCount: selectedCount,
                 onCancel: exitSelect,
@@ -180,6 +186,7 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
                       ),
                     ),
                   DriveFolderSliver(
+                    allowRename: false,
                     folders: folders,
                     selectMode: selectMode,
                     selectedFolderIds: selectedFolderIds,
@@ -214,6 +221,22 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
               ),
             ),
           ),
+          if (selectMode && Theme.of(context).platform == TargetPlatform.iOS)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: DriveSelectionBar(
+                actionsOnly: true,
+                selectedCount: selectedCount,
+                onCancel: exitSelect,
+                onShare: () => bulkShare(context),
+                onStar: bulkStar,
+                onMove: () =>
+                    bulkMove(context, currentParentId: widget.folderId),
+                onDelete: () => bulkDelete(context),
+              ),
+            ),
           Positioned(
             left: AppSpacing.md,
             right: AppSpacing.md,

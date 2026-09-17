@@ -10,6 +10,7 @@ import '../../../widgets/folder_collection_card.dart';
 import '../../../widgets/file_list_tile.dart';
 import '../../upload/upload_controller.dart';
 import '../drive_controller.dart';
+import 'drive_item_context_menu.dart';
 
 typedef FolderTapHandler = void Function(DriveFolder folder);
 typedef FileTapHandler = void Function(DriveFile file);
@@ -27,9 +28,11 @@ class DriveFolderSliver extends ConsumerWidget {
     required this.onFolderTap,
     required this.onFolderLongPress,
     required this.onFolderMore,
+    this.allowRename = true,
     super.key,
   });
 
+  final bool allowRename;
   final List<DriveFolder> folders;
   final bool selectMode;
   final Set<String> selectedFolderIds;
@@ -53,13 +56,25 @@ class DriveFolderSliver extends ConsumerWidget {
           itemCount: folders.length,
           itemBuilder: (_, i) {
             final folder = folders[i];
-            return FolderCollectionCard(
+            return DriveItemContextMenu(
               folder: folder,
-              onTap: () => onFolderTap(folder),
-              onLongPress: folder.isOptimistic
-                  ? null
-                  : () => onFolderLongPress(folder.id),
-              onMore: folder.isOptimistic ? null : () => onFolderMore(folder),
+              allowRename: allowRename,
+              enabled: !selectMode,
+              trailingClearance: 48,
+              onOpen: () => onFolderTap(folder),
+              onSelect: () => onFolderLongPress(folder.id),
+              child: FolderCollectionCard(
+                folder: folder,
+                onTap: () => onFolderTap(folder),
+                onLongPress:
+                    Theme.of(context).platform == TargetPlatform.iOS &&
+                        !selectMode
+                    ? null
+                    : folder.isOptimistic
+                    ? null
+                    : () => onFolderLongPress(folder.id),
+                onMore: folder.isOptimistic ? null : () => onFolderMore(folder),
+              ),
             );
           },
         ),
@@ -69,27 +84,38 @@ class DriveFolderSliver extends ConsumerWidget {
       itemCount: folders.length,
       itemBuilder: (_, i) {
         final folder = folders[i];
-        return FileListTile(
-          key: ValueKey('folder-${folder.id}'),
-          name: folder.name,
-          subtitle: folder.isOptimistic
-              ? 'Creating folder…'
-              : '${folder.recursiveFileCount} files · ${formatFileSize(folder.recursiveSize)}',
-          isFolder: true,
-          isOptimistic: folder.isOptimistic,
-          starred: folder.starred,
-          shared: folder.shared,
-          selected: selectMode ? selectedFolderIds.contains(folder.id) : null,
-          onTap: () => onFolderTap(folder),
-          onLongPress: folder.isOptimistic
-              ? null
-              : () => onFolderLongPress(folder.id),
-          onStar: folder.isOptimistic
-              ? null
-              : () => ref
-                    .read(driveControllerProvider)
-                    .toggleStar(folder.id, folder: true),
-          onMore: folder.isOptimistic ? null : () => onFolderMore(folder),
+        return DriveItemContextMenu(
+          folder: folder,
+          allowRename: allowRename,
+          enabled: !selectMode,
+          trailingClearance: 48,
+          onOpen: () => onFolderTap(folder),
+          onSelect: () => onFolderLongPress(folder.id),
+          child: FileListTile(
+            key: ValueKey('folder-${folder.id}'),
+            name: folder.name,
+            subtitle: folder.isOptimistic
+                ? 'Creating folder…'
+                : '${folder.recursiveFileCount} files · ${formatFileSize(folder.recursiveSize)}',
+            isFolder: true,
+            isOptimistic: folder.isOptimistic,
+            starred: folder.starred,
+            shared: folder.shared,
+            selected: selectMode ? selectedFolderIds.contains(folder.id) : null,
+            onTap: () => onFolderTap(folder),
+            onLongPress:
+                Theme.of(context).platform == TargetPlatform.iOS && !selectMode
+                ? null
+                : folder.isOptimistic
+                ? null
+                : () => onFolderLongPress(folder.id),
+            onStar: folder.isOptimistic
+                ? null
+                : () => ref
+                      .read(driveControllerProvider)
+                      .toggleStar(folder.id, folder: true),
+            onMore: folder.isOptimistic ? null : () => onFolderMore(folder),
+          ),
         );
       },
     );
@@ -135,17 +161,28 @@ class DriveFilesSliver extends ConsumerWidget {
           itemBuilder: (_, i) {
             final file = files[i];
             final isFailed = _isFailed(file);
-            return FileCardTile(
-              key: ValueKey(file.localId ?? file.id),
+            return DriveItemContextMenu(
               file: file,
-              selected: selectMode ? selectedFileIds.contains(file.id) : null,
-              onTap: () => onFileTap(file),
-              onLongPress: () => onFileLongPress(file.id),
-              onMore: () => onFileMore(file),
-              onRetry: isFailed
-                  ? () => ref.read(uploadControllerProvider).retryFailed()
-                  : null,
-              onRemove: isFailed ? () => _removeOptimistic(ref, file) : null,
+              enabled: !selectMode,
+              trailingClearance: 48,
+              onOpen: () => onFileTap(file),
+              onSelect: () => onFileLongPress(file.id),
+              child: FileCardTile(
+                key: ValueKey(file.localId ?? file.id),
+                file: file,
+                selected: selectMode ? selectedFileIds.contains(file.id) : null,
+                onTap: () => onFileTap(file),
+                onLongPress:
+                    Theme.of(context).platform == TargetPlatform.iOS &&
+                        !selectMode
+                    ? null
+                    : () => onFileLongPress(file.id),
+                onMore: () => onFileMore(file),
+                onRetry: isFailed
+                    ? () => ref.read(uploadControllerProvider).retryFailed()
+                    : null,
+                onRemove: isFailed ? () => _removeOptimistic(ref, file) : null,
+              ),
             );
           },
         ),
@@ -158,26 +195,37 @@ class DriveFilesSliver extends ConsumerWidget {
         itemBuilder: (_, i) {
           final file = files[i];
           final isFailed = _isFailed(file);
-          return FileListTile(
-            key: ValueKey(file.localId ?? file.id),
-            name: file.name,
-            subtitle: file.isOptimistic
-                ? '${formatUploadStatus(file)} · ${formatFileSize(file.size)}'
-                : '${formatLabel(file)} · ${formatFileSize(file.size)} · ${formatDate(file.modifiedAt)}',
+          return DriveItemContextMenu(
             file: file,
-            isOptimistic: file.isOptimistic,
-            starred: file.starred,
-            selected: selectMode ? selectedFileIds.contains(file.id) : null,
-            onTap: () => onFileTap(file),
-            onLongPress: () => onFileLongPress(file.id),
-            onStar: file.isOptimistic
-                ? null
-                : () => ref.read(driveControllerProvider).toggleStar(file.id),
-            onMore: file.isOptimistic ? null : () => onFileMore(file),
-            onRetry: isFailed
-                ? () => ref.read(uploadControllerProvider).retryFailed()
-                : null,
-            onRemove: isFailed ? () => _removeOptimistic(ref, file) : null,
+            enabled: !selectMode,
+            trailingClearance: 48,
+            onOpen: () => onFileTap(file),
+            onSelect: () => onFileLongPress(file.id),
+            child: FileListTile(
+              key: ValueKey(file.localId ?? file.id),
+              name: file.name,
+              subtitle: file.isOptimistic
+                  ? '${formatUploadStatus(file)} · ${formatFileSize(file.size)}'
+                  : '${formatLabel(file)} · ${formatFileSize(file.size)} · ${formatDate(file.modifiedAt)}',
+              file: file,
+              isOptimistic: file.isOptimistic,
+              starred: file.starred,
+              selected: selectMode ? selectedFileIds.contains(file.id) : null,
+              onTap: () => onFileTap(file),
+              onLongPress:
+                  Theme.of(context).platform == TargetPlatform.iOS &&
+                      !selectMode
+                  ? null
+                  : () => onFileLongPress(file.id),
+              onStar: file.isOptimistic
+                  ? null
+                  : () => ref.read(driveControllerProvider).toggleStar(file.id),
+              onMore: file.isOptimistic ? null : () => onFileMore(file),
+              onRetry: isFailed
+                  ? () => ref.read(uploadControllerProvider).retryFailed()
+                  : null,
+              onRemove: isFailed ? () => _removeOptimistic(ref, file) : null,
+            ),
           );
         },
       ),

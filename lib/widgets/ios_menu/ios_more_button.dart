@@ -5,9 +5,8 @@ import 'ios_menu_models.dart';
 import 'ios_menu_overlay.dart';
 import 'native_menu_payload.dart';
 
-/// Three-dot overflow button rendered in the M3 style: a 40 dp `IconButton`
-/// using the surrounding [IconButtonTheme]. Opens a Material 3 menu anchored
-/// to the button.
+/// UIKit owns iOS menu presentation and hit testing. Android and unavailable
+/// bridges retain the anchored Flutter menu.
 ///
 /// Set [alignToScreenEdge] when other actions (e.g. a profile avatar) sit to
 /// the right of this button. The popup's right edge is then projected to the
@@ -16,6 +15,7 @@ import 'native_menu_payload.dart';
 class IosMoreButton extends StatefulWidget {
   const IosMoreButton({
     required this.sectionsBuilder,
+    this.white = false,
     this.tooltip = 'More',
     this.size = 48,
     this.visualSize,
@@ -24,6 +24,7 @@ class IosMoreButton extends StatefulWidget {
   });
 
   final IosMenuSectionsBuilder sectionsBuilder;
+  final bool white;
   final String tooltip;
   final double size;
   final double? visualSize;
@@ -43,41 +44,28 @@ class _IosMoreButtonState extends State<IosMoreButton> {
       key: _anchorKey,
       width: widget.size,
       height: widget.size,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: _open,
-        excludeFromSemantics: true,
-        child: Center(
-          child: SizedBox(
-            width: widget.visualSize ?? widget.size,
-            height: widget.visualSize ?? widget.size,
-            child: Theme.of(context).platform == TargetPlatform.iOS
-                ? NativeGlassButton(
-                    label: widget.tooltip,
-                    symbol: 'ellipsis',
-                    icon: Icons.more_horiz_rounded,
-                    onPressed: _open,
-                    menuBuilder: () {
-                      final payload = NativeMenuPayload(
-                        widget.sectionsBuilder(context),
-                      );
-                      _menuActions = payload.actions;
-                      return payload.sections;
-                    },
-                    onMenuAction: (id) => _menuActions[id]?.call(),
-                  )
-                : IconButton(
-                    tooltip: widget.tooltip,
-                    onPressed: _open,
-                    icon: Icon(
-                      Theme.of(context).platform == TargetPlatform.iOS
-                          ? Icons.more_horiz_rounded
-                          : Icons.more_vert,
-                    ),
-                  ),
-          ),
-        ),
-      ),
+      child: Theme.of(context).platform == TargetPlatform.iOS
+          ? NativeGlassButton(
+              label: widget.tooltip,
+              white: widget.white,
+              symbol: 'ellipsis',
+              icon: Icons.more_horiz_rounded,
+              size: widget.size,
+              onPressed: _open,
+              menuBuilder: () {
+                final payload = NativeMenuPayload(
+                  widget.sectionsBuilder(context),
+                );
+                _menuActions = payload.actions;
+                return payload.sections;
+              },
+              onMenuAction: (id) => _menuActions[id]?.call(),
+            )
+          : IconButton(
+              tooltip: widget.tooltip,
+              onPressed: _open,
+              icon: const Icon(Icons.more_vert),
+            ),
     );
   }
 

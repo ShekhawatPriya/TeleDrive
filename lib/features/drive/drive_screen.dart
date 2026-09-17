@@ -194,6 +194,16 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                   ),
                 ),
               ),
+              if (Theme.of(context).platform == TargetPlatform.iOS)
+                DriveSelectionBar(
+                  actionsOnly: true,
+                  selectedCount: selectedCount,
+                  onCancel: exitSelect,
+                  onShare: () => bulkShare(context),
+                  onStar: bulkStar,
+                  onMove: () => bulkMove(context),
+                  onDelete: () => bulkDelete(context),
+                ),
             ],
           ),
         ),
@@ -264,6 +274,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                 SliverToBoxAdapter(
                   child: DriveRecentsStrip(
                     files: recent,
+                    onSelect: (f) => enterSelect(fileId: f.id),
                     onFileTap: (f) => openDriveFile(context, ref, f),
                     onMore: (f) => DriveItemActions.openFile(context, ref, f),
                   ),

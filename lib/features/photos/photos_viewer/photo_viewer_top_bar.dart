@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../models/drive_models.dart';
 import '../../../widgets/native_glass_button.dart';
+import '../../../widgets/ios_more_menu.dart';
 
 /// Navigation stays above the image; photo actions live at the bottom edge.
 class PhotoViewerTopBar extends StatelessWidget {
@@ -14,10 +15,12 @@ class PhotoViewerTopBar extends StatelessWidget {
     required this.onInfo,
     required this.onDownload,
     required this.onMore,
+    this.menuSections,
     super.key,
   });
   final DriveFile? file;
   final bool visible;
+  final IosMenuSectionsBuilder? menuSections;
   final VoidCallback onBack, onStar, onInfo, onDownload, onMore;
 
   @override
@@ -83,13 +86,17 @@ class PhotoViewerTopBar extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    NativeGlassButton(
-                      label: 'More',
-                      symbol: 'ellipsis',
-                      icon: CupertinoIcons.ellipsis,
-                      onPressed: file == null ? null : onMore,
-                      white: true,
-                    ),
+                    if (Theme.of(context).platform == TargetPlatform.iOS &&
+                        menuSections != null)
+                      IosMoreButton(white: true, sectionsBuilder: menuSections!)
+                    else
+                      NativeGlassButton(
+                        label: 'More',
+                        symbol: 'ellipsis',
+                        icon: CupertinoIcons.ellipsis,
+                        onPressed: file == null ? null : onMore,
+                        white: true,
+                      ),
                   ],
                 ),
               ),
@@ -108,18 +115,25 @@ class PhotoViewerActions extends StatelessWidget {
     required this.onStar,
     required this.onInfo,
     required this.onDownload,
+    this.onShare,
+    this.onDelete,
   });
   final DriveFile file;
   final VoidCallback onStar, onInfo, onDownload;
+  final VoidCallback? onShare, onDelete;
   @override
   Widget build(BuildContext context) => Row(
     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
     children: [
       NativeGlassButton(
-        label: 'Download',
-        symbol: 'square.and.arrow.down',
-        icon: CupertinoIcons.square_arrow_down,
-        onPressed: onDownload,
+        label: onShare == null ? 'Download' : 'Share',
+        symbol: onShare == null
+            ? 'square.and.arrow.down'
+            : 'square.and.arrow.up',
+        icon: onShare == null
+            ? CupertinoIcons.square_arrow_down
+            : CupertinoIcons.share,
+        onPressed: onShare ?? onDownload,
         white: true,
       ),
       NativeGlassButton(
@@ -136,6 +150,14 @@ class PhotoViewerActions extends StatelessWidget {
         onPressed: onInfo,
         white: true,
       ),
+      if (onDelete != null)
+        NativeGlassButton(
+          label: 'Delete',
+          symbol: 'trash',
+          icon: CupertinoIcons.trash,
+          onPressed: onDelete,
+          white: true,
+        ),
     ],
   );
 }
