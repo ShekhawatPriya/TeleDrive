@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Flat launch-only interpretation of the TeleDrive box and paper plane. -->
+  <path d="M 15 30 L 43 14 C 47 12 50 12 54 14 L 72 24 L 60 31 L 49 25 L 25 39 L 43 49 L 33 55 L 15 45 C 11 43 10 40 10 37 C 10 34 12 32 15 30 Z"/>
+  <path d="M 45 41 L 88 28 C 91 27 93 29 91 32 L 75 64 C 74 67 72 67 70 65 L 60 53 L 77 37 L 54 49 L 45 45 C 42 44 42 42 45 41 Z"/>
+  <path d="M 10 51 L 43 70 C 47 72 50 72 54 70 L 84 53 L 91 58 L 91 72 C 91 75 89 78 86 80 L 54 98 C 50 100 46 100 42 98 L 15 82 C 12 80 10 77 10 73 Z M 22 69 L 22 74 L 46 88 C 48 89 50 89 52 88 L 79 73 L 79 68 L 54 82 C 50 84 46 84 42 82 Z" fill-rule="evenodd"/>
+</svg>

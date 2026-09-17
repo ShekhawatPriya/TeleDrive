@@ -1,5 +1,14 @@
-# Launch Screen Assets
+# Launch mark
 
-You can customize the launch screen with your own desired assets by replacing the image files in this directory.
+This template PDF is generated from `assets/icon/launch_mark.svg` together
+with the Android vector and synchronous Flutter painter.
 
-You can also do it by opening your Flutter project's Xcode project with `open ios/Runner.xcworkspace`, selecting `Runner/Assets.xcassets` in the Project Navigator and dropping in the desired images.
+From the repository root:
+
+```sh
+python scripts/generate_launch_mark.py
+dart format lib/shared/launch_mark.dart
+```
+
+Do not replace this with a launcher-icon bitmap. The storyboard tints the PDF
+using LaunchForeground and constrains it to 96 points.

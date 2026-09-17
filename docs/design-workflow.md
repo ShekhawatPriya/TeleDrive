@@ -24,7 +24,7 @@ Every routed page and the settings subpages were inspected in source. **Rendered
 
 | Page / flow | Result | Evidence |
 | --- | --- | --- |
-| Splash | Retained focused brand/loading layout; inherits theme | Source review |
+| Splash | Centered real logo; matching native launch surfaces; no artificial delay | Flutter light/dark and accessibility fixtures; native handoff requires device review |
 | Welcome | New collection illustration, stronger hierarchy, sign-in before supporting explanations | Rendered light/dark; 320px at 200% text |
 | Login, code, password, country picker | Left-aligned introduction and stronger heading; form steps retained | Source review; existing auth regression tests |
 | Device authorization | Clearer device-connection heading; real authorization progress retained | Source review; auth regression tests |
@@ -93,3 +93,47 @@ Previews are written to `build/modernization/` (ignored build output). The test 
 - [Material adaptive layouts](https://m3.material.io/foundations/layout/canonical-examples/overview): retain a navigation rail for wider layouts.
 - [Google Design on Airbnb](https://design.google/library/airbnb-invites-you-in): content-forward presentation with platform conventions.
 - [Uber's Base Web introduction](https://www.uber.com/de/en/blog/introducing-base-web/): a shared system for spacing, typography and components. This is a systems reference, not a copy of Uber's current native app.
+
+## Launch presentation
+
+Startup uses a flat, monochrome box-and-plane mark, without the glossy launcher
+tile, gradients, wordmark, spinner or minimum display time. The vector is painted
+synchronously on Flutter's first frame. Authentication and routing still decide
+when startup finishes.
+
+Native and Flutter launch use the same 96-point artwork viewport and system
+light/dark appearance. A saved in-app theme applies to the destination screen;
+it must not recolor the mark midway through startup. Colors come from each
+platform's existing surface/onSurface palette and exceed 7:1 contrast.
+
+The source is `assets/icon/launch_mark.svg`. Run
+`python scripts/generate_launch_mark.py`, then
+`dart format lib/shared/launch_mark.dart` to regenerate the Flutter painter,
+Android vector and iOS template PDF. Keep these generated outputs together.
+The launcher icon and shared cloud symbols on other screens are unchanged.
+
+Android uses a single 288dp vector viewport with 96dp artwork centered inside
+it. Do not replace this with a bitmap inside fixed-size layer-list items:
+system drawable scaling can produce a different visible size. The native exit
+listener removes the system overlay when Flutter's first frame is ready,
+without the default icon exit transformation. No network work delays that handoff.
+Window fallback colors match the splash surface.
+
+iOS uses the same vector geometry as a template PDF with dynamic foreground and
+background colors. Its launch storyboard and Flutter share 96-point constraints.
+Native iOS rendering and the OS-to-Flutter handoff still require Xcode/device QA.
+
+Generate fixtures with:
+`flutter test --no-pub test/splash_screen_test.dart --dart-define=WRITE_UI_PREVIEWS=true`.
+They cover first-frame rendering, both platforms/themes, 320-point width,
+200% text, high contrast, reduced motion and a saved/system-theme mismatch.
+For Android changes, record a physical cold launch and inspect frames across
+the native/Flutter boundary; widget fixtures alone cannot verify that handoff.
+
+Android reference: https://developer.android.com/develop/ui/views/launch/splash-screen
+
+The revised Android cold launch was recorded on a physical Samsung SM-S906E.
+Frame inspection confirmed stable mark bounds and background across the
+native/Flutter boundary, followed by the Drive screen. The OS entrance animation
+remains system-owned. This verifies the device's current dark appearance;
+light appearance has Flutter fixture coverage, not a separate physical run.

@@ -3,6 +3,7 @@ package com.example.flutter_m_fsdk
 import android.content.Intent
 import android.content.IntentSender
 import android.net.Uri
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
@@ -35,6 +36,13 @@ class MainActivity : FlutterActivity() {
         Thread(r, "teledrive-media-io").apply { isDaemon = true }
     }
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // minSdk is 31. Flutter paints the same vector on its first frame, so
+        // remove the system overlay without the default icon reveal/scale exit.
+        splashScreen.setOnExitAnimationListener { it.remove() }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
