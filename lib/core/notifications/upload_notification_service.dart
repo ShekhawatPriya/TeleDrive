@@ -15,11 +15,24 @@ class UploadNotificationService with WidgetsBindingObserver {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  Future<void>? _initializing;
+  bool _observingLifecycle = false;
   AppLifecycleState _lifecycleState = AppLifecycleState.resumed;
 
-  Future<void> initialize() async {
-    if (_initialized) return;
-    WidgetsBinding.instance.addObserver(this);
+  Future<void> initialize() {
+    if (_initialized) return Future.value();
+    return _initializing ??= _initialize().whenComplete(
+      () => _initializing = null,
+    );
+  }
+
+  Future<void> _initialize() async {
+    if (!_observingLifecycle) {
+      _lifecycleState =
+          WidgetsBinding.instance.lifecycleState ?? AppLifecycleState.resumed;
+      WidgetsBinding.instance.addObserver(this);
+      _observingLifecycle = true;
+    }
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     // Permission prompts are deferred to requestPermission(); initialize() runs
     // at app launch and must not surface a system dialog.

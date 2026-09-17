@@ -71,7 +71,12 @@ extension _AuthControllerAccounts on AuthController {
           await _repo.saveVault(vault);
           continue;
         }
-        await _commitActiveAccount(account.token, bootstrap, existing: account);
+        await _commitActiveAccount(
+          account.token,
+          bootstrap,
+          existing: account,
+          cachePhoto: false,
+        );
         return;
       } on DioException catch (err) {
         if (err.response?.statusCode == 401) {
@@ -142,10 +147,15 @@ extension _AuthControllerAccounts on AuthController {
     String nextToken,
     AuthBootstrapResult bootstrap, {
     SavedAccount? existing,
+    bool cachePhoto = true,
   }) async {
-    final localPhotoPath =
-        await _repo.cacheProfilePhoto(bootstrap.user) ??
-        _trustedLocalPhotoPath(existing);
+    // A returning session must not wait for an extra avatar download. The
+    // ProfileAvatar widget already loads/caches the current URL asynchronously;
+    // explicit profile refresh still maintains the account's local fallback.
+    final localPhotoPath = cachePhoto
+        ? await _repo.cacheProfilePhoto(bootstrap.user) ??
+              _trustedLocalPhotoPath(existing)
+        : existing?.localPhotoPath;
     final account = _accountFromBootstrap(
       nextToken,
       bootstrap,

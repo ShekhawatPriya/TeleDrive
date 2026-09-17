@@ -152,3 +152,34 @@ computer, deploy the backend with a stable HTTPS address configured in the app.
 Connection follow-up checks: two focused resolver tests passed, Flutter analyzer
 was clean, and the updated debug APK built and installed successfully. No live
 Telegram authentication request was submitted as part of these checks.
+
+## Startup work and performance
+
+Returning sessions still validate the backend bootstrap and account identity
+before leaving the splash route. Backend selection/pinning, Telegram readiness,
+pending commits, feature flags and credential persistence retain their existing
+contracts. There is no cached-data-first authentication shortcut.
+
+The returning-session path skips the duplicate blocking profile-photo download.
+The existing ProfileAvatar widget loads/caches the current URL asynchronously
+and may briefly show initials. The saved local photo reference is retained;
+explicit profile refresh continues to maintain the local fallback. Login and
+account switching retain their existing cache behavior.
+
+Local environment loading and package metadata lookup run concurrently.
+Notification setup runs after Flutter's first frame. Initialization is shared
+between concurrent callers, tracks the current lifecycle state and can retry a
+failed attempt. Permission and notification calls still await initialization;
+startup never requests notification permission.
+
+Use profile mode on a physical device for timing. Debug JIT startup is not
+representative of a production build. Separate time to the first Flutter frame
+from time spent validating the session and reaching Drive. Network variability,
+process/cache state and recording overhead affect individual runs; a small
+sample is not a universal startup guarantee. Shared Dart changes apply to
+Android and iOS, but iOS timing requires a physical iPhone and Xcode.
+
+Regression coverage:
+`flutter test --no-pub test/startup_auth_test.dart test/upload_notification_initialization_test.dart`
+
+Reference: https://docs.flutter.dev/perf/ui-performance
