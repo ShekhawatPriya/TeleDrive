@@ -76,8 +76,7 @@ section order are retained. List rows use compact 40-point thumbnails and inset
 hairline dividers, with format, file size and a full modified date. Star status
 is shown on the thumbnail; starring remains available through item actions.
 
-Custom action sheets use opaque material with no glass outline. Their original
-action layout and drag/scroll behavior are retained. UIKit navigation and native
+Custom action sheets use opaque material with no glass outline. Their compact grouped action layout preserves drag/scroll behavior. UIKit navigation and native
 menus retain the system's glass rendering.
 
 Share details use an unboxed summary, Cupertino copy/share controls, access and
@@ -97,3 +96,26 @@ insets, and safe-area clearance above the home indicator and keyboard. The
 thumbnail shares a single clipped boundary, and filenames use a compact
 single-line header instead of wrapping inside the extension. Additional route
 geometry tests cover a 402-point iPhone with and without a 260-point keyboard.
+
+
+## Compact action sheets
+
+Add to Drive uses one group of three 48-point-minimum action rows, with a compact
+17-point heading and explicit close control. Labels carry the choice; redundant
+promotional copy and per-action descriptions are omitted. File/folder sheets use
+a 44-point identity preview and real metadata, followed by the same grouped rows
+for frequent actions, organization, and destructive actions. Share/Star no longer
+occupy oversized shortcut cards. Opaque semantic group surfaces, 16-point group
+insets, four-point group margins, and hairline separators establish hierarchy.
+Rows grow with text scaling; constrained sheets remain scrollable.
+
+The iOS create/rename editor presents the name field and confirmation directly,
+without repeating the name in a decorative folder preview. Android keeps its
+Material controls and folder preview. Action IDs, confirmations, keyboard submit,
+and dismissal-before-navigation contracts remain unchanged.
+
+Reproduce the additional Add to Drive previews and create-folder handoff checks
+with `flutter test --no-pub test/platform_folder_ui_test.dart --dart-define=WRITE_UI_PREVIEWS=true`. This covers both platforms/themes and
+320-point, 200% text/high-contrast layouts. Native UIKit and device interaction
+remain separate from these Flutter fixture checks. Shared sheet headings and
+Material action labels wrap at enlarged text sizes instead of truncating.

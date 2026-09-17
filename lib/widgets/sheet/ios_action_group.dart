@@ -7,11 +7,11 @@ class IosActionGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     clipBehavior: Clip.antiAlias,
     decoration: ShapeDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
-      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(20)),
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(16)),
     ),
     child: Column(
       mainAxisSize: MainAxisSize.min,
@@ -53,7 +53,8 @@ class IosActionRow extends StatelessWidget {
         ? theme.colorScheme.error
         : theme.colorScheme.onSurface;
     return CupertinoButton(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+      minimumSize: const Size(48, 48),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       onPressed: onPressed,
       child: Row(
         children: [

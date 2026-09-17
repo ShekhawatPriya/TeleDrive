@@ -65,13 +65,13 @@ class _FolderEditorState extends State<FolderEditor> {
             clearButtonMode: OverlayVisibilityMode.editing,
             onSubmitted: (_) => _submit(),
             inputFormatters: [LengthLimitingTextInputFormatter(120)],
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(16),
             style: theme.textTheme.bodyLarge?.copyWith(fontSize: 17),
             placeholderStyle: theme.textTheme.bodyLarge?.copyWith(
               color: scheme.onSurfaceVariant,
             ),
             decoration: BoxDecoration(
-              color: scheme.surfaceContainerLow,
+              color: scheme.surfaceContainer,
               borderRadius: BorderRadius.circular(16),
             ),
           )
@@ -100,7 +100,7 @@ class _FolderEditorState extends State<FolderEditor> {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+        padding: EdgeInsets.fromLTRB(ios ? 20 : 24, 0, ios ? 20 : 24, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -112,7 +112,12 @@ class _FolderEditorState extends State<FolderEditor> {
                     header: true,
                     child: Text(
                       widget.title,
-                      style: theme.textTheme.headlineSmall,
+                      style: ios
+                          ? theme.textTheme.titleMedium?.copyWith(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                            )
+                          : theme.textTheme.headlineSmall,
                     ),
                   ),
                 ),
@@ -127,53 +132,46 @@ class _FolderEditorState extends State<FolderEditor> {
               ],
             ),
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: ShapeDecoration(
-                color: ios
-                    ? scheme.surfaceContainer
-                    : scheme.primary.withValues(alpha: .07),
-                shape: RoundedSuperellipseBorder(
-                  borderRadius: BorderRadius.circular(24),
+            if (!ios)
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: ShapeDecoration(
+                  color: scheme.primary.withValues(alpha: .07),
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.folder_rounded, size: 56, color: scheme.primary),
+                    const SizedBox(width: 18),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _valid ? _name.text.trim() : 'Untitled folder',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            _renaming ? 'Rename folder' : 'New folder',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    ios ? CupertinoIcons.folder_fill : Icons.folder_rounded,
-                    size: 56,
-                    color: scheme.primary,
-                  ),
-                  const SizedBox(width: 18),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _valid ? _name.text.trim() : 'Untitled folder',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: scheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          _renaming
-                              ? 'A new name. Everything stays in place.'
-                              : 'A little space for what belongs together.',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
+            if (!ios) const SizedBox(height: 24),
             if (ios) ...[
               Text(
                 'FOLDER NAME',

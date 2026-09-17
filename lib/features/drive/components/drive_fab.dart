@@ -79,37 +79,40 @@ class _AddToDriveSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SheetHeader(
+            SheetHeader(
               title: 'Add to Drive',
-              subtitle: 'Make room for something new.',
+              trailing: CupertinoButton(
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(44, 44),
+                onPressed: () => Navigator.pop(context),
+                child: Icon(
+                  CupertinoIcons.xmark_circle_fill,
+                  semanticLabel: 'Close actions',
+                  size: 24,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
             ),
             IosActionGroup(
               children: [
                 IosActionRow(
                   label: 'Upload File',
-                  subtitle: 'Choose from your device',
                   icon: CupertinoIcons.arrow_up_doc,
                   onPressed: () => Navigator.pop(context, 'upload'),
                 ),
                 IosActionRow(
                   label: 'Take Photo',
-                  subtitle: 'Capture with your camera',
                   icon: CupertinoIcons.camera,
                   onPressed: () => Navigator.pop(context, 'photo'),
                 ),
-              ],
-            ),
-            IosActionGroup(
-              children: [
                 IosActionRow(
                   label: 'Create Folder',
-                  subtitle: 'Keep related files together',
                   icon: CupertinoIcons.folder_badge_plus,
                   onPressed: () => Navigator.pop(context, 'folder'),
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
           ],
         ),
       );

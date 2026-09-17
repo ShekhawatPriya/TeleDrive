@@ -30,15 +30,13 @@ class SheetActionTile extends StatelessWidget {
       leading: Icon(icon, color: iconColor, size: 24),
       title: Text(
         label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
         style: Theme.of(
           context,
         ).textTheme.bodyLarge?.copyWith(color: labelColor),
       ),
       subtitle: (subtitle == null || subtitle!.isEmpty)
           ? null
-          : Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis),
+          : Text(subtitle!),
       contentPadding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 0),
       dense: compact,
       visualDensity: compact ? const VisualDensity(vertical: -2) : null,

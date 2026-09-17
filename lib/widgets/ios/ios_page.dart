@@ -39,18 +39,13 @@ class IosPage extends StatelessWidget {
             symbolSize: 18,
             onPressed: onBack ?? () => Navigator.of(context).maybePop(),
           );
-    final navigationTrailing = modal
-        ? NativeGlassButton(
-            label: 'Close',
-            symbol: 'xmark',
-            icon: CupertinoIcons.xmark,
-            size: 44,
-            symbolSize: 17,
-            onPressed: () => Navigator.of(context).pop(),
-          )
-        : trailing;
     return Scaffold(
-      appBar: compactNavigation
+      appBar: modal
+          ? PreferredSize(
+              preferredSize: const Size.fromHeight(76),
+              child: _IosSheetHeader(title: title),
+            )
+          : compactNavigation
           ? PreferredSize(
               preferredSize: const Size.fromHeight(44),
               child: CupertinoNavigationBar(
@@ -60,42 +55,130 @@ class IosPage extends StatelessWidget {
                 border: null,
                 middle: Text(title),
                 leading: leading,
-                trailing: navigationTrailing,
+                trailing: trailing,
               ),
             )
           : null,
       backgroundColor: scheme.surface,
-      body: CustomScrollView(
-        controller: controller,
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        slivers: [
-          if (!compactNavigation)
-            CupertinoSliverNavigationBar(
-              transitionBetweenRoutes: false,
-              heroTag: title,
-              automaticallyImplyLeading: false,
-              backgroundColor: scheme.surface,
-              border: null,
-              largeTitle: Text(title),
-              leading: leading,
-              trailing: navigationTrailing,
+      body: Stack(
+        children: [
+          CustomScrollView(
+            controller: controller,
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
             ),
-          if (onRefresh != null)
-            CupertinoSliverRefreshControl(onRefresh: onRefresh),
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(
-              horizontalPadding,
-              12,
-              horizontalPadding,
-              28 + MediaQuery.paddingOf(context).bottom,
-            ),
-            sliver: SliverList.list(children: children),
+            slivers: [
+              if (!compactNavigation)
+                CupertinoSliverNavigationBar(
+                  transitionBetweenRoutes: false,
+                  heroTag: title,
+                  automaticallyImplyLeading: false,
+                  backgroundColor: scheme.surface,
+                  border: null,
+                  largeTitle: Text(title),
+                  leading: leading,
+                  trailing: trailing,
+                ),
+              if (onRefresh != null)
+                CupertinoSliverRefreshControl(onRefresh: onRefresh),
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  12,
+                  horizontalPadding,
+                  28 + MediaQuery.paddingOf(context).bottom,
+                ),
+                sliver: SliverList.list(children: children),
+              ),
+            ],
           ),
+          if (modal)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 14,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        scheme.surface,
+                        scheme.surface.withValues(alpha: 0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
       bottomNavigationBar: footer,
+    );
+  }
+}
+
+/// A quiet, fixed sheet header; the route continues to own drag gestures.
+class _IosSheetHeader extends StatelessWidget {
+  const _IosSheetHeader({required this.title});
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ColoredBox(
+      color: scheme.surface,
+      child: Column(
+        children: [
+          const SizedBox(height: 10),
+          ExcludeSemantics(
+            child: Container(
+              width: 36,
+              height: 5,
+              decoration: BoxDecoration(
+                color: scheme.onSurfaceVariant.withValues(alpha: .3),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+          const SizedBox(height: 5),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                const SizedBox(width: 44),
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -.3,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ),
+                NativeGlassButton(
+                  label: 'Close',
+                  symbol: 'xmark',
+                  icon: CupertinoIcons.xmark,
+                  size: 44,
+                  symbolSize: 15,
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

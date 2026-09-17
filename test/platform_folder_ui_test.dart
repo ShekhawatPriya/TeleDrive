@@ -1,4 +1,7 @@
 import 'dart:io';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_m_fsdk/features/drive/components/drive_fab.dart';
+import 'package:flutter_m_fsdk/widgets/sheet/ios_action_group.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -35,6 +38,8 @@ void main() {
       'Roboto',
       '.SF Pro Text',
       '.SF Pro Display',
+      '.SF UI Text',
+      '.SF UI Display',
     ]) {
       await (FontLoader(
         family,
@@ -52,6 +57,79 @@ void main() {
 
   for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
     for (final dark in [false, true]) {
+      for (final scale in [1.0, 2.0]) {
+        testWidgets('add sheet $platform dark=$dark scale=$scale', (
+          tester,
+        ) async {
+          tester.view.physicalSize = Size(scale == 2 ? 320 : 390, 844);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          debugDefaultTargetPlatformOverride = platform;
+          final theme = buildTheme(
+            AppBrand.scheme(
+              dark ? Brightness.dark : Brightness.light,
+              highContrast: scale == 2,
+            ),
+          ).copyWith(platform: platform);
+          debugDefaultTargetPlatformOverride = null;
+          await tester.pumpWidget(
+            ProviderScope(
+              child: RepaintBoundary(
+                key: const ValueKey('preview'),
+                child: MaterialApp(
+                  debugShowCheckedModeBanner: false,
+                  theme: theme.copyWith(
+                    textTheme: theme.textTheme.apply(fontFamily: 'Inter'),
+                  ),
+                  builder: (context, child) => MediaQuery(
+                    data: MediaQuery.of(context).copyWith(
+                      textScaler: TextScaler.linear(scale),
+                      highContrast: scale == 2,
+                      disableAnimations: true,
+                    ),
+                    child: child!,
+                  ),
+                  home: const Scaffold(floatingActionButton: DriveFab()),
+                ),
+              ),
+            ),
+          );
+          await tester.tap(find.byType(DriveFab));
+          await tester.pumpAndSettle();
+          for (final label in ['Upload File', 'Take Photo', 'Create Folder']) {
+            expect(find.text(label), findsOneWidget);
+          }
+          if (platform == TargetPlatform.iOS) {
+            for (final row in find.byType(IosActionRow).evaluate()) {
+              expect(
+                tester.getSize(find.byWidget(row.widget)).height,
+                greaterThanOrEqualTo(48),
+              );
+            }
+            if (scale == 1) {
+              expect(
+                tester
+                    .getSize(
+                      find.byKey(const ValueKey('ios-action-sheet-surface')),
+                    )
+                    .height,
+                lessThan(280),
+              );
+            }
+          }
+          await capture(tester, 'add-sheet-${platform.name}-$dark-$scale');
+          await tester.ensureVisible(find.text('Create Folder'));
+          await tester.tap(find.text('Create Folder'));
+          await tester.pumpAndSettle();
+          expect(find.byType(FolderEditor), findsOneWidget);
+          await tester.ensureVisible(find.byTooltip('Cancel'));
+          await tester.tap(find.byTooltip('Cancel'));
+          await tester.pumpAndSettle();
+          expect(find.byType(FolderEditor), findsNothing);
+          expect(tester.takeException(), isNull);
+        });
+      }
       testWidgets('folder create, rename and cancel $platform dark=$dark', (
         tester,
       ) async {
@@ -70,7 +148,9 @@ void main() {
             key: const ValueKey('preview'),
             child: MaterialApp(
               debugShowCheckedModeBanner: false,
-              theme: theme,
+              theme: theme.copyWith(
+                textTheme: theme.textTheme.apply(fontFamily: 'Inter'),
+              ),
               home: Scaffold(
                 body: Builder(
                   builder: (context) => Center(
@@ -224,7 +304,9 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
       await tester.pumpWidget(
         MaterialApp(
-          theme: theme,
+          theme: theme.copyWith(
+            textTheme: theme.textTheme.apply(fontFamily: 'Inter'),
+          ),
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(
               context,

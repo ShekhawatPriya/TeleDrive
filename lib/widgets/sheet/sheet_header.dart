@@ -22,6 +22,7 @@ class SheetHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final ios = theme.platform == TargetPlatform.iOS;
 
     final containerColor = leadingAccent != null
         ? leadingAccent!.withValues(alpha: .14)
@@ -29,7 +30,7 @@ class SheetHeader extends StatelessWidget {
     final iconColor = leadingAccent ?? scheme.onSecondaryContainer;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 16, 16),
+      padding: EdgeInsets.fromLTRB(ios ? 20 : 24, 0, 12, ios ? 8 : 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -56,19 +57,20 @@ class SheetHeader extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    color: scheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style:
+                      (ios
+                              ? theme.textTheme.titleMedium
+                              : theme.textTheme.titleLarge)
+                          ?.copyWith(
+                            fontSize: ios ? 17 : null,
+                            color: scheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
                 ),
                 if (subtitle != null && subtitle!.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
