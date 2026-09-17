@@ -658,6 +658,24 @@ final class TdlibBridge: NSObject {
         return promise
     }
 
+    // Order admission and cancellation under the same lock. Calling send()
+    // here would recursively acquire NSLock and deadlock.
+    func sendDownloadIfActive(_ transferId: String, _ request: [String: Any]) -> Promise<[String: Any]> {
+        var payload = request
+        let extra = UUID().uuidString
+        payload["@extra"] = extra
+        let encoded = TdlibJson.string(payload)
+        let promise = Promise<[String: Any]>()
+        let admitted = withLock {
+            guard let transfer = transfers[transferId], !transfer.cancelled else { return false }
+            pending[extra] = promise
+            TdlibJsonClient.send(clientId, encoded)
+            return true
+        }
+        if !admitted { promise.fail(TdlibError("tdlib_cancelled", "Transfer was cancelled.")) }
+        return promise
+    }
+
     func sendNoWait(_ request: [String: Any]) {
         ensureClient()
         let currentClientId = withLock { clientId }

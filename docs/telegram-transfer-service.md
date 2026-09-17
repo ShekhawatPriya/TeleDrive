@@ -82,3 +82,11 @@ The full real-device E2E verification was completed later on the same device.
 See `docs/tdlib-real-device-verification.md` for the auth, direct upload,
 `/media-ref` download/open, public share, fail-closed behavior, and restart
 recovery results.
+
+## Viewport thumbnail downloads
+
+See [visible-first media loading](media-loading.md) for scheduling, cache scope,
+retry, and cancellation contracts. Native thumbnail cancellation now covers
+connection/message lookup as well as an active TDLib download. A cancelled
+transfer ID must never be re-registered by late lookup completion. Cancelling
+one waiter must preserve other consumers of the same native file.

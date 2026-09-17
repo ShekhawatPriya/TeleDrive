@@ -314,7 +314,9 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
             stringArg(args, "variant"),
             longArg(args, "timeoutMs")?.takeIf { it > 0L }
         )
+        transfers[transferId] = Transfer(transferId)
         val messageFuture = waitForConnectionReady(timeoutMs = 45000L).thenCompose {
+            ensureDownloadActive(transferId)
             if (hasMessageRef) {
                 send(
                     JSONObject()
@@ -328,6 +330,7 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         }
         emitProgress(transferId, "downloading", 0, null, null)
         return messageFuture.thenCompose { message ->
+            ensureDownloadActive(transferId)
             val messageFileId = extractFile(message ?: JSONObject())?.optInt("id")?.takeIf { it > 0 }
             if (messageFileId != null) {
                 return@thenCompose startDownloadFile(messageFileId, transferId, destinationPath, timeoutMs)
@@ -339,6 +342,13 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
                 destinationPath,
                 timeoutMs
             )
+        }.whenComplete { _, _ -> transfers.remove(transferId) }
+    }
+
+    private fun ensureDownloadActive(transferId: String) {
+        val transfer = transfers[transferId]
+        if (transfer == null || transfer.cancelled) {
+            throw TdlibException("tdlib_cancelled", "Transfer was cancelled.")
         }
     }
 
@@ -383,6 +393,7 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
     ): CompletableFuture<Map<String, Any?>> {
         val waiter = DownloadWaiter(transferId, destinationPath, CompletableFuture())
         val request = synchronized(downloadsLock) {
+            ensureDownloadActive(transferId)
             downloads.computeIfAbsent(fileId) { CopyOnWriteArrayList() }.add(waiter)
             transfers[transferId] = Transfer(transferId, fileId)
             send(
@@ -422,13 +433,15 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
 
     fun cancelTransfer(args: Map<String, Any?>): CompletableFuture<Map<String, Any?>> {
         val transferId = requireString(args, "transferId")
-        val transfer = transfers[transferId]
-        transfer?.cancelled = true
-        val fileId = transfer?.fileId
+        var fileId: Int? = null
         val waiter = synchronized(downloadsLock) {
-            val removed = if (fileId == null) null else removeDownloadWaiter(fileId, transferId)
-            if (clientId != 0 && fileId != null && !downloads.containsKey(fileId)) {
-                sendNoWait(JSONObject().put("@type", "cancelDownloadFile").put("file_id", fileId).put("only_if_pending", false))
+            val transfer = transfers[transferId]
+            transfer?.cancelled = true
+            val activeFileId = transfer?.fileId
+            fileId = activeFileId
+            val removed = if (activeFileId == null) null else removeDownloadWaiter(activeFileId, transferId)
+            if (clientId != 0 && activeFileId != null && !downloads.containsKey(activeFileId)) {
+                sendNoWait(JSONObject().put("@type", "cancelDownloadFile").put("file_id", activeFileId).put("only_if_pending", false))
             }
             removed
         }

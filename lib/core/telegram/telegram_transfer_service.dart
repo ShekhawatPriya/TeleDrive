@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -68,6 +69,7 @@ abstract class TelegramTransferService {
     required String cacheKey,
     Duration? timeout,
     String? variant,
+    CancelToken? cancelToken,
   });
 }
 
@@ -318,13 +320,16 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
     required String cacheKey,
     Duration? timeout,
     String? variant,
+    CancelToken? cancelToken,
   }) async {
     final dir = await getTemporaryDirectory();
     final safeName = filename.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
     final path =
         '${dir.path}${Platform.pathSeparator}teledrive_${stableHash(cacheKey)}_$safeName';
-    final result = await _invokeMap('downloadToFile', {
-      'transferId': _uuid.v4(),
+    if (cancelToken?.isCancelled ?? false) throw cancelToken!.cancelError!;
+    final transferId = _uuid.v4();
+    final download = _invokeMap('downloadToFile', {
+      'transferId': transferId,
       'variant': variant ?? ref.variant,
       if (timeout != null) 'timeoutMs': timeout.inMilliseconds,
       'tdlibChatId': ref.tdlibChatId,
@@ -333,6 +338,31 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
       'tdlibRemoteFileId': ref.tdlibRemoteFileId,
       'destinationPath': path,
     });
+    var finished = false;
+    if (cancelToken != null) {
+      unawaited(
+        cancelToken.whenCancel.then((_) async {
+          if (!finished) await cancelTransfer(transferId);
+        }),
+      );
+    }
+    final Map<String, dynamic> result;
+    try {
+      final pending = cancelToken == null
+          ? download
+          : Future.any([
+              download,
+              cancelToken.whenCancel.then<Map<String, dynamic>>(
+                (error) => throw error,
+              ),
+            ]);
+      result = timeout == null ? await pending : await pending.timeout(timeout);
+    } on TimeoutException {
+      await cancelTransfer(transferId);
+      rethrow;
+    } finally {
+      finished = true;
+    }
     return TelegramDownloadResult(
       file: File((result['filePath'] as String?) ?? path),
       ref: ref,

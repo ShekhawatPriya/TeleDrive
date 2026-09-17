@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../../core/media/gallery_media_scanner.dart';
 import '../../core/network/api_client.dart';
 import '../../core/telegram/telegram_client_models.dart';
@@ -232,9 +233,14 @@ class DriveRepository {
   }
 
   Future<({TelegramMediaRef? ref, String? fallbackUrl, String cacheKey})>
-  mediaRef(String id, {String variant = 'original'}) async {
+  mediaRef(
+    String id, {
+    String variant = 'original',
+    CancelToken? cancelToken,
+  }) async {
     final res = await api.dio.get(
       '/files/$id/media-ref',
+      cancelToken: cancelToken,
       queryParameters: {'variant': variant},
     );
     final data = Map<String, dynamic>.from(res.data as Map);

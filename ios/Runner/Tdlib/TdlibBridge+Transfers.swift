@@ -213,8 +213,10 @@ extension TdlibBridge {
                 return requested
             }()
         )
+        withLock { transfers[transferId] = TdlibTransfer(transferId: transferId) }
         let messagePromise: Promise<[String: Any]?> = waitForConnectionReady(timeoutMs: 45000)
             .then { _ -> Promise<[String: Any]?> in
+                try self.ensureDownloadActive(transferId)
                 if hasMessageRef {
                     return self.send([
                         "@type": "getMessage",
@@ -225,7 +227,8 @@ extension TdlibBridge {
                 return Promise.value(nil)
             }
         emitProgress(transferId, "downloading", 0, nil, nil)
-        return messagePromise.then { message -> Promise<[String: Any]> in
+        let result = messagePromise.then { message -> Promise<[String: Any]> in
+            try self.ensureDownloadActive(transferId)
             if let message = message,
                let file = TdlibBridge.extractFile(message),
                let fileId = TdlibJson.int(file["id"]), fileId > 0 {
@@ -233,6 +236,18 @@ extension TdlibBridge {
             }
             return self.downloadByRemoteOrSupplied(remoteFileId, suppliedFileId, transferId, destinationPath, timeoutMs)
         }
+        result.onComplete { _ in
+            self.withLock { _ = self.transfers.removeValue(forKey: transferId) }
+        }
+        return result
+    }
+
+    private func ensureDownloadActive(_ transferId: String) throws {
+        let active = withLock {
+            guard let transfer = transfers[transferId] else { return false }
+            return !transfer.cancelled
+        }
+        if !active { throw TdlibError("tdlib_cancelled", "Transfer was cancelled.") }
     }
 
     private func downloadByRemoteOrSupplied(
@@ -287,11 +302,16 @@ extension TdlibBridge {
         _ timeoutMs: Int
     ) -> Promise<[String: Any]> {
         let waiter = TdlibDownloadWaiter(transferId: transferId, destinationPath: destinationPath)
-        withLock {
+        let active = withLock {
+            guard let transfer = transfers[transferId], !transfer.cancelled else { return false }
+            transfer.fileId = fileId
             downloads[fileId, default: []].append(waiter)
-            transfers[transferId] = TdlibTransfer(transferId: transferId, fileId: fileId)
+            return true
         }
-        let request = send([
+        guard active else {
+            return Promise.error(TdlibError("tdlib_cancelled", "Transfer was cancelled."))
+        }
+        let request = sendDownloadIfActive(transferId, [
             "@type": "downloadFile",
             "file_id": fileId,
             "priority": 32,
