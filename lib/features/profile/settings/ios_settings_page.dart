@@ -9,6 +9,7 @@ Widget _iosSettings(BuildContext context, WidgetRef ref) {
   ).push(CupertinoPageRoute<void>(builder: (_) => page));
   return IosPage(
     title: 'Settings',
+    compact: true,
     children: [
       IosGroup(
         children: [
@@ -25,7 +26,7 @@ Widget _iosSettings(BuildContext context, WidgetRef ref) {
         ],
       ),
       IosGroup(
-        title: 'LIBRARY',
+        title: 'Library',
         children: [
           IosRow(
             title: 'Uploads',
@@ -96,6 +97,7 @@ class _SettingsScaffold extends StatelessWidget {
     if (list is ListView && list.childrenDelegate is SliverChildListDelegate) {
       return IosPage(
         title: (appBar.title as Text).data ?? 'Settings',
+        compact: true,
         horizontalPadding: 0,
         children: (list.childrenDelegate as SliverChildListDelegate).children,
       );

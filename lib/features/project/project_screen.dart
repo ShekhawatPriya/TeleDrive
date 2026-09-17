@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart';
+import '../../widgets/ios/ios_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +12,7 @@ import 'changelog_controller.dart';
 part 'project_screen_cards.dart';
 part 'project_screen_developer.dart';
 part 'project_screen_header.dart';
+part 'project_screen_ios.dart';
 
 class ProjectScreen extends ConsumerStatefulWidget {
   const ProjectScreen({super.key});
@@ -40,6 +43,9 @@ class _ProjectScreenState extends ConsumerState<ProjectScreen> {
     final changelogSubtitle = latest != null
         ? 'Latest ${latest.tagName} · full version history'
         : 'Release notes and version history';
+
+    if (theme.platform == TargetPlatform.iOS)
+      return _buildIosProject(context, changelogSubtitle);
 
     return Scaffold(
       appBar: AppBar(
@@ -92,11 +98,7 @@ class _ProjectScreenState extends ConsumerState<ProjectScreen> {
           _SectionLabel('Legal'),
           const SizedBox(height: AppSpacing.sm),
           _CategoryCard(
-            icon: Icon(
-              Icons.shield_outlined,
-              size: 22,
-              color: scheme.primary,
-            ),
+            icon: Icon(Icons.shield_outlined, size: 22, color: scheme.primary),
             title: 'Privacy Policy',
             subtitle: 'How TeleDrive handles your data',
             onTap: () => context.push('/privacy'),

@@ -33,6 +33,14 @@ class NotificationsSettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(appSettingsControllerProvider).state;
 
+    if (Theme.of(context).platform == TargetPlatform.iOS)
+      return _iosNotifications(
+        context,
+        ref,
+        (value) => _setNotificationToggle(context, ref, complete: value),
+        (value) => _setNotificationToggle(context, ref, failed: value),
+      );
+
     return _SettingsScaffold(
       appBar: AppBar(
         centerTitle: true,

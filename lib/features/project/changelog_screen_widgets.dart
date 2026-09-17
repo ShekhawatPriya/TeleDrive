@@ -16,13 +16,18 @@ class _ReleaseCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
-        borderRadius: AppRadii.lgR,
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(28),
+        border: theme.platform == TargetPlatform.iOS
+            ? null
+            : Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               _TagChip(label: release.tagName, highlighted: isLatest),
               if (isLatest) ...[
@@ -33,7 +38,6 @@ class _ReleaseCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 _StatusChip(label: 'Pre-release', color: scheme.tertiary),
               ],
-              const Spacer(),
               if (published != null)
                 Text(
                   DateFormat.yMMMd().format(published.toLocal()),

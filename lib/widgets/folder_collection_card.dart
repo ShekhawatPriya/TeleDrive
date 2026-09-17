@@ -21,150 +21,109 @@ class FolderCollectionCard extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final ios = theme.platform == TargetPlatform.iOS;
-    final dark = theme.brightness == Brightness.dark;
-    final folderSurface = dark ? Colors.black : const Color(0xFFE4F1FE);
     final folderInk = ios
         ? CupertinoColors.systemBlue.resolveFrom(context)
         : scheme.primary;
+    final count = folder.recursiveFileCount;
     return Material(
-      color: theme.platform == TargetPlatform.iOS
-          ? folderSurface
-          : scheme.surfaceContainer,
-      shape: theme.platform == TargetPlatform.iOS
-          ? RoundedSuperellipseBorder(
-              borderRadius: BorderRadius.circular(24),
-              side: dark
-                  ? const BorderSide(color: Color(0xFF303033), width: .75)
-                  : BorderSide.none,
-            )
-          : RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      color: scheme.surfaceContainerLow,
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(22)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+          padding: const EdgeInsets.fromLTRB(16, 8, 12, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              folder.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontSize: 18,
-                                height: 1.2,
-                                letterSpacing: -.3,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            folder.isOptimistic
-                                ? 'Creating…'
-                                : formatFileSize(folder.recursiveSize),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                      width: 48,
-                      height: 48,
-                      child: IconButton(
-                        padding: EdgeInsets.zero,
-                        onPressed: onMore,
-                        tooltip: 'Actions for ${folder.name}',
-                        icon: const Icon(Icons.more_horiz_rounded),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Stack(
                     clipBehavior: Clip.none,
                     children: [
                       Icon(
-                        theme.platform == TargetPlatform.iOS
+                        ios
                             ? (folder.shared
                                   ? CupertinoIcons.folder_badge_person_crop
                                   : CupertinoIcons.folder_fill)
                             : (folder.shared
                                   ? Icons.folder_shared_rounded
                                   : Icons.folder_rounded),
-                        size: 64,
+                        size: 32,
                         color: folderInk,
                       ),
                       if (folder.starred)
                         Positioned(
-                          right: -4,
+                          right: -3,
                           bottom: 0,
-                          child: DecoratedBox(
+                          child: Container(
+                            width: 18,
+                            height: 18,
+                            alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: ios
-                                  ? folderSurface
-                                  : scheme.surfaceContainer,
                               shape: BoxShape.circle,
+                              color: scheme.surfaceContainerLow,
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(3),
-                              child: Icon(
-                                Icons.star_rounded,
-                                size: 14,
-                                color: scheme.primary,
-                              ),
+                            child: const Icon(
+                              Icons.star_rounded,
+                              size: 14,
+                              color: Color(0xFFFFC533),
+                              semanticLabel: 'Starred',
                             ),
                           ),
                         ),
                     ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Align(
-                      alignment: AlignmentDirectional.bottomEnd,
-                      child: folder.isOptimistic
-                          ? Icon(
-                              Icons.more_horiz_rounded,
-                              color: scheme.onSurfaceVariant,
-                            )
-                          : Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  '${folder.recursiveFileCount}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.headlineSmall
-                                      ?.copyWith(fontSize: 26, height: 1.1),
-                                ),
-                                Text(
-                                  folder.recursiveFileCount == 1
-                                      ? 'file'
-                                      : 'files',
-                                  style: theme.textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
+                  const Spacer(),
+                  if (onMore != null)
+                    SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: onMore,
+                        tooltip: 'Actions for ${folder.name}',
+                        icon: Icon(
+                          ios
+                              ? CupertinoIcons.ellipsis
+                              : Icons.more_horiz_rounded,
+                          size: 20,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox(height: 44),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    folder.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontSize: 16,
+                      height: 1.2,
+                      letterSpacing: -.25,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(width: 4),
-                ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                folder.isOptimistic
+                    ? 'Creating…'
+                    : '$count ${count == 1 ? 'file' : 'files'} · ${formatFileSize(folder.recursiveSize)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),

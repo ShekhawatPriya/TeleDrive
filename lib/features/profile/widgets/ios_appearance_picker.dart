@@ -13,7 +13,7 @@ class IosAppearancePicker extends StatelessWidget {
   final ValueChanged<ThemeMode> onChanged;
   @override
   Widget build(BuildContext context) => IosGroup(
-    title: 'APPEARANCE',
+    title: 'Appearance',
     footer:
         'System automatically matches your iPhone’s Light or Dark appearance.',
     children: [

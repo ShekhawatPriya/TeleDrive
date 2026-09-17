@@ -6,10 +6,12 @@ import '../features/profile/widgets/account_bottom_sheet.dart';
 import 'profile_avatar.dart';
 
 class AccountButton extends ConsumerWidget {
-  const AccountButton({super.key});
+  const AccountButton({this.avatarSize = 34, super.key});
+  final double avatarSize;
   @override
   Widget build(BuildContext context, WidgetRef ref) => IconButton(
     tooltip: 'Account and settings',
+    padding: const EdgeInsets.all(4),
     onPressed: () => Theme.of(context).platform == TargetPlatform.iOS
         ? showCupertinoSheet<void>(
             context: context,
@@ -29,6 +31,9 @@ class AccountButton extends ConsumerWidget {
             ),
             builder: (_) => const AccountBottomSheet(),
           ),
-    icon: ProfileAvatar(user: ref.watch(authControllerProvider).user, size: 34),
+    icon: ProfileAvatar(
+      user: ref.watch(authControllerProvider).user,
+      size: avatarSize,
+    ),
   );
 }

@@ -10,6 +10,9 @@ class CacheStorageSettingsScreen extends ConsumerWidget {
     final scheme = theme.colorScheme;
     final isDark = scheme.brightness == Brightness.dark;
 
+    if (Theme.of(context).platform == TargetPlatform.iOS)
+      return _iosCache(context, ref);
+
     return _SettingsScaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -118,6 +121,8 @@ class PrivacySecuritySettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(appSettingsControllerProvider).state;
+    if (Theme.of(context).platform == TargetPlatform.iOS)
+      return _iosPrivacy(context, ref);
 
     return _SettingsScaffold(
       appBar: AppBar(

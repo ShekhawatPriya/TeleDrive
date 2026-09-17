@@ -18,138 +18,174 @@ extension _IosAccountSheet on _AccountBottomSheetState {
       controller: widget.scrollController,
       children: [
         if (account != null) ...[
-          Center(
-            child: CupertinoButton(
-              padding: EdgeInsets.zero,
-              onPressed: () => _openTelegramProfile(context, account.username),
-              child: _buildAvatarWidget(account, size: 80),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            account.displayName,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Telegram ID ${account.telegramId}',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall,
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: CupertinoButton(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              onPressed: () => _showIosConnectionInfo(context, connected),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    connected == true
-                        ? CupertinoIcons.checkmark_seal_fill
-                        : CupertinoIcons.exclamationmark_circle,
-                    size: 15,
-                    color: connected == true
-                        ? CupertinoColors.systemGreen
-                        : scheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      connected == true
-                          ? 'Telegram connected'
-                          : connected == false
-                          ? 'Reconnect Telegram'
-                          : 'Connecting…',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          IosGroup(
-            children: [
-              IosRow(
-                title: 'Switch Account',
-                icon: CupertinoIcons.person_2_fill,
-                color: CupertinoColors.systemGrey,
-                trailing: Icon(
-                  _isExpanded
-                      ? CupertinoIcons.chevron_up
-                      : CupertinoIcons.chevron_down,
-                  size: 14,
-                ),
-                onTap: () {
-                  if (!_isExpanded &&
-                      ref
-                          .read(switchAccountProvider.notifier)
-                          .checkUploadsBlocked(context))
-                    return;
-                  _toggleSwitchAccountCard();
-                },
-              ),
-              if (_isExpanded) ...[
-                for (final saved in [account, ...others])
-                  IosRow(
-                    title: saved.displayName,
-                    subtitle: saved.username == null
-                        ? 'ID ${saved.telegramId}'
-                        : '@${saved.username}',
-                    onTap: saved.userId == account.userId
-                        ? null
-                        : () => ref
-                              .read(switchAccountProvider.notifier)
-                              .switchActiveAccount(context, saved),
-                    trailing: saved.userId == account.userId
-                        ? CupertinoButton(
-                            padding: EdgeInsets.zero,
-                            onPressed: () => ref
-                                .read(switchAccountProvider.notifier)
-                                .removeAccount(context, saved),
-                            child: Text(
-                              'Remove',
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: scheme.error,
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: ClipRSuperellipse(
+              borderRadius: BorderRadius.circular(28),
+              child: ColoredBox(
+                color: scheme.surfaceContainerLow,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () =>
+                            _openTelegramProfile(context, account.username),
+                        child: Row(
+                          children: [
+                            _buildAvatarWidget(account, size: 60),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    account.displayName,
+                                    style: TextStyle(
+                                      fontSize: 21,
+                                      fontWeight: FontWeight.w600,
+                                      color: scheme.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    label,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          )
-                        : ref.watch(switchAccountProvider).busyUserId ==
-                              saved.userId
-                        ? const CupertinoActivityIndicator()
-                        : null,
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () =>
+                            _showIosConnectionInfo(context, connected),
+                        child: Row(
+                          children: [
+                            Icon(
+                              connected == true
+                                  ? CupertinoIcons.checkmark_seal_fill
+                                  : CupertinoIcons.exclamationmark_circle,
+                              size: 16,
+                              color: connected == true
+                                  ? CupertinoColors.systemGreen
+                                  : scheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                connected == true
+                                    ? 'Telegram connected'
+                                    : connected == false
+                                    ? 'Reconnect Telegram'
+                                    : 'Connecting…',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (!label.startsWith('ID '))
+                        Text(
+                          'Telegram ID ${account.telegramId}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                    ],
                   ),
-                IosRow(
-                  title: 'Add Another Account',
-                  icon: CupertinoIcons.person_add_solid,
-                  onTap: () => ref
-                      .read(switchAccountProvider.notifier)
-                      .addAnotherAccount(context),
                 ),
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
+            curve: Curves.easeInOutCubic,
+            alignment: Alignment.topCenter,
+            child: IosGroup(
+              children: [
+                IosRow(
+                  title: 'Switch Account',
+                  icon: CupertinoIcons.person_2_fill,
+                  color: CupertinoColors.systemGrey,
+                  trailing: Icon(
+                    _isExpanded
+                        ? CupertinoIcons.chevron_up
+                        : CupertinoIcons.chevron_down,
+                    size: 14,
+                  ),
+                  onTap: () {
+                    if (!_isExpanded &&
+                        ref
+                            .read(switchAccountProvider.notifier)
+                            .checkUploadsBlocked(context))
+                      return;
+                    _toggleSwitchAccountCard();
+                  },
+                ),
+                if (_isExpanded) ...[
+                  for (final saved in [account, ...others])
+                    IosRow(
+                      title: saved.displayName,
+                      subtitle: saved.username == null
+                          ? 'ID ${saved.telegramId}'
+                          : '@${saved.username}',
+                      onTap: saved.userId == account.userId
+                          ? null
+                          : () => ref
+                                .read(switchAccountProvider.notifier)
+                                .switchActiveAccount(context, saved),
+                      trailing: saved.userId == account.userId
+                          ? CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              onPressed: () => ref
+                                  .read(switchAccountProvider.notifier)
+                                  .removeAccount(context, saved),
+                              child: Text(
+                                'Remove',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  color: scheme.error,
+                                ),
+                              ),
+                            )
+                          : ref.watch(switchAccountProvider).busyUserId ==
+                                saved.userId
+                          ? const CupertinoActivityIndicator()
+                          : null,
+                    ),
+                  IosRow(
+                    title: 'Add Another Account',
+                    icon: CupertinoIcons.person_add_solid,
+                    onTap: () => ref
+                        .read(switchAccountProvider.notifier)
+                        .addAnotherAccount(context),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ],
         IosGroup(
-          title: 'YOUR LIBRARY',
+          title: 'Your Library',
           footer: 'Backup saves photos and videos to your Telegram account.',
           children: [
             IosRow(
-              title: 'Photo backup',
+              title: 'Photo Backup',
               icon: CupertinoIcons.cloud_upload_fill,
               color: CupertinoColors.systemBlue,
               subtitle: backupOn ? 'Backup is on' : 'Backup is off',
@@ -180,7 +216,11 @@ extension _IosAccountSheet on _AccountBottomSheetState {
               title: 'Settings',
               icon: CupertinoIcons.gear,
               color: CupertinoColors.systemGrey,
-              onTap: () => _openIosDestination('/settings'),
+              onTap: () => Navigator.of(context).push(
+                CupertinoPageRoute<void>(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              ),
             ),
             IosRow(
               title: 'My Data',

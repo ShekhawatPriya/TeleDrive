@@ -43,9 +43,10 @@ class DriveFolderSliver extends ConsumerWidget {
       return SliverPadding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
         sliver: SliverGrid.builder(
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
             maxCrossAxisExtent: 280,
-            mainAxisExtent: 170,
+            mainAxisExtent:
+                148 + (MediaQuery.textScalerOf(context).scale(14) - 14) * 4,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
           ),

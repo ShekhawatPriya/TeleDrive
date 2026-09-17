@@ -13,8 +13,9 @@ class IosPage extends StatelessWidget {
     this.onRefresh,
     this.controller,
     this.modal = false,
+    this.compact = false,
     this.onBack,
-    this.horizontalPadding = 20,
+    this.horizontalPadding = 16,
   });
   final double horizontalPadding;
   final String title;
@@ -22,12 +23,47 @@ class IosPage extends StatelessWidget {
   final Widget? trailing, footer;
   final Future<void> Function()? onRefresh;
   final ScrollController? controller;
-  final bool modal;
+  final bool modal, compact;
   final VoidCallback? onBack;
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final compactNavigation = modal || compact;
+    final leading = modal
+        ? null
+        : NativeGlassButton(
+            label: 'Back',
+            symbol: 'chevron.left',
+            icon: CupertinoIcons.chevron_back,
+            size: 44,
+            symbolSize: 18,
+            onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+          );
+    final navigationTrailing = modal
+        ? NativeGlassButton(
+            label: 'Close',
+            symbol: 'xmark',
+            icon: CupertinoIcons.xmark,
+            size: 44,
+            symbolSize: 17,
+            onPressed: () => Navigator.of(context).pop(),
+          )
+        : trailing;
     return Scaffold(
+      appBar: compactNavigation
+          ? PreferredSize(
+              preferredSize: const Size.fromHeight(44),
+              child: CupertinoNavigationBar(
+                automaticallyImplyLeading: false,
+                transitionBetweenRoutes: false,
+                backgroundColor: scheme.surface,
+                border: null,
+                middle: Text(title),
+                leading: leading,
+                trailing: navigationTrailing,
+              ),
+            )
+          : null,
       backgroundColor: scheme.surface,
       body: CustomScrollView(
         controller: controller,
@@ -35,30 +71,17 @@ class IosPage extends StatelessWidget {
           parent: AlwaysScrollableScrollPhysics(),
         ),
         slivers: [
-          CupertinoSliverNavigationBar(
-            transitionBetweenRoutes: false,
-            heroTag: title,
-            automaticallyImplyLeading: false,
-            backgroundColor: scheme.surface.withValues(alpha: .92),
-            border: null,
-            largeTitle: Text(title),
-            leading: modal
-                ? null
-                : NativeGlassButton(
-                    label: 'Back',
-                    symbol: 'chevron.left',
-                    icon: CupertinoIcons.chevron_back,
-                    onPressed: onBack ?? () => Navigator.of(context).maybePop(),
-                  ),
-            trailing: modal
-                ? NativeGlassButton(
-                    label: 'Close',
-                    symbol: 'xmark',
-                    icon: CupertinoIcons.xmark,
-                    onPressed: () => Navigator.of(context).pop(),
-                  )
-                : trailing,
-          ),
+          if (!compactNavigation)
+            CupertinoSliverNavigationBar(
+              transitionBetweenRoutes: false,
+              heroTag: title,
+              automaticallyImplyLeading: false,
+              backgroundColor: scheme.surface,
+              border: null,
+              largeTitle: Text(title),
+              leading: leading,
+              trailing: navigationTrailing,
+            ),
           if (onRefresh != null)
             CupertinoSliverRefreshControl(onRefresh: onRefresh),
           SliverPadding(
@@ -78,36 +101,71 @@ class IosPage extends StatelessWidget {
 }
 
 class IosGroup extends StatelessWidget {
-  const IosGroup({super.key, this.title, this.footer, required this.children});
+  const IosGroup({
+    super.key,
+    this.title,
+    this.footer,
+    required this.children,
+    this.bottomSpacing = 28,
+    this.dividerInset,
+  });
+  final double bottomSpacing;
+  final double? dividerInset;
   final String? title, footer;
   final List<Widget> children;
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: CupertinoListSection.insetGrouped(
-        margin: EdgeInsets.zero,
-        additionalDividerMargin: 0,
-        dividerMargin: 16,
-        backgroundColor: Colors.transparent,
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        header: title == null
-            ? null
-            : Text(
+      padding: EdgeInsets.only(bottom: bottomSpacing),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (title != null)
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 8),
+              child: Text(
                 title!,
                 style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
                   color: scheme.onSurfaceVariant,
                 ),
               ),
-        footer: footer == null
-            ? null
-            : Text(
+            ),
+          // Own the clip: CupertinoListSection applies a fixed corner radius
+          // even when its decoration specifies a different radius.
+          ClipRSuperellipse(
+            borderRadius: BorderRadius.circular(28),
+            child: ColoredBox(
+              color: scheme.surfaceContainerLow,
+              child: Column(
+                children: [
+                  for (var index = 0; index < children.length; index++) ...[
+                    if (index > 0)
+                      Padding(
+                        padding: EdgeInsetsDirectional.only(
+                          start:
+                              dividerInset ??
+                              (_hasIcon(children[index]) ? 54 : 14),
+                          end: 16,
+                        ),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 1 / MediaQuery.devicePixelRatioOf(context),
+                          child: ColoredBox(color: scheme.outlineVariant),
+                        ),
+                      ),
+                    children[index],
+                  ],
+                ],
+              ),
+            ),
+          ),
+          if (footer != null)
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
+              child: Text(
                 footer!,
                 style: TextStyle(
                   fontSize: 13,
@@ -115,9 +173,17 @@ class IosGroup extends StatelessWidget {
                   color: scheme.onSurfaceVariant,
                 ),
               ),
-        children: children,
+            ),
+        ],
       ),
     );
+  }
+
+  static bool _hasIcon(Widget child) {
+    if (child is IosRow) return child.icon != null;
+    if (child is Semantics && child.child != null)
+      return _hasIcon(child.child!);
+    return false;
   }
 }
 
@@ -132,6 +198,8 @@ class IosRow extends StatelessWidget {
     this.trailing,
     this.onTap,
     this.destructive = false,
+    this.action = false,
+    this.enabled = true,
   });
   final String title;
   final String? subtitle, value;
@@ -139,7 +207,7 @@ class IosRow extends StatelessWidget {
   final Color? color;
   final Widget? trailing;
   final VoidCallback? onTap;
-  final bool destructive;
+  final bool destructive, action, enabled;
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -147,8 +215,8 @@ class IosRow extends StatelessWidget {
     final tint = color ?? scheme.primary;
     return CupertinoListTile.notched(
       backgroundColor: scheme.surfaceContainerLow,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      leadingSize: 30,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      leadingSize: 28,
       leading: icon == null
           ? null
           : Container(
@@ -165,7 +233,13 @@ class IosRow extends StatelessWidget {
         style: TextStyle(
           fontSize: 17,
           fontWeight: FontWeight.w400,
-          color: destructive ? scheme.error : scheme.onSurface,
+          color: !enabled
+              ? scheme.onSurfaceVariant.withValues(alpha: .55)
+              : destructive
+              ? scheme.error
+              : action
+              ? scheme.primary
+              : scheme.onSurface,
         ),
       ),
       subtitle: subtitle == null && (!large || value == null)
@@ -188,12 +262,12 @@ class IosRow extends StatelessWidget {
       additionalInfo: value != null && !large
           ? Text(
               value!,
-              style: TextStyle(fontSize: 15, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 17, color: scheme.onSurfaceVariant),
             )
           : null,
       trailing:
           trailing ?? (onTap != null ? const CupertinoListTileChevron() : null),
-      onTap: onTap,
+      onTap: enabled ? onTap : null,
     );
   }
 }
@@ -211,4 +285,66 @@ class IosNote extends StatelessWidget {
       ).textTheme.bodySmall?.copyWith(fontSize: 13, height: 1.45),
     ),
   );
+}
+
+/// A quiet category introduction, matching the grouped settings surfaces.
+class IosSettingsIntro extends StatelessWidget {
+  const IosSettingsIntro({
+    super.key,
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.description,
+  });
+  final IconData icon;
+  final Color color;
+  final String title, description;
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 28),
+      child: ClipRSuperellipse(
+        borderRadius: BorderRadius.circular(28),
+        child: ColoredBox(
+          color: scheme.surfaceContainerLow,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, size: 30, color: Colors.white),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 15,
+                    height: 1.45,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

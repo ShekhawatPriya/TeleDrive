@@ -1,15 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 
 /// Platform typography without a network font dependency. Display tracking is
 /// tighter than body text; all sizes continue to honor the system text scaler.
 TextTheme buildAppTextTheme(ColorScheme scheme) {
-  final family =
-      defaultTargetPlatform == TargetPlatform.iOS ||
-          defaultTargetPlatform == TargetPlatform.macOS
-      ? '.SF Pro Text'
-      : 'Roboto';
-  final ios = defaultTargetPlatform == TargetPlatform.iOS;
+  if (defaultTargetPlatform == TargetPlatform.iOS ||
+      defaultTargetPlatform == TargetPlatform.macOS) {
+    // Use Flutter's documented system-font proxies, including the optical
+    // display face. Private PostScript names can fall back on newer OS builds.
+    final native = CupertinoTextThemeData(primaryColor: scheme.primary);
+    final body = native.textStyle.copyWith(
+      inherit: true,
+      textBaseline: TextBaseline.alphabetic,
+      color: scheme.onSurface,
+      fontWeight: FontWeight.w400,
+    );
+    final display = native.navLargeTitleTextStyle.copyWith(
+      inherit: true,
+      textBaseline: TextBaseline.alphabetic,
+      color: scheme.onSurface,
+    );
+    TextStyle text(
+      double size,
+      double tracking, {
+      FontWeight weight = FontWeight.w400,
+      Color? color,
+    }) => body.copyWith(
+      fontSize: size,
+      letterSpacing: tracking,
+      fontWeight: weight,
+      color: color ?? scheme.onSurface,
+    );
+    return TextTheme(
+      displayLarge: display.copyWith(fontSize: 48),
+      displayMedium: display.copyWith(fontSize: 40),
+      displaySmall: display,
+      headlineLarge: display.copyWith(fontSize: 32),
+      headlineMedium: display.copyWith(fontSize: 28, letterSpacing: .36),
+      headlineSmall: display.copyWith(
+        fontSize: 24,
+        fontWeight: FontWeight.w600,
+        letterSpacing: .07,
+      ),
+      titleLarge: display.copyWith(
+        fontSize: 22,
+        fontWeight: FontWeight.w600,
+        letterSpacing: .35,
+      ),
+      titleMedium: body.copyWith(fontWeight: FontWeight.w600),
+      titleSmall: text(15, -.23, weight: FontWeight.w600),
+      bodyLarge: body,
+      bodyMedium: text(15, -.23, color: scheme.onSurfaceVariant),
+      bodySmall: text(13, -.08, color: scheme.onSurfaceVariant),
+      labelLarge: body.copyWith(fontWeight: FontWeight.w600),
+      labelMedium: text(13, -.08, weight: FontWeight.w500),
+      labelSmall: text(12, 0, color: scheme.onSurfaceVariant),
+    );
+  }
+  const family = 'Roboto';
   const base = TextTheme();
   final onSurface = scheme.onSurface;
   final onSurfaceVariant = scheme.onSurfaceVariant;
@@ -64,19 +113,9 @@ TextTheme buildAppTextTheme(ColorScheme scheme) {
       letter: -0.4,
     ),
     titleLarge: s(size: 20, height: 26, weight: FontWeight.w600, letter: -0.3),
-    titleMedium: s(
-      size: ios ? 17 : 16,
-      height: 24,
-      weight: FontWeight.w500,
-      letter: 0,
-    ),
+    titleMedium: s(size: 16, height: 24, weight: FontWeight.w500, letter: 0),
     titleSmall: s(size: 14, height: 20, weight: FontWeight.w500, letter: 0.10),
-    bodyLarge: s(
-      size: ios ? 17 : 16,
-      height: 24,
-      weight: FontWeight.w400,
-      letter: 0,
-    ),
+    bodyLarge: s(size: 16, height: 24, weight: FontWeight.w400, letter: 0),
     bodyMedium: s(
       size: 14,
       height: 20,

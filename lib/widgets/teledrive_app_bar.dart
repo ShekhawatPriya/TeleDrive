@@ -46,7 +46,7 @@ class TeleDriveTopBar extends StatelessWidget {
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 12, 20, 16),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -82,12 +82,14 @@ class TeleDriveTopBar extends StatelessWidget {
                 if (menuSections != null)
                   IosMoreButton(
                     sectionsBuilder: menuSections!,
+                    size: 44,
+                    visualSize: 34,
                     alignToScreenEdge: true,
                   ),
-                const AccountButton(),
+                const AccountButton(avatarSize: 44),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             DriveSearchField(key: ValueKey(scope), scope: scope),
           ],
         ),
@@ -105,9 +107,16 @@ class DriveSearchField extends ConsumerStatefulWidget {
 
 class _DriveSearchFieldState extends ConsumerState<DriveSearchField> {
   late final TextEditingController _text;
+  final FocusNode _focus = FocusNode(debugLabel: 'Drive search');
+
+  void _focusChanged() {
+    setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
+    _focus.addListener(_focusChanged);
     _text = TextEditingController(
       text: ref.read(searchQueryProvider(widget.scope)).raw,
     );
@@ -115,6 +124,8 @@ class _DriveSearchFieldState extends ConsumerState<DriveSearchField> {
 
   @override
   void dispose() {
+    _focus.removeListener(_focusChanged);
+    _focus.dispose();
     _text.dispose();
     super.dispose();
   }
@@ -136,32 +147,56 @@ class _DriveSearchFieldState extends ConsumerState<DriveSearchField> {
       SearchScope.shared => 'Search shared items',
     };
     if (Theme.of(context).platform == TargetPlatform.iOS) {
-      return CupertinoSearchTextField(
-        controller: _text,
-        placeholder: hint,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-        borderRadius: BorderRadius.circular(14),
-        backgroundColor: Theme.of(
-          context,
-        ).colorScheme.onSurface.withValues(alpha: .055),
-        style: Theme.of(context).textTheme.bodyLarge,
-        placeholderStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
+      return TextFieldTapRegion(
+        onTapOutside: (_) => _focus.unfocus(),
+        child: Row(
+          children: [
+            Expanded(
+              child: CupertinoSearchTextField(
+                controller: _text,
+                focusNode: _focus,
+                placeholder: hint,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 13,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: .055),
+                style: Theme.of(context).textTheme.bodyLarge,
+                placeholderStyle: Theme.of(context).textTheme.bodyLarge
+                    ?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                onChanged: (value) {
+                  controller.update(value);
+                  setState(() {});
+                },
+                onSuffixTap: () {
+                  _text.clear();
+                  controller.clear();
+                  setState(() {});
+                },
+                onSubmitted: (_) => _focus.unfocus(),
+              ),
+            ),
+            if (_focus.hasFocus) ...[
+              const SizedBox(width: 8),
+              CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                onPressed: _focus.unfocus,
+                child: const Text('Done'),
+              ),
+            ],
+          ],
         ),
-        onChanged: (value) {
-          controller.update(value);
-          setState(() {});
-        },
-        onSuffixTap: () {
-          _text.clear();
-          controller.clear();
-          setState(() {});
-        },
-        onSubmitted: (_) => FocusScope.of(context).unfocus(),
       );
     }
     return TextField(
       controller: _text,
+      focusNode: _focus,
+      onTapOutside: (_) => _focus.unfocus(),
       textInputAction: TextInputAction.search,
       onChanged: (value) {
         controller.update(value);

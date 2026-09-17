@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart';
+import '../../widgets/native_glass_button.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -205,6 +207,35 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
     return Scaffold(
       appBar: selectMode
           ? _buildSelectionAppBar(context)
+          : theme.platform == TargetPlatform.iOS
+          ? PreferredSize(
+              preferredSize: const Size.fromHeight(44),
+              child: CupertinoNavigationBar(
+                automaticallyImplyLeading: false,
+                transitionBetweenRoutes: false,
+                backgroundColor: scheme.surface,
+                border: null,
+                middle: const Text('Recently Deleted'),
+                leading: NativeGlassButton(
+                  label: 'Back',
+                  symbol: 'chevron.left',
+                  icon: CupertinoIcons.chevron_back,
+                  size: 44,
+                  symbolSize: 18,
+                  onPressed: () => Navigator.of(context).maybePop(),
+                ),
+                trailing: showDeleteAll
+                    ? CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: _purgeAll,
+                        child: Text(
+                          'Delete All',
+                          style: TextStyle(color: scheme.error, fontSize: 15),
+                        ),
+                      )
+                    : null,
+              ),
+            )
           : AppBar(
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),

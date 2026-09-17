@@ -89,18 +89,138 @@ class _ServerConnectionSettingsScreenState
   }
 
   Future<void> _run(Future<void> Function() action, String doneMessage) async {
+    if (_busy) return;
     setState(() => _busy = true);
-    await action();
+    var message = doneMessage;
+    try {
+      await action();
+    } catch (_) {
+      message = 'Could not connect. Check the address and try again.';
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
     if (!mounted) return;
-    setState(() => _busy = false);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(doneMessage)));
+    if (Theme.of(context).platform == TargetPlatform.iOS) {
+      await showCupertinoDialog<void>(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Server Connection'),
+          content: Text(message),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  Widget _buildIosServer(BackendResolver resolver) {
+    final visual = _statusVisual(
+      resolver.status,
+      Theme.of(context).colorScheme,
+    );
+    return IosPage(
+      title: 'Server Connection',
+      compact: true,
+      children: [
+        IosSettingsIntro(
+          icon: CupertinoIcons.antenna_radiowaves_left_right,
+          color: CupertinoColors.systemBlue,
+          title: visual.label,
+          description: AppConfig.backendPinned
+              ? 'Connect to your TeleDrive server from any of your devices.'
+              : 'Connect automatically on your network or choose a server address.',
+        ),
+        IosGroup(
+          title: 'Connection',
+          children: [
+            IosRow(title: 'Source', subtitle: resolver.sourceLabel),
+            IosRow(title: 'Server Address', subtitle: resolver.baseUrl),
+            IosRow(
+              title: _busy ? 'Checking…' : 'Check Connection',
+              action: true,
+              enabled: !_busy,
+              trailing: _busy
+                  ? const CupertinoActivityIndicator()
+                  : const SizedBox.shrink(),
+              onTap: _busy
+                  ? null
+                  : () => _run(resolver.refresh, 'Connection checked.'),
+            ),
+          ],
+        ),
+        if (!AppConfig.backendPinned) ...[
+          IosGroup(
+            title: 'Manual Address',
+            footer:
+                'Leave the address empty to find a server automatically on the same Wi-Fi network.',
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: CupertinoTextField(
+                  controller: _addressController,
+                  enabled: !_busy,
+                  keyboardType: TextInputType.url,
+                  autocorrect: false,
+                  placeholder: 'Server address',
+                  decoration: null,
+                  placeholderStyle: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: _busy ? null : (_) => _saveIosAddress(resolver),
+                ),
+              ),
+              IosRow(
+                title: 'Save & Connect',
+                action: true,
+                enabled: !_busy,
+                trailing: const SizedBox.shrink(),
+                onTap: _busy ? null : () => _saveIosAddress(resolver),
+              ),
+              IosRow(
+                title: 'Use Automatic Connection',
+                action: true,
+                enabled: !_busy && resolver.manualUrl != null,
+                trailing: const SizedBox.shrink(),
+                onTap: _busy || resolver.manualUrl == null
+                    ? null
+                    : () {
+                        _addressController.clear();
+                        _run(
+                          () => resolver.setManualUrl(null),
+                          'Automatic connection enabled.',
+                        );
+                      },
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  void _saveIosAddress(BackendResolver resolver) {
+    FocusScope.of(context).unfocus();
+    _run(
+      () => resolver.setManualUrl(_addressController.text),
+      'Server address saved.',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final resolver = ref.watch(backendResolverProvider);
+    if (Theme.of(context).platform == TargetPlatform.iOS)
+      return _buildIosServer(resolver);
 
     return _SettingsScaffold(
       appBar: AppBar(

@@ -76,11 +76,14 @@ class _MainShellState extends ConsumerState<MainShell>
   @override
   Widget build(BuildContext context) {
     final index = widget.navigationShell.currentIndex;
+    // Read above Scaffold: its resized body removes the keyboard inset.
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return LayoutBuilder(
       builder: (context, constraints) {
         final expanded = constraints.maxWidth >= 840;
         final content = Builder(
-          builder: (innerContext) => _buildTabs(innerContext, index),
+          builder: (innerContext) =>
+              _buildTabs(innerContext, index, keyboardVisible: keyboardVisible),
         );
         return Scaffold(
           extendBody: !expanded,
@@ -131,7 +134,11 @@ class _MainShellState extends ConsumerState<MainShell>
     widget.navigationShell.goBranch(index);
   }
 
-  Widget _buildTabs(BuildContext context, int routeIndex) {
+  Widget _buildTabs(
+    BuildContext context,
+    int routeIndex, {
+    required bool keyboardVisible,
+  }) {
     final selectState = ref.watch(selectionModeStateProvider);
     final isSelectMode = selectState.isSelectModeForTab(routeIndex);
     return Column(
@@ -145,17 +152,18 @@ class _MainShellState extends ConsumerState<MainShell>
           child: Stack(
             children: [
               widget.navigationShell,
-              Positioned(
-                left: AppSpacing.md,
-                right: AppSpacing.md,
-                bottom: MediaQuery.paddingOf(context).bottom + AppSpacing.md,
-                child: FabAnchorPublisher(
-                  child: BottomActionSystem(
-                    showFab: routeIndex == 0,
-                    parentId: null,
+              if (!keyboardVisible)
+                Positioned(
+                  left: AppSpacing.md,
+                  right: AppSpacing.md,
+                  bottom: MediaQuery.paddingOf(context).bottom + AppSpacing.md,
+                  child: FabAnchorPublisher(
+                    child: BottomActionSystem(
+                      showFab: routeIndex == 0,
+                      parentId: null,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),

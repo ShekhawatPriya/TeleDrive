@@ -18,6 +18,7 @@ class IosMoreButton extends StatefulWidget {
     required this.sectionsBuilder,
     this.tooltip = 'More',
     this.size = 48,
+    this.visualSize,
     this.alignToScreenEdge = false,
     super.key,
   });
@@ -25,6 +26,7 @@ class IosMoreButton extends StatefulWidget {
   final IosMenuSectionsBuilder sectionsBuilder;
   final String tooltip;
   final double size;
+  final double? visualSize;
   final bool alignToScreenEdge;
 
   @override
@@ -41,30 +43,41 @@ class _IosMoreButtonState extends State<IosMoreButton> {
       key: _anchorKey,
       width: widget.size,
       height: widget.size,
-      child: Theme.of(context).platform == TargetPlatform.iOS
-          ? NativeGlassButton(
-              label: widget.tooltip,
-              symbol: 'ellipsis',
-              icon: Icons.more_horiz_rounded,
-              onPressed: _open,
-              menuBuilder: () {
-                final payload = NativeMenuPayload(
-                  widget.sectionsBuilder(context),
-                );
-                _menuActions = payload.actions;
-                return payload.sections;
-              },
-              onMenuAction: (id) => _menuActions[id]?.call(),
-            )
-          : IconButton(
-              tooltip: widget.tooltip,
-              onPressed: _open,
-              icon: Icon(
-                Theme.of(context).platform == TargetPlatform.iOS
-                    ? Icons.more_horiz_rounded
-                    : Icons.more_vert,
-              ),
-            ),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _open,
+        excludeFromSemantics: true,
+        child: Center(
+          child: SizedBox(
+            width: widget.visualSize ?? widget.size,
+            height: widget.visualSize ?? widget.size,
+            child: Theme.of(context).platform == TargetPlatform.iOS
+                ? NativeGlassButton(
+                    label: widget.tooltip,
+                    symbol: 'ellipsis',
+                    icon: Icons.more_horiz_rounded,
+                    onPressed: _open,
+                    menuBuilder: () {
+                      final payload = NativeMenuPayload(
+                        widget.sectionsBuilder(context),
+                      );
+                      _menuActions = payload.actions;
+                      return payload.sections;
+                    },
+                    onMenuAction: (id) => _menuActions[id]?.call(),
+                  )
+                : IconButton(
+                    tooltip: widget.tooltip,
+                    onPressed: _open,
+                    icon: Icon(
+                      Theme.of(context).platform == TargetPlatform.iOS
+                          ? Icons.more_horiz_rounded
+                          : Icons.more_vert,
+                    ),
+                  ),
+          ),
+        ),
+      ),
     );
   }
 

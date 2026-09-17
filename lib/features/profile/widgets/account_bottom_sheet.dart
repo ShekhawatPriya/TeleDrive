@@ -18,6 +18,7 @@ import '../../../widgets/social_icons.dart';
 import '../../../widgets/sheet/sheet_drag_handle.dart';
 import '../../auth/auth_controller.dart';
 import '../app_settings_controller.dart';
+import '../settings_screen.dart';
 import '../gallery_backup_controller.dart';
 import '../storage_summary_controller.dart';
 import 'switch_account_provider.dart';

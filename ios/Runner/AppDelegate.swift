@@ -127,7 +127,7 @@ final class GlassButtonView: NSObject, FlutterPlatformView {
         return updated
       }
       if symbol.isEmpty { configuration.title = label }
-      else { configuration.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 19, weight: .semibold)) }
+      else { configuration.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: CGFloat(args["symbolSize"] as? Double ?? 19), weight: .semibold)) }
       button.configuration = configuration
     } else {
       if symbol.isEmpty { button.setTitle(label, for: .normal) }

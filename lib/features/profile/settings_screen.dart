@@ -20,6 +20,7 @@ import 'widgets/theme_picker_cards.dart';
 import 'widgets/ios_appearance_picker.dart';
 
 part 'settings/ios_settings_page.dart';
+part 'settings/ios_settings_details.dart';
 part 'settings/settings_helpers.dart';
 part 'settings/server_connection_settings.dart';
 part 'settings/upload_backup_settings.dart';

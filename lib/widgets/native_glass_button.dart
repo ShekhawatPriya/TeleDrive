@@ -12,6 +12,8 @@ class NativeGlassButton extends StatefulWidget {
     required this.icon,
     required this.onPressed,
     this.white = false,
+    this.size = 48,
+    this.symbolSize = 19,
     this.menuBuilder,
     this.onMenuAction,
   });
@@ -19,6 +21,7 @@ class NativeGlassButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback? onPressed;
   final bool white;
+  final double size, symbolSize;
   final List<Map<String, Object?>> Function()? menuBuilder;
   final ValueChanged<String>? onMenuAction;
   @override
@@ -32,6 +35,7 @@ class _NativeGlassButtonState extends State<NativeGlassButton> {
   Map<String, Object> get _configuration => {
     'label': widget.label,
     'symbol': widget.symbol,
+    'symbolSize': widget.symbolSize,
     'enabled': widget.onPressed != null,
     'white': widget.white,
     'hasMenu': widget.menuBuilder != null,
@@ -83,8 +87,8 @@ class _NativeGlassButtonState extends State<NativeGlassButton> {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: 48,
-    height: 48,
+    width: widget.size,
+    height: widget.size,
     child: _available
         ? UiKitView(
             viewType: 'teledrive/glass-button',
@@ -114,7 +118,7 @@ class _NativeGlassButtonState extends State<NativeGlassButton> {
               onPressed: widget.onPressed,
               child: Icon(
                 widget.icon,
-                size: 22,
+                size: widget.symbolSize,
                 color: widget.white
                     ? Colors.white
                     : Theme.of(context).colorScheme.onSurface,

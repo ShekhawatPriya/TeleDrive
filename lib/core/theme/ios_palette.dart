@@ -24,7 +24,7 @@ ColorScheme iosPalette(ColorScheme base) {
     surfaceContainerHighest: dark
         ? const Color(0xFF3A3A3C)
         : const Color(0xFFDCDCE2),
-    onSurface: dark ? const Color(0xFFF5F5F7) : const Color(0xFF1C1C1E),
+    onSurface: dark ? Colors.white : Colors.black,
     onSurfaceVariant: dark ? const Color(0xFFB2B2BA) : const Color(0xFF6C707B),
     outlineVariant: dark ? const Color(0xFF38383A) : const Color(0xFFD1D1D6),
     error: dark ? const Color(0xFFFF6961) : const Color(0xFFBC252A),

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -23,10 +24,11 @@ class DriveRecentsStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 238 + (MediaQuery.textScalerOf(context).scale(14) - 14) * 3,
+      height: 204 + (MediaQuery.textScalerOf(context).scale(14) - 14) * 3,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: Axis.horizontal,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         itemBuilder: (_, i) => RecentFileCard(
           key: ValueKey(files[i].localId ?? files[i].id),
           file: files[i],
@@ -57,12 +59,12 @@ class RecentFileCard extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return SizedBox(
-      width: 240,
+      width: (MediaQuery.sizeOf(context).width - 72).clamp(220.0, 280.0),
       child: Material(
         color: theme.platform == TargetPlatform.iOS
-            ? Colors.transparent
+            ? scheme.surfaceContainerLow
             : scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(22),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
@@ -76,7 +78,7 @@ class RecentFileCard extends StatelessWidget {
                     MediaThumb(
                       file: file,
                       fit: BoxFit.cover,
-                      radius: theme.platform == TargetPlatform.iOS ? 18 : 0,
+                      radius: 0,
                       decodeWidth: 640,
                     ),
                     if (file.starred)
@@ -91,9 +93,15 @@ class RecentFileCard extends StatelessWidget {
                           child: Padding(
                             padding: const EdgeInsets.all(8),
                             child: Icon(
-                              Icons.star_rounded,
+                              theme.platform == TargetPlatform.iOS
+                                  ? CupertinoIcons.star_fill
+                                  : Icons.star_rounded,
                               size: 16,
-                              color: scheme.primary,
+                              color: theme.platform == TargetPlatform.iOS
+                                  ? CupertinoColors.systemBlue.resolveFrom(
+                                      context,
+                                    )
+                                  : scheme.primary,
                             ),
                           ),
                         ),
@@ -102,7 +110,7 @@ class RecentFileCard extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 4, 12),
+                padding: const EdgeInsets.fromLTRB(14, 8, 4, 10),
                 child: Row(
                   children: [
                     Expanded(

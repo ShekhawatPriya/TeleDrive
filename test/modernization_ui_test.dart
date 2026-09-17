@@ -1,3 +1,10 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_m_fsdk/features/profile/legal_screen.dart';
+import 'package:flutter_m_fsdk/features/project/changelog_screen.dart';
+import 'package:flutter_m_fsdk/features/project/github_release_models.dart';
+import 'package:flutter_m_fsdk/features/profile/gallery_backup_controller.dart';
+import 'package:flutter_m_fsdk/features/project/project_screen.dart';
+import 'package:flutter_m_fsdk/features/project/changelog_controller.dart';
 import 'package:flutter_m_fsdk/widgets/file_card_tile.dart';
 import 'package:flutter_m_fsdk/features/drive/components/drive_action_sheet.dart';
 import 'package:flutter_m_fsdk/features/profile/my_data_screen.dart';
@@ -245,9 +252,57 @@ class _DesignStorage extends ChangeNotifier
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
+class _DesignBackup extends ChangeNotifier implements GalleryBackupController {
+  @override
+  GalleryBackupDiagnostics get diagnostics => const GalleryBackupDiagnostics();
+  @override
+  bool get running => false;
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _DesignChangelog extends ChangeNotifier implements ChangelogController {
+  @override
+  ChangelogState get state => ChangelogState(
+    hasLoadedOnce: true,
+    releases: [
+      GithubRelease(
+        tagName: 'v2.1.10',
+        title: 'TeleDrive 2.1.10',
+        body:
+            '## Improvements\n- Clearer settings and navigation.\n- Improved photo backup controls.',
+        htmlUrl: 'https://github.com/example/releases',
+        publishedAt: DateTime(2026, 9, 17),
+      ),
+    ],
+  );
+  @override
+  Future<void> load({bool force = false}) async {}
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _DesignSettings extends ChangeNotifier implements AppSettingsController {
   @override
-  AppSettingsState get state => const AppSettingsState(loaded: true);
+  AppSettingsState state = const AppSettingsState(loaded: true);
+  @override
+  Future<void> setGalleryBackupEnabled(bool value) async {
+    state = state.copyWith(galleryBackupEnabled: value);
+    notifyListeners();
+  }
+
+  @override
+  Future<void> setGalleryBackupScanLimit(int value) async {
+    state = state.copyWith(galleryBackupScanLimit: value);
+    notifyListeners();
+  }
+
+  @override
+  Future<void> setGalleryBackupQueueLimit(int value) async {
+    state = state.copyWith(galleryBackupQueueLimit: value);
+    notifyListeners();
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }
@@ -255,6 +310,10 @@ class _DesignSettings extends ChangeNotifier implements AppSettingsController {
 class _DesignBackend extends ChangeNotifier implements BackendResolver {
   @override
   BackendStatus get status => BackendStatus.connected;
+  @override
+  String get sourceLabel => "Automatic connection";
+  @override
+  String get baseUrl => "https://teledrive.example.com";
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }
@@ -264,6 +323,8 @@ class _Auth extends ChangeNotifier implements AuthController {
   AccountVault get vault => const AccountVault.empty();
   @override
   bool? get telegramConnected => true;
+  @override
+  int get largeUploadThresholdBytes => 100 * 1024 * 1024;
   @override
   Future<void> refreshProfile() async {}
   @override
@@ -336,6 +397,8 @@ Future<void> _pump(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        galleryBackupControllerProvider.overrideWith((_) => _DesignBackup()),
+        changelogControllerProvider.overrideWith((_) => _DesignChangelog()),
         authControllerProvider.overrideWith((_) => _Auth()),
         storageSummaryControllerProvider.overrideWith((_) => _DesignStorage()),
         appSettingsControllerProvider.overrideWith((_) => _DesignSettings()),
@@ -365,6 +428,19 @@ Future<void> _pump(
     ),
   );
 
+  if (child is ProjectScreen) {
+    await tester.runAsync(() async {
+      final context = tester.element(find.byType(ProjectScreen));
+      await precacheImage(
+        const AssetImage('assets/icon/app_icon.png'),
+        context,
+      );
+      await precacheImage(
+        const AssetImage('assets/icon/devsdocode.png'),
+        context,
+      );
+    });
+  }
   await tester.pumpAndSettle();
 }
 
@@ -455,6 +531,44 @@ void main() {
       },
     );
   }
+  testWidgets('drive scroll dismisses the search keyboard', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await _pump(tester, _tabPreview(SearchScope.drive, const DriveScreen()));
+    await tester.tap(find.byType(EditableText));
+    await tester.pumpAndSettle();
+    expect(tester.testTextInput.isVisible, isTrue);
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, -180),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.testTextInput.isVisible, isFalse);
+    expect(
+      tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus,
+      isFalse,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('iOS search Done fits a small phone with large text', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await _pump(
+      tester,
+      _tabPreview(SearchScope.drive, const DriveScreen()),
+      width: 320,
+      scale: 2,
+    );
+    await tester.tap(find.byType(EditableText));
+    await tester.pumpAndSettle();
+    expect(find.text('Done'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(tester.testTextInput.isVisible, isFalse);
+  });
+
   testWidgets(
     'open account sheet follows light appearance after a theme change',
     (tester) async {
@@ -479,6 +593,108 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets('Settings back returns to the open Account sheet', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await _pump(tester, const Scaffold(body: Center(child: AccountButton())));
+    await tester.tap(find.byType(AccountButton));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Settings'));
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SettingsScreen), findsOneWidget);
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AccountBottomSheet), findsOneWidget);
+    expect(find.byType(SettingsScreen), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('backup controls update settings and keep limits bounded', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await _pump(tester, const BackupSettingsScreen());
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(BackupSettingsScreen)),
+    );
+    final settings =
+        container.read(appSettingsControllerProvider) as _DesignSettings;
+    await tester.tap(find.byType(CupertinoSwitch).first);
+    await tester.pumpAndSettle();
+    expect(settings.state.galleryBackupEnabled, isTrue);
+    await tester.tap(find.bySemanticsLabel('Increase Items per Scan'));
+    await tester.pumpAndSettle();
+    expect(settings.state.galleryBackupScanLimit, 90);
+    await settings.setGalleryBackupScanLimit(499);
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel('Increase Items per Scan'));
+    await tester.pumpAndSettle();
+    expect(settings.state.galleryBackupScanLimit, 500);
+    await tester.tap(find.bySemanticsLabel('Decrease Queued Uploads'));
+    await tester.pumpAndSettle();
+    expect(settings.state.galleryBackupQueueLimit, 10);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('backup scan report opens and stays readable at large text', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await _pump(tester, const BackupSettingsScreen(), width: 320, scale: 2);
+    await tester.scrollUntilVisible(
+      find.text('Scan Report'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Scan Report'));
+    await tester.pumpAndSettle();
+    expect(find.text('Items Found'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, -800));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BackupSettingsScreen), findsOneWidget);
+  });
+  for (final page in <(String, Widget)>[
+    ('server', const ServerConnectionSettingsScreen()),
+    ('uploads', const UploadSettingsScreen()),
+    ('backup', const BackupSettingsScreen()),
+    ('cache', const CacheStorageSettingsScreen()),
+    ('privacy', const PrivacySecuritySettingsScreen()),
+    ('notifications', const NotificationsSettingsScreen()),
+    ('about', const ProjectScreen()),
+    ('releases', const ChangelogScreen()),
+    ('legal-privacy', const LegalScreen(kind: LegalKind.privacy)),
+    ('legal-terms', const LegalScreen(kind: LegalKind.terms)),
+  ]) {
+    for (final dark in [false, true]) {
+      for (final scale in [1.0, 2.0]) {
+        testWidgets('settings detail ${page.$1} dark=$dark scale=$scale', (
+          tester,
+        ) async {
+          SharedPreferences.setMockInitialValues({});
+          await _pump(
+            tester,
+            page.$2,
+            width: scale == 1 ? 390 : 320,
+            scale: scale,
+            brightness: dark ? Brightness.dark : Brightness.light,
+          );
+          await _preview(tester, 'detail-${page.$1}-$dark-$scale-top');
+          expect(tester.takeException(), isNull);
+          final scroll = find.byType(Scrollable).first;
+          for (var i = 0; i < 4; i++) {
+            await tester.drag(scroll, const Offset(0, -600));
+            await tester.pumpAndSettle();
+            await _preview(tester, 'detail-${page.$1}-$dark-$scale-scroll-$i');
+            expect(tester.takeException(), isNull);
+          }
+        });
+      }
+    }
+  }
   for (final page in <(String, Widget)>[
     ('storage', const ProfileScreen()),
     ('my-data', const MyDataScreen()),

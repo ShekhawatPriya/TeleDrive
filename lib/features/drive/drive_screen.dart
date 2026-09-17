@@ -223,6 +223,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
           },
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             slivers: [
               if (!loaded && loading)
                 const SliverFillRemaining(child: SkeletonList()),
@@ -242,21 +243,11 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                     ),
                   ),
                 ),
-              if (recent.isNotEmpty && query.isEmpty) ...[
+              if (query.isEmpty) ...[
                 const DriveSectionHeader(
-                  'Pick up where you left off',
+                  'Your spaces',
                   topPadding: AppSpacing.sm,
                 ),
-                SliverToBoxAdapter(
-                  child: DriveRecentsStrip(
-                    files: recent,
-                    onFileTap: (f) => openDriveFile(context, ref, f),
-                    onMore: (f) => DriveItemActions.openFile(context, ref, f),
-                  ),
-                ),
-              ],
-              if (query.isEmpty) ...[
-                const DriveSectionHeader('Your spaces'),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(0, AppSpacing.xs, 0, 0),
@@ -265,6 +256,16 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                       onArchiveTap: () => context.safePush('/settings/archive'),
                       onLockedTap: () => context.safePush('/settings/locked'),
                     ),
+                  ),
+                ),
+              ],
+              if (recent.isNotEmpty && query.isEmpty) ...[
+                const DriveSectionHeader('Recent files'),
+                SliverToBoxAdapter(
+                  child: DriveRecentsStrip(
+                    files: recent,
+                    onFileTap: (f) => openDriveFile(context, ref, f),
+                    onMore: (f) => DriveItemActions.openFile(context, ref, f),
                   ),
                 ),
               ],

@@ -10,6 +10,9 @@ class UploadSettingsScreen extends ConsumerWidget {
     final thresholdMbStr =
         '${(auth.largeUploadThresholdBytes / (1024 * 1024)).toStringAsFixed(0)} MB';
 
+    if (Theme.of(context).platform == TargetPlatform.iOS)
+      return _iosUploads(context, ref, thresholdMbStr);
+
     return _SettingsScaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -101,6 +104,8 @@ class BackupSettingsScreen extends ConsumerWidget {
     final settings = ref.watch(appSettingsControllerProvider).state;
     final backup = ref.watch(galleryBackupControllerProvider);
     final controller = ref.read(appSettingsControllerProvider);
+    if (Theme.of(context).platform == TargetPlatform.iOS)
+      return _iosBackup(context, ref);
 
     return _SettingsScaffold(
       appBar: AppBar(

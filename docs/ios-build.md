@@ -84,6 +84,17 @@ flutter devices
 flutter run -d <your-iphone>
 ```
 
+For an install intended to open from the home screen after disconnecting from
+the Mac, use a release build:
+
+```sh
+flutter run --release -d <your-iphone>
+```
+
+Debug builds require Flutter tooling or Xcode to launch the debug engine on a
+physical iPhone. Use release mode when checking standalone startup and relaunch
+behavior.
+
 The app builds and runs even if TDLib setup is somehow broken — the Dart
 layer treats a missing/failing bridge as "unavailable" and disables
 transfers rather than crashing.

@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart';
+import '../../widgets/ios/ios_page.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/config/app_config.dart';
@@ -78,6 +80,75 @@ class _LegalScreenState extends State<LegalScreen> {
         ? 'Privacy Policy'
         : 'Terms of Service';
 
+    if (theme.platform == TargetPlatform.iOS) {
+      final sections = _selectedKind == LegalKind.privacy
+          ? privacySections
+          : termsSections;
+      return IosPage(
+        title: title,
+        compact: true,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 24),
+            child: CupertinoSlidingSegmentedControl<LegalKind>(
+              groupValue: _selectedKind,
+              children: const {
+                LegalKind.privacy: Text('Privacy'),
+                LegalKind.terms: Text('Terms'),
+              },
+              onValueChanged: (value) {
+                if (value != null) setState(() => _selectedKind = value);
+              },
+            ),
+          ),
+          const IosNote('Last updated: May 2026'),
+          for (final section in sections)
+            IosGroup(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        section.title,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurface,
+                        ),
+                      ),
+                      if (section.paragraph != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          section.paragraph!,
+                          style: TextStyle(
+                            fontSize: 15,
+                            height: 1.5,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                      for (final bullet in section.bullets) ...[
+                        const SizedBox(height: 10),
+                        _BulletItem(bullet),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          IosGroup(
+            children: [
+              IosRow(
+                title: 'Open Source Project',
+                onTap: AppConfig.openRepository,
+              ),
+            ],
+          ),
+        ],
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: Text(title), elevation: 0),
       body: Column(

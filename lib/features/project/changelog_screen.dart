@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart';
+import '../../widgets/ios/ios_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -36,6 +38,48 @@ class _ChangelogScreenState extends ConsumerState<ChangelogScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(changelogControllerProvider).state;
 
+    if (Theme.of(context).platform == TargetPlatform.iOS) {
+      return IosPage(
+        title: 'What’s New',
+        compact: true,
+        onRefresh: _refresh,
+        children: [
+          if (state.isLoading && state.releases.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(32),
+              child: CupertinoActivityIndicator(),
+            )
+          else if (state.releases.isEmpty)
+            IosGroup(
+              children: [
+                IosRow(
+                  title: state.error == null
+                      ? 'No Releases Yet'
+                      : 'Could Not Load Releases',
+                  subtitle: state.error == null
+                      ? 'Published releases will appear here.'
+                      : 'Check your connection and try again.',
+                ),
+                IosRow(
+                  title: 'Refresh',
+                  action: true,
+                  trailing: const SizedBox.shrink(),
+                  onTap: _refresh,
+                ),
+              ],
+            )
+          else
+            for (var i = 0; i < state.releases.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 28),
+                child: _ReleaseCard(
+                  release: state.releases[i],
+                  isLatest: i == 0,
+                ),
+              ),
+        ],
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
