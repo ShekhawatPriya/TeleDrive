@@ -1,0 +1,53 @@
+{
+  "generation": {
+    "tool": "Built-in image_gen",
+    "model": "Not exposed by the tool",
+    "date": "2026-09-18"
+  },
+  "illustrations": [
+    {
+      "file": "cover.webp",
+      "purpose": "Conceptual editorial artwork; not product evidence",
+      "prompt": "Use case: illustration-story. Asset: wide editorial cover for TeleDrive, a Telegram-backed personal file drive for Android and iOS. Create an exquisitely crafted physical paper diorama on warm ivory cotton paper: a sculptural cobalt blue open archive box, carefully layered file folders, a few photographic mountain and sea contact sheets, an ivory folded paper airplane lifting gently above the box on a fine pencil arc. Restrained navy graphite linework, tactile cut-paper edges, soft natural side light and believable shadows. Spacious sophisticated composition, landscape 3:2, coherent cobalt/ivory/teal palette, tiny amber detail. No words, no text, no metrics, no device screens, no logos, no watermark. Conceptual editorial art, not a screenshot. Make it rich in craft and material detail yet calm.",
+      "reused": false,
+      "export": "WebP"
+    },
+    {
+      "file": "library.webp",
+      "purpose": "Conceptual editorial artwork; not product evidence",
+      "prompt": "Use case: illustration-story. Asset: square chapter illustration for TeleDrive file organization. A meticulous overhead still life of warm ivory paper folders, cobalt blue index tabs, a small brass star resting on one folder, and three carefully aligned photo/document cards, with one pale teal archive box. Tangible layered paper collage, fine navy pencil outlines and sparse hand-drawn sorting lines, delicate natural shadows, generous warm paper negative space. Sophisticated editorial craft consistent with a premium personal archive. No words, letters, numbers, interface, logos or watermark. Conceptual artwork.",
+      "reused": false,
+      "export": "WebP with transparent outer gutter"
+    },
+    {
+      "file": "transfer.webp",
+      "purpose": "Conceptual editorial artwork; not product evidence",
+      "prompt": "Use case: illustration-story. Asset: landscape chapter illustration for TeleDrive direct device-to-Telegram transfers. Two beautifully sculpted objects connected by a flowing cobalt folded paper ribbon: a minimal ivory handheld device silhouette with blank face on the left and a blue open archive box on the right; a few small paper photo and document cards travel along the ribbon. A separate tiny neatly ruled index card rests below to suggest metadata. Warm ivory paper diorama, tactile cut edges, restrained navy pencil arcs, teal accents, soft natural lighting and shadows, airy precise composition. No text, UI, logos, locks, shields or claims of encryption. Conceptual artwork, not technical proof.",
+      "reused": false,
+      "export": "WebP"
+    },
+    {
+      "file": "photos.webp",
+      "purpose": "Conceptual editorial artwork; not product evidence",
+      "prompt": "Use case: illustration-story. Asset: square chapter illustration for TeleDrive photo memories. A tactile editorial still life of layered photographic contact sheets with miniature alpine lake, sunlit coast and quiet forest images, an ivory accordion photo album and a cobalt blue paper envelope. Warm ivory paper backdrop, navy graphite marks used sparingly, subtle teal accent, realistic paper fibers and gentle daylight shadows. Elegant gallery catalogue composition with clear negative space and carefully authored details. No text, lettering, numbers, interface, logos or watermark. Conceptual artwork, no people.",
+      "reused": false,
+      "export": "WebP with transparent outer gutter"
+    }
+  ],
+  "screenshots": {
+    "source": "Existing build/modernization Flutter widget preview exports",
+    "fixture_sources": [
+      "test/modernization_ui_test.dart",
+      "test/navigation_shell_test.dart"
+    ],
+    "notes": "Representative fixture snapshots with sample content, portable fonts and Flutter native-control fallbacks; reused without rerunning tests. They do not establish native UIKit rendering or current device behavior. Exported losslessly to WebP; screen contents unchanged.",
+    "photograph": {
+      "title": "Fronalpstock big",
+      "author": "Hannes Röst",
+      "source": "https://commons.wikimedia.org/wiki/File:Fronalpstock_big.jpg",
+      "license": "CC BY-SA 3.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+      "changes": "Original fixture uses a 960px thumbnail cropped by Flutter BoxFit.cover; screenshot depictions retain the photograph's license."
+    }
+  }
+}
