@@ -2,6 +2,7 @@ part of '../upload_controller.dart';
 
 extension _UploadQueue on UploadController {
   void _pumpQueue() {
+    if (_disposed) return;
     final configuredConcurrency = AppConfig.maxConcurrentTelegramUploads;
     final concurrentLimit = configuredConcurrency < 1
         ? 1
@@ -11,11 +12,19 @@ extension _UploadQueue on UploadController {
     final availableSlots = concurrentLimit - _runningLocalIds.length;
     if (availableSlots <= 0) return;
     final firstQueued = items
-        .where((i) => i.status == UploadStatus.queued)
+        .where(
+          (i) =>
+              i.status == UploadStatus.queued &&
+              !_runningLocalIds.contains(i.localId),
+        )
         .firstOrNull;
     final nextFolderId = firstQueued?.destinationFolderId ?? activeFolderId;
     final next = items
-        .where((i) => i.status == UploadStatus.queued)
+        .where(
+          (i) =>
+              i.status == UploadStatus.queued &&
+              !_runningLocalIds.contains(i.localId),
+        )
         .where((i) => (i.destinationFolderId ?? activeFolderId) == nextFolderId)
         .take(availableSlots)
         .toList();

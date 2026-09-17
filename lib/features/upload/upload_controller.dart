@@ -55,6 +55,7 @@ class UploadController extends ChangeNotifier {
     this._auth,
     this._telegram,
   ) {
+    _settings.addListener(_handleSettingsChanged);
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
       _handleConnectivityChanged,
     );
@@ -210,6 +211,7 @@ class UploadController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _settings.removeListener(_handleSettingsChanged);
     _connectivitySubscription?.cancel();
     _cancelCompletionTimers();
     _optimisticSyncTimer?.cancel();

@@ -231,14 +231,7 @@ extension _UploadPublicActions on UploadController {
 
   Future<void> _enableMobileDataUploads() async {
     await _settings.setUploadOnMobileData(true);
-    items = items
-        .map(
-          (i) => i.status == UploadStatus.waitingForWifi
-              ? i.copyWith(status: UploadStatus.queued)
-              : i,
-        )
-        .toList();
-    _notifyListeners();
-    _pumpQueue();
+    if (_disposed) return;
+    _resumeWaitingUploads();
   }
 }

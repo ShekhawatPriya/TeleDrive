@@ -90,3 +90,17 @@ retry, and cancellation contracts. Native thumbnail cancellation now covers
 connection/message lookup as well as an active TDLib download. A cancelled
 transfer ID must never be re-registered by late lookup completion. Cancelling
 one waiter must preserve other consumers of the same native file.
+
+## Resuming uploads after Wi-Fi waits
+
+The upload controller listens to the current mobile-data preference, so both the
+upload panel and Settings resume existing waiting items without reselecting files
+or replacing transfer IDs. Connectivity checks re-read permission after awaiting
+the platform; Wi-Fi or Ethernet satisfies Wi-Fi-only mode even if cellular is
+also reported. Queue scheduling excludes IDs already reserved by an in-flight
+worker, preventing repeated taps or concurrent wakeups from starting a duplicate
+batch. The settings listener is removed on disposal.
+
+`test/upload_network_resume_test.dart` exercises these boundaries with the real
+upload controller and fixture connectivity/metadata requests. It does not perform
+live Telegram transfers.

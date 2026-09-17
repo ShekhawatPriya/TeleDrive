@@ -84,7 +84,11 @@ extension _UploadControllerHelpers on UploadController {
   Future<bool> _isBlockedOnMobileData() async {
     if (_settings.state.uploadOnMobileData) return false;
     final connectivity = await Connectivity().checkConnectivity();
-    return connectivity.contains(ConnectivityResult.mobile);
+    // Permission may change while the platform lookup is in flight. A device
+    // can also report cellular and Wi-Fi together; Wi-Fi satisfies the policy.
+    return !_settings.state.uploadOnMobileData &&
+        !connectivity.contains(ConnectivityResult.wifi) &&
+        !connectivity.contains(ConnectivityResult.ethernet);
   }
 
   void _handleConnectivityChanged(List<ConnectivityResult> results) {
@@ -92,7 +96,16 @@ extension _UploadControllerHelpers on UploadController {
     final hasWifi =
         results.contains(ConnectivityResult.wifi) ||
         results.contains(ConnectivityResult.ethernet);
-    if (!hasWifi) return;
+    if (!hasWifi && !_settings.state.uploadOnMobileData) return;
+    _resumeWaitingUploads();
+  }
+
+  void _handleSettingsChanged() {
+    if (_settings.state.uploadOnMobileData) _resumeWaitingUploads();
+  }
+
+  void _resumeWaitingUploads() {
+    if (_disposed || !waitingForWifi) return;
     items = items
         .map(
           (i) => i.status == UploadStatus.waitingForWifi
