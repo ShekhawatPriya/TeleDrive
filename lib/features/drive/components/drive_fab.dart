@@ -79,20 +79,7 @@ class _AddToDriveSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SheetHeader(
-              title: 'Add to Drive',
-              trailing: CupertinoButton(
-                padding: EdgeInsets.zero,
-                minimumSize: const Size(44, 44),
-                onPressed: () => Navigator.pop(context),
-                child: Icon(
-                  CupertinoIcons.xmark_circle_fill,
-                  semanticLabel: 'Close actions',
-                  size: 24,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            ),
+            const SheetHeader(title: 'Add to Drive'),
             IosActionGroup(
               children: [
                 IosActionRow(

@@ -1,3 +1,5 @@
+import 'package:flutter/services.dart';
+import 'dart:ui' show SemanticsAction;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +9,71 @@ import 'package:flutter_m_fsdk/widgets/ios_menu/ios_menu_overlay.dart';
 import 'package:flutter_m_fsdk/widgets/ios_menu/ios_menu_models.dart';
 
 void main() {
+  for (final dismissal in ['drag', 'backdrop', 'escape', 'semantics']) {
+    testWidgets('iOS action sheet cancels through $dismissal without a cross', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      String? result = 'pending';
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(platform: TargetPlatform.iOS),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () async {
+                  result = await showAdaptiveSheet<String>(
+                    context: context,
+                    builder: (_) => const DriveActionSheet(
+                      title: 'Weekend plans',
+                      actions: [
+                        SheetActionItem(
+                          id: 'share',
+                          label: 'Share',
+                          icon: Icons.share,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(CupertinoIcons.xmark_circle_fill), findsNothing);
+      switch (dismissal) {
+        case 'drag':
+          await tester.fling(
+            find.text('Weekend plans'),
+            const Offset(0, 350),
+            1000,
+          );
+        case 'backdrop':
+          await tester.tapAt(const Offset(8, 80));
+        case 'escape':
+          await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        case 'semantics':
+          final node = tester.getSemantics(
+            find.bySemanticsLabel('Dismiss sheet'),
+          );
+          expect(
+            node.getSemanticsData().hasAction(SemanticsAction.dismiss),
+            isTrue,
+          );
+          node.owner!.performAction(node.id, SemanticsAction.dismiss);
+      }
+      await tester.pumpAndSettle();
+      expect(result, isNull);
+      expect(find.text('Weekend plans'), findsNothing);
+      semantics.dispose();
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   for (final keyboard in [0.0, 260.0]) {
     testWidgets(
       'iOS sheet corners clear the home indicator and keyboard $keyboard',

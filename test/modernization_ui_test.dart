@@ -590,6 +590,10 @@ void main() {
         theme.colorScheme.surface,
       );
       expect(theme.colorScheme.surface.computeLuminance(), greaterThan(.8));
+      expect(find.byTooltip('Close'), findsOneWidget);
+      await tester.tap(find.byTooltip('Close'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AccountBottomSheet), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );

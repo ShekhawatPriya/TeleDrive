@@ -101,7 +101,7 @@ geometry tests cover a 402-point iPhone with and without a 260-point keyboard.
 ## Compact action sheets
 
 Add to Drive uses one group of three 48-point-minimum action rows, with a compact
-17-point heading and explicit close control. Labels carry the choice; redundant
+17-point heading and a drag indicator. Labels carry the choice; redundant
 promotional copy and per-action descriptions are omitted. File/folder sheets use
 a 44-point identity preview and real metadata, followed by the same grouped rows
 for frequent actions, organization, and destructive actions. Share/Star no longer
@@ -119,3 +119,30 @@ with `flutter test --no-pub test/platform_folder_ui_test.dart --dart-define=WRIT
 320-point, 200% text/high-contrast layouts. Native UIKit and device interaction
 remain separate from these Flutter fixture checks. Shared sheet headings and
 Material action labels wrap at enlarged text sizes instead of truncating.
+
+
+## Sheet dismissal
+
+Dismissible iOS Add to Drive, file/folder action, create/rename, move-destination,
+and country-picker sheets omit the redundant header cross. Headers reclaim that
+space with balanced insets. Swipe down from the sheet header/drag indicator or tap
+the backdrop to cancel; the indicator also exposes a semantic dismiss action to
+assistive technology. Scrollable content and keyboard-safe geometry are retained.
+The Account/profile sheet explicitly keeps its native close button. Android
+controls, text-field clear buttons, transfer cancellation, and confirmation-alert
+choices retain their existing roles.
+
+This is an application-specific simplification informed by Apple's
+[Sheets](https://developer.apple.com/design/human-interface-guidelines/sheets),
+[Color](https://developer.apple.com/design/human-interface-guidelines/color), and
+[Dark Mode](https://developer.apple.com/design/human-interface-guidelines/dark-mode)
+guidance. The restrained appearance uses the existing semantic neutral surfaces,
+blue action accents, system typography, and subtle separators; no new palette or
+body glass is introduced.
+
+Regression checks cover header drag, backdrop, keyboard Escape and semantic
+dismissal, null results on cancellation, action results, and the profile close
+exception. The `platform_folder_ui_test.dart`, `ios_sheet_dismissal_test.dart`, and
+modernization suites generate light/dark and constrained large-text fixtures
+with `--dart-define=WRITE_UI_PREVIEWS=true`. Native VoiceOver and physical gesture feel remain
+device checks.

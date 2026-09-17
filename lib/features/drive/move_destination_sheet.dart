@@ -166,11 +166,13 @@ class _MoveDestinationSheetState extends ConsumerState<MoveDestinationSheet> {
               title: widget.title,
               leadingIcon: Icons.drive_file_move_outlined,
               leadingAccent: scheme.primary,
-              trailing: IconButton(
-                tooltip: 'Close',
-                icon: const Icon(Icons.close_rounded),
-                onPressed: () => Navigator.pop(context),
-              ),
+              trailing: Theme.of(context).platform == TargetPlatform.iOS
+                  ? null
+                  : IconButton(
+                      tooltip: 'Close',
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
+                    ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(

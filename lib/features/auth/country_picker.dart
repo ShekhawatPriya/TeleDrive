@@ -53,10 +53,12 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(
+            padding: EdgeInsets.fromLTRB(
               AppSpacing.lg,
               0,
-              AppSpacing.xs,
+              theme.platform == TargetPlatform.iOS
+                  ? AppSpacing.lg
+                  : AppSpacing.xs,
               0,
             ),
             child: Row(
@@ -67,11 +69,12 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                     style: theme.textTheme.titleLarge,
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Close',
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close_rounded),
-                ),
+                if (theme.platform != TargetPlatform.iOS)
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
               ],
             ),
           ),

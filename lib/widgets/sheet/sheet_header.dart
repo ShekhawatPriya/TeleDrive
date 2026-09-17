@@ -30,7 +30,12 @@ class SheetHeader extends StatelessWidget {
     final iconColor = leadingAccent ?? scheme.onSecondaryContainer;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(ios ? 20 : 24, 0, 12, ios ? 8 : 16),
+      padding: EdgeInsets.fromLTRB(
+        ios ? 20 : 24,
+        0,
+        ios && trailing == null ? 20 : 12,
+        ios ? 12 : 16,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

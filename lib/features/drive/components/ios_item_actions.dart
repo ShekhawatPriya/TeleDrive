@@ -46,7 +46,7 @@ class IosItemActions extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 12, 12),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: Row(
               children: [
                 if (folder != null || preview != null) ...[
@@ -89,17 +89,6 @@ class IosItemActions extends StatelessWidget {
                         ),
                       ],
                     ],
-                  ),
-                ),
-                CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(44, 44),
-                  onPressed: () => Navigator.pop(context),
-                  child: Icon(
-                    CupertinoIcons.xmark_circle_fill,
-                    semanticLabel: 'Close actions',
-                    size: 24,
-                    color: scheme.onSurfaceVariant,
                   ),
                 ),
               ],

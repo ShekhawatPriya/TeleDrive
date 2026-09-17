@@ -35,6 +35,8 @@ void main() {
   setUpAll(() async {
     for (final family in [
       'Inter',
+      'CupertinoSystemText',
+      'CupertinoSystemDisplay',
       'Roboto',
       '.SF Pro Text',
       '.SF Pro Display',
@@ -101,6 +103,7 @@ void main() {
             expect(find.text(label), findsOneWidget);
           }
           if (platform == TargetPlatform.iOS) {
+            expect(find.byIcon(CupertinoIcons.xmark_circle_fill), findsNothing);
             for (final row in find.byType(IosActionRow).evaluate()) {
               expect(
                 tester.getSize(find.byWidget(row.widget)).height,
@@ -123,8 +126,13 @@ void main() {
           await tester.tap(find.text('Create Folder'));
           await tester.pumpAndSettle();
           expect(find.byType(FolderEditor), findsOneWidget);
-          await tester.ensureVisible(find.byTooltip('Cancel'));
-          await tester.tap(find.byTooltip('Cancel'));
+          if (platform == TargetPlatform.iOS) {
+            expect(find.byTooltip('Cancel'), findsNothing);
+            await tester.tapAt(const Offset(8, 80));
+          } else {
+            await tester.ensureVisible(find.byTooltip('Cancel'));
+            await tester.tap(find.byTooltip('Cancel'));
+          }
           await tester.pumpAndSettle();
           expect(find.byType(FolderEditor), findsNothing);
           expect(tester.takeException(), isNull);
@@ -275,7 +283,11 @@ void main() {
         expect(result, 'Summer');
         await tester.tap(find.text('Open create'));
         await tester.pumpAndSettle();
-        await tester.tap(find.byTooltip('Cancel'));
+        if (platform == TargetPlatform.iOS) {
+          await tester.tapAt(const Offset(8, 80));
+        } else {
+          await tester.tap(find.byTooltip('Cancel'));
+        }
         await tester.pumpAndSettle();
         expect(result, isNull);
         await tester.tap(find.text('Open actions'));

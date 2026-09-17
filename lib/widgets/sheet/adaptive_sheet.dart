@@ -65,17 +65,23 @@ Future<T?> showAdaptiveSheet<T>({
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Container(
-                          width: 36,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant
-                                .withValues(alpha: .3),
-                            borderRadius: BorderRadius.circular(3),
+                      // Expose dismissal to assistive technology without adding
+                      // a second visible control beside the drag indicator.
+                      Semantics(
+                        label: 'Dismiss sheet',
+                        onDismiss: () => Navigator.pop(context),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: Container(
+                            width: 36,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant
+                                  .withValues(alpha: .3),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
                           ),
                         ),
                       ),

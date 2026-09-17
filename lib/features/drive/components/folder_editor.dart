@@ -121,14 +121,12 @@ class _FolderEditorState extends State<FolderEditor> {
                     ),
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Cancel',
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(
-                    ios ? CupertinoIcons.xmark : Icons.close_rounded,
-                    size: 20,
+                if (!ios)
+                  IconButton(
+                    tooltip: 'Cancel',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded, size: 20),
                   ),
-                ),
               ],
             ),
             const SizedBox(height: 16),

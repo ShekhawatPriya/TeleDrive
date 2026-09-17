@@ -91,6 +91,8 @@ void main() {
   setUpAll(() async {
     for (final family in [
       'Inter',
+      'CupertinoSystemText',
+      'CupertinoSystemDisplay',
       'Roboto',
       '.SF Pro Text',
       '.SF Pro Display',
