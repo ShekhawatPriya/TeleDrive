@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../models/drive_models.dart';
+import 'starred_badge.dart';
 import '../core/utils/file_type_detector.dart';
 
 class FolderCollectionCard extends StatelessWidget {
@@ -57,21 +58,7 @@ class FolderCollectionCard extends StatelessWidget {
                         Positioned(
                           right: -3,
                           bottom: 0,
-                          child: Container(
-                            width: 18,
-                            height: 18,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: scheme.surfaceContainerLow,
-                            ),
-                            child: const Icon(
-                              Icons.star_rounded,
-                              size: 14,
-                              color: Color(0xFFFFC533),
-                              semanticLabel: 'Starred',
-                            ),
-                          ),
+                          child: const StarredBadge(),
                         ),
                     ],
                   ),

@@ -1,3 +1,4 @@
+import 'starred_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -82,6 +83,12 @@ class FileCardTile extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (file.starred && !isFailed && !isUploading)
+                    const Positioned(
+                      right: 8,
+                      top: 8,
+                      child: StarredBadge(size: 28),
+                    ),
                   if (isUploading)
                     Positioned(
                       left: 8,

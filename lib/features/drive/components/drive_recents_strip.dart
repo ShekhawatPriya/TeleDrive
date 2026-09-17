@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import '../../../widgets/starred_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -85,26 +85,7 @@ class RecentFileCard extends StatelessWidget {
                       Positioned(
                         top: 12,
                         left: 12,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: scheme.surfaceContainerLow,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(
-                              theme.platform == TargetPlatform.iOS
-                                  ? CupertinoIcons.star_fill
-                                  : Icons.star_rounded,
-                              size: 16,
-                              color: theme.platform == TargetPlatform.iOS
-                                  ? CupertinoColors.systemBlue.resolveFrom(
-                                      context,
-                                    )
-                                  : scheme.primary,
-                            ),
-                          ),
-                        ),
+                        child: const StarredBadge(size: 28),
                       ),
                   ],
                 ),

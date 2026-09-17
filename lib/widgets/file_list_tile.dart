@@ -1,3 +1,4 @@
+import 'starred_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
@@ -104,15 +105,11 @@ class FileListTile extends StatelessWidget {
                       ),
               ),
             ),
-            if (ios && starred && !isFailed && !isUploading)
+            if (starred && !isFailed && !isUploading)
               Positioned(
                 right: 0,
                 bottom: 0,
-                child: Icon(
-                  CupertinoIcons.star_fill,
-                  size: 13,
-                  color: scheme.primary,
-                ),
+                child: StarredBadge(backgroundColor: scheme.surface),
               ),
             if (isFailed)
               Positioned.fill(
@@ -129,9 +126,9 @@ class FileListTile extends StatelessWidget {
                 ),
               ),
             if (isShared && !isOptimistic)
-              const Positioned(
+              Positioned(
                 right: 0,
-                bottom: 0,
+                bottom: starred ? 22 : 0,
                 child: SharedBadge(size: 14),
               ),
           ],
