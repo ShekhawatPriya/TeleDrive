@@ -15,6 +15,7 @@ migrate_working_dir/
 .docs/
 .rules/
 .kilo/
+.bin/
 
 # IntelliJ related
 *.iml
