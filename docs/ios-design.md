@@ -146,3 +146,52 @@ exception. The `platform_folder_ui_test.dart`, `ios_sheet_dismissal_test.dart`, 
 modernization suites generate light/dark and constrained large-text fixtures
 with `--dart-define=WRITE_UI_PREVIEWS=true`. Native VoiceOver and physical gesture feel remain
 device checks.
+
+## Upload presentation
+
+Upload details use an opaque, edge-attached panel with continuous top corners.
+The panel belongs to the current scaffold and ends at the navigation bar's actual
+upper edge. Tabs remain visible and usable at every expansion; no second safe-area
+inset creates an empty strip underneath. On screens without bottom navigation,
+home-indicator clearance is inside the surface. The collapsed upload/Add controls
+hide while details are open and return when minimized; the queue is preserved.
+
+One or two uploads open at the measured height of the header, actions and rows,
+including wrapped text and errors. Larger queues retain the spacious opening
+and lazy list. All sizes can expand to the large detent, scroll when constrained,
+and minimize by dragging down, system Back or the semantic dismiss action.
+Large text opens larger queues at the large detent. The iOS mobile-data action is
+a leading-aligned Cupertino text button with a minimum 48-point target; Android
+keeps its Material action.
+
+This nonmodal composition follows Apple's [sheet customization guidance](https://developer.apple.com/videos/play/wwdc2021/10063/),
+[layout guidance](https://developer.apple.com/design/human-interface-guidelines/layout)
+and [button guidance](https://developer.apple.com/design/human-interface-guidelines/buttons).
+The panel itself is Flutter; UIKit continues to own native tab rendering.
+
+Files use 40-point thumbnails, unboxed rows, inset hairline dividers, quiet
+completion marks, and thin progress lines aligned to the filename. Available
+local photos render during upload with a bounded decode and a file-type fallback.
+Preparation, upload, preview generation, waiting, cancellation and failure remain
+explicit. Cancel/dismiss targets are 48 points; errors wrap and the retry action
+keeps the controller's existing batch-retry behavior. Android retains Material
+surfaces and interaction feedback.
+
+The floating upload control pairs a small progress ring with a status and actual
+completed-file count. It shares the Add control's neutral surface, without an
+oversized cloud badge or a second edge-to-edge progress bar. The expanded view
+shows total size; phase-weighted progress is not labeled as bytes transferred.
+Both presentations derive their status from the same summary. Reduced motion
+stops preparation/preview spinners and presentation transitions.
+
+Generate populated transfer fixtures and exercise actions, header dragging,
+semantic dismissal, both themes/platforms, and 320-point/200% text layouts:
+
+```sh
+flutter test --no-pub test/upload_presentation_test.dart --dart-define=WRITE_UI_PREVIEWS=true
+dart run scripts/build_design_gallery.dart
+```
+
+The `upload-*` images under `build/modernization/` are Flutter fixtures with
+portable fonts and navigation fallbacks. UIKit rendering, live transfers and
+physical-device VoiceOver remain separate verification steps.

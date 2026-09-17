@@ -9,19 +9,32 @@ import '../../../drive/drive_controller.dart';
 import 'upload_collapsed_bar.dart';
 import '../upload_sheet.dart';
 
-/// Redesigned unified bottom overlay system.
-///
-/// Places the [UploadCollapsedBar] and [DriveFab] side-by-side on the same
-/// visual plane with consistent spacing, shadow depth, and border radii.
-/// Animates dynamically and transitions smoothly across screens.
-class BottomActionSystem extends ConsumerWidget {
+/// Keeps status controls beside Add, stacking concurrent operations so their
+/// text remains readable on compact screens.
+class BottomActionSystem extends ConsumerStatefulWidget {
   const BottomActionSystem({required this.showFab, this.parentId, super.key});
 
   final bool showFab;
   final String? parentId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BottomActionSystem> createState() => _BottomActionSystemState();
+}
+
+class _BottomActionSystemState extends ConsumerState<BottomActionSystem> {
+  bool _panelOpen = false;
+
+  Future<void> _openPanel() async {
+    setState(() => _panelOpen = true);
+    await showUploadPanel(context);
+    if (mounted) setState(() => _panelOpen = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_panelOpen) return const SizedBox.shrink();
+    final showFab = widget.showFab;
+    final parentId = widget.parentId;
     final summary = ref.watch(
       uploadControllerProvider.select((c) => c.summary),
     );
@@ -48,67 +61,69 @@ class BottomActionSystem extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.end,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (showDelete)
+              if (showDelete || showProgress)
                 Expanded(
-                  child: AnimatedSwitcher(
-                    duration: AppDurations.medium3,
-                    switchInCurve: AppEasing.emphasizedDecelerate,
-                    switchOutCurve: AppEasing.emphasizedAccelerate,
-                    transitionBuilder: (child, animation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(-0.05, 0),
-                            end: Offset.zero,
-                          ).animate(animation),
-                          child: child,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (showDelete)
+                        AnimatedSwitcher(
+                          duration: MediaQuery.disableAnimationsOf(context)
+                              ? Duration.zero
+                              : AppDurations.medium3,
+                          switchInCurve: AppEasing.emphasizedDecelerate,
+                          switchOutCurve: AppEasing.emphasizedAccelerate,
+                          transitionBuilder: (child, animation) {
+                            return FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: const Offset(-0.05, 0),
+                                  end: Offset.zero,
+                                ).animate(animation),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: const DeleteProgressPill(
+                            key: ValueKey('delete_progress_pill'),
+                          ),
                         ),
-                      );
-                    },
-                    child: const DeleteProgressPill(
-                      key: ValueKey('delete_progress_pill'),
-                    ),
+                      if (showDelete && showProgress)
+                        const SizedBox(height: AppSpacing.sm),
+                      if (showProgress)
+                        AnimatedSwitcher(
+                          duration: MediaQuery.disableAnimationsOf(context)
+                              ? Duration.zero
+                              : AppDurations.medium3,
+                          switchInCurve: AppEasing.emphasizedDecelerate,
+                          switchOutCurve: AppEasing.emphasizedAccelerate,
+                          transitionBuilder: (child, animation) {
+                            return FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: const Offset(-0.05, 0),
+                                  end: Offset.zero,
+                                ).animate(animation),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: UploadCollapsedBar(
+                            key: const ValueKey(
+                              'upload_progress_collapsed_bar',
+                            ),
+                            summary: summary,
+                            onTap: _openPanel,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-              if (showDelete && (showProgress || showFab))
+              if ((showProgress || showDelete) && showFab)
                 const SizedBox(width: AppSpacing.sm),
-              if (showProgress)
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: AppDurations.medium3,
-                    switchInCurve: AppEasing.emphasizedDecelerate,
-                    switchOutCurve: AppEasing.emphasizedAccelerate,
-                    transitionBuilder: (child, animation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(-0.05, 0),
-                            end: Offset.zero,
-                          ).animate(animation),
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: UploadCollapsedBar(
-                      key: const ValueKey('upload_progress_collapsed_bar'),
-                      summary: summary,
-                      onTap: () => showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        useSafeArea: true,
-                        useRootNavigator: true,
-                        backgroundColor: Colors.transparent,
-                        elevation: 0,
-                        showDragHandle: false,
-                        barrierColor: Colors.black.withValues(alpha: .35),
-                        builder: (_) => const UploadSheet(),
-                      ),
-                    ),
-                  ),
-                ),
-              if (showProgress && showFab) const SizedBox(width: AppSpacing.sm),
               if (showFab) DriveFab(parentId: parentId),
             ],
           ),

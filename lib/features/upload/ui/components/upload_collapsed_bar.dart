@@ -1,12 +1,12 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/file_type_detector.dart';
+import '../../../../widgets/adaptive_surface.dart';
 import '../../upload_models.dart';
-import 'upload_progress_bar.dart';
+import '../upload_summary_presentation.dart';
 
-/// Collapsed pill that floats above the FAB while uploads are running. Tapping
-/// expands the modal upload sheet.
+/// A single accessible target for reopening the transfer list.
 class UploadCollapsedBar extends StatelessWidget {
   const UploadCollapsedBar({
     required this.summary,
@@ -21,97 +21,94 @@ class UploadCollapsedBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-
-    final total = summary.itemCount;
-    final done = summary.uploadedCount;
-    final completed = total > 0 && done == total;
-    final waitingForWifi = summary.waitingForWifi;
-    final progress = summary.overallProgress;
-
-    final totalBytes = summary.totalBytes;
-    final completedBytes = summary.completedBytes;
-
-    return Material(
-      color: scheme.surfaceContainer,
-      surfaceTintColor: scheme.surfaceTint,
-      shadowColor: scheme.shadow,
-      elevation: AppElevation.level3,
-      borderRadius: AppRadii.lgR,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.sm,
-                AppSpacing.sm,
-                AppSpacing.md,
-                AppSpacing.sm,
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: scheme.primaryContainer,
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: Icon(
-                      completed
-                          ? Icons.check_rounded
-                          : waitingForWifi
-                          ? Icons.wifi_rounded
-                          : Icons.cloud_upload_outlined,
-                      size: 20,
-                      color: scheme.onPrimaryContainer,
+    final ios = theme.platform == TargetPlatform.iOS;
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          SizedBox.square(
+            dimension: 32,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (summary.progressing)
+                  Positioned.fill(
+                    child: CircularProgressIndicator(
+                      value: summary.overallProgress.clamp(0, 1),
+                      strokeWidth: 2.5,
+                      strokeCap: StrokeCap.round,
+                      backgroundColor: scheme.outlineVariant,
+                      color: scheme.primary,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          completed
-                              ? '$total ${total == 1 ? 'file' : 'files'} uploaded'
-                              : waitingForWifi
-                              ? 'Waiting for Wi-Fi'
-                              : 'Uploading $total ${total == 1 ? 'file' : 'files'}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: scheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '$done of $total · '
-                          '${formatFileSize(completedBytes)}/${formatFileSize(totalBytes)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.keyboard_arrow_up_rounded,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ],
-              ),
+                Icon(
+                  summary.complete
+                      ? (ios ? CupertinoIcons.check_mark : Icons.check_rounded)
+                      : summary.waitingForWifi
+                      ? (ios ? CupertinoIcons.wifi : Icons.wifi_rounded)
+                      : summary.needsAttention
+                      ? (ios
+                            ? CupertinoIcons.exclamationmark_circle
+                            : Icons.error_outline)
+                      : (ios
+                            ? CupertinoIcons.arrow_up
+                            : Icons.arrow_upward_rounded),
+                  size: summary.progressing ? 16 : 24,
+                  color: summary.needsAttention ? scheme.error : scheme.primary,
+                ),
+              ],
             ),
-            UploadProgressBar(value: completed ? 1 : progress, height: 4),
-          ],
-        ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(summary.statusTitle, style: theme.textTheme.titleSmall),
+                const SizedBox(height: 4),
+                Text(
+                  summary.stillGeneratingThumbs
+                      ? 'Finishing previews…'
+                      : summary.countLabel,
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Icon(
+            ios ? CupertinoIcons.chevron_up : Icons.keyboard_arrow_up_rounded,
+            size: 16,
+            color: scheme.onSurfaceVariant,
+          ),
+        ],
       ),
+    );
+    return Semantics(
+      button: true,
+      onTap: onTap,
+      label:
+          '${summary.statusTitle}. ${summary.countLabel}. '
+          '${summary.detailLabel}. Show upload details',
+      excludeSemantics: true,
+      child: ios
+          ? AdaptiveSurface(
+              radius: AppRadii.xl,
+              child: CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: onTap,
+                child: content,
+              ),
+            )
+          : Material(
+              color: scheme.surfaceContainer,
+              surfaceTintColor: Colors.transparent,
+              elevation: AppElevation.level2,
+              borderRadius: AppRadii.xlR,
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(onTap: onTap, child: content),
+            ),
     );
   }
 }

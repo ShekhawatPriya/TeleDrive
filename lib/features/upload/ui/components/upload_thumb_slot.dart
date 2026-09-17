@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../../../core/storage/thumbnail_cache_manager.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -11,7 +12,7 @@ import '../../upload_models.dart';
 
 /// Leading thumb slot in an upload card.
 ///
-///   active upload -> subtle file-type glyph on a muted surface
+///   active upload -> bounded local photo when available, otherwise a file glyph
 ///   uploaded, no thumb yet -> spinner over the glyph
 ///   uploaded + thumb ready -> image fades in
 class UploadThumbSlot extends StatelessWidget {
@@ -30,17 +31,24 @@ class UploadThumbSlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bg = Theme.of(context).colorScheme.surfaceContainerHighest;
-    final showSpinner = _isUploaded && _isPreviewable && !item.thumbnailReady;
-    final showThumb = _isUploaded && _isPreviewable && item.thumbnailReady;
+    final localImage =
+        detectFileKind(item.name, item.mimeType) == FileKind.image &&
+        item.path.startsWith('/');
+    final showSpinner =
+        _isUploaded && _isPreviewable && !item.thumbnailReady && !localImage;
+    final showThumb =
+        (_isUploaded && _isPreviewable && item.thumbnailReady) || localImage;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadii.md),
+      borderRadius: BorderRadius.circular(AppRadii.sm),
       child: Container(
         width: size,
         height: size,
         color: bg,
         child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : AppDurations.short4,
           switchInCurve: Curves.easeOut,
           child: showThumb
               ? _Thumb(item: item, key: ValueKey('thumb-${item.localId}'))
@@ -65,8 +73,14 @@ class _Glyph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.onSurface.withValues(alpha: .4);
-    return Center(child: Icon(_iconFor(kind), size: 20, color: color));
+    final theme = Theme.of(context);
+    return Center(
+      child: Icon(
+        _iconFor(kind, theme.platform == TargetPlatform.iOS),
+        size: 20,
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+    );
   }
 }
 
@@ -77,6 +91,7 @@ class _Spinner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tint = Theme.of(context).colorScheme.primary;
+    if (MediaQuery.disableAnimationsOf(context)) return _Glyph(kind: kind);
     return Stack(
       alignment: Alignment.center,
       children: [
@@ -102,13 +117,20 @@ class _Thumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final url = item.thumbnailUrl;
-    if (url == null)
+    final url =
+        item.thumbnailUrl ??
+        (detectFileKind(item.name, item.mimeType) == FileKind.image &&
+                item.path.startsWith('/')
+            ? item.path
+            : null);
+    if (url == null || url.isEmpty)
       return _Glyph(kind: detectFileKind(item.name, item.mimeType));
     final isLocal = url.startsWith('/') || url.contains(':\\');
     if (isLocal) {
       return Image.file(
         File(url),
+        width: double.infinity,
+        height: double.infinity,
         fit: BoxFit.cover,
         cacheWidth: 160,
         cacheHeight: 160,
@@ -118,7 +140,15 @@ class _Thumb extends StatelessWidget {
     }
     return CachedNetworkImage(
       cacheManager: TeleDriveThumbnailCacheManager.instance,
+      fadeInDuration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : AppDurations.short4,
+      fadeOutDuration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : AppDurations.short4,
       imageUrl: url,
+      width: double.infinity,
+      height: double.infinity,
       fit: BoxFit.cover,
       memCacheWidth: 160,
       memCacheHeight: 160,
@@ -130,7 +160,17 @@ class _Thumb extends StatelessWidget {
   }
 }
 
-IconData _iconFor(FileKind kind) {
+IconData _iconFor(FileKind kind, bool ios) {
+  if (ios) {
+    return switch (kind) {
+      FileKind.image => CupertinoIcons.photo,
+      FileKind.video => CupertinoIcons.play_rectangle,
+      FileKind.audio => CupertinoIcons.music_note_2,
+      FileKind.zip => CupertinoIcons.archivebox,
+      FileKind.code => CupertinoIcons.chevron_left_slash_chevron_right,
+      _ => CupertinoIcons.doc_text,
+    };
+  }
   return switch (kind) {
     FileKind.image => Icons.image_outlined,
     FileKind.video => Icons.play_circle_outline,

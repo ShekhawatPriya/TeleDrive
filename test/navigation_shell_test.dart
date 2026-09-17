@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_m_fsdk/main_shell.dart';
+import 'package:flutter_m_fsdk/features/upload/ui/upload_sheet.dart';
+import 'package:flutter_m_fsdk/features/upload/ui/components/upload_collapsed_bar.dart';
 import 'package:flutter_m_fsdk/features/share/share_controller.dart';
 import 'package:flutter_m_fsdk/features/auth/auth_controller.dart';
 import 'package:flutter_m_fsdk/features/drive/drive_controller.dart';
@@ -42,10 +44,32 @@ class _Backup extends ChangeNotifier implements GalleryBackupController {
 }
 
 class _Uploads extends ChangeNotifier implements UploadController {
+  _Uploads({this.active = false});
+  final bool active;
   @override
-  UploadSummary get summary => const UploadSummary(
-    sheetVisible: false,
-    itemCount: 0,
+  bool get sheetVisible => active;
+  @override
+  List<UploadItem> get items => active
+      ? [
+          UploadItem(
+            localId: 'one',
+            uploadClientId: 'one',
+            name: 'one.pdf',
+            size: 100,
+            mimeType: 'application/pdf',
+            path: '',
+            status: UploadStatus.waitingForWifi,
+          ),
+        ]
+      : [];
+  @override
+  UploadItemIdsSnapshot get itemIdsSnapshot =>
+      UploadItemIdsSnapshot(items.map((i) => i.localId).toList(), 0);
+
+  @override
+  UploadSummary get summary => UploadSummary(
+    sheetVisible: active,
+    itemCount: active ? 1 : 0,
     uploadedCount: 0,
     failedCount: 0,
     activeCount: 0,
@@ -60,13 +84,13 @@ class _Uploads extends ChangeNotifier implements UploadController {
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
-Widget _scope(Widget child) => ProviderScope(
+Widget _scope(Widget child, {bool uploading = false}) => ProviderScope(
   overrides: [
     shareControllerProvider.overrideWith((_) => _Shares()),
     authControllerProvider.overrideWith((_) => _Auth()),
     driveControllerProvider.overrideWith((_) => _Drive()),
     galleryBackupControllerProvider.overrideWith((_) => _Backup()),
-    uploadControllerProvider.overrideWith((_) => _Uploads()),
+    uploadControllerProvider.overrideWith((_) => _Uploads(active: uploading)),
   ],
   child: child,
 );
@@ -178,6 +202,55 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(FloatingActionButton), findsOneWidget);
   });
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    testWidgets(
+      'expanded uploads preserve actual shell tabs on ${platform.name}',
+      (tester) async {
+        tester.view.physicalSize = const Size(402, 874);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final router = _router();
+        addTearDown(router.dispose);
+        await tester.pumpWidget(
+          _scope(
+            MaterialApp.router(
+              theme: ThemeData(platform: platform),
+              routerConfig: router,
+            ),
+            uploading: true,
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byType(UploadCollapsedBar));
+        await tester.pumpAndSettle();
+        final panel = find.byKey(const ValueKey('upload-panel-surface'));
+        final nav = find.byType(FloatingPillNavigationBar);
+        expect(
+          tester.getRect(panel).bottom,
+          closeTo(tester.getRect(nav).top, 1),
+        );
+        await tester.drag(find.text('Uploads'), const Offset(0, -450));
+        await tester.pumpAndSettle();
+        await tester.tap(
+          find.descendant(of: nav, matching: find.text('Photos')),
+        );
+        await tester.pumpAndSettle();
+        expect(router.routeInformationProvider.value.uri.path, '/photos');
+        expect(find.byType(UploadSheet), findsOneWidget);
+        expect(
+          tester.getRect(panel).bottom,
+          closeTo(tester.getRect(nav).top, 1),
+        );
+        await tester.drag(find.text('Uploads'), const Offset(0, 1000));
+        await tester.pumpAndSettle();
+        expect(find.byType(UploadSheet), findsNothing);
+        expect(find.byType(UploadCollapsedBar), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('expanded shell uses a navigation rail', (tester) async {
     tester.view.physicalSize = const Size(1024, 768);
     tester.view.devicePixelRatio = 1;

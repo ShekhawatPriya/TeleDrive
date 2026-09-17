@@ -22,7 +22,12 @@ class UploadProgressBar extends StatelessWidget {
       child: SizedBox(
         height: height,
         child: LinearProgressIndicator(
-          value: indeterminate ? null : value.clamp(0.0, 1.0),
+          value: indeterminate && !MediaQuery.disableAnimationsOf(context)
+              ? null
+              : value.clamp(0.0, 1.0),
+          trackGap: 0,
+          stopIndicatorRadius: 0,
+          semanticsLabel: 'Upload progress',
           minHeight: height,
           backgroundColor: scheme.surfaceContainerHighest,
           valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
