@@ -5,6 +5,7 @@
 - Inspect `git status --short` before editing; preserve unrelated edits, deletions, and untracked files. Keep changes scoped to the task, and separate UI redesign from incidental cleanup.
 - Read the relevant implementation, tests, and docs before changing behavior. Resolve routine choices from those sources and complete implementation and verification without unnecessary confirmation.
 - This is a Flutter Android/iOS client. The backend is a separate workspace; do not infer backend implementation from frontend docs or expand into backend/deployment changes unless the task requires them.
+- For authorized backend/VPS work, use the backend repository's [operations handoff](https://github.com/ShekhawatPriya/TG-Cloud-Drive-BSDK/blob/main/docs/OPERATIONS-HANDOFF.md). The backend repository is canonical; do not hotfix `/opt/teledrive/app` and leave Git behind.
 - Keep this file concise and durable. Link to detailed docs instead of copying histories, test counts, machine-specific paths, or full design specifications.
 
 ## Design references and precedence

@@ -71,6 +71,12 @@ fallback when the pinned service becomes unreachable.
 See the backend workspace's `docs/VPS-GUIDE.md` for server layout, SSH, backups,
 recovery and migration evidence.
 
+The durable backend source/deployment handoff is maintained in the backend
+repository at [docs/OPERATIONS-HANDOFF.md](https://github.com/ShekhawatPriya/TG-Cloud-Drive-BSDK/blob/main/docs/OPERATIONS-HANDOFF.md).
+Future backend changes must be made there and synchronized with its tracked
+`scripts/vps.ps1` workflow; `/opt/teledrive/app` is a deployment target, not an
+independent source tree.
+
 Validation on September 16, 2026: static analysis clean, full suite 145 tests
 passed, 41 review previews generated, Android debug APK built and installed on
 the connected Samsung SM-X810 without clearing app data. Its process launched;
@@ -83,7 +89,7 @@ not available. Native iOS compilation was not performed on this Windows host.
 
 ## Follow-up: translucent navigation, login and item actions
 
-The iOS navigation surface now uses 16–32% tint and 14px backdrop blur, with its
+The iOS navigation surface now uses 16â€“32% tint and 14px backdrop blur, with its
 shadow clipped outside the material so it cannot darken the transparent center.
 Sheets retain a denser material. This is still a Flutter glass rendition, not
 UIKit system Liquid Glass or proof of iPhone GPU performance. The navigation
