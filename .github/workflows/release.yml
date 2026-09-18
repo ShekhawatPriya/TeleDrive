@@ -50,7 +50,22 @@ jobs:
             echo "::error::ENV_LOCAL secret is not set. See docs in this workflow."
             exit 1
           fi
-          printf '%s' "$ENV_LOCAL" > .env.local
+          # A developer GitHub token must never become a public client asset.
+          # Keep all other values intact; the release guard still rejects any
+          # server credentials before packaging.
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          lines = [
+              line for line in os.environ["ENV_LOCAL"].splitlines()
+              if not re.match(r"^\s*(?:export\s+)?GITHUB_TOKEN\s*=", line)
+          ]
+          Path(".env.local").write_text(
+              "\n".join(lines) + "\nGITHUB_TOKEN=\n", encoding="utf-8"
+          )
+          PY
 
       - name: Configure release signing
         env:
