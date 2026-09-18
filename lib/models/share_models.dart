@@ -58,6 +58,9 @@ class ShareItemSummary {
     required this.kind,
     required this.name,
     required this.relativePath,
+    this.parentPublicId,
+    this.sizeBytes,
+    this.mimeType,
     this.fileId,
     this.folderId,
     this.thumbnailUrl,
@@ -69,6 +72,9 @@ class ShareItemSummary {
   final ShareItemType kind;
   final String name;
   final String relativePath;
+  final String? parentPublicId;
+  final int? sizeBytes;
+  final String? mimeType;
   final String? fileId;
   final String? folderId;
   final String? thumbnailUrl;
@@ -84,6 +90,9 @@ class ShareItemSummary {
       kind: ShareItemTypeX.fromApi('${json['kind']}'),
       name: '${json['name'] ?? ''}',
       relativePath: '${json['relativePath'] ?? ''}',
+      parentPublicId: json['parentPublicId'] as String?,
+      sizeBytes: (json['sizeBytes'] as num?)?.toInt(),
+      mimeType: json['mimeType'] as String?,
       fileId: json['fileId'] == null ? null : '${json['fileId']}',
       folderId: json['folderId'] == null ? null : '${json['folderId']}',
       thumbnailUrl: json['thumbnailUrl'] as String?,
@@ -108,6 +117,7 @@ class Share {
     this.lastAccessedAt,
     this.coverThumbnailUrl,
     this.primaryName,
+    this.primaryKind,
     this.itemCount,
   });
 
@@ -124,7 +134,19 @@ class Share {
   final List<ShareItemSummary> items;
   final String? coverThumbnailUrl;
   final String? primaryName;
+  final ShareItemType? primaryKind;
+
+  String get displayName =>
+      primaryName ?? (items.isEmpty ? 'Shared collection' : items.first.name);
+  bool get isFolder =>
+      primaryKind == ShareItemType.folder ||
+      (primaryKind == null &&
+          items.where((item) => item.parentPublicId == null).length == 1 &&
+          items.first.kind == ShareItemType.folder);
   final int? itemCount;
+  int get fileCount =>
+      itemCount ??
+      items.where((item) => item.kind == ShareItemType.file).length;
 
   factory Share.fromJson(Map<String, dynamic> json) {
     final rawItems = json['items'] as List? ?? const [];
@@ -144,6 +166,9 @@ class Share {
           .toList(),
       coverThumbnailUrl: json['coverThumbnailUrl'] as String?,
       primaryName: json['primaryName'] as String?,
+      primaryKind: json['primaryKind'] == null
+          ? null
+          : ShareItemTypeX.fromApi('${json['primaryKind']}'),
       itemCount: (json['itemCount'] as num?)?.toInt(),
     );
   }
@@ -162,6 +187,9 @@ class Share {
       items: const [],
       coverThumbnailUrl: json['coverThumbnailUrl'] as String?,
       primaryName: '${json['primaryName'] ?? 'Untitled'}',
+      primaryKind: json['primaryKind'] == null
+          ? null
+          : ShareItemTypeX.fromApi('${json['primaryKind']}'),
       itemCount: (json['itemCount'] as num?)?.toInt() ?? 0,
     );
   }

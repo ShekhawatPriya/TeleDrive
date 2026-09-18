@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../models/share_models.dart';
+import 'share_contents.dart';
 
 /// A content-led share summary, with inline statistics and a plain activity list.
 class IosShareDetailContent extends StatelessWidget {
@@ -38,10 +39,7 @@ class IosShareDetailContent extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    share.primaryName ?? 'Shared collection',
-                    style: theme.textTheme.titleLarge,
-                  ),
+                  Text(share.displayName, style: theme.textTheme.titleLarge),
                   const SizedBox(height: 4),
                   Text(
                     share.isActive ? 'Active link' : 'Link inactive',
@@ -52,6 +50,8 @@ class IosShareDetailContent extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 24),
+        ShareContents(share: share),
         const SizedBox(height: 24),
         Text(
           share.url,

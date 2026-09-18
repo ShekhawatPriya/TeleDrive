@@ -36,7 +36,7 @@ class ShareListTile extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            share.primaryName ?? 'Untitled share',
+                            share.displayName,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.titleMedium?.copyWith(
@@ -45,7 +45,7 @@ class ShareListTile extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${share.itemCount ?? share.items.length} items · ${share.permission.label}',
+                            '${share.isFolder ? 'Folder · ' : ''}${share.fileCount} ${share.fileCount == 1 ? 'file' : 'files'} · ${share.permission.label}',
                             style: theme.textTheme.bodySmall,
                           ),
                         ],
@@ -121,7 +121,7 @@ class ShareCardTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    share.primaryName ?? 'Untitled share',
+                    share.displayName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleSmall,
@@ -185,59 +185,24 @@ class _Thumb extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    // Guess file type based on primary name
-    final name = share.primaryName?.toLowerCase() ?? '';
-    final hasExt = name.contains('.') && !name.endsWith('.');
-    final isFolder = !hasExt;
-
-    // Determine gradient colors and modern icon depending on predicted mime-type/folder
-    List<Color> gradientColors;
-    IconData iconData;
-
-    if (isFolder) {
-      gradientColors = [Colors.amber.shade400, Colors.orange.shade700];
-      iconData = Icons.folder_open_rounded;
-    } else if (name.endsWith('.pdf')) {
-      gradientColors = [Colors.red.shade400, Colors.red.shade700];
-      iconData = Icons.picture_as_pdf_outlined;
-    } else if (name.endsWith('.png') ||
-        name.endsWith('.jpg') ||
-        name.endsWith('.jpeg') ||
-        name.endsWith('.heic') ||
-        name.endsWith('.webp')) {
-      gradientColors = [Colors.purple.shade300, Colors.indigo.shade500];
-      iconData = Icons.image_outlined;
-    } else if (name.endsWith('.mp4') ||
-        name.endsWith('.mov') ||
-        name.endsWith('.avi') ||
-        name.endsWith('.mkv')) {
-      gradientColors = [Colors.teal.shade300, Colors.cyan.shade600];
-      iconData = Icons.play_circle_outline_rounded;
-    } else {
-      gradientColors = [
-        scheme.secondaryContainer,
-        scheme.secondary.withValues(alpha: 0.6),
-      ];
-      iconData = Icons.insert_drive_file_outlined;
-    }
-
-    Widget placeholder = Container(
+    final isFolder = share.isFolder;
+    final placeholder = Container(
       width: expand ? double.infinity : 52,
       height: expand ? double.infinity : 52,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: gradientColors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: scheme.secondaryContainer,
         borderRadius: expand ? BorderRadius.zero : AppRadii.smR,
       ),
       child: Center(
-        child: Icon(iconData, size: expand ? 36 : 24, color: Colors.white),
+        child: Icon(
+          isFolder ? Icons.folder_outlined : Icons.insert_drive_file_outlined,
+          size: expand ? 36 : 24,
+          color: scheme.onSecondaryContainer,
+        ),
       ),
     );
 
-    if (url == null || url.isEmpty) {
+    if (isFolder || url == null || url.isEmpty) {
       return placeholder;
     }
 

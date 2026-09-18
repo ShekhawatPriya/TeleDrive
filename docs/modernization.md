@@ -183,3 +183,24 @@ Regression coverage:
 `flutter test --no-pub test/startup_auth_test.dart test/upload_notification_initialization_test.dart`
 
 Reference: https://docs.flutter.dev/perf/ui-performance
+
+
+## Folder sharing
+
+Shared links retain the selected root's name and explicit file/folder kind on
+Android and iOS. Share details browse the captured hierarchy and show file type,
+size and relative path. The API supplies `primaryName`, `primaryKind` and
+`parentPublicId`; filenames are never used to guess whether an item is a folder.
+
+The public browser is served by the backend's `/s/{token}` route, not the marketing
+website. It provides breadcrumbs, nested and empty folders, file metadata,
+individual downloads and ZIP downloads of all or selected files/folders. ZIPs
+retain relative paths. Folder links are snapshots of available files at creation;
+subsequent additions require a new link. Oversized snapshots fail explicitly.
+Public recipients use a verified server proxy; private mobile bytes remain direct
+TDLib transfers. See the backend `docs/media-architecture.md` and
+`docs/FRONTEND_API_CONTRACT.md` for availability and download limits.
+
+Regression fixtures: `test/share_contents_test.dart` covers both platforms,
+light/dark, 320-point widths, 200% text, nested navigation and explicit item kinds.
+Generate screenshots with `--dart-define=WRITE_UI_PREVIEWS=true`.

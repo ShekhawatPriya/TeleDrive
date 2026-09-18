@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../models/share_models.dart';
+import 'share_contents.dart';
 import 'access_log_list.dart';
 import 'ios_share_detail_content.dart';
 
@@ -52,6 +53,8 @@ class ShareDetailBody extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
+        ShareContents(share: share),
+        const SizedBox(height: 16),
         // Link and access controls.
         Container(
           padding: const EdgeInsets.all(AppSpacing.md),
@@ -93,10 +96,7 @@ class ShareDetailBody extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              Text(
-                share.primaryName ?? 'Shared collection',
-                style: theme.textTheme.headlineSmall,
-              ),
+              Text(share.displayName, style: theme.textTheme.headlineSmall),
               const SizedBox(height: 8),
               Text(
                 '${share.permission.label} · ${share.isActive ? 'Active link' : 'Link inactive'}',
