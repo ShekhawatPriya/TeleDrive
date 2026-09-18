@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:photo_view/photo_view.dart';
 
 import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
@@ -11,6 +12,7 @@ class PhotoViewerPager extends StatefulWidget {
     required this.initialIndex,
     required this.onPageChanged,
     required this.onTapMedia,
+    this.onDimensions,
     super.key,
   });
 
@@ -18,6 +20,7 @@ class PhotoViewerPager extends StatefulWidget {
   final int initialIndex;
   final ValueChanged<int> onPageChanged;
   final VoidCallback onTapMedia;
+  final void Function(String id, Size dimensions)? onDimensions;
 
   @override
   State<PhotoViewerPager> createState() => _PhotoViewerPagerState();
@@ -35,6 +38,17 @@ class _PhotoViewerPagerState extends State<PhotoViewerPager> {
   }
 
   @override
+  void didUpdateWidget(covariant PhotoViewerPager oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialIndex != _index) {
+      _index = widget.initialIndex;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _controller.hasClients) _controller.jumpToPage(_index);
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();
@@ -42,24 +56,33 @@ class _PhotoViewerPagerState extends State<PhotoViewerPager> {
 
   @override
   Widget build(BuildContext context) {
-    return PageView.builder(
-      controller: _controller,
-      itemCount: widget.files.length,
-      onPageChanged: (i) {
-        setState(() => _index = i);
-        widget.onPageChanged(i);
-      },
-      itemBuilder: (context, i) {
-        final file = widget.files[i];
-        if (isVideoFile(file)) {
-          return PhotoViewerVideo(
+    return PhotoViewGestureDetectorScope(
+      axis: Axis.horizontal,
+      child: PageView.builder(
+        controller: _controller,
+        itemCount: widget.files.length,
+        onPageChanged: (i) {
+          setState(() => _index = i);
+          widget.onPageChanged(i);
+        },
+        itemBuilder: (context, i) {
+          final file = widget.files[i];
+          if (isVideoFile(file)) {
+            return PhotoViewerVideo(
+              key: ValueKey(file.id),
+              file: file,
+              isActive: i == _index,
+              onTap: widget.onTapMedia,
+            );
+          }
+          return PhotoViewerImage(
+            key: ValueKey(file.id),
             file: file,
-            isActive: i == _index,
             onTap: widget.onTapMedia,
+            onDimensions: (size) => widget.onDimensions?.call(file.id, size),
           );
-        }
-        return PhotoViewerImage(file: file, onTap: widget.onTapMedia);
-      },
+        },
+      ),
     );
   }
 }

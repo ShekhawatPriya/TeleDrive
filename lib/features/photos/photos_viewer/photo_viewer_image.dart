@@ -12,10 +12,16 @@ import '../../../models/drive_models.dart';
 import '../../profile/cache_controller.dart';
 
 class PhotoViewerImage extends ConsumerStatefulWidget {
-  const PhotoViewerImage({required this.file, required this.onTap, super.key});
+  const PhotoViewerImage({
+    required this.file,
+    required this.onTap,
+    this.onDimensions,
+    super.key,
+  });
 
   final DriveFile file;
   final VoidCallback onTap;
+  final ValueChanged<Size>? onDimensions;
 
   @override
   ConsumerState<PhotoViewerImage> createState() => _PhotoViewerImageState();
@@ -82,6 +88,7 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
   }
 
   void _attachProvider(ImageProvider provider) {
+    final sourceKey = _sourceKey;
     _cleanImageListener();
     _currentImageProvider = provider;
     _imageStream = provider.resolve(const ImageConfiguration());
@@ -89,6 +96,14 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
       (ImageInfo info, bool synchronousCall) {
         if (!mounted || _hasRefreshed) return;
         _hasRefreshed = true;
+        final dimensions = Size(
+          info.image.width.toDouble(),
+          info.image.height.toDouble(),
+        );
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && sourceKey == _sourceKey)
+            widget.onDimensions?.call(dimensions);
+        });
         ref.read(cacheControllerProvider).refreshCacheStats();
       },
       onError: (Object exception, StackTrace? stackTrace) {

@@ -12,6 +12,8 @@ import '../../auth/auth_controller.dart';
 import '../../file_viewer/file_open_action.dart';
 import '../photos_filter.dart';
 import 'photo_details_sheet.dart';
+import 'photo_viewer_stage.dart';
+import 'photo_viewer_filmstrip.dart';
 import 'photo_viewer_pager.dart';
 import 'photo_viewer_top_bar.dart';
 
@@ -32,14 +34,16 @@ class PhotoViewerScreen extends ConsumerStatefulWidget {
 class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
   bool _chromeVisible = true;
   bool _downloading = false;
-  bool _infoOpen = false;
+  final _stageKey = GlobalKey<PhotoViewerStageState>();
+  String? _currentId;
+  final Map<String, double> _aspectRatios = {};
   int? _currentIndex;
 
   @override
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.immersiveSticky,
+      SystemUiMode.edgeToEdge,
       overlays: [SystemUiOverlay.top],
     );
   }
@@ -62,223 +66,163 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
     if (files.isEmpty) {
       return _emptyScaffold(context, 'No media to display.');
     }
+    final retainedIndex = files.indexWhere((f) => f.id == _currentId);
     final initialIndex =
-        _currentIndex ??
+        (retainedIndex >= 0 ? retainedIndex : _currentIndex) ??
         () {
           final idx = files.indexWhere((f) => f.id == widget.startId);
           return idx < 0 ? 0 : idx;
         }();
     final index = initialIndex.clamp(0, files.length - 1);
     final current = files[index];
+    _currentId = current.id;
 
     return Scaffold(
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
-      body: Stack(
-        children: [
-          PhotoViewerPager(
-            files: files,
-            initialIndex: index,
-            onPageChanged: (i) {
-              setState(() => _currentIndex = i);
-              final id = files[i].id;
-              ref.read(driveControllerProvider).markAccessed(id);
-            },
-            onTapMedia: () => setState(() => _chromeVisible = !_chromeVisible),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: PhotoViewerTopBar(
-              file: current,
-              visible: _chromeVisible,
-              onBack: () => context.pop(),
-              onStar: () =>
-                  ref.read(driveControllerProvider).toggleStar(current.id),
-              onInfo: () => _openInfo(context, current),
-              onDownload: () => _download(context, current),
-              onMore: () => _openMore(context, current),
-              menuSections: (_) {
-                final owner = ref.read(authControllerProvider).user;
-                return [
-                  for (final destructive in [false, true])
-                    IosMenuSection([
-                      for (final action in DriveItemActions.fileActions(
-                        current,
-                      ).where((a) => a.destructive == destructive))
-                        IosMenuItem(
-                          label: action.label,
-                          destructive: action.destructive,
-                          onTap: () {
-                            if (!mounted) return;
-                            final active = ref
-                                .read(authControllerProvider)
-                                .user;
-                            if (active?.userId != owner?.userId ||
-                                active?.telegramId != owner?.telegramId)
-                              return;
-                            DriveItemActions.performFileAction(
-                              context,
-                              ref,
-                              current,
-                              action.id,
-                            );
+      body: PhotoViewerStage(
+        key: _stageKey,
+        mediaAspectRatio:
+            _aspectRatios[current.id] ??
+            ((current.widthPx ?? 0) > 0 && (current.heightPx ?? 0) > 0
+                ? current.widthPx! / current.heightPx!
+                : null),
+        detailsBuilder: (controller) => PhotoDetailsSheet(
+          file: current,
+          folderName: current.parentId == null
+              ? null
+              : drive.folder(current.parentId!)?.name,
+          scrollController: controller,
+          integrated: true,
+        ),
+        media: PhotoViewerPager(
+          files: files,
+          initialIndex: index,
+          onDimensions: (id, dimensions) {
+            if (!mounted || dimensions.height <= 0) return;
+            final ratio = dimensions.width / dimensions.height;
+            if (_aspectRatios[id] != ratio)
+              setState(() => _aspectRatios[id] = ratio);
+          },
+          onPageChanged: (i) {
+            setState(() {
+              _currentIndex = i;
+              _currentId = files[i].id;
+            });
+            final id = files[i].id;
+            ref.read(driveControllerProvider).markAccessed(id);
+          },
+          onTapMedia: () {
+            if (!(_stageKey.currentState?.isOpen ?? false))
+              setState(() => _chromeVisible = !_chromeVisible);
+          },
+        ),
+        header: PhotoViewerTopBar(
+          file: current,
+          visible: _chromeVisible,
+          onBack: () => context.pop(),
+          onStar: () =>
+              ref.read(driveControllerProvider).toggleStar(current.id),
+          onInfo: () => _openInfo(context, current),
+          onDownload: () => _download(context, current),
+          onMore: () => _openMore(context, current),
+          menuSections: (_) {
+            final owner = ref.read(authControllerProvider).user;
+            return [
+              for (final destructive in [false, true])
+                IosMenuSection([
+                  for (final action in DriveItemActions.fileActions(
+                    current,
+                  ).where((a) => a.destructive == destructive))
+                    IosMenuItem(
+                      label: action.label,
+                      destructive: action.destructive,
+                      onTap: () {
+                        if (!mounted) return;
+                        final active = ref.read(authControllerProvider).user;
+                        if (active?.userId != owner?.userId ||
+                            active?.telegramId != owner?.telegramId)
+                          return;
+                        DriveItemActions.performFileAction(
+                          context,
+                          ref,
+                          current,
+                          action.id,
+                        );
+                      },
+                    ),
+                ]),
+            ];
+          },
+        ),
+        footer: AnimatedOpacity(
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 180),
+          opacity: _chromeVisible ? 1 : 0,
+          child: IgnorePointer(
+            ignoring: !_chromeVisible,
+            child: ExcludeSemantics(
+              excluding: !_chromeVisible,
+              child: ColoredBox(
+                color: Theme.of(context).platform == TargetPlatform.android
+                    ? Colors.black
+                    : Colors.transparent,
+                child: SafeArea(
+                  top: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!(_stageKey.currentState?.isOpen ?? false))
+                        PhotoViewerFilmstrip(
+                          files: files,
+                          index: index,
+                          onSelected: (i) {
+                            setState(() {
+                              _currentIndex = i;
+                              _currentId = files[i].id;
+                            });
+                            drive.markAccessed(files[i].id);
                           },
                         ),
-                    ]),
-                ];
-              },
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: AnimatedOpacity(
-              duration: MediaQuery.disableAnimationsOf(context)
-                  ? Duration.zero
-                  : const Duration(milliseconds: 180),
-              opacity: _chromeVisible ? 1 : 0,
-              child: IgnorePointer(
-                ignoring: !_chromeVisible,
-                child: Theme.of(context).platform == TargetPlatform.iOS
-                    ? SafeArea(
-                        top: false,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                          child: PhotoViewerActions(
-                            file: current,
-                            onStar: () => ref
-                                .read(driveControllerProvider)
-                                .toggleStar(current.id),
-                            onInfo: () => _openInfo(context, current),
-                            onDownload: () => _download(context, current),
-                            onShare: () => DriveItemActions.performFileAction(
-                              context,
-                              ref,
-                              current,
-                              'share',
-                            ),
-                            onDelete: () => DriveItemActions.performFileAction(
-                              context,
-                              ref,
-                              current,
-                              'delete',
-                            ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
+                        child: PhotoViewerActions(
+                          file: current,
+                          infoSelected: _stageKey.currentState?.isOpen ?? false,
+                          onStar: () => drive.toggleStar(current.id),
+                          onInfo: () => _openInfo(context, current),
+                          onDownload: () => _download(context, current),
+                          onShare: () => DriveItemActions.performFileAction(
+                            context,
+                            ref,
+                            current,
+                            'share',
                           ),
-                        ),
-                      )
-                    : SafeArea(
-                        top: false,
-                        child: GestureDetector(
-                          onTap: () => _openInfo(context, current),
-                          onVerticalDragUpdate: (d) {
-                            if (d.primaryDelta != null &&
-                                d.primaryDelta! < -6) {
-                              _openInfo(context, current);
-                            }
-                          },
-                          behavior: HitTestBehavior.opaque,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.bottomCenter,
-                                end: Alignment.topCenter,
-                                colors: [Colors.black87, Colors.transparent],
-                              ),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                  ),
-                                  child: Text(
-                                    current.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(color: Colors.white),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${index + 1} of ${files.length}',
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                PhotoViewerActions(
-                                  file: current,
-                                  onStar: () => ref
-                                      .read(driveControllerProvider)
-                                      .toggleStar(current.id),
-                                  onInfo: () => _openInfo(context, current),
-                                  onDownload: () => _download(context, current),
-                                ),
-                                const SizedBox(height: 10),
-                                const Icon(
-                                  Icons.keyboard_arrow_up,
-                                  color: Colors.white70,
-                                  size: 20,
-                                ),
-                                const SizedBox(height: 2),
-                                const Text(
-                                  'Swipe up for details',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
+                          onDelete: () => DriveItemActions.performFileAction(
+                            context,
+                            ref,
+                            current,
+                            'delete',
                           ),
                         ),
                       ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-        ],
+        ),
+        onDetailsChanged: () {
+          if (mounted) setState(() => _chromeVisible = true);
+        },
       ),
     );
   }
 
-  Future<void> _openInfo(BuildContext context, DriveFile file) async {
-    if (_infoOpen) return;
-    _infoOpen = true;
-    try {
-      final folderName = file.parentId == null
-          ? null
-          : ref.read(driveControllerProvider).folder(file.parentId!)?.name;
-      await showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        useRootNavigator: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        showDragHandle: false,
-        builder: (_) => DraggableScrollableSheet(
-          initialChildSize: 0.55,
-          minChildSize: 0.3,
-          maxChildSize: 0.92,
-          expand: false,
-          builder: (_, controller) => PhotoDetailsSheet(
-            file: file,
-            folderName: folderName,
-            scrollController: controller,
-          ),
-        ),
-      );
-    } finally {
-      _infoOpen = false;
-    }
+  void _openInfo(BuildContext context, DriveFile file) {
+    _stageKey.currentState?.toggle();
   }
 
   Future<void> _download(BuildContext context, DriveFile file) async {

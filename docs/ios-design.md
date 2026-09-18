@@ -305,3 +305,9 @@ stays open and Delete becomes reachable. Native screenshots were inspected.
 Both simulator and unsigned production-device debug builds compiled; the device
 build uses `lib/main.dart`. Physical iPhone gesture feel and VoiceOver were not
 verified in this pass.
+
+## Photo viewer
+
+See [Photo viewer design](photo-viewer-design.md) for the current nonmodal
+inspector, thumbnail browsing, edge actions and grouped UIKit toolbar. This
+supersedes the earlier modal photo-information composition.
