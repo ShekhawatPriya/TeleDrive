@@ -11,9 +11,10 @@ import '../share_controller.dart';
 import 'share_result_view.dart';
 
 class CreateShareSheet extends ConsumerStatefulWidget {
-  const CreateShareSheet({required this.items, super.key});
+  const CreateShareSheet({required this.items, this.isCurrent, super.key});
 
   final List<ShareItemRequest> items;
+  final bool Function()? isCurrent;
 
   @override
   ConsumerState<CreateShareSheet> createState() => _CreateShareSheetState();
@@ -21,6 +22,7 @@ class CreateShareSheet extends ConsumerStatefulWidget {
 
 class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
   bool _busy = true;
+  bool _expired = false;
   String? _error;
   Share? _result;
 
@@ -30,7 +32,19 @@ class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _create());
   }
 
+  bool _checkCurrent() {
+    if (!mounted) return false;
+    if (widget.isCurrent?.call() ?? true) return true;
+    setState(() {
+      _expired = true;
+      _busy = false;
+      _result = null;
+    });
+    return false;
+  }
+
   Future<void> _create() async {
+    if (!_checkCurrent()) return;
     if (ref.read(appSettingsControllerProvider).state.confirmPublicShares) {
       final ok = await confirmAction(
         context,
@@ -44,17 +58,18 @@ class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
         return;
       }
     }
+    if (!_checkCurrent()) return;
     try {
       final share = await ref
           .read(shareControllerProvider)
           .createShare(items: widget.items);
-      if (!mounted) return;
+      if (!_checkCurrent()) return;
       setState(() {
         _result = share;
         _busy = false;
       });
     } catch (err) {
-      if (!mounted) return;
+      if (!_checkCurrent()) return;
       setState(() {
         _error = _readableError(err);
         _busy = false;
@@ -87,6 +102,17 @@ class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
   }
 
   Widget _buildBody() {
+    if (_expired)
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Account changed. Close and reopen sharing.'),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      );
     final result = _result;
     if (result != null) {
       return ShareResultView(
@@ -127,6 +153,7 @@ class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
   }
 
   Future<void> _copyLink() async {
+    if (!_checkCurrent()) return;
     final share = _result;
     if (share == null) return;
     await Clipboard.setData(ClipboardData(text: share.url));
@@ -137,6 +164,7 @@ class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
   }
 
   Future<void> _shareSheet() async {
+    if (!_checkCurrent()) return;
     final share = _result;
     if (share == null) return;
     final box = context.findRenderObject() as RenderBox?;

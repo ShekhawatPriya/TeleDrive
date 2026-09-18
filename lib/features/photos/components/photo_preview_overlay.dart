@@ -311,11 +311,7 @@ class _PreviewMenuCard extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _MenuRow(
-                label: file.shared ? 'Revoke' : 'Share',
-                icon: file.shared ? Icons.link_off : Icons.ios_share,
-                onTap: onShare,
-              ),
+              _MenuRow(label: 'Share', icon: Icons.ios_share, onTap: onShare),
               _hairline(scheme),
               _MenuRow(
                 label: 'Move',

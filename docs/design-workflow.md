@@ -144,3 +144,25 @@ See [Android Settings design](android-settings-design.md) for the current
 Material 3 Expressive treatment, primary research, country-flag correction,
 shared/starred indicators and accessible Settings layouts. This supersedes the
 earlier Android settings-group treatment above.
+
+## Account confirmation banners
+
+Backend sign-in does not display success over device authorization. Confirm the
+added/reconnected account only after local authorization succeeds and the pending
+account is committed. Entering the authorization route clears visible and queued
+banners; cancellation and failed verification do not announce success.
+
+Transient confirmations retain the avatar/card composition and the original
+bottom alignment beside Add, with 16-point side insets. Reserve the measured
+width of the visible Add button plus a 12-point gap. Without Add, the banner
+uses the full available width at the same row height; it never moves above the
+action row. Outside that row, use keyboard/safe-area clearance. Text wraps without a
+two-line truncation limit. iOS uses the existing bounded Flutter glass surface
+with a legibility tint and opaque high-contrast fallback; this is not native
+UIKit Liquid Glass. Android uses an opaque Material inverse surface without blur.
+Announcements use live-region semantics and reduced motion skips transitions.
+
+References: [Apple materials](https://developer.apple.com/design/human-interface-guidelines/materials)
+and [Android snackbars](https://developer.android.com/develop/ui/compose/components/snackbar).
+Fixture/regression checks: `test/premium_toast_test.dart`, including light/dark,
+320-point width, 200% text, high contrast and queued-confirmation cancellation.

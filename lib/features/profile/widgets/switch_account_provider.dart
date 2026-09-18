@@ -9,6 +9,7 @@ import '../../../models/account_vault.dart';
 import '../../../models/auth_user.dart';
 import '../../../widgets/premium_toast.dart';
 import '../../auth/auth_controller.dart';
+import '../../auth/tdlib_session_controller.dart';
 import '../../drive/drive_controller.dart';
 import '../../drive/drive_tab_commands.dart';
 import '../../search/search_controller.dart';
@@ -142,7 +143,9 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
       await _ref.read(authControllerProvider).switchToAccount(account.userId);
       await _resetAccountScopedState();
       if (context.mounted) {
-        final newActive = _ref.read(authControllerProvider).activeAccount;
+        final auth = _ref.read(authControllerProvider);
+        final tdlib = _ref.read(tdlibSessionControllerProvider);
+        final newActive = auth.activeAccount;
 
         Navigator.of(context, rootNavigator: true).maybePop();
         context.go('/drive');
@@ -152,6 +155,9 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
             message: 'Switched to ${newActive.displayName}.',
             avatarUser: newActive.toAuthUser(),
             afterNavigation: true,
+            canShow: () =>
+                auth.activeAccount?.userId == newActive.userId &&
+                !tdlib.requiresAuthorizationFlow,
           );
         }
       }
@@ -181,7 +187,9 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
         await _resetAccountScopedState();
       }
       if (context.mounted) {
-        final newActive = _ref.read(authControllerProvider).activeAccount;
+        final auth = _ref.read(authControllerProvider);
+        final tdlib = _ref.read(tdlibSessionControllerProvider);
+        final newActive = auth.activeAccount;
 
         Navigator.of(context, rootNavigator: true).maybePop();
         context.go(stillAuthenticated ? '/drive' : '/welcome');
@@ -192,6 +200,9 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
               message: 'Switched to ${newActive.displayName}.',
               avatarUser: newActive.toAuthUser(),
               afterNavigation: true,
+              canShow: () =>
+                  auth.activeAccount?.userId == newActive.userId &&
+                  !tdlib.requiresAuthorizationFlow,
             );
           } else if (!wasActive) {
             showAppPremiumToast(

@@ -1,17 +1,15 @@
 import 'package:flutter/widgets.dart';
 
-/// Distance in logical pixels from the screen's bottom edge to the bottom edge
-/// of the currently visible FAB. The bottom-anchored toast pill aligns its own
-/// bottom edge to this value so it sits at the same vertical level as the FAB
-/// regardless of which screen owns the FAB.
-final ValueNotifier<double> fabAnchorBottom = ValueNotifier<double>(0);
+/// Screen-space position of the floating action row and the width reserved for
+/// its visible Add button. A row without Add retains its vertical anchor.
+final fabAnchor = ValueNotifier<({double bottom, double reservedWidth})?>(null);
+Object? _anchorOwner;
 
-/// Wraps a region that owns the FAB and republishes [fabAnchorBottom] after
-/// each layout pass by measuring the actual rendered position of [child]. This
-/// is robust against route-specific Scaffold layouts that consume safe-area
-/// insets in different ways.
+/// Measures the row and optional Add button after layout.
 class FabAnchorPublisher extends StatefulWidget {
-  const FabAnchorPublisher({required this.child, super.key});
+  const FabAnchorPublisher({required this.child, this.fabKey, super.key});
+
+  final GlobalKey? fabKey;
 
   final Widget child;
 
@@ -38,6 +36,12 @@ class _FabAnchorPublisherState extends State<FabAnchorPublisher>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (identical(_anchorOwner, this)) {
+        _anchorOwner = null;
+        fabAnchor.value = null;
+      }
+    });
     super.dispose();
   }
 
@@ -51,16 +55,17 @@ class _FabAnchorPublisherState extends State<FabAnchorPublisher>
   void _publish() {
     final renderObject = _measureKey.currentContext?.findRenderObject();
     if (renderObject is! RenderBox || !renderObject.hasSize) return;
-    if (renderObject.size.height <= 0) return;
+    if (ModalRoute.of(context)?.isCurrent == false) return;
     final screenHeight = MediaQuery.sizeOf(context).height;
     final boxBottomGlobal = renderObject
         .localToGlobal(Offset(0, renderObject.size.height))
         .dy;
     final fromScreenBottom = screenHeight - boxBottomGlobal;
     if (fromScreenBottom < 0) return;
-    if ((fabAnchorBottom.value - fromScreenBottom).abs() > 0.5) {
-      fabAnchorBottom.value = fromScreenBottom;
-    }
+    final fab = widget.fabKey?.currentContext?.findRenderObject();
+    final width = fab is RenderBox && fab.hasSize ? fab.size.width : 0.0;
+    _anchorOwner = this;
+    fabAnchor.value = (bottom: fromScreenBottom, reservedWidth: width);
   }
 
   @override

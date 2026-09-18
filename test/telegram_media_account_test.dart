@@ -98,6 +98,7 @@ class _Transfer implements TelegramTransferService {
     Duration? timeout,
     String? variant,
     CancelToken? cancelToken,
+    ProgressCallback? onProgress,
   }) async {
     downloads++;
     return TelegramDownloadResult(file: File('/fixture'), ref: ref);

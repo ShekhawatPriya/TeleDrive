@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../widgets/premium_toast.dart';
 import '../drive/drive_controller.dart';
 import '../drive/drive_tab_commands.dart';
 import '../profile/storage_summary_controller.dart';
@@ -62,6 +63,7 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
   @override
   void initState() {
     super.initState();
+    dismissPremiumToast();
     _tdlibSub = ref.listenManual<TdlibSessionController>(
       tdlibSessionControllerProvider,
       (previous, next) {

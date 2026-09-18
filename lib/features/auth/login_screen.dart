@@ -60,6 +60,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _setUiState(VoidCallback change) => setState(change);
 
   @override
+  void initState() {
+    super.initState();
+    dismissPremiumToast();
+  }
+
+  @override
   void dispose() {
     _phone.dispose();
     _code.dispose();

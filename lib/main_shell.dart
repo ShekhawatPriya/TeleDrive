@@ -17,11 +17,11 @@ import 'features/profile/gallery_backup_asset_store.dart';
 import 'features/profile/gallery_backup_controller.dart';
 import 'features/search/search_controller.dart';
 import 'features/share/share_controller.dart';
+import 'features/share/share_flow.dart';
 import 'features/upload/ui/components/bottom_action_system.dart';
 import 'features/upload/ui/upload_panel_host.dart';
 import 'widgets/ios_more_menu.dart';
 import 'widgets/main_tab_menu_sections.dart';
-import 'widgets/fab_anchor.dart';
 import 'widgets/floating_pill_navigation_bar.dart';
 import 'widgets/teledrive_app_bar.dart';
 
@@ -80,8 +80,12 @@ class _MainShellState extends ConsumerState<MainShell>
     final selecting = ref
         .watch(selectionModeStateProvider)
         .isSelectModeForTab(index);
+    final sharing = ref.watch(
+      shareFlowStateProvider.select((state) => state.busy),
+    );
     final hideNavigation =
-        selecting && Theme.of(context).platform == TargetPlatform.iOS;
+        (selecting || sharing) &&
+        Theme.of(context).platform == TargetPlatform.iOS;
     // Read above Scaffold: its resized body removes the keyboard inset.
     final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return LayoutBuilder(
@@ -171,11 +175,9 @@ class _MainShellState extends ConsumerState<MainShell>
                   left: AppSpacing.md,
                   right: AppSpacing.md,
                   bottom: MediaQuery.paddingOf(context).bottom + AppSpacing.md,
-                  child: FabAnchorPublisher(
-                    child: BottomActionSystem(
-                      showFab: routeIndex == 0,
-                      parentId: null,
-                    ),
+                  child: BottomActionSystem(
+                    showFab: routeIndex == 0,
+                    parentId: null,
                   ),
                 ),
             ],

@@ -82,6 +82,7 @@ class TelegramMediaAccessService {
     String variant = 'original',
     Duration? timeout,
     CancelToken? cancelToken,
+    ProgressCallback? onProgress,
   }) async {
     if (file.uploadStatus != null && file.uploadStatus != 'available') {
       return null;
@@ -142,6 +143,7 @@ class TelegramMediaAccessService {
       timeout: timeout,
       variant: variant,
       cancelToken: cancelToken,
+      onProgress: onProgress,
     );
     _check(generation, cancelToken);
     return result.file;

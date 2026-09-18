@@ -13,6 +13,7 @@ class PhotoViewerPager extends StatefulWidget {
     required this.onPageChanged,
     required this.onTapMedia,
     this.onDimensions,
+    this.onZoomChanged,
     super.key,
   });
 
@@ -21,6 +22,7 @@ class PhotoViewerPager extends StatefulWidget {
   final ValueChanged<int> onPageChanged;
   final VoidCallback onTapMedia;
   final void Function(String id, Size dimensions)? onDimensions;
+  final void Function(String id, bool zoomed)? onZoomChanged;
 
   @override
   State<PhotoViewerPager> createState() => _PhotoViewerPagerState();
@@ -79,6 +81,8 @@ class _PhotoViewerPagerState extends State<PhotoViewerPager> {
             key: ValueKey(file.id),
             file: file,
             onTap: widget.onTapMedia,
+            onZoomChanged: (zoomed) =>
+                widget.onZoomChanged?.call(file.id, zoomed),
             onDimensions: (size) => widget.onDimensions?.call(file.id, size),
           );
         },

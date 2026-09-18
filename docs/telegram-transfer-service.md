@@ -104,3 +104,17 @@ batch. The settings listener is removed on disposal.
 `test/upload_network_resume_test.dart` exercises these boundaries with the real
 upload controller and fixture connectivity/metadata requests. It does not perform
 live Telegram transfers.
+
+
+## Original-file sharing progress
+
+`downloadToCache` accepts an optional byte-progress callback. It subscribes to
+its generated transfer ID before starting the native download and removes the
+subscription on completion, failure, timeout or cancellation. Existing callers
+remain unchanged. `TelegramMediaAccessService` forwards this callback while
+retaining authorization, identity, generation and cache-key checks.
+
+Copy sharing requests the original variant and never falls back to a thumbnail,
+preview, link, or backend transfer when direct access fails. Cancelling the
+preparation sheet cancels the active request and prevents the native share sheet
+from opening after a late completion. See [sharing](sharing.md).

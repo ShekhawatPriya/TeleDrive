@@ -6,12 +6,20 @@ import '../core/navigation/root_navigator.dart';
 import '../core/theme/app_theme.dart';
 import '../models/auth_user.dart';
 import 'fab_anchor.dart';
+import 'adaptive_surface.dart';
 import 'profile_avatar.dart';
 
-const double _kFabSize = 56;
 const double _kAvatarSize = 36;
 
 OverlayEntry? _activePremiumToast;
+int _toastGeneration = 0;
+
+/// Also invalidates confirmations queued before an authorization route opened.
+void dismissPremiumToast() {
+  _toastGeneration++;
+  _activePremiumToast?.remove();
+  _activePremiumToast = null;
+}
 
 void showPremiumToast(
   BuildContext context, {
@@ -46,13 +54,16 @@ void showAppPremiumToast({
   AuthUser? avatarUser,
   Duration duration = const Duration(milliseconds: 3500),
   bool afterNavigation = false,
+  bool Function()? canShow,
 }) {
   assert(
     icon != null || avatarUser != null,
     'showAppPremiumToast needs either an icon or an avatarUser.',
   );
 
+  final generation = _toastGeneration;
   void run() {
+    if (generation != _toastGeneration || !(canShow?.call() ?? true)) return;
     final overlay = rootNavigatorKey.currentState?.overlay;
     if (overlay == null) {
       debugPrint(
@@ -159,6 +170,12 @@ class _PremiumToastOverlayState extends State<_PremiumToastOverlay>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) _controller.value = 1;
+  }
+
+  @override
   void dispose() {
     _timer?.cancel();
     _controller.dispose();
@@ -168,21 +185,29 @@ class _PremiumToastOverlayState extends State<_PremiumToastOverlay>
   Future<void> _dismiss() async {
     if (_dismissed) return;
     _dismissed = true;
-    await _controller.reverse();
+    if (!MediaQuery.disableAnimationsOf(context)) {
+      await _controller.reverse();
+    }
     if (mounted) widget.onDismissed();
   }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<double>(
-      valueListenable: fabAnchorBottom,
+    return ValueListenableBuilder<({double bottom, double reservedWidth})?>(
+      valueListenable: fabAnchor,
       builder: (context, anchor, _) {
-        final fallback = MediaQuery.paddingOf(context).bottom + AppSpacing.md;
-        final bottom = anchor > 0 ? anchor : fallback;
+        final media = MediaQuery.of(context);
+        final fallback = media.padding.bottom + AppSpacing.md;
+        final bottom = media.viewInsets.bottom > 0
+            ? media.viewInsets.bottom + AppSpacing.md
+            : anchor?.bottom ?? fallback;
+        final reserved = media.viewInsets.bottom == 0
+            ? anchor?.reservedWidth ?? 0.0
+            : 0.0;
         return Positioned(
           bottom: bottom,
           left: AppSpacing.md,
-          right: AppSpacing.md + _kFabSize + AppSpacing.sm,
+          right: AppSpacing.md + (reserved > 0 ? reserved + AppSpacing.sm : 0),
           child: IgnorePointer(
             child: FadeTransition(
               opacity: _opacity,
@@ -190,8 +215,9 @@ class _PremiumToastOverlayState extends State<_PremiumToastOverlay>
                 position: _offset,
                 child: ScaleTransition(
                   scale: _scale,
-                  alignment: Alignment.bottomLeft,
+                  alignment: Alignment.bottomCenter,
                   child: _PremiumToastCard(
+                    key: const ValueKey('premium-toast-card'),
                     message: widget.message,
                     icon: widget.icon,
                     avatarUser: widget.avatarUser,
@@ -208,6 +234,7 @@ class _PremiumToastOverlayState extends State<_PremiumToastOverlay>
 
 class _PremiumToastCard extends StatelessWidget {
   const _PremiumToastCard({
+    super.key,
     required this.message,
     required this.icon,
     required this.avatarUser,
@@ -221,53 +248,50 @@ class _PremiumToastCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final brightness = theme.brightness;
-
-    return Material(
-      color: scheme.surfaceContainerHigh,
-      surfaceTintColor: scheme.surfaceTint,
-      shadowColor: scheme.shadow,
-      elevation: AppElevation.level3,
-      borderRadius: AppRadii.lgR,
-      clipBehavior: Clip.antiAlias,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: AppRadii.lgR,
-          border: Border.all(
-            color: scheme.outlineVariant.withValues(alpha: .64),
-          ),
-          boxShadow: AppElevation.shadowFor(AppElevation.level3, brightness),
-        ),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: _kFabSize),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.xs,
-              vertical: AppSpacing.xs,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _Leading(icon: icon, avatarUser: avatarUser),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    message,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurface,
-                      fontWeight: FontWeight.w500,
-                      height: 1.3,
-                    ),
-                  ),
+    final ios = theme.platform == TargetPlatform.iOS;
+    final content = Semantics(
+      liveRegion: true,
+      label: message,
+      excludeSemantics: true,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            _Leading(icon: icon, avatarUser: avatarUser),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: ios ? scheme.onSurface : scheme.onInverseSurface,
+                  fontWeight: FontWeight.w500,
+                  height: 1.3,
                 ),
-                const SizedBox(width: AppSpacing.xs),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
+    );
+    return Material(
+      type: MaterialType.transparency,
+      child: ios
+          ? AdaptiveSurface(
+              radius: 28,
+              role: GlassRole.navigation,
+              child: ColoredBox(
+                // Keep text legible over busy file thumbnails.
+                color: scheme.surfaceContainerHigh.withValues(alpha: .85),
+                child: content,
+              ),
+            )
+          : Material(
+              color: scheme.inverseSurface,
+              elevation: AppElevation.level3,
+              borderRadius: AppRadii.mdR,
+              clipBehavior: Clip.antiAlias,
+              child: content,
+            ),
     );
   }
 }

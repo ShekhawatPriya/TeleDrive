@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../models/drive_models.dart';
 import 'photo_date_grouping.dart';
@@ -40,12 +41,17 @@ class PhotosGridView extends StatefulWidget {
 }
 
 class _PhotosGridViewState extends State<PhotosGridView> {
+  late List<PhotoDateSection> _sections = groupByDate(widget.files);
+  DateTime _groupedDay = DateUtils.dateOnly(DateTime.now());
   final Map<String, GlobalKey> _tileKeys = <String, GlobalKey>{};
 
   @override
   void didUpdateWidget(covariant PhotosGridView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.files, widget.files)) {
+    final today = DateUtils.dateOnly(DateTime.now());
+    if (!listEquals(oldWidget.files, widget.files) || today != _groupedDay) {
+      _sections = groupByDate(widget.files);
+      _groupedDay = today;
       final ids = widget.files.map((file) => file.id).toSet();
       _tileKeys.removeWhere((id, _) => !ids.contains(id));
     }
@@ -56,7 +62,6 @@ class _PhotosGridViewState extends State<PhotosGridView> {
     return AnimatedBuilder(
       animation: widget.density,
       builder: (context, _) {
-        final sections = groupByDate(widget.files);
         return PhotoGridPinchDetector(
           density: widget.density,
           child: PhotoPanSelector(
@@ -82,7 +87,7 @@ class _PhotosGridViewState extends State<PhotosGridView> {
                         onTap: () => widget.onTileTap(widget.files.first.id),
                       ),
                     ),
-                  for (final section in sections)
+                  for (final section in _sections)
                     PhotoGridSection(
                       section: section,
                       columns: widget.density.columns,

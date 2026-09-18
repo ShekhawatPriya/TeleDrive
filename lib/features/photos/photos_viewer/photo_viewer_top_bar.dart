@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import '../../../models/drive_models.dart';
 import '../../../widgets/native_glass_button.dart';
 import 'native_photo_controls.dart';
-import '../../../core/theme/ios_palette.dart';
 import '../../../widgets/ios_more_menu.dart';
 
 /// Navigation stays above the image; photo actions live at the bottom edge.
@@ -150,30 +149,26 @@ class PhotoViewerActions extends StatelessWidget {
     }) => Semantics(
       selected: selected,
       child: IconButton(
+        style:
+            ios &&
+                (label == 'Share' || label == 'Download' || label == 'Delete')
+            ? IconButton.styleFrom(backgroundColor: const Color(0xFF252529))
+            : null,
         tooltip: label,
         onPressed: callback,
         constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-        icon: Icon(icon, color: Colors.white, size: 24),
+        icon: Icon(icon, color: Colors.white, size: ios ? 22 : 24),
       ),
     );
-    final share = ios
-        ? NativeGlassButton(
-            label: onShare == null ? 'Download' : 'Share',
-            symbol: onShare == null
-                ? 'square.and.arrow.down'
-                : 'square.and.arrow.up',
-            icon: onShare == null
+    final share = action(
+      onShare == null ? 'Download' : 'Share',
+      ios
+          ? (onShare == null
                 ? CupertinoIcons.square_arrow_down
-                : CupertinoIcons.share,
-            onPressed: onShare ?? onDownload,
-            white: true,
-            symbolSize: 24,
-          )
-        : action(
-            onShare == null ? 'Download' : 'Share',
-            onShare == null ? Icons.download_outlined : Icons.share_outlined,
-            onShare ?? onDownload,
-          );
+                : CupertinoIcons.share)
+          : (onShare == null ? Icons.download_outlined : Icons.share_outlined),
+      onShare ?? onDownload,
+    );
     final star = action(
       file.starred ? 'Remove star' : 'Add star',
       file.starred
@@ -190,38 +185,21 @@ class PhotoViewerActions extends StatelessWidget {
       onInfo,
       selected: infoSelected,
     );
-    return Row(
+    final fallback = Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         share,
         if (ios)
-          Theme(
-            data: Theme.of(context).copyWith(
-              brightness: Brightness.dark,
-              colorScheme: iosPalette(
-                ColorScheme.fromSeed(
-                  seedColor: Theme.of(context).colorScheme.primary,
-                  brightness: Brightness.dark,
-                ),
-              ),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFF252529),
+              borderRadius: BorderRadius.circular(32),
             ),
-            child: NativePhotoControls(
-              starred: file.starred,
-              infoSelected: infoSelected,
-              onStar: onStar,
-              onInfo: onInfo,
-              fallback: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: const Color(0xE6252529),
-                  borderRadius: BorderRadius.circular(32),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [star, info],
-                  ),
-                ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [star, info],
               ),
             ),
           )
@@ -230,20 +208,25 @@ class PhotoViewerActions extends StatelessWidget {
           info,
         ],
         if (onDelete != null)
-          if (ios)
-            NativeGlassButton(
-              label: 'Delete',
-              symbol: 'trash',
-              icon: CupertinoIcons.trash,
-              onPressed: onDelete,
-              white: true,
-              symbolSize: 24,
-            )
-          else
-            action('Delete', Icons.delete_outline, onDelete!)
+          action(
+            'Delete',
+            ios ? CupertinoIcons.trash : Icons.delete_outline,
+            onDelete!,
+          )
         else
           const SizedBox(width: 48),
       ],
+    );
+    if (!ios) return fallback;
+    return NativePhotoControls(
+      starred: file.starred,
+      infoSelected: infoSelected,
+      onStar: onStar,
+      onInfo: onInfo,
+      onShare: onShare ?? onDownload,
+      onDelete: onDelete,
+      download: onShare == null,
+      fallback: fallback,
     );
   }
 }

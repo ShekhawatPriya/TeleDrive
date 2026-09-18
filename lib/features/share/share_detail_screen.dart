@@ -132,9 +132,9 @@ class _ShareDetailScreenState extends ConsumerState<ShareDetailScreen> {
       return IosPage(
         title: 'Share',
         trailing: NativeGlassButton(
-          label: 'Revoke',
-          symbol: 'xmark.circle',
-          icon: CupertinoIcons.link,
+          label: 'Revoke link',
+          symbol: 'trash',
+          icon: CupertinoIcons.trash,
           onPressed: share == null || _busy ? null : _revoke,
         ),
         children: [
@@ -163,7 +163,7 @@ class _ShareDetailScreenState extends ConsumerState<ShareDetailScreen> {
         title: Text(share?.primaryName ?? 'Share'),
         actions: [
           IconButton(
-            tooltip: 'Revoke',
+            tooltip: 'Revoke link',
             onPressed: share == null || _busy ? null : _revoke,
             icon: const Icon(Icons.link_off_outlined),
           ),

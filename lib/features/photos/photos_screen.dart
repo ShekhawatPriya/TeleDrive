@@ -8,7 +8,6 @@ import '../../widgets/empty_state.dart';
 import '../../widgets/teledrive_app_bar.dart';
 import '../drive/components/drive_item_actions.dart';
 import '../drive/components/selection_mode_mixin.dart';
-import '../drive/components/share_helpers.dart';
 import '../drive/drive_controller.dart';
 import '../drive/drive_tab_commands.dart';
 import '../search/search_controller.dart';
@@ -240,18 +239,12 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
       context: context,
       sourceRect: anchor,
       file: file,
-      onShare: () {
-        if (file.shared) {
-          revokeFileShares(context, ref, file);
-        } else {
-          DriveBulkActions.share(
-            context,
-            ref,
-            fileIds: {fileId},
-            folderIds: const {},
-          );
-        }
-      },
+      onShare: () => DriveBulkActions.share(
+        context,
+        ref,
+        fileIds: {fileId},
+        folderIds: const {},
+      ),
       onMove: () => DriveBulkActions.move(
         context,
         ref,

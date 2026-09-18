@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Reuses the existing UIKit toolbar bridge for one system-glass action group.
+/// Reuses the existing UIKit toolbar bridge for the complete photo action bar.
 /// The bridge receives symbols and action labels only; media stays in Flutter.
 class NativePhotoControls extends StatefulWidget {
   const NativePhotoControls({
@@ -10,10 +10,15 @@ class NativePhotoControls extends StatefulWidget {
     required this.infoSelected,
     required this.onStar,
     required this.onInfo,
+    required this.onShare,
+    this.onDelete,
+    this.download = false,
     required this.fallback,
   });
   final bool starred, infoSelected;
-  final VoidCallback onStar, onInfo;
+  final VoidCallback onStar, onInfo, onShare;
+  final VoidCallback? onDelete;
+  final bool download;
   final Widget fallback;
   @override
   State<NativePhotoControls> createState() => _NativePhotoControlsState();
@@ -24,18 +29,28 @@ class _NativePhotoControlsState extends State<NativePhotoControls> {
   bool _available = false;
   Map<String, Object> get _configuration => {
     'dark': true,
+    'photoViewer': true,
     'enabled': true,
     'selectAll': false,
     'clear': false,
     'actions': [
       {
+        'label': widget.download ? 'Download' : 'Share',
+        'symbol': widget.download
+            ? 'square.and.arrow.down'
+            : 'square.and.arrow.up',
+      },
+      {
         'label': widget.starred ? 'Remove star' : 'Add star',
         'symbol': widget.starred ? 'star.fill' : 'star',
+        'selected': widget.starred.toString(),
       },
       {
         'label': 'Info',
         'symbol': widget.infoSelected ? 'info.circle.fill' : 'info.circle',
+        'selected': widget.infoSelected.toString(),
       },
+      if (widget.onDelete != null) {'label': 'Delete', 'symbol': 'trash'},
     ],
   };
   @override
@@ -76,7 +91,7 @@ class _NativePhotoControlsState extends State<NativePhotoControls> {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: 128,
+    width: double.infinity,
     height: 48,
     child: !_available
         ? widget.fallback
@@ -88,6 +103,9 @@ class _NativePhotoControlsState extends State<NativePhotoControls> {
               _channel = MethodChannel('teledrive/selection-toolbar/$id');
               _channel!.setMethodCallHandler((call) async {
                 if (!mounted || call.method != 'action') return;
+                if (call.arguments == 'Share' || call.arguments == 'Download')
+                  widget.onShare();
+                if (call.arguments == 'Delete') widget.onDelete?.call();
                 if (call.arguments == 'Info') widget.onInfo();
                 if (call.arguments == 'Add star' ||
                     call.arguments == 'Remove star')

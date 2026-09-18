@@ -12,9 +12,11 @@ class PhotoViewerStage extends StatefulWidget {
     required this.detailsBuilder,
     required this.onDetailsChanged,
     this.mediaAspectRatio,
+    this.mediaZoomed = false,
   });
   final Widget media, header, footer;
   final double? mediaAspectRatio;
+  final bool mediaZoomed;
   final Widget Function(ScrollController) detailsBuilder;
   final VoidCallback onDetailsChanged;
   @override
@@ -26,17 +28,21 @@ class PhotoViewerStageState extends State<PhotoViewerStage>
   final _controller = DraggableScrollableController();
   late final AnimationController _motion;
   double _target = 0;
+  double _height = 1;
+  bool _draggingMedia = false;
+  Widget? _detailsContent;
   ScrollController? _detailsScroll;
   double _extent = 0;
-  double _peekExtent = .55;
-  bool get isOpen => _extent > .05;
+  static const _peekExtent = .55;
+  double _maxExtent = .94;
+  bool get isOpen => _extent > .001;
   @override
   void initState() {
     super.initState();
     _motion = AnimationController.unbounded(vsync: this)
       ..addListener(() {
         if (_controller.isAttached)
-          _controller.jumpTo(_motion.value.clamp(0, .94));
+          _controller.jumpTo(_motion.value.clamp(0, _maxExtent));
       });
     _controller.addListener(_changed);
   }
@@ -70,6 +76,54 @@ class PhotoViewerStageState extends State<PhotoViewerStage>
     }
   }
 
+  void _beginDrag(DragStartDetails _) {
+    _draggingMedia = true;
+    _motion.stop();
+    // Cancel sheet-owned inertia before handing ownership to the handle/media.
+    if (_controller.isAttached) _controller.jumpTo(_extent);
+  }
+
+  void _drag(DragUpdateDetails details) {
+    if (!_controller.isAttached) return;
+    _controller.jumpTo(
+      (_extent - details.delta.dy / _height).clamp(0, _maxExtent),
+    );
+  }
+
+  void _endDrag(DragEndDetails details) {
+    _draggingMedia = false;
+    final velocity = -(details.primaryVelocity ?? 0);
+    if (_extent * _height < 12 && velocity <= 0) {
+      _settle(0);
+    } else if (velocity.abs() >= 50 &&
+        !MediaQuery.disableAnimationsOf(context)) {
+      _target = _extent;
+      _motion.animateWith(
+        _InspectorInertia(
+          ClampingScrollSimulation(
+            position: _extent * _height,
+            velocity: velocity,
+          ),
+          height: _height,
+          maxExtent: _maxExtent,
+        ),
+      );
+    }
+    // A slow release stays where the user put it. There is no middle snap trap.
+  }
+
+  void _cancelDrag() {
+    if (!_draggingMedia) return;
+    _draggingMedia = false;
+    if (_extent * _height < 12) _settle(0);
+  }
+
+  @override
+  void didUpdateWidget(covariant PhotoViewerStage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _detailsContent = null;
+  }
+
   @override
   void dispose() {
     _motion.dispose();
@@ -86,50 +140,40 @@ class PhotoViewerStageState extends State<PhotoViewerStage>
     },
     child: LayoutBuilder(
       builder: (context, bounds) {
+        _height = bounds.maxHeight;
         final ratio = widget.mediaAspectRatio;
         final imageHeight = ratio == null || ratio <= 0
             ? bounds.maxHeight
             : math.min(bounds.maxHeight, bounds.maxWidth / ratio);
-        _peekExtent =
-            (1 -
-                    math.min(imageHeight, bounds.maxHeight * .45) /
-                        bounds.maxHeight)
-                .clamp(.55, .90);
-        // Consume the lower letterbox first. Once the inspector reaches the
-        // visible image, their edges travel together without an empty gap.
-        final lowerLetterbox = (bounds.maxHeight - imageHeight) / 2;
-        final mediaOffset = -math.max(
-          0.0,
-          bounds.maxHeight * _extent - lowerLetterbox,
+        // Detents belong to the viewport, never to an image's dimensions.
+        // Keep the decoded PhotoView layout stable and transform its paint only.
+        final safeTop = MediaQuery.paddingOf(context).top;
+        _maxExtent = (1 - (safeTop + 12) / bounds.maxHeight).clamp(.55, .94);
+        final panelTop = bounds.maxHeight * (1 - _extent);
+        final topInset = safeTop * (_extent / _peekExtent).clamp(0, 1);
+        final available = math.max(0.0, panelTop - topInset);
+        final mediaScale = math.min(1.0, available / imageHeight);
+        final mediaCenter = math.min(
+          bounds.maxHeight / 2,
+          panelTop - imageHeight * mediaScale / 2,
         );
+        final mediaOffset = mediaCenter - bounds.maxHeight / 2;
         return Stack(
           children: [
             Positioned.fill(
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
-                onVerticalDragStart: (_) => _motion.stop(),
-                onVerticalDragUpdate: (d) {
-                  if (_controller.isAttached)
-                    _controller.jumpTo(
-                      (_extent - d.delta.dy / bounds.maxHeight).clamp(0, .94),
-                    );
-                },
-                onVerticalDragEnd: (d) {
-                  final projected =
-                      _extent -
-                      (d.primaryVelocity ?? 0) / bounds.maxHeight * .15;
-                  _settle(
-                    projected < .18
-                        ? 0
-                        : projected > (_peekExtent + .94) / 2
-                        ? .94
-                        : _peekExtent,
-                    velocity: -(d.primaryVelocity ?? 0) / bounds.maxHeight,
-                  );
-                },
+                onVerticalDragStart: widget.mediaZoomed ? null : _beginDrag,
+                onVerticalDragUpdate: widget.mediaZoomed ? null : _drag,
+                onVerticalDragCancel: widget.mediaZoomed ? null : _cancelDrag,
+                onVerticalDragEnd: widget.mediaZoomed ? null : _endDrag,
                 child: Transform.translate(
                   offset: Offset(0, mediaOffset),
-                  child: widget.media,
+                  child: Transform.scale(
+                    key: const ValueKey('viewer-media-transform'),
+                    scale: mediaScale,
+                    child: RepaintBoundary(child: widget.media),
+                  ),
                 ),
               ),
             ),
@@ -139,9 +183,12 @@ class PhotoViewerStageState extends State<PhotoViewerStage>
               right: 0,
               child: IgnorePointer(
                 ignoring: isOpen,
-                child: Opacity(
-                  opacity: (1 - _extent / .25).clamp(0, 1),
-                  child: widget.header,
+                child: ExcludeSemantics(
+                  excluding: isOpen,
+                  child: Opacity(
+                    opacity: (1 - _extent / .25).clamp(0, 1),
+                    child: widget.header,
+                  ),
                 ),
               ),
             ),
@@ -149,15 +196,57 @@ class PhotoViewerStageState extends State<PhotoViewerStage>
               controller: _controller,
               initialChildSize: 0,
               minChildSize: 0,
-              maxChildSize: .94,
-              snap: true,
-              snapSizes: [_peekExtent],
+              maxChildSize: _maxExtent,
+              snap: false,
               shouldCloseOnMinExtent: false,
               builder: (context, scroll) {
                 _detailsScroll = scroll;
                 return Listener(
                   onPointerDown: (_) => _motion.stop(),
-                  child: widget.detailsBuilder(scroll),
+                  child: ColoredBox(
+                    key: const ValueKey('viewer-details-surface'),
+                    color: Theme.of(context).colorScheme.surface,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) => Column(
+                        children: [
+                          SizedBox(
+                            height: math.min(44, constraints.maxHeight),
+                            child: Semantics(
+                              label: 'Resize photo information',
+                              onIncrease: () => _settle(_maxExtent),
+                              onDecrease: () => _settle(0),
+                              child: GestureDetector(
+                                key: const ValueKey('viewer-details-handle'),
+                                behavior: HitTestBehavior.opaque,
+                                onVerticalDragStart: _beginDrag,
+                                onVerticalDragUpdate: _drag,
+                                onVerticalDragEnd: _endDrag,
+                                onVerticalDragCancel: _cancelDrag,
+                                child: Center(
+                                  child: Container(
+                                    width: 36,
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant
+                                          .withValues(alpha: .4),
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: _detailsContent ??= widget.detailsBuilder(
+                              scroll,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 );
               },
             ),
@@ -167,4 +256,25 @@ class PhotoViewerStageState extends State<PhotoViewerStage>
       },
     ),
   );
+}
+
+/// Keep the same pixel-based ballistic motion as the scroll view, while the
+/// stage controller stores a viewport fraction. Stop at either physical edge.
+class _InspectorInertia extends Simulation {
+  _InspectorInertia(
+    this.scroll, {
+    required this.height,
+    required this.maxExtent,
+  });
+  final Simulation scroll;
+  final double height, maxExtent;
+  @override
+  double x(double time) => (scroll.x(time) / height).clamp(0, maxExtent);
+  @override
+  double dx(double time) => scroll.dx(time) / height;
+  @override
+  bool isDone(double time) =>
+      scroll.isDone(time) ||
+      (time > 0 &&
+          (scroll.x(time) <= 0 || scroll.x(time) >= maxExtent * height));
 }

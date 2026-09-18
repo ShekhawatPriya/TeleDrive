@@ -95,6 +95,44 @@ void main() {
     );
   });
 
+  test(
+    'download forwards byte progress and removes the listener after completion',
+    () async {
+      final updates = <(int, int)>[];
+      final pending = service.downloadToCache(
+        const TelegramMediaRef(variant: 'original', tdlibFileId: 1),
+        filename: 'photo.jpg',
+        cacheKey: 'original:scope:1',
+        onProgress: (done, total) => updates.add((done, total)),
+      );
+      await Future<void>.delayed(Duration.zero);
+      final id = calls
+          .singleWhere((call) => call.method == 'downloadToFile')
+          .arguments['transferId'];
+      Future<void> event(int done) async {
+        await messenger.handlePlatformMessage(
+          'test/thumbnail-events',
+          const StandardMethodCodec().encodeSuccessEnvelope({
+            'type': 'progress',
+            'transferId': id,
+            'state': 'downloading',
+            'bytesDone': done,
+            'totalBytes': 1000,
+          }),
+          (_) {},
+        );
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      await event(400);
+      expect(updates, [(400, 1000)]);
+      download.complete({'filePath': '/complete'});
+      await pending;
+      await event(900);
+      expect(updates, [(400, 1000)]);
+    },
+  );
+
   test('an already cancelled request never enters the native bridge', () async {
     final token = CancelToken()..cancel();
     await expectLater(

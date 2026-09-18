@@ -1,5 +1,8 @@
 ![1781243447854](image/ios-build/1781243447854.png)# iOS Build Guide
 
+For everyday installation and hot reload, start with
+[Run TeleDrive on your own phone](run-on-your-phone.md).
+
 The iOS port is a 1:1 replica of the Android native layer: a Swift TDLib
 bridge behind MethodChannel `teledrive/tdlib` + EventChannel
 `teledrive/tdlib/events`, and a PhotoKit media bridge behind

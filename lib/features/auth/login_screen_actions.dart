@@ -141,29 +141,7 @@ extension _LoginScreenActions on _LoginScreenState {
         mode: pendingMode,
         previousUserId: previousUserId,
       );
-      final newActive = auth.activeAccount;
-      final displayName = newActive?.displayName;
-      final avatarUser = newActive?.toAuthUser();
-      final mode = widget.mode;
-
       context.go(destination);
-
-      if (newActive != null && displayName != null) {
-        String? message;
-        if (mode == LoginMode.addAccount) {
-          message = 'Added $displayName.';
-        } else if (mode == LoginMode.reauthenticateAccount) {
-          message = 'Reconnected $displayName.';
-        } else {
-          message = 'Switched to $displayName.';
-        }
-
-        showAppPremiumToast(
-          message: message,
-          avatarUser: avatarUser,
-          afterNavigation: true,
-        );
-      }
     } catch (err) {
       final auth = ref.read(authControllerProvider);
       if (auth.pendingCandidateTelegramId != null) {

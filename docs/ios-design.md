@@ -82,6 +82,9 @@ menus retain the system's glass rendering.
 Share details use an unboxed summary, Cupertino copy/share controls, access and
 expiry metadata, inline counters and a simple activity list. Android retains its
 existing card/list styling.
+The Share detail revoke action uses the native trash symbol (and Cupertino trash
+fallback), labeled “Revoke link”; the existing confirmation explains that the
+link stops working. Android retains its broken-link icon.
 
 Surface validation: 74 tests passed across modernization UI, glass/opacity,
 iOS action contracts, platform folder UI and navigation. Pixel sampling verifies

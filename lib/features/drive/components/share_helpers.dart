@@ -2,37 +2,46 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/drive_models.dart';
-import '../../../models/share_models.dart';
-import '../../share/components/create_share_sheet.dart';
+import '../../share/share_flow.dart';
+import '../drive_controller.dart';
 import '../../share/share_controller.dart';
 import 'drive_dialogs.dart';
 
-Future<void> openShareFile(BuildContext context, String fileId) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    useRootNavigator: true,
-    builder: (_) => CreateShareSheet(
-      items: [ShareItemRequest(type: ShareItemType.file, id: fileId)],
-    ),
-  );
-}
+Future<void> openShareFile(
+  BuildContext context,
+  WidgetRef ref,
+  DriveFile file,
+) => openItemShare(context, ref, files: [file]);
 
-Future<void> openShareFolder(BuildContext context, String folderId) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    useRootNavigator: true,
-    builder: (_) => CreateShareSheet(
-      items: [
-        ShareItemRequest(
-          type: ShareItemType.folder,
-          id: folderId,
-          mode: FolderShareMode.snapshot,
+Future<void> openShareFolder(
+  BuildContext context,
+  WidgetRef ref,
+  String folderId,
+) => openItemShare(context, ref, files: const [], folderIds: {folderId});
+
+Future<void> openShareSelection(
+  BuildContext context,
+  WidgetRef ref, {
+  required Set<String> fileIds,
+  required Set<String> folderIds,
+}) async {
+  final drive = ref.read(driveControllerProvider);
+  final files = <DriveFile>[];
+  for (final id in fileIds) {
+    final file = drive.file(id);
+    if (file == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Some selected files are no longer available. Select them again.',
+          ),
         ),
-      ],
-    ),
-  );
+      );
+      return;
+    }
+    files.add(file);
+  }
+  await openItemShare(context, ref, files: files, folderIds: folderIds);
 }
 
 Future<void> revokeFileShares(

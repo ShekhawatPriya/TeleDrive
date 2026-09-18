@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../widgets/fab_anchor.dart';
 import '../../upload_controller.dart';
 import '../../../drive/components/delete_progress_pill.dart';
 import '../../../drive/components/drive_fab.dart';
@@ -23,6 +24,7 @@ class BottomActionSystem extends ConsumerStatefulWidget {
 
 class _BottomActionSystemState extends ConsumerState<BottomActionSystem> {
   bool _panelOpen = false;
+  final _fabKey = GlobalKey();
 
   Future<void> _openPanel() async {
     setState(() => _panelOpen = true);
@@ -31,7 +33,10 @@ class _BottomActionSystemState extends ConsumerState<BottomActionSystem> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      FabAnchorPublisher(fabKey: _fabKey, child: _buildActions(context));
+
+  Widget _buildActions(BuildContext context) {
     if (_panelOpen) return const SizedBox.shrink();
     final showFab = widget.showFab;
     final parentId = widget.parentId;
@@ -124,7 +129,7 @@ class _BottomActionSystemState extends ConsumerState<BottomActionSystem> {
                 ),
               if ((showProgress || showDelete) && showFab)
                 const SizedBox(width: AppSpacing.sm),
-              if (showFab) DriveFab(parentId: parentId),
+              if (showFab) DriveFab(key: _fabKey, parentId: parentId),
             ],
           ),
         ),

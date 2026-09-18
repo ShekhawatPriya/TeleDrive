@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
@@ -9,30 +11,51 @@ import 'package:photo_view/photo_view.dart';
 import '../../../core/media/media_source_resolver.dart';
 import '../../../core/storage/thumbnail_cache_manager.dart';
 import '../../../models/drive_models.dart';
-import '../../profile/cache_controller.dart';
 
 class PhotoViewerImage extends ConsumerStatefulWidget {
   const PhotoViewerImage({
     required this.file,
     required this.onTap,
     this.onDimensions,
+    this.onZoomChanged,
     super.key,
   });
 
   final DriveFile file;
   final VoidCallback onTap;
   final ValueChanged<Size>? onDimensions;
+  final ValueChanged<bool>? onZoomChanged;
 
   @override
   ConsumerState<PhotoViewerImage> createState() => _PhotoViewerImageState();
 }
 
 class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
+  final _zoomController = PhotoViewController();
+  StreamSubscription<PhotoViewControllerValue>? _zoomSubscription;
+  Size? _decodedSize;
+  Size? _viewport;
+  bool? _zoomed;
+
+  void _reportZoom() {
+    final image = _decodedSize;
+    final viewport = _viewport;
+    final scale = _zoomController.scale;
+    if (image == null || viewport == null || scale == null) return;
+    final contained = math.min(
+      viewport.width / image.width,
+      viewport.height / image.height,
+    );
+    final zoomed = scale > contained * 1.01;
+    if (zoomed == _zoomed) return;
+    _zoomed = zoomed;
+    widget.onZoomChanged?.call(zoomed);
+  }
+
   ImageStream? _imageStream;
   ImageStreamListener? _imageListener;
   ImageProvider? _currentImageProvider;
   String? _currentImageUrl;
-  bool _hasRefreshed = false;
 
   Future<File?>? _localFuture;
   String? _localKey;
@@ -42,6 +65,9 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
   @override
   void initState() {
     super.initState();
+    _zoomSubscription = _zoomController.outputStateStream.listen(
+      (_) => _reportZoom(),
+    );
     _sourceKey = _sourceKeyFor(widget.file);
     _setupImageListener();
   }
@@ -52,7 +78,7 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
     final nextKey = _sourceKeyFor(widget.file);
     if (_sourceKey != nextKey) {
       _sourceKey = nextKey;
-      _hasRefreshed = false;
+      _decodedSize = null;
       _localKey = null;
       _localFuture = null;
       _failedUrls.clear();
@@ -62,6 +88,8 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
 
   @override
   void dispose() {
+    _zoomSubscription?.cancel();
+    _zoomController.dispose();
     _cleanImageListener();
     super.dispose();
   }
@@ -94,17 +122,18 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
     _imageStream = provider.resolve(const ImageConfiguration());
     _imageListener = ImageStreamListener(
       (ImageInfo info, bool synchronousCall) {
-        if (!mounted || _hasRefreshed) return;
-        _hasRefreshed = true;
+        if (!mounted || sourceKey != _sourceKey) return;
         final dimensions = Size(
           info.image.width.toDouble(),
           info.image.height.toDouble(),
         );
+        _decodedSize = dimensions;
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && sourceKey == _sourceKey)
+          if (mounted && sourceKey == _sourceKey) {
             widget.onDimensions?.call(dimensions);
+            _reportZoom();
+          }
         });
-        ref.read(cacheControllerProvider).refreshCacheStats();
       },
       onError: (Object exception, StackTrace? stackTrace) {
         _markUrlFailed('Image stream failed', widget.file, exception);
@@ -143,12 +172,13 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
   }
 
   Future<File?> _downloadLocal(DriveFile file) async {
+    final sourceKey = _sourceKey;
     final local = await MediaSourceResolver.downloadFirstTelegramImage(
       ref,
       file,
       MediaImageUse.fullImage,
     );
-    if (local != null && mounted) {
+    if (local != null && mounted && sourceKey == _sourceKey) {
       _attachProvider(FileImage(local));
       setState(() {});
     }
@@ -206,25 +236,36 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
   }
 
   Widget _photoView(ImageProvider imageProvider, {String? url}) {
-    return PhotoView(
-      imageProvider: imageProvider,
-      heroAttributes: PhotoViewHeroAttributes(tag: 'photo-${widget.file.id}'),
-      minScale: PhotoViewComputedScale.contained,
-      maxScale: PhotoViewComputedScale.covered * 4,
-      initialScale: PhotoViewComputedScale.contained,
-      backgroundDecoration: const BoxDecoration(color: Colors.black),
-      onTapUp: (_, __, ___) => widget.onTap(),
-      loadingBuilder: (_, __) => const Center(
-        child: SizedBox(
-          width: 32,
-          height: 32,
-          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-        ),
-      ),
-      errorBuilder: (_, err, _) {
-        if (url != null) return _urlError(url, err);
-        _debug('Local photo decode failed', err);
-        return _fallback(context);
+    return LayoutBuilder(
+      builder: (context, bounds) {
+        _viewport = bounds.biggest;
+        return PhotoView(
+          controller: _zoomController,
+          imageProvider: imageProvider,
+          heroAttributes: PhotoViewHeroAttributes(
+            tag: 'photo-${widget.file.id}',
+          ),
+          minScale: PhotoViewComputedScale.contained,
+          maxScale: PhotoViewComputedScale.covered * 4,
+          initialScale: PhotoViewComputedScale.contained,
+          backgroundDecoration: const BoxDecoration(color: Colors.black),
+          onTapUp: (_, __, ___) => widget.onTap(),
+          loadingBuilder: (_, __) => const Center(
+            child: SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          errorBuilder: (_, err, _) {
+            if (url != null) return _urlError(url, err);
+            _debug('Local photo decode failed', err);
+            return _fallback(context);
+          },
+        );
       },
     );
   }

@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../widgets/sheet/adaptive_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../models/share_models.dart';
 import '../../../widgets/premium_toast.dart';
-import '../../share/components/create_share_sheet.dart';
+import 'share_helpers.dart';
 import '../../profile/app_settings_controller.dart';
 import '../drive_controller.dart';
 import '../folder_delete_guard.dart';
@@ -35,21 +34,11 @@ class DriveBulkActions {
     required Set<String> folderIds,
   }) async {
     if (fileIds.isEmpty && folderIds.isEmpty) return;
-    final items = <ShareItemRequest>[
-      for (final id in fileIds)
-        ShareItemRequest(type: ShareItemType.file, id: id),
-      for (final id in folderIds)
-        ShareItemRequest(
-          type: ShareItemType.folder,
-          id: id,
-          mode: FolderShareMode.snapshot,
-        ),
-    ];
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useRootNavigator: true,
-      builder: (_) => CreateShareSheet(items: items),
+    await openShareSelection(
+      context,
+      ref,
+      fileIds: fileIds,
+      folderIds: folderIds,
     );
   }
 

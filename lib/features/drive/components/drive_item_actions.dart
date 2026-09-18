@@ -23,7 +23,8 @@ class DriveItemActions {
   DriveItemActions._();
 
   static List<SheetActionItem> fileActions(DriveFile file) => <SheetActionItem>[
-    _shareAction(file.shared),
+    _shareAction,
+    if (file.shared) _revokeShareAction,
     const SheetActionItem(
       id: 'download',
       label: 'Download',
@@ -66,7 +67,7 @@ class DriveItemActions {
     if (!context.mounted) return;
     final controller = ref.read(driveControllerProvider);
     if (action == 'share') {
-      await openShareFile(context, file.id);
+      await openShareFile(context, ref, file);
     } else if (action == 'revoke_share') {
       await revokeFileShares(context, ref, file);
     } else if (action == 'download') {
@@ -123,7 +124,8 @@ class DriveItemActions {
     DriveFolder folder, {
     bool allowRename = true,
   }) => <SheetActionItem>[
-    _shareAction(folder.shared),
+    _shareAction,
+    if (folder.shared) _revokeShareAction,
     if (allowRename)
       const SheetActionItem(
         id: 'rename',
@@ -166,7 +168,7 @@ class DriveItemActions {
     if (!context.mounted) return;
     final controller = ref.read(driveControllerProvider);
     if (action == 'share') {
-      await openShareFolder(context, folder.id);
+      await openShareFolder(context, ref, folder.id);
     } else if (action == 'revoke_share') {
       await revokeFolderShares(context, ref, folder);
     } else if (action == 'move') {
@@ -234,19 +236,16 @@ const _archiveAction = SheetActionItem(
   icon: Icons.archive_outlined,
 );
 
-SheetActionItem _shareAction(bool shared) {
-  return shared
-      ? const SheetActionItem(
-          id: 'revoke_share',
-          label: 'Revoke share',
-          icon: Icons.link_off,
-        )
-      : const SheetActionItem(
-          id: 'share',
-          label: 'Share',
-          icon: Icons.ios_share,
-        );
-}
+const _shareAction = SheetActionItem(
+  id: 'share',
+  label: 'Share',
+  icon: Icons.ios_share,
+);
+const _revokeShareAction = SheetActionItem(
+  id: 'revoke_share',
+  label: 'Revoke share',
+  icon: Icons.link_off,
+);
 
 SheetActionItem _starAction(bool starred) {
   return SheetActionItem(

@@ -70,6 +70,7 @@ abstract class TelegramTransferService {
     Duration? timeout,
     String? variant,
     CancelToken? cancelToken,
+    ProgressCallback? onProgress,
   });
 }
 
@@ -321,6 +322,7 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
     Duration? timeout,
     String? variant,
     CancelToken? cancelToken,
+    ProgressCallback? onProgress,
   }) async {
     final dir = await getTemporaryDirectory();
     final safeName = filename.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
@@ -328,6 +330,11 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
         '${dir.path}${Platform.pathSeparator}teledrive_${stableHash(cacheKey)}_$safeName';
     if (cancelToken?.isCancelled ?? false) throw cancelToken!.cancelError!;
     final transferId = _uuid.v4();
+    final progress = onProgress == null
+        ? null
+        : watchProgress(transferId).listen(
+            (event) => onProgress(event.bytesDone, event.totalBytes ?? 0),
+          );
     final download = _invokeMap('downloadToFile', {
       'transferId': transferId,
       'variant': variant ?? ref.variant,
@@ -362,6 +369,8 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
       rethrow;
     } finally {
       finished = true;
+      await progress?.cancel();
+      _closeTransferController(transferId);
     }
     return TelegramDownloadResult(
       file: File((result['filePath'] as String?) ?? path),

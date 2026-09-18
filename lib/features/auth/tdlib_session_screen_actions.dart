@@ -97,9 +97,27 @@ extension _TdlibSessionScreenActions on _TdlibSessionScreenState {
     final auth = ref.read(authControllerProvider);
     await _resetForCommittedAccount();
     if (!mounted || _disposed) return;
+    final source = auth.pendingTdlibMode;
+    final account = auth.activeAccount;
     final destination = auth.commitPendingAccountAuthorization();
     if (!mounted || _disposed) return;
+    final tdlib = ref.read(tdlibSessionControllerProvider);
     context.go(destination);
+    if (source != null && account != null) {
+      final action = switch (source) {
+        PendingTdlibMode.addAccount => 'Added',
+        PendingTdlibMode.reauthenticateAccount => 'Reconnected',
+        PendingTdlibMode.normalLogin => 'Signed in as',
+      };
+      showAppPremiumToast(
+        message: '$action ${account.displayName}.',
+        avatarUser: account.toAuthUser(),
+        afterNavigation: true,
+        canShow: () =>
+            auth.activeAccount?.userId == account.userId &&
+            !tdlib.requiresAuthorizationFlow,
+      );
+    }
   }
 
   Future<void> _resetForCommittedAccount() async {

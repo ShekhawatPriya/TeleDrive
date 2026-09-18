@@ -549,15 +549,41 @@ final class SelectionToolbarView: NSObject, FlutterPlatformView {
     bar.overrideUserInterfaceStyle = (args["dark"] as? Bool ?? false) ? .dark : .light
     let enabled = args["enabled"] as? Bool ?? false
     let actions = args["actions"] as? [[String: String]] ?? []
+    let photoViewer = args["photoViewer"] as? Bool ?? false
+    let photoSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 22, weight: .regular, scale: .medium)
     var items = actions.map { action -> UIBarButtonItem in
       let label = action["label"] ?? ""
-      let item = UIBarButtonItem(title: nil,
-        image: UIImage(systemName: action["symbol"] ?? ""),
-        primaryAction: UIAction { [weak self] _ in self?.channel.invokeMethod("action", arguments: label) })
-      item.accessibilityLabel = label
-      item.isEnabled = enabled
+      let image = UIImage(systemName: action["symbol"] ?? "",
+        withConfiguration: photoViewer ? photoSymbolConfiguration : nil)
+      let callback = UIAction { [weak self] _ in self?.channel.invokeMethod("action", arguments: label) }
+      let item: UIBarButtonItem
+      if photoViewer {
+        // System toolbar items may report a 38-point target on iOS 26. Give
+        // the native button explicit bounds while retaining toolbar-owned glass.
+        let button = UIButton(type: .system, primaryAction: callback)
+        var configuration = UIButton.Configuration.plain()
+        configuration.image = image
+        configuration.baseForegroundColor = .white
+        configuration.contentInsets = .zero
+        button.configuration = configuration
+        button.accessibilityLabel = label
+        button.isEnabled = enabled
+        button.widthAnchor.constraint(equalToConstant: 48).isActive = true
+        button.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        if action["selected"] == "true" { button.accessibilityTraits.insert(.selected) }
+        item = UIBarButtonItem(customView: button)
+      } else {
+        item = UIBarButtonItem(title: nil, image: image, primaryAction: callback)
+        item.accessibilityLabel = label
+        item.isEnabled = enabled
+      }
       item.width = 48
       return item
+    }
+    if photoViewer {
+      // Flexible spaces form three system-glass groups with identical symbols.
+      items.insert(UIBarButtonItem(systemItem: .flexibleSpace), at: 1)
+      if items.count > 4 { items.insert(UIBarButtonItem(systemItem: .flexibleSpace), at: 4) }
     }
     let selectAll = args["selectAll"] as? Bool ?? false
     let clear = args["clear"] as? Bool ?? false

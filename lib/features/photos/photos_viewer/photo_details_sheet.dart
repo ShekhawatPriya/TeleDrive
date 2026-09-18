@@ -77,7 +77,7 @@ class PhotoDetailsSheet extends StatelessWidget {
           integrated ? 144 + MediaQuery.paddingOf(context).bottom : 32,
         ),
         children: [
-          if (!ios || !integrated)
+          if (!integrated)
             Center(
               child: Container(
                 width: 32,
