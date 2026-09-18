@@ -1,4 +1,5 @@
 import 'starred_badge.dart';
+import 'item_status_indicators.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
@@ -51,6 +52,11 @@ class FileListTile extends StatelessWidget {
     final scheme = theme.colorScheme;
     final ios = theme.platform == TargetPlatform.iOS;
     final inSelectMode = selected != null;
+    final stackedActions =
+        !ios &&
+        !inSelectMode &&
+        (MediaQuery.sizeOf(context).width < 360 ||
+            MediaQuery.textScalerOf(context).scale(14) > 20);
     final isShared = shared || (file?.shared ?? false);
     final isSelected = selected == true;
     final status = file?.uploadStatus;
@@ -75,10 +81,7 @@ class FileListTile extends StatelessWidget {
                               size: 36,
                               color: scheme.primary,
                             )
-                          : GoogleDriveIcon.folder(
-                              isShared: isShared,
-                              size: 34,
-                            ),
+                          : GoogleDriveIcon.folder(isShared: false, size: 34),
                     )
                   : MediaThumb(
                       file: file!,
@@ -88,7 +91,7 @@ class FileListTile extends StatelessWidget {
                     ),
             ),
           ),
-          if (starred && !isFailed && !isUploading)
+          if (ios && starred && !isFailed && !isUploading)
             Positioned(
               right: 0,
               bottom: 0,
@@ -108,7 +111,7 @@ class FileListTile extends StatelessWidget {
                 ),
               ),
             ),
-          if (isShared && !isOptimistic)
+          if (ios && isShared && !isOptimistic)
             Positioned(
               right: 0,
               bottom: starred ? 22 : 0,
@@ -151,27 +154,63 @@ class FileListTile extends StatelessWidget {
           : thumbnail,
       title: Text(
         name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+        maxLines: stackedActions ? null : 1,
+        overflow: stackedActions ? TextOverflow.visible : TextOverflow.ellipsis,
         style: theme.textTheme.bodyLarge?.copyWith(
           fontWeight: ios ? FontWeight.w400 : FontWeight.w600,
           color: isFailed ? scheme.error : scheme.onSurface,
         ),
       ),
-      subtitle: Text(
-        ios && file != null && !isOptimistic
-            ? '${formatLabel(file!)} · ${formatFileSize(file!.size)} · ${_fileDate(file!.modifiedAt)}'
-            : subtitle,
-        maxLines: ios && inSelectMode ? null : 2,
-        overflow: ios && inSelectMode
-            ? TextOverflow.visible
-            : TextOverflow.ellipsis,
-        style: theme.textTheme.bodySmall?.copyWith(
-          fontSize: ios ? 13 : null,
-          color: isFailed ? scheme.error : scheme.onSurfaceVariant,
-        ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!ios &&
+              !isOptimistic &&
+              (isShared || (starred && onStar == null)))
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: ItemStatusIndicators(
+                starred: starred && onStar == null,
+                shared: isShared,
+              ),
+            ),
+          Text(
+            ios && file != null && !isOptimistic
+                ? '${formatLabel(file!)} · ${formatFileSize(file!.size)} · ${_fileDate(file!.modifiedAt)}'
+                : subtitle,
+            maxLines: ios && inSelectMode ? null : 2,
+            overflow: ios && inSelectMode
+                ? TextOverflow.visible
+                : TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontSize: ios ? 13 : null,
+              color: isFailed ? scheme.error : scheme.onSurfaceVariant,
+            ),
+          ),
+          if (stackedActions && !isFailed && !isUploading)
+            Row(
+              children: [
+                if (onStar != null)
+                  IconButton(
+                    onPressed: onStar,
+                    tooltip: starred ? 'Unstar $name' : 'Star $name',
+                    icon: Icon(
+                      starred ? Icons.star_rounded : Icons.star_border_rounded,
+                      color: starred ? scheme.primary : scheme.onSurfaceVariant,
+                    ),
+                  ),
+                IconButton(
+                  onPressed: onMore,
+                  tooltip: 'Actions for $name',
+                  icon: const Icon(Icons.more_vert),
+                ),
+              ],
+            ),
+        ],
       ),
-      trailing: ios && inSelectMode
+      trailing: stackedActions && !isFailed && !isUploading
+          ? null
+          : ios && inSelectMode
           ? null
           : inSelectMode
           ? Padding(

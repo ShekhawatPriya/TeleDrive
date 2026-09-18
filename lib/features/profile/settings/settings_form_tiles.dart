@@ -27,7 +27,7 @@ class _SettingsTileText extends StatelessWidget {
           Text(
             subtitle!,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
+              color: scheme.onSurfaceVariant,
               height: 1.35,
             ),
           ),
@@ -66,28 +66,56 @@ class _SettingsSwitchTile extends StatelessWidget {
         color: iconColor,
         trailing: CupertinoSwitch(value: value, onChanged: onChanged),
       );
-    return InkWell(
-      onTap: () => onChanged(!value),
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          vertical: icon != null ? AppSpacing.sm : AppSpacing.md,
-          horizontal: AppSpacing.md,
+    final control = ExcludeSemantics(
+      child: Switch(
+        value: value,
+        onChanged: onChanged,
+        thumbIcon: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? const Icon(Icons.check_rounded, size: 16)
+              : null,
         ),
-        child: Row(
-          children: [
-            if (icon != null) ...[
-              _SettingsIconBadge(
-                icon: icon!,
-                color: iconColor ?? scheme.primary,
-              ),
-              const SizedBox(width: AppSpacing.md),
-            ],
-            Expanded(
-              child: _SettingsTileText(title: title, subtitle: subtitle),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Switch.adaptive(value: value, onChanged: onChanged),
-          ],
+      ),
+    );
+    final label = _SettingsTileText(title: title, subtitle: subtitle);
+    final badge = icon == null
+        ? null
+        : _SettingsIconBadge(icon: icon!, color: iconColor ?? scheme.primary);
+    final largeText = MediaQuery.textScalerOf(context).scale(14) > 20;
+    return MergeSemantics(
+      child: Semantics(
+        toggled: value,
+        child: InkWell(
+          onTap: () => onChanged(!value),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: largeText
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          if (badge != null) badge,
+                          const Spacer(),
+                          control,
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      label,
+                    ],
+                  )
+                : Row(
+                    children: [
+                      if (badge != null) ...[
+                        badge,
+                        const SizedBox(width: AppSpacing.md),
+                      ],
+                      Expanded(child: label),
+                      const SizedBox(width: AppSpacing.md),
+                      control,
+                    ],
+                  ),
+          ),
         ),
       ),
     );
@@ -129,47 +157,60 @@ class _SettingsNumberTile extends StatelessWidget {
         vertical: icon != null ? AppSpacing.sm : AppSpacing.md,
         horizontal: AppSpacing.md,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (icon != null) ...[
-            _SettingsIconBadge(icon: icon!, color: iconColor ?? scheme.primary),
-            const SizedBox(width: AppSpacing.md),
-          ],
-          Expanded(
-            child: _SettingsTileText(title: title, subtitle: subtitle),
+          Row(
+            children: [
+              if (icon != null) ...[
+                _SettingsIconBadge(
+                  icon: icon!,
+                  color: iconColor ?? scheme.primary,
+                ),
+                const SizedBox(width: AppSpacing.md),
+              ],
+              Expanded(
+                child: _SettingsTileText(title: title, subtitle: subtitle),
+              ),
+            ],
           ),
-          const SizedBox(width: AppSpacing.md),
-          IconButton.filledTonal(
-            tooltip: 'Decrease',
-            visualDensity: VisualDensity.compact,
-            onPressed: canDec
-                ? () => onChanged((value - step).clamp(min, max).toInt())
-                : null,
-            icon: const Icon(Icons.remove_rounded),
-          ),
-          SizedBox(
-            width: 44,
-            child: AnimatedSwitcher(
-              duration: AppDurations.short3,
-              switchInCurve: AppEasing.standard,
-              switchOutCurve: AppEasing.standard,
-              child: Text(
-                '$value',
-                key: ValueKey(value),
-                textAlign: TextAlign.center,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              IconButton.filledTonal(
+                tooltip: 'Decrease',
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                onPressed: canDec
+                    ? () => onChanged((value - step).clamp(min, max).toInt())
+                    : null,
+                icon: const Icon(Icons.remove_rounded),
+              ),
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 48),
+                child: AnimatedSwitcher(
+                  duration: AppDurations.short3,
+                  switchInCurve: AppEasing.standard,
+                  switchOutCurve: AppEasing.standard,
+                  child: Text(
+                    '$value',
+                    key: ValueKey(value),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          IconButton.filledTonal(
-            tooltip: 'Increase',
-            visualDensity: VisualDensity.compact,
-            onPressed: canInc
-                ? () => onChanged((value + step).clamp(min, max).toInt())
-                : null,
-            icon: const Icon(Icons.add_rounded),
+              IconButton.filledTonal(
+                tooltip: 'Increase',
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                onPressed: canInc
+                    ? () => onChanged((value + step).clamp(min, max).toInt())
+                    : null,
+                icon: const Icon(Icons.add_rounded),
+              ),
+            ],
           ),
         ],
       ),
@@ -210,7 +251,7 @@ class _SettingsInfoNote extends StatelessWidget {
           child: Text(
             text,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant.withValues(alpha: 0.78),
+              color: scheme.onSurfaceVariant,
               height: 1.35,
             ),
           ),
@@ -273,19 +314,24 @@ class _SettingsStrategyTile extends StatelessWidget {
         vertical: icon != null ? AppSpacing.sm : AppSpacing.md,
         horizontal: AppSpacing.md,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (icon != null) ...[
-            _SettingsIconBadge(icon: icon!, color: iconColor ?? scheme.primary),
-            const SizedBox(width: AppSpacing.md),
-          ],
-          Expanded(
-            child: _SettingsTileText(
-              title: 'Backup scan mode',
-              subtitle: _subtitleFor(value),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: _SettingsIconBadge(
+                icon: icon!,
+                color: iconColor ?? scheme.primary,
+              ),
             ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          _SettingsTileText(
+            title: 'Backup scan mode',
+            subtitle: _subtitleFor(value),
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           Container(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.sm,
@@ -297,7 +343,8 @@ class _SettingsStrategyTile extends StatelessWidget {
             ),
             child: DropdownButton<GalleryBackupIndexingStrategy>(
               value: value,
-              isDense: true,
+              isDense: false,
+              isExpanded: true,
               underline: const SizedBox.shrink(),
               borderRadius: AppRadii.mdR,
               dropdownColor: scheme.surfaceContainerHigh,
@@ -308,7 +355,7 @@ class _SettingsStrategyTile extends StatelessWidget {
                   .map(
                     (strategy) => DropdownMenuItem(
                       value: strategy,
-                      child: Text(strategy.label),
+                      child: Text(strategy.label, maxLines: 2),
                     ),
                   )
                   .toList(),

@@ -137,3 +137,10 @@ Frame inspection confirmed stable mark bounds and background across the
 native/Flutter boundary, followed by the Drive screen. The OS entrance animation
 remains system-owned. This verifies the device's current dark appearance;
 light appearance has Flutter fixture coverage, not a separate physical run.
+
+## Current Android Settings and status refinement
+
+See [Android Settings design](android-settings-design.md) for the current
+Material 3 Expressive treatment, primary research, country-flag correction,
+shared/starred indicators and accessible Settings layouts. This supersedes the
+earlier Android settings-group treatment above.

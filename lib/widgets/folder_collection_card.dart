@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../models/drive_models.dart';
 import 'starred_badge.dart';
+import 'item_status_indicators.dart';
 import '../core/utils/file_type_detector.dart';
 
 class FolderCollectionCard extends StatelessWidget {
@@ -48,13 +49,11 @@ class FolderCollectionCard extends StatelessWidget {
                             ? (folder.shared
                                   ? CupertinoIcons.folder_badge_person_crop
                                   : CupertinoIcons.folder_fill)
-                            : (folder.shared
-                                  ? Icons.folder_shared_rounded
-                                  : Icons.folder_rounded),
+                            : Icons.folder_rounded,
                         size: 32,
                         color: folderInk,
                       ),
-                      if (folder.starred)
+                      if (ios && folder.starred)
                         Positioned(
                           right: -3,
                           bottom: 0,
@@ -65,8 +64,8 @@ class FolderCollectionCard extends StatelessWidget {
                   const Spacer(),
                   if (onMore != null)
                     SizedBox(
-                      width: 44,
-                      height: 44,
+                      width: ios ? 44 : 48,
+                      height: ios ? 44 : 48,
                       child: IconButton(
                         padding: EdgeInsets.zero,
                         onPressed: onMore,
@@ -101,6 +100,13 @@ class FolderCollectionCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (!ios && (folder.starred || folder.shared)) ...[
+                ItemStatusIndicators(
+                  starred: folder.starred,
+                  shared: folder.shared,
+                ),
+                const SizedBox(height: 4),
+              ],
               const SizedBox(height: 6),
               Text(
                 folder.isOptimistic

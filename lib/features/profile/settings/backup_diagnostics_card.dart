@@ -111,7 +111,10 @@ class _BackupDiagnosticsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               _SettingsIconBadge(
                 icon: Icons.monitor_heart_outlined,
@@ -125,7 +128,6 @@ class _BackupDiagnosticsCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const Spacer(),
               AnimatedSwitcher(
                 duration: AppDurations.short4,
                 switchInCurve: AppEasing.standard,

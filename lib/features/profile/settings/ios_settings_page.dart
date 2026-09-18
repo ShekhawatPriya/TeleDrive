@@ -91,8 +91,33 @@ class _SettingsScaffold extends StatelessWidget {
   final Widget body;
   @override
   Widget build(BuildContext context) {
-    if (Theme.of(context).platform != TargetPlatform.iOS)
+    if (Theme.of(context).platform != TargetPlatform.iOS) {
+      final list = body;
+      if (list is ListView) {
+        return Scaffold(
+          body: CustomScrollView(
+            slivers: [
+              SliverAppBar.large(
+                leading: appBar.leading,
+                title: appBar.title,
+                actions: appBar.actions,
+                centerTitle: false,
+                titleTextStyle: Theme.of(context).textTheme.headlineLarge
+                    ?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.8,
+                    ),
+              ),
+              SliverPadding(
+                padding: list.padding ?? EdgeInsets.zero,
+                sliver: SliverList(delegate: list.childrenDelegate),
+              ),
+            ],
+          ),
+        );
+      }
       return Scaffold(appBar: appBar, body: body);
+    }
     final list = body;
     if (list is ListView && list.childrenDelegate is SliverChildListDelegate) {
       return IosPage(

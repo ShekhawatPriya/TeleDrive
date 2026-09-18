@@ -409,12 +409,17 @@ class _ManualAddressCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  Row(
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
                     children: [
                       FilledButton.icon(
                         onPressed: busy ? null : onSave,
                         icon: const Icon(Icons.save_outlined),
-                        label: const Text('Save & Connect'),
+                        label: const Text(
+                          'Save & Connect',
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       TextButton(
@@ -490,7 +495,9 @@ class _ServerStatusCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AnimatedSwitcher(
-            duration: AppDurations.medium1,
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : AppDurations.medium1,
             switchInCurve: AppEasing.emphasizedDecelerate,
             switchOutCurve: AppEasing.emphasizedAccelerate,
             transitionBuilder: (child, animation) => FadeTransition(
@@ -524,16 +531,20 @@ class _ServerStatusCard extends StatelessWidget {
                         visual.label,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: visual.color,
+                          color: ColorScheme.fromSeed(
+                            seedColor: visual.color,
+                            brightness: scheme.brightness,
+                            contrastLevel: MediaQuery.highContrastOf(context)
+                                ? 1
+                                : 0,
+                          ).primary,
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xxs),
                       Text(
                         resolver.sourceLabel,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant.withValues(
-                            alpha: 0.75,
-                          ),
+                          color: scheme.onSurfaceVariant,
                         ),
                       ),
                     ],

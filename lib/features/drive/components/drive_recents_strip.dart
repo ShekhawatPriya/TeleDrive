@@ -1,4 +1,5 @@
 import '../../../widgets/starred_badge.dart';
+import '../../../widgets/item_status_indicators.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -93,7 +94,18 @@ class RecentFileCard extends StatelessWidget {
                         radius: 0,
                         decodeWidth: 640,
                       ),
-                      if (file.starred)
+                      if (theme.platform != TargetPlatform.iOS &&
+                          !file.isOptimistic &&
+                          (file.starred || file.shared))
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: ItemStatusIndicators(
+                            starred: file.starred,
+                            shared: file.shared,
+                          ),
+                        ),
+                      if (theme.platform == TargetPlatform.iOS && file.starred)
                         Positioned(
                           top: 12,
                           left: 12,

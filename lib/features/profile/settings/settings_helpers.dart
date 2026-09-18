@@ -24,11 +24,17 @@ Widget _settingsSectionHeader(BuildContext context, String label) {
     ),
     child: Text(
       label,
-      style: theme.textTheme.labelSmall?.copyWith(
-        color: scheme.onSurfaceVariant,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0,
-      ),
+      style:
+          (theme.platform == TargetPlatform.iOS
+                  ? theme.textTheme.labelSmall
+                  : theme.textTheme.labelLarge)
+              ?.copyWith(
+                color: theme.platform == TargetPlatform.iOS
+                    ? scheme.onSurfaceVariant
+                    : scheme.primary,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0,
+              ),
     ),
   );
 }
@@ -83,7 +89,6 @@ class _SettingsPageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final ios = theme.platform == TargetPlatform.iOS;
     if (ios)
       return Padding(
@@ -101,18 +106,24 @@ class _SettingsPageHeader extends StatelessWidget {
         ),
       );
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 12),
       decoration: BoxDecoration(
-        color: ios ? Colors.transparent : scheme.surfaceContainer,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(ios ? 24 : 28),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SettingsIconBadge(icon: icon, color: color, size: 48),
-          const SizedBox(height: 18),
-          Text(title, style: theme.textTheme.headlineSmall),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.6,
+            ),
+          ),
           const SizedBox(height: 8),
           Text(description, style: theme.textTheme.bodyMedium),
         ],

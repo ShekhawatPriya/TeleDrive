@@ -76,6 +76,7 @@ import 'package:flutter_m_fsdk/features/file_viewer/components/metadata_block.da
 import 'package:flutter_m_fsdk/models/share_models.dart';
 import 'package:flutter_m_fsdk/widgets/adaptive_surface.dart';
 import 'package:flutter_m_fsdk/widgets/folder_collection_card.dart';
+import 'package:flutter_m_fsdk/widgets/item_status_indicators.dart';
 
 final _fixturePath = File('test/fixtures/design/alpine.jpg').absolute.path;
 late ui.Image _fixtureImage;
@@ -285,6 +286,12 @@ class _DesignChangelog extends ChangeNotifier implements ChangelogController {
 class _DesignSettings extends ChangeNotifier implements AppSettingsController {
   @override
   AppSettingsState state = const AppSettingsState(loaded: true);
+  @override
+  Future<void> setUploadOnMobileData(bool value) async {
+    state = state.copyWith(uploadOnMobileData: value);
+    notifyListeners();
+  }
+
   @override
   Future<void> setGalleryBackupEnabled(bool value) async {
     state = state.copyWith(galleryBackupEnabled: value);
@@ -660,6 +667,151 @@ void main() {
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
     expect(find.byType(BackupSettingsScreen), findsOneWidget);
+  });
+  for (final dark in [false, true]) {
+    testWidgets('Android shared starred indicators stay separate dark=$dark', (
+      tester,
+    ) async {
+      var opened = 0;
+      var menus = 0;
+      var starred = 0;
+      const folder = DriveFolder(
+        id: 'both',
+        name: 'Shared project files',
+        parentId: null,
+        createdAt: '2026-09-18',
+        modifiedAt: '2026-09-18',
+        starred: true,
+        shared: true,
+        recursiveFileCount: 6,
+        recursiveSize: 22000000,
+      );
+      await _pump(
+        tester,
+        Scaffold(
+          body: ListView(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    width: 134,
+                    height: 176,
+                    child: FolderCollectionCard(
+                      folder: folder,
+                      onTap: () => opened++,
+                      onLongPress: () {},
+                      onMore: () => menus++,
+                    ),
+                  ),
+                ),
+              ),
+              FileListTile(
+                name: folder.name,
+                subtitle: '6 files · 22 MB',
+                isFolder: true,
+                starred: true,
+                shared: true,
+                onTap: () => opened++,
+                onStar: () => starred++,
+                onMore: () => menus++,
+              ),
+            ],
+          ),
+        ),
+        platform: TargetPlatform.android,
+        width: 320,
+        brightness: dark ? Brightness.dark : Brightness.light,
+      );
+      final marker = find.descendant(
+        of: find.byType(FolderCollectionCard),
+        matching: find.byType(ItemStatusIndicators),
+      );
+      final icon = find.byIcon(Icons.folder_rounded);
+      final menu = find.byTooltip('Actions for ${folder.name}').first;
+      expect(tester.getRect(marker).overlaps(tester.getRect(icon)), isFalse);
+      expect(tester.getRect(marker).overlaps(tester.getRect(menu)), isFalse);
+      expect(tester.getSize(menu).shortestSide, greaterThanOrEqualTo(48));
+      expect(find.byIcon(Icons.star_rounded), findsNWidgets(2));
+      expect(find.byIcon(Icons.link_rounded), findsNWidgets(2));
+      await tester.tap(menu);
+      await tester.tap(find.byTooltip('Unstar ${folder.name}'));
+      await tester.tap(find.text(folder.name).last);
+      expect(menus, 1);
+      expect(starred, 1);
+      expect(opened, 1);
+      expect(tester.takeException(), isNull);
+      await _preview(tester, 'android-item-status-$dark');
+    });
+  }
+  for (final page in <(String, Widget)>[
+    ('settings', const SettingsScreen()),
+    ('server', const ServerConnectionSettingsScreen()),
+    ('uploads', const UploadSettingsScreen()),
+    ('backup', const BackupSettingsScreen()),
+    ('cache', const CacheStorageSettingsScreen()),
+    ('privacy', const PrivacySecuritySettingsScreen()),
+    ('notifications', const NotificationsSettingsScreen()),
+  ]) {
+    for (final dark in [false, true]) {
+      for (final scale in [1.0, 2.0]) {
+        testWidgets('Android expressive ${page.$1} dark=$dark scale=$scale', (
+          tester,
+        ) async {
+          SharedPreferences.setMockInitialValues({});
+          await _pump(
+            tester,
+            page.$2,
+            platform: TargetPlatform.android,
+            brightness: dark ? Brightness.dark : Brightness.light,
+            width: scale == 1 ? 390 : 320,
+            scale: scale,
+            highContrast: scale == 2,
+          );
+          await _preview(tester, 'android-${page.$1}-$dark-$scale-top');
+          expect(tester.takeException(), isNull);
+          for (var i = 0; i < 4; i++) {
+            await tester.drag(
+              find.byType(Scrollable).first,
+              const Offset(0, -500),
+            );
+            await tester.pumpAndSettle();
+            expect(tester.takeException(), isNull);
+          }
+          await _preview(tester, 'android-${page.$1}-$dark-$scale-bottom');
+        });
+      }
+    }
+  }
+  testWidgets('Android upload switch persists through row and control taps', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await _pump(
+      tester,
+      const UploadSettingsScreen(),
+      platform: TargetPlatform.android,
+    );
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(UploadSettingsScreen)),
+    );
+    final settings =
+        container.read(appSettingsControllerProvider) as _DesignSettings;
+    final before = settings.state.uploadOnMobileData;
+    await tester.ensureVisible(find.text('Upload on Mobile Data'));
+    await tester.tap(find.text('Upload on Mobile Data'));
+    await tester.pumpAndSettle();
+    expect(settings.state.uploadOnMobileData, !before);
+    final row = find
+        .ancestor(
+          of: find.text('Upload on Mobile Data'),
+          matching: find.byType(InkWell),
+        )
+        .first;
+    await tester.tap(find.descendant(of: row, matching: find.byType(Switch)));
+    await tester.pumpAndSettle();
+    expect(settings.state.uploadOnMobileData, before);
   });
   for (final page in <(String, Widget)>[
     ('server', const ServerConnectionSettingsScreen()),

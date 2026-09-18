@@ -87,10 +87,8 @@ extension _LoginScreenView on _LoginScreenState {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
-            _selectedCountry.code,
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            _selectedCountry.flag,
+            style: const TextStyle(fontSize: 24),
           ),
         ),
         const SizedBox(width: 12),

@@ -49,7 +49,8 @@ class DriveFolderSliver extends ConsumerWidget {
           gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
             maxCrossAxisExtent: 280,
             mainAxisExtent:
-                148 + (MediaQuery.textScalerOf(context).scale(14) - 14) * 4,
+                (Theme.of(context).platform == TargetPlatform.iOS ? 148 : 176) +
+                (MediaQuery.textScalerOf(context).scale(14) - 14) * 4,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
           ),

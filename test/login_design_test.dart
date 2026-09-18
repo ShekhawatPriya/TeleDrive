@@ -172,6 +172,9 @@ void main() {
       await tester.tap(find.widgetWithText(ListTile, 'United Kingdom'));
       await tester.pumpAndSettle();
       expect(find.textContaining('+44'), findsWidgets);
+      expect(find.text('🇬🇧'), findsOneWidget);
+      expect(find.text('GB'), findsNothing);
+      expect(find.text('Choose a country'), findsNothing);
       await tester.enterText(find.byType(EditableText), '12345678');
       await tester.ensureVisible(find.text('Continue'));
       await tester.tap(find.text('Continue'));

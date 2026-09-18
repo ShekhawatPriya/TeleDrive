@@ -1,4 +1,5 @@
 import 'starred_badge.dart';
+import 'item_status_indicators.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -83,7 +84,21 @@ class FileCardTile extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (file.starred && !isFailed && !isUploading)
+                  if (theme.platform != TargetPlatform.iOS &&
+                      !file.isOptimistic &&
+                      (file.starred || file.shared))
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: ItemStatusIndicators(
+                        starred: file.starred,
+                        shared: file.shared,
+                      ),
+                    ),
+                  if (theme.platform == TargetPlatform.iOS &&
+                      file.starred &&
+                      !isFailed &&
+                      !isUploading)
                     const Positioned(
                       right: 8,
                       top: 8,
@@ -123,7 +138,9 @@ class FileCardTile extends StatelessWidget {
                         size: 22,
                       ),
                     ),
-                  if (file.shared && !file.isOptimistic)
+                  if (theme.platform == TargetPlatform.iOS &&
+                      file.shared &&
+                      !file.isOptimistic)
                     const Positioned(
                       right: 8,
                       bottom: 8,

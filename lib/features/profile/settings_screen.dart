@@ -41,7 +41,7 @@ class SettingsScreen extends ConsumerWidget {
     final scheme = theme.colorScheme;
 
     if (theme.platform == TargetPlatform.iOS) return _iosSettings(context, ref);
-    return Scaffold(
+    return _SettingsScaffold(
       appBar: AppBar(
         elevation: 0,
         scrolledUnderElevation: 0,

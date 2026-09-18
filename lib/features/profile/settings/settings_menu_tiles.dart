@@ -1,7 +1,6 @@
 part of '../settings_screen.dart';
 
-/// Rounded card grouping a column of settings rows, with hairline inset
-/// dividers automatically inserted between children. A row that owns a
+/// Connected Material rows on Android and inset grouped rows on iOS. A row that owns a
 /// footnote should be passed as a single `Column` child so no divider
 /// splits the pair.
 class _SettingsGroupCard extends StatelessWidget {
@@ -16,25 +15,6 @@ class _SettingsGroupCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final isDark = scheme.brightness == Brightness.dark;
-
-    final rows = <Widget>[];
-    for (var i = 0; i < children.length; i++) {
-      if (i > 0) {
-        rows.add(
-          Divider(
-            height: 1,
-            thickness: 0.5,
-            indent: dividerIndent,
-            color: scheme.outlineVariant.withValues(
-              alpha: isDark ? 0.16 : 0.35,
-            ),
-          ),
-        );
-      }
-      rows.add(children[i]);
-    }
-
     if (Theme.of(context).platform == TargetPlatform.iOS) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -51,23 +31,30 @@ class _SettingsGroupCard extends StatelessWidget {
         ),
       );
     }
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(24),
-        border: Theme.of(context).platform == TargetPlatform.iOS
-            ? null
-            : Border.all(
-                color: scheme.outlineVariant.withValues(
-                  alpha: isDark ? 0.18 : 0.5,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < children.length; i++)
+            Padding(
+              padding: EdgeInsets.only(top: i == 0 ? 0 : 4),
+              child: Material(
+                color: scheme.surfaceContainer,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(i == 0 ? 24 : 4),
+                    bottom: Radius.circular(i == children.length - 1 ? 24 : 4),
+                  ),
+                  side: MediaQuery.highContrastOf(context)
+                      ? BorderSide(color: scheme.outline)
+                      : BorderSide.none,
                 ),
+                clipBehavior: Clip.antiAlias,
+                child: children[i],
               ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: Column(mainAxisSize: MainAxisSize.min, children: rows),
+            ),
+        ],
       ),
     );
   }
@@ -97,7 +84,7 @@ class _SettingsIconBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).platform == TargetPlatform.iOS
             ? color
-            : color.withValues(alpha: 0.14),
+            : Theme.of(context).colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(size * 0.3),
       ),
       child: Center(
@@ -107,7 +94,7 @@ class _SettingsIconBadge extends StatelessWidget {
               icon,
               color: Theme.of(context).platform == TargetPlatform.iOS
                   ? Colors.white
-                  : color,
+                  : Theme.of(context).colorScheme.onPrimaryContainer,
               size: size * 0.55,
             ),
       ),
@@ -130,11 +117,21 @@ class _SettingsStatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.colorScheme.brightness == Brightness.dark;
+    final statusScheme = ColorScheme.fromSeed(
+      seedColor: color,
+      brightness: theme.brightness,
+      contrastLevel: MediaQuery.highContrastOf(context) ? 1 : 0,
+    );
+    final ink = theme.platform == TargetPlatform.iOS
+        ? color
+        : statusScheme.onPrimaryContainer;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 3, 8, 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: isDark ? 0.16 : 0.12),
+        color: theme.platform == TargetPlatform.iOS
+            ? color.withValues(alpha: isDark ? 0.16 : 0.12)
+            : statusScheme.primaryContainer,
         borderRadius: BorderRadius.circular(AppRadii.pill),
       ),
       child: Row(
@@ -143,13 +140,13 @@ class _SettingsStatusPill extends StatelessWidget {
           Container(
             width: 6,
             height: 6,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: ink, shape: BoxShape.circle),
           ),
           const SizedBox(width: 5),
           Text(
             label,
             style: theme.textTheme.labelSmall?.copyWith(
-              color: color,
+              color: ink,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -186,14 +183,17 @@ class _SettingsMenuTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(
+        padding: EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
+          vertical: theme.platform == TargetPlatform.iOS ? AppSpacing.sm : 16,
         ),
         child: Row(
           children: [
-            _SettingsIconBadge(icon: icon, color: iconColor),
-            const SizedBox(width: AppSpacing.md),
+            if (theme.platform == TargetPlatform.iOS ||
+                MediaQuery.textScalerOf(context).scale(14) <= 20) ...[
+              _SettingsIconBadge(icon: icon, color: iconColor),
+              const SizedBox(width: AppSpacing.md),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,7 +227,7 @@ class _SettingsMenuTile extends StatelessWidget {
             const SizedBox(width: AppSpacing.sm),
             Icon(
               Icons.chevron_right_rounded,
-              color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
+              color: scheme.onSurfaceVariant,
               size: 20,
             ),
           ],
