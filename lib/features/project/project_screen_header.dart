@@ -7,40 +7,36 @@ class _ProjectHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final largeText = MediaQuery.textScalerOf(context).scale(1) >= 1.5;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            scheme.primary.withValues(alpha: 0.14),
-            scheme.tertiary.withValues(alpha: 0.08),
-          ],
-        ),
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.25),
+          color: scheme.outlineVariant.withValues(alpha: 0.45),
         ),
       ),
       child: Column(
         children: [
           Container(
-            width: 72,
-            height: 72,
+            width: 88,
+            height: 88,
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
+              color: scheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: scheme.primary.withValues(alpha: 0.18),
-                  blurRadius: 18,
-                  offset: const Offset(0, 6),
+                  color: scheme.shadow.withValues(alpha: 0.12),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(20),
               child: Image.asset(
                 'assets/icon/app_icon.png',
                 fit: BoxFit.cover,
@@ -58,37 +54,39 @@ class _ProjectHeader extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           Text(
             'TeleDrive',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: scheme.onSurface,
+            style:
+                (largeText
+                        ? theme.textTheme.titleLarge
+                        : theme.textTheme.headlineMedium)
+                    ?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: scheme.onSurface,
+                      letterSpacing: -0.5,
+                    ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'A little more space. A lot more possibility.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w400,
+              height: 1.35,
             ),
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: AppSpacing.sm),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
             decoration: BoxDecoration(
-              color: scheme.surface.withValues(alpha: 0.6),
+              color: scheme.secondaryContainer,
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: scheme.outlineVariant.withValues(alpha: 0.4),
-              ),
             ),
             child: Text(
-              'v${AppConfig.appVersion}',
+              'Version ${AppConfig.appVersion}',
               style: theme.textTheme.labelMedium?.copyWith(
-                color: scheme.onSurfaceVariant,
+                color: scheme.onSecondaryContainer,
                 fontWeight: FontWeight.w600,
               ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Your private cloud drive, powered by Telegram. '
-            'Unlimited space, end-to-end on your own account.',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: scheme.onSurfaceVariant,
-              height: 1.45,
             ),
           ),
         ],

@@ -851,6 +851,83 @@ void main() {
       }
     }
   }
+  for (final brightness in Brightness.values) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets(
+        'Android project page adapts ${brightness.name} scale=$scale',
+        (tester) async {
+          SharedPreferences.setMockInitialValues({});
+          await _pump(
+            tester,
+            const ProjectScreen(),
+            width: scale == 1 ? 390 : 320,
+            scale: scale,
+            brightness: brightness,
+            platform: TargetPlatform.android,
+          );
+
+          expect(find.text('TeleDrive'), findsOneWidget);
+          expect(
+            find.image(const AssetImage('assets/icon/app_icon.png')),
+            findsOneWidget,
+          );
+          expect(tester.takeException(), isNull);
+          await _preview(
+            tester,
+            'android-project-${brightness.name}-$scale-top',
+          );
+
+          final scroll = find.byType(Scrollable).first;
+          await tester.scrollUntilVisible(
+            find.text('Made by Sree'),
+            420,
+            scrollable: scroll,
+          );
+          await tester.scrollUntilVisible(
+            find.byKey(const ValueKey('project-social-youtube')),
+            280,
+            scrollable: scroll,
+          );
+          await tester.pumpAndSettle();
+
+          expect(
+            find.image(const AssetImage('assets/icon/devsdocode.png')),
+            findsOneWidget,
+          );
+          final socialKeys = <ValueKey<String>>[
+            const ValueKey('project-social-github'),
+            const ValueKey('project-social-instagram'),
+            const ValueKey('project-social-x'),
+            const ValueKey('project-social-youtube'),
+          ];
+          final rects = socialKeys
+              .map((key) => tester.getRect(find.byKey(key)))
+              .toList();
+          for (final rect in rects) {
+            expect(rect.height, greaterThanOrEqualTo(48));
+          }
+          for (var i = 0; i < rects.length; i++) {
+            for (var j = i + 1; j < rects.length; j++) {
+              expect(rects[i].overlaps(rects[j]), isFalse);
+            }
+          }
+          expect(rects[2].width, lessThan(rects[1].width));
+          expect(find.text('Instagram'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+          await tester.scrollUntilVisible(
+            find.text('Made by Sree'),
+            -280,
+            scrollable: scroll,
+          );
+          await tester.pumpAndSettle();
+          await _preview(
+            tester,
+            'android-project-${brightness.name}-$scale-maker',
+          );
+        },
+      );
+    }
+  }
   for (final page in <(String, Widget)>[
     ('storage', const ProfileScreen()),
     ('my-data', const MyDataScreen()),

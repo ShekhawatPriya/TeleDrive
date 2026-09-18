@@ -52,7 +52,7 @@ Every routed page and the settings subpages were inspected in source. **Rendered
 | Notifications settings | Shared header/group/switch refinement | Source review; app-settings regression tests |
 | Archive / Locked | Collection context above recoverable items; existing restore/selection retained | Source review |
 | Trash | Recovery-focused introduction; destructive controls retained | Source review |
-| Project / Changelog | Existing editorial sections and release timeline retained | Source review |
+| Project / Changelog | Android product hero, real maker artwork, content-sized social-link flow and editorial sections; iOS About composition and release timeline retained | Rendered Android light/dark and 320px/200% text; source review |
 | App update | Existing status layouts retained; motion honors accessibility | Source review |
 | Privacy / Terms | Existing sections retained; page transition honors reduced motion | Source review |
 | Upload sheet, progress, selection, action menus | Existing actions retained; shell positions progress/FAB above the floating dock | Source review; selection/navigation regression tests |

@@ -21,6 +21,7 @@ class _CategoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final largeText = MediaQuery.textScalerOf(context).scale(1) >= 1.5;
 
     return Container(
       decoration: BoxDecoration(
@@ -37,59 +38,104 @@ class _CategoryCard extends StatelessWidget {
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(9),
-                  decoration: BoxDecoration(
-                    color: scheme.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: Center(child: icon),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
+            child: largeText
+                ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _CategoryIcon(icon: icon),
+                          _CategoryTrailingIcon(trailing: trailing),
+                        ],
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          height: 1.3,
-                        ),
+                      const SizedBox(height: AppSpacing.md),
+                      _CategoryCopy(title: title, subtitle: subtitle),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      _CategoryIcon(icon: icon),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: _CategoryCopy(title: title, subtitle: subtitle),
                       ),
+                      const SizedBox(width: AppSpacing.sm),
+                      _CategoryTrailingIcon(trailing: trailing),
                     ],
                   ),
-                ),
-                if (trailing == _CardTrailing.chevron)
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
-                  )
-                else if (trailing == _CardTrailing.external)
-                  Icon(
-                    Icons.open_in_new_rounded,
-                    size: 18,
-                    color: scheme.primary.withValues(alpha: 0.7),
-                  ),
-              ],
-            ),
           ),
         ),
       ),
     );
+  }
+}
+
+class _CategoryIcon extends StatelessWidget {
+  const _CategoryIcon({required this.icon});
+
+  final Widget icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(9),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: SizedBox(width: 22, height: 22, child: Center(child: icon)),
+  );
+}
+
+class _CategoryCopy extends StatelessWidget {
+  const _CategoryCopy({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            height: 1.3,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CategoryTrailingIcon extends StatelessWidget {
+  const _CategoryTrailingIcon({required this.trailing});
+
+  final _CardTrailing trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return trailing == _CardTrailing.chevron
+        ? Icon(
+            Icons.chevron_right_rounded,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
+          )
+        : Icon(
+            Icons.open_in_new_rounded,
+            size: 18,
+            color: scheme.primary.withValues(alpha: 0.7),
+          );
   }
 }
 
