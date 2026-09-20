@@ -29,6 +29,12 @@ class SearchQueryController extends ChangeNotifier {
 
   bool get isActive => _normalized.isNotEmpty;
 
+  void submit() {
+    _debounce?.cancel();
+    _normalized = _raw.trim().toLowerCase();
+    notifyListeners();
+  }
+
   void update(String value) {
     if (_raw == value) return;
     _raw = value;

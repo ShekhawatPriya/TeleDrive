@@ -83,12 +83,8 @@ extension _DriveRepositoryMapping on DriveRepository {
       name: name,
       kind: kind,
       size: _readInt(json, const ['sizeBytes', 'size_bytes']) ?? 0,
-      modifiedAt:
-          _readString(json, const ['updatedAt', 'updated_at']) ??
-          DateTime.now().toIso8601String(),
-      createdAt:
-          _readString(json, const ['createdAt', 'created_at']) ??
-          DateTime.now().toIso8601String(),
+      modifiedAt: _readString(json, const ['updatedAt', 'updated_at']) ?? '',
+      createdAt: _readString(json, const ['createdAt', 'created_at']) ?? '',
       parentId: _readString(json, const ['folderId', 'folder_id']),
       starred: _readBool(json, const ['isStarred', 'is_starred']) ?? false,
       shared: _readBool(json, const ['isShared', 'is_shared']) ?? false,
@@ -144,12 +140,8 @@ extension _DriveRepositoryMapping on DriveRepository {
     id: _readString(json, const ['id']) ?? '${json['id']}',
     name: _readString(json, const ['name']) ?? 'Folder',
     parentId: _readString(json, const ['parentId', 'parent_id']),
-    modifiedAt:
-        _readString(json, const ['updatedAt', 'updated_at']) ??
-        DateTime.now().toIso8601String(),
-    createdAt:
-        _readString(json, const ['createdAt', 'created_at']) ??
-        DateTime.now().toIso8601String(),
+    modifiedAt: _readString(json, const ['updatedAt', 'updated_at']) ?? '',
+    createdAt: _readString(json, const ['createdAt', 'created_at']) ?? '',
     starred: _readBool(json, const ['isStarred', 'is_starred']) ?? false,
     shared: _readBool(json, const ['isShared', 'is_shared']) ?? false,
     recursiveFileCount:

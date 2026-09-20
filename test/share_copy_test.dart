@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:path/path.dart' as path;
 import 'dart:ui' as ui;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -154,7 +155,7 @@ Future<void> harness(
             auth: auth,
             download: download,
             stage: (source, file, name, token) async =>
-                CopyFile('/share/$name'),
+                CopyFile(path.join('share', name)),
           ),
         ),
         nativeFileShareProvider.overrideWithValue(share),
@@ -220,7 +221,8 @@ void main() {
       final auth = CopyAuth();
       final paths = <String>[];
       final service = FileCopyShareService(
-        stage: (source, file, name, token) async => CopyFile('/share/$name'),
+        stage: (source, file, name, token) async =>
+            CopyFile(path.join('share', name)),
         auth: auth,
         download: (file, token, progress) async {
           paths.add(file.id);
@@ -235,8 +237,8 @@ void main() {
         onProgress: updates.add,
       );
       expect(files.map((file) => file.path), [
-        '/share/Original.jpg',
-        '/share/Original (2).jpg',
+        path.join('share', 'Original.jpg'),
+        path.join('share', 'Original (2).jpg'),
       ]);
       expect(files.map((file) => file.name), [
         'Original.jpg',
@@ -253,7 +255,8 @@ void main() {
       final pending = Completer<File>();
       var calls = 0;
       final service = FileCopyShareService(
-        stage: (source, file, name, token) async => CopyFile('/share/$name'),
+        stage: (source, file, name, token) async =>
+            CopyFile(path.join('share', name)),
         auth: auth,
         download: (_, token, __) {
           calls++;
@@ -336,7 +339,8 @@ void main() {
   test('cancel and partial originals never yield shareable files', () async {
     final auth = CopyAuth();
     final service = FileCopyShareService(
-      stage: (source, file, name, token) async => CopyFile('/share/$name'),
+      stage: (source, file, name, token) async =>
+          CopyFile(path.join('share', name)),
       auth: auth,
       download: (_, __, ___) async => CopyFile('/partial', bytes: 100),
     );

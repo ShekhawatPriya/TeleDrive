@@ -14,7 +14,7 @@ extension _IosAccountSheet on _AccountBottomSheetState {
     final connected = ref.watch(authControllerProvider).telegramConnected;
     return IosPage(
       title: 'Account',
-      modal: true,
+      compact: true,
       controller: widget.scrollController,
       children: [
         if (account != null) ...[
@@ -140,6 +140,7 @@ extension _IosAccountSheet on _AccountBottomSheetState {
                 if (_isExpanded) ...[
                   for (final saved in [account, ...others])
                     IosRow(
+                      leading: _buildAvatarWidget(saved, size: 40),
                       title: saved.displayName,
                       subtitle: saved.username == null
                           ? 'ID ${saved.telegramId}'
@@ -247,9 +248,7 @@ extension _IosAccountSheet on _AccountBottomSheetState {
   }
 
   void _openIosDestination(String location) {
-    final router = GoRouter.of(context);
-    Navigator.of(context).pop();
-    router.push(location);
+    context.safePush(location);
   }
 
   Future<void> _setIosBackup(bool value) async {

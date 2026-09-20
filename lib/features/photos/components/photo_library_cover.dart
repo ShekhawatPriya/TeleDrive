@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import '../../../models/drive_models.dart';
 import '../../../widgets/media_thumb.dart';
 
-/// Uses the actual first item in the current library, never synthetic memories.
+/// One actual library photo in the session's randomly sampled highlights.
 class PhotoLibraryCover extends StatelessWidget {
   const PhotoLibraryCover({required this.file, required this.onTap, super.key});
   final DriveFile file;

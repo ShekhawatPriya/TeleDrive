@@ -1,4 +1,6 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_m_fsdk/features/photos/components/photo_library_cover.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_m_fsdk/features/profile/legal_screen.dart';
 import 'package:flutter_m_fsdk/features/project/changelog_screen.dart';
 import 'package:flutter_m_fsdk/features/project/github_release_models.dart';
@@ -93,8 +95,8 @@ final _media = List.generate(
     parentId: null,
     starred: true,
     thumbnailUrl: _fixturePath,
-    widthPx: 4032,
-    heightPx: 3024,
+    widthPx: i % 3 == 0 ? 3024 : (i % 3 == 1 ? 4032 : 5000),
+    heightPx: i % 3 == 0 ? 4032 : (i % 3 == 1 ? 3024 : 2200),
   ),
 );
 const _folders = [
@@ -367,9 +369,27 @@ Future<void> _preview(WidgetTester tester, String name) async {
   });
 }
 
+GoRouter _accountRouter(Widget home) => GoRouter(
+  routes: [
+    GoRoute(path: '/', builder: (_, __) => home),
+    GoRoute(
+      path: '/account',
+      pageBuilder: (_, state) =>
+          CupertinoPage(key: state.pageKey, child: const AccountBottomSheet()),
+    ),
+    GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+    GoRoute(path: '/profile/my-data', builder: (_, __) => const MyDataScreen()),
+    GoRoute(
+      path: '/profile/free-up-space',
+      builder: (_, __) => const FreeUpSpaceScreen(),
+    ),
+  ],
+);
+
 Future<void> _pump(
   WidgetTester tester,
   Widget child, {
+  GoRouter? router,
   double width = 390,
   double scale = 1,
   bool reduceEffects = true,
@@ -416,22 +436,33 @@ Future<void> _pump(
         driveSearchProvider.overrideWith((_) => _DesignSearch()),
         shareControllerProvider.overrideWith((_) => _DesignShares()),
       ],
-      child: MaterialApp(
-        theme: theme.copyWith(
-          platform: platform,
-          textTheme: theme.textTheme.apply(fontFamily: 'Inter'),
-        ),
+      child: router != null
+          ? MaterialApp.router(
+              routerConfig: router,
+              theme: theme.copyWith(
+                platform: platform,
+                textTheme: theme.textTheme.apply(fontFamily: 'Inter'),
+              ),
+            )
+          : MaterialApp(
+              theme: theme.copyWith(
+                platform: platform,
+                textTheme: theme.textTheme.apply(fontFamily: 'Inter'),
+              ),
 
-        home: MediaQuery(
-          data: MediaQueryData(
-            size: Size(width, 844),
-            textScaler: TextScaler.linear(scale),
-            disableAnimations: reduceEffects,
-            highContrast: highContrast,
-          ),
-          child: RepaintBoundary(key: const ValueKey('preview'), child: child),
-        ),
-      ),
+              home: MediaQuery(
+                data: MediaQueryData(
+                  size: Size(width, 844),
+                  textScaler: TextScaler.linear(scale),
+                  disableAnimations: reduceEffects,
+                  highContrast: highContrast,
+                ),
+                child: RepaintBoundary(
+                  key: const ValueKey('preview'),
+                  child: child,
+                ),
+              ),
+            ),
     ),
   );
 
@@ -557,7 +588,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('iOS search Done fits a small phone with large text', (
+  testWidgets('iOS search cancel fits a small phone with large text', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -569,23 +600,25 @@ void main() {
     );
     await tester.tap(find.byType(EditableText));
     await tester.pumpAndSettle();
-    expect(find.text('Done'), findsOneWidget);
+    expect(find.byTooltip('Cancel search'), findsOneWidget);
     expect(tester.takeException(), isNull);
-    await tester.tap(find.text('Done'));
+    await tester.tap(find.byTooltip('Cancel search'));
     await tester.pumpAndSettle();
     expect(tester.testTextInput.isVisible, isFalse);
   });
 
   testWidgets(
-    'open account sheet follows light appearance after a theme change',
+    'dedicated account page follows appearance changes without a close button',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       const home = Scaffold(body: Center(child: AccountButton()));
-      await _pump(tester, home, brightness: Brightness.dark);
+      final router = _accountRouter(home);
+      addTearDown(router.dispose);
+      await _pump(tester, home, brightness: Brightness.dark, router: router);
       await tester.tap(find.byType(AccountButton));
       await tester.pumpAndSettle();
       expect(find.byType(AccountBottomSheet), findsOneWidget);
-      await _pump(tester, home, brightness: Brightness.light);
+      await _pump(tester, home, brightness: Brightness.light, router: router);
       final sheet = find.descendant(
         of: find.byType(AccountBottomSheet),
         matching: find.byType(Scaffold),
@@ -597,18 +630,21 @@ void main() {
         theme.colorScheme.surface,
       );
       expect(theme.colorScheme.surface.computeLuminance(), greaterThan(.8));
-      expect(find.byTooltip('Close'), findsOneWidget);
-      await tester.tap(find.byTooltip('Close'));
+      expect(find.byTooltip('Close'), findsNothing);
+      await tester.tap(find.byTooltip('Back'));
       await tester.pumpAndSettle();
       expect(find.byType(AccountBottomSheet), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
-  testWidgets('Settings back returns to the open Account sheet', (
+  testWidgets('Settings back returns to the dedicated Account page', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
-    await _pump(tester, const Scaffold(body: Center(child: AccountButton())));
+    const home = Scaffold(body: Center(child: AccountButton()));
+    final router = _accountRouter(home);
+    addTearDown(router.dispose);
+    await _pump(tester, home, router: router);
     await tester.tap(find.byType(AccountButton));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Settings'));
@@ -621,6 +657,107 @@ void main() {
     expect(find.byType(SettingsScreen), findsNothing);
     expect(tester.takeException(), isNull);
   });
+  for (final destination in [
+    ('Telegram Drive', ProfileScreen),
+    ('Free Up Space', FreeUpSpaceScreen),
+    ('My Data', MyDataScreen),
+  ]) {
+    testWidgets('${destination.$1} Back retains Account underneath', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      const home = Scaffold(body: Center(child: AccountButton()));
+      final router = _accountRouter(home);
+      addTearDown(router.dispose);
+      await _pump(tester, home, router: router);
+      await tester.tap(find.byType(AccountButton));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text(destination.$1),
+        180,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text(destination.$1));
+      await tester.pumpAndSettle();
+      expect(find.byType(destination.$2), findsOneWidget);
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AccountBottomSheet), findsOneWidget);
+      expect(router.canPop(), isTrue);
+      expect(find.byTooltip('Close'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets(
+    'random photo highlights swipe without making the latest primary',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await _pump(
+        tester,
+        _tabPreview(SearchScope.photos, const PhotosScreen()),
+      );
+      final covers = find.byType(PhotoLibraryCover);
+      final first = tester.widget<PhotoLibraryCover>(covers.first).file.id;
+      expect(first, isNot(_media.first.id));
+      final pager = find.byKey(const ValueKey('photo-highlights'));
+      await tester.drag(pager, const Offset(-350, 0));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('Highlight 2 of 5'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final brightness in Brightness.values) {
+      for (final scale in [1.0, 2.0]) {
+        testWidgets('separate search cancel $platform $brightness $scale', (
+          tester,
+        ) async {
+          await _pump(
+            tester,
+            const Scaffold(
+              body: SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: DriveSearchField(scope: SearchScope.drive),
+                ),
+              ),
+            ),
+            platform: platform,
+            brightness: brightness,
+            width: scale == 2 ? 320 : 390,
+            scale: scale,
+            highContrast: scale == 2,
+            reduceEffects: scale == 2,
+          );
+          await tester.enterText(find.byType(EditableText), 'Summer');
+          await tester.pumpAndSettle();
+          final field = tester.getRect(find.byType(TextField));
+          final cancel = tester.getRect(find.byTooltip('Cancel search'));
+          expect(cancel.left - field.right, greaterThanOrEqualTo(8));
+          expect(cancel.shortestSide, greaterThanOrEqualTo(48));
+          expect(find.text('Done'), findsNothing);
+          await _preview(
+            tester,
+            'search-${platform.name}-${brightness.name}-$scale',
+          );
+          await tester.tap(find.byTooltip('Cancel search'));
+          await tester.pump(const Duration(milliseconds: 120));
+          expect(tester.takeException(), isNull);
+          await tester.pumpAndSettle();
+          expect(tester.testTextInput.isVisible, isFalse);
+          expect(
+            tester
+                .widget<EditableText>(find.byType(EditableText))
+                .controller
+                .text,
+            isEmpty,
+          );
+        });
+      }
+    }
+  }
   testWidgets('backup controls update settings and keep limits bounded', (
     tester,
   ) async {
@@ -728,7 +865,7 @@ void main() {
         of: find.byType(FolderCollectionCard),
         matching: find.byType(ItemStatusIndicators),
       );
-      final icon = find.byIcon(Icons.folder_rounded);
+      final icon = find.byIcon(Icons.folder_shared_rounded);
       final menu = find.byTooltip('Actions for ${folder.name}').first;
       expect(tester.getRect(marker).overlaps(tester.getRect(icon)), isFalse);
       expect(tester.getRect(marker).overlaps(tester.getRect(menu)), isFalse);

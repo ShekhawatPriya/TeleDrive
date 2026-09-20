@@ -37,7 +37,7 @@ class NativeMenuPayload {
       'symbol': switch (item.label) {
         'Open' => 'arrow.up.forward.app',
         'Share' => 'square.and.arrow.up',
-        'Revoke share' => 'link',
+        'Revoke share' => 'person.crop.circle.badge.minus',
         'Download' => 'square.and.arrow.down',
         'Move' => 'folder',
         'Rename' => 'pencil',

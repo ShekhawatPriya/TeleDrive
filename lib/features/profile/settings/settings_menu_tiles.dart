@@ -78,6 +78,20 @@ class _SettingsIconBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (Theme.of(context).platform != TargetPlatform.iOS) {
+      return Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: .14),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        alignment: Alignment.center,
+        child:
+            child ??
+            Icon(icon, color: Theme.of(context).colorScheme.primary, size: 17),
+      );
+    }
     return Container(
       width: size,
       height: size,

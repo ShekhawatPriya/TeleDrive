@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
+import '../core/utils/safe_navigation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/auth_controller.dart';
 import '../features/profile/widgets/account_bottom_sheet.dart';
@@ -13,11 +13,7 @@ class AccountButton extends ConsumerWidget {
     tooltip: 'Account and settings',
     padding: const EdgeInsets.all(4),
     onPressed: () => Theme.of(context).platform == TargetPlatform.iOS
-        ? showCupertinoSheet<void>(
-            context: context,
-            scrollableBuilder: (context, controller) =>
-                AccountBottomSheet(scrollController: controller),
-          )
+        ? context.safePush('/account')
         : showModalBottomSheet<void>(
             context: context,
             isScrollControlled: true,

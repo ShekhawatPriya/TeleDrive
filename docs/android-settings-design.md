@@ -50,7 +50,8 @@ The diagnosis is a design judgment informed by the sources above.
 - Use large, leading, collapsing Material titles and existing back navigation.
 - Group related rows with 24-point outer corners, 4-point inner corners and
   four-point gaps. Use opaque surfaceContainer fills; outline only in high contrast.
-- Use primaryContainer/onPrimaryContainer for category icons, primary section
+- Match Account category icons: a 28-point rounded badge, primary tint at 14%
+  opacity, and a 17-point established Material outline icon. Keep primary section
   labels and full-strength secondary text. Keep the shared brand palette.
 - Give detail introductions open space instead of another nested card.
 - Keep Material ink feedback and real switches. Enabled switches include a check;
@@ -72,7 +73,8 @@ fonts do not prove native emoji appearance.
 Android files and folders use ItemStatusIndicators: distinct star/link symbols in
 one opaque tonal marker with a semantic label. Folder cards reserve space below
 the name, rather than stacking symbols over a shared-folder icon. Android folder
-cards are 176 points tall at normal text; iOS retains its existing geometry.
+cards are 176 points tall at normal text with a 44-point icon and 20-point title;
+iOS uses its own 156-point geometry and 40-point icon.
 File cards, recent previews and photo grids share the marker; photo markers stay
 above video duration labels. List rows keep the existing Star/Unstar action and
 omit a duplicate passive star. On narrow or enlarged-text rows, actions move

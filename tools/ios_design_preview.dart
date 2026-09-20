@@ -1,3 +1,7 @@
+import 'package:flutter_m_fsdk/widgets/drive_search_field.dart';
+import 'package:flutter_m_fsdk/widgets/search_keyboard.dart';
+import 'package:flutter_m_fsdk/features/search/search_controller.dart';
+import 'package:flutter_m_fsdk/features/profile/widgets/account_bottom_sheet.dart';
 // Local-only visual QA entry point. Never used by lib/main.dart or release builds.
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -45,8 +49,14 @@ void main() {
 }
 
 final router = GoRouter(
+  observers: [SearchKeyboardObserver()],
   routes: [
     GoRoute(path: '/', builder: (_, _) => const PreviewHome()),
+    GoRoute(
+      path: '/account',
+      pageBuilder: (_, state) =>
+          CupertinoPage(key: state.pageKey, child: const AccountBottomSheet()),
+    ),
     GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
     GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
     GoRoute(path: '/profile/my-data', builder: (_, _) => const MyDataScreen()),
@@ -131,9 +141,8 @@ class _PreviewHomeState extends State<PreviewHome> {
             ],
           ),
           const SizedBox(height: 20),
-          const CupertinoSearchTextField(
-            placeholder: 'Search files and folders',
-          ),
+          const DriveSearchField(scope: SearchScope.drive),
+          const Text('Design preview — fixtures'),
           const SizedBox(height: 24),
           Text('Library', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 16),
@@ -163,7 +172,10 @@ class _PreviewHomeState extends State<PreviewHome> {
     ),
     bottomNavigationBar: FloatingPillNavigationBar(
       selectedIndex: tab,
-      onDestinationSelected: (index) => setState(() => tab = index),
+      onDestinationSelected: (index) {
+        dismissSearchKeyboard();
+        setState(() => tab = index);
+      },
     ),
   );
 }

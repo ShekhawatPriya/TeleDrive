@@ -11,12 +11,7 @@ extension _IosFreeUpSpace on _FreeUpSpaceScreenState {
     final busy = state.scanning || state.deleting;
     return IosPage(
       title: 'Free Up Space',
-      trailing: NativeGlassButton(
-        label: 'Scan again',
-        symbol: 'arrow.clockwise',
-        icon: CupertinoIcons.refresh,
-        onPressed: busy ? null : () => controller.scan(),
-      ),
+      compact: true,
       footer: DecoratedBox(
         decoration: BoxDecoration(color: scheme.surface),
         child: SafeArea(

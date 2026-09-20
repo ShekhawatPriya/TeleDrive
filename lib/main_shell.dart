@@ -24,6 +24,7 @@ import 'widgets/ios_more_menu.dart';
 import 'widgets/main_tab_menu_sections.dart';
 import 'widgets/floating_pill_navigation_bar.dart';
 import 'widgets/teledrive_app_bar.dart';
+import 'widgets/search_keyboard.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({required this.navigationShell, super.key});
@@ -143,7 +144,7 @@ class _MainShellState extends ConsumerState<MainShell>
   }
 
   void _handleDestinationSelected(int index) {
-    FocusManager.instance.primaryFocus?.unfocus();
+    dismissSearchKeyboard();
     if (index == 0) ref.read(driveControllerProvider).setActiveFolderId(null);
     if (index == 3)
       unawaited(ref.read(shareControllerProvider).refresh(silent: true));
@@ -168,16 +169,19 @@ class _MainShellState extends ConsumerState<MainShell>
           child: Stack(
             children: [
               widget.navigationShell,
-              if (!keyboardVisible &&
-                  !(isSelectMode &&
-                      Theme.of(context).platform == TargetPlatform.iOS))
+              if (!(isSelectMode &&
+                  Theme.of(context).platform == TargetPlatform.iOS))
                 Positioned(
                   left: AppSpacing.md,
                   right: AppSpacing.md,
                   bottom: MediaQuery.paddingOf(context).bottom + AppSpacing.md,
-                  child: BottomActionSystem(
-                    showFab: routeIndex == 0,
-                    parentId: null,
+                  child: Visibility(
+                    visible: !keyboardVisible,
+                    maintainState: true,
+                    child: BottomActionSystem(
+                      showFab: routeIndex == 0,
+                      parentId: null,
+                    ),
                   ),
                 ),
             ],

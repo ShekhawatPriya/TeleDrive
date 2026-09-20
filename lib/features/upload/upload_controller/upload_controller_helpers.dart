@@ -7,11 +7,15 @@ extension _UploadControllerHelpers on UploadController {
     BuildContext? context,
   }) async {
     if (picking || uploading) return;
+    final owner = (_auth.user?.userId, _auth.user?.telegramId, _auth.token);
     picking = true;
     error = null;
     _notifyListeners();
     try {
       final res = await pickAction();
+      if (_disposed ||
+          owner != (_auth.user?.userId, _auth.user?.telegramId, _auth.token))
+        return;
       if (res.error != null) {
         error = res.error;
         sheetVisible = true;
@@ -25,6 +29,9 @@ extension _UploadControllerHelpers on UploadController {
         // pass a still-mounted context from the current screen.
         // ignore: use_build_context_synchronously
         final shouldUpload = await _confirmLargeUploadsIfNeeded(context);
+        if (_disposed ||
+            owner != (_auth.user?.userId, _auth.user?.telegramId, _auth.token))
+          return;
         if (!shouldUpload) {
           dismiss();
           return;

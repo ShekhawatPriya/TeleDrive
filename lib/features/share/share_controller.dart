@@ -27,6 +27,7 @@ class ShareController extends ChangeNotifier {
   final DriveController _drive;
 
   List<Share> _shares = const [];
+  final Map<String, Share> _details = {};
   bool _loading = false;
   String? _error;
   Future<void>? _refreshing;
@@ -51,6 +52,7 @@ class ShareController extends ChangeNotifier {
     _generation++;
     _revision++;
     _shares = const [];
+    _details.clear();
     _loading = false;
     _error = null;
     _refreshing = null;
@@ -99,6 +101,7 @@ class ShareController extends ChangeNotifier {
     if (!_current(generation)) return created;
     _revision++;
     _shares = [created, ..._shares];
+    _details[created.id] = created;
     final fileIds = items
         .where((i) => i.type == ShareItemType.file)
         .map((i) => i.id)
@@ -107,6 +110,9 @@ class ShareController extends ChangeNotifier {
         .where((i) => i.type == ShareItemType.folder)
         .map((i) => i.id)
         .toSet();
+    fileIds.addAll(
+      created.items.map((item) => item.fileId).whereType<String>(),
+    );
     _drive.markShared(fileIds: fileIds, folderIds: folderIds);
     notifyListeners();
     unawaited(refresh(silent: true));
@@ -115,6 +121,9 @@ class ShareController extends ChangeNotifier {
 
   Future<int> revokeForFile(String fileId) async {
     final generation = _generation;
+    final affected = _details.values
+        .where((share) => share.items.any((item) => item.fileId == fileId))
+        .toList();
     final count = await _repo.revokeForFile(fileId);
     if (!_current(generation)) return count;
     _revision++;
@@ -123,11 +132,20 @@ class ShareController extends ChangeNotifier {
         .toList();
     _drive.markUnshared(fileIds: {fileId});
     notifyListeners();
+    await _reconcileAffected(affected, generation);
+    if (_current(generation)) unawaited(refresh(silent: true));
     return count;
   }
 
   Future<int> revokeForFolder(String folderId) async {
     final generation = _generation;
+    final affected = _details.values
+        .where(
+          (share) => share.items.any(
+            (item) => item.folderId == folderId && item.parentPublicId == null,
+          ),
+        )
+        .toList();
     final count = await _repo.revokeForFolder(folderId);
     if (!_current(generation)) return count;
     _revision++;
@@ -136,17 +154,34 @@ class ShareController extends ChangeNotifier {
         .toList();
     _drive.markUnshared(folderIds: {folderId});
     notifyListeners();
+    await _reconcileAffected(affected, generation);
+    if (_current(generation)) unawaited(refresh(silent: true));
     return count;
   }
 
-  Future<void> revokeShare(String id) async {
+  Future<void> revokeShare(String id, {Share? detail}) async {
     final generation = _generation;
+    detail ??= _details[id];
     final previous = _shares;
     _revision++;
     _shares = previous.where((s) => s.id != id).toList();
     notifyListeners();
     try {
       await _repo.revokeShare(id);
+      if (!_current(generation)) return;
+      _details.remove(id);
+      if (detail != null) {
+        await _drive.reconcileSharedItems(
+          fileIds: detail.items
+              .map((item) => item.fileId)
+              .whereType<String>()
+              .toSet(),
+          folderIds: detail.items
+              .map((item) => item.folderId)
+              .whereType<String>()
+              .toSet(),
+        );
+      }
     } catch (err) {
       if (!_current(generation)) rethrow;
       _revision++;
@@ -160,8 +195,31 @@ class ShareController extends ChangeNotifier {
     }
   }
 
-  Future<Share> getShare(String id) {
-    return _repo.getShare(id);
+  Future<void> _reconcileAffected(List<Share> shares, int generation) async {
+    if (!_current(generation) || shares.isEmpty) return;
+    for (final share in shares) {
+      _details.remove(share.id);
+    }
+    await _drive.reconcileSharedItems(
+      fileIds: shares
+          .expand((share) => share.items)
+          .map((item) => item.fileId)
+          .whereType<String>()
+          .toSet(),
+      folderIds: shares
+          .expand((share) => share.items)
+          .where((item) => item.parentPublicId == null)
+          .map((item) => item.folderId)
+          .whereType<String>()
+          .toSet(),
+    );
+  }
+
+  Future<Share> getShare(String id) async {
+    final generation = _generation;
+    final share = await _repo.getShare(id);
+    if (_current(generation)) _details[id] = share;
+    return share;
   }
 
   Future<({List<ShareAccess> accesses, String? nextCursor})> listAccesses(

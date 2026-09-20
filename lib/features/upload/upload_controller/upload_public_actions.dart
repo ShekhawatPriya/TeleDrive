@@ -1,7 +1,18 @@
 part of '../upload_controller.dart';
 
 extension _UploadPublicActions on UploadController {
+  Future<void> _pickPhotos({String? folderId, BuildContext? context}) async {
+    if (picking || uploading) return;
+    activeFolderId = folderId;
+    await _handlePicker(
+      () => UploadPickerHelper.pickPhotos(maxFiles: UploadController.maxFiles),
+      'Photo picking failed.',
+      context: context,
+    );
+  }
+
   Future<void> _pickFiles({String? folderId, BuildContext? context}) async {
+    if (picking || uploading) return;
     activeFolderId = folderId;
     await _handlePicker(
       () => UploadPickerHelper.pickFiles(maxFiles: UploadController.maxFiles),
@@ -11,6 +22,7 @@ extension _UploadPublicActions on UploadController {
   }
 
   Future<void> _pickPhoto({String? folderId, BuildContext? context}) async {
+    if (picking || uploading) return;
     activeFolderId = folderId;
     await _handlePicker(
       () => UploadPickerHelper.pickPhoto(),

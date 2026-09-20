@@ -118,27 +118,7 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
 
     return Scaffold(
       appBar: selectMode
-          ? PreferredSize(
-              preferredSize: Size.fromHeight(
-                Theme.of(context).platform == TargetPlatform.iOS
-                    ? ((MediaQuery.textScalerOf(context).scale(17) > 24 ||
-                              MediaQuery.sizeOf(context).width < 360)
-                          ? 112
-                          : 56)
-                    : 64,
-              ),
-              child: DriveSelectionBar(
-                selectedCount: selectedCount,
-                onSelectAll: () => selectAllItems(files, folders),
-                onClear: clearSelection,
-                onCancel: exitSelect,
-                onShare: () => bulkShare(context),
-                onStar: bulkStar,
-                onMove: () =>
-                    bulkMove(context, currentParentId: widget.folderId),
-                onDelete: () => bulkDelete(context),
-              ),
-            )
+          ? null
           : AppBar(
               title: Text(title),
               actions: [
@@ -154,106 +134,125 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
                 const SizedBox(width: AppSpacing.xs),
               ],
             ),
-      body: Stack(
+      body: Column(
         children: [
-          RefreshIndicator(
-            onRefresh: () => ref
-                .read(driveControllerProvider)
-                .refreshFolder(widget.folderId, silent: false),
-            child: NotificationListener<ScrollNotification>(
-              onNotification: (notification) {
-                if (notification.metrics.pixels >=
-                        notification.metrics.maxScrollExtent - 200 &&
-                    hasMore &&
-                    !loadingMore) {
-                  ref
+          if (selectMode)
+            DriveSelectionBar(
+              selectedCount: selectedCount,
+              onSelectAll: () => selectAllItems(files, folders),
+              onClear: clearSelection,
+              onCancel: exitSelect,
+              onShare: () => bulkShare(context),
+              onStar: bulkStar,
+              onMove: () => bulkMove(context, currentParentId: widget.folderId),
+              onDelete: () => bulkDelete(context),
+            ),
+          Expanded(
+            child: Stack(
+              children: [
+                RefreshIndicator(
+                  onRefresh: () => ref
                       .read(driveControllerProvider)
-                      .loadMoreFolder(widget.folderId);
-                }
-                return false;
-              },
-              child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  SliverToBoxAdapter(child: _Breadcrumbs(path: path)),
-                  if (!loaded && loading)
-                    const SliverFillRemaining(child: SkeletonList()),
-                  if (loaded && folders.isEmpty && files.isEmpty)
-                    const SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: EmptyState(
-                        icon: Icons.folder_open,
-                        title: 'Nothing here yet',
-                        body: 'Upload files or create a nested folder.',
-                      ),
-                    ),
-                  DriveFolderSliver(
-                    allowRename: false,
-                    folders: folders,
-                    selectMode: selectMode,
-                    selectedFolderIds: selectedFolderIds,
-                    onFolderTap: _onFolderTap,
-                    onFolderLongPress: (id) => enterSelect(folderId: id),
-                    onFolderMore: (f) => DriveItemActions.openFolder(
-                      context,
-                      ref,
-                      f,
-                      allowRename: false,
+                      .refreshFolder(widget.folderId, silent: false),
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (notification) {
+                      if (notification.metrics.pixels >=
+                              notification.metrics.maxScrollExtent - 200 &&
+                          hasMore &&
+                          !loadingMore) {
+                        ref
+                            .read(driveControllerProvider)
+                            .loadMoreFolder(widget.folderId);
+                      }
+                      return false;
+                    },
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        SliverToBoxAdapter(child: _Breadcrumbs(path: path)),
+                        if (!loaded && loading)
+                          const SliverFillRemaining(child: SkeletonList()),
+                        if (loaded && folders.isEmpty && files.isEmpty)
+                          const SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: EmptyState(
+                              icon: Icons.folder_open,
+                              title: 'Nothing here yet',
+                              body: 'Upload files or create a nested folder.',
+                            ),
+                          ),
+                        DriveFolderSliver(
+                          allowRename: false,
+                          folders: folders,
+                          selectMode: selectMode,
+                          selectedFolderIds: selectedFolderIds,
+                          onFolderTap: _onFolderTap,
+                          onFolderLongPress: (id) => enterSelect(folderId: id),
+                          onFolderMore: (f) => DriveItemActions.openFolder(
+                            context,
+                            ref,
+                            f,
+                            allowRename: false,
+                          ),
+                        ),
+                        DriveFilesSliver(
+                          files: files,
+                          grid: grid,
+                          selectMode: selectMode,
+                          selectedFileIds: selectedFileIds,
+                          onFileTap: _onFileTap,
+                          onFileLongPress: (id) => enterSelect(fileId: id),
+                          onFileMore: (f) =>
+                              DriveItemActions.openFile(context, ref, f),
+                          bottomPadding: 150,
+                        ),
+                        if (loadingMore)
+                          const SliverToBoxAdapter(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Center(child: CircularProgressIndicator()),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  DriveFilesSliver(
-                    files: files,
-                    grid: grid,
-                    selectMode: selectMode,
-                    selectedFileIds: selectedFileIds,
-                    onFileTap: _onFileTap,
-                    onFileLongPress: (id) => enterSelect(fileId: id),
-                    onFileMore: (f) =>
-                        DriveItemActions.openFile(context, ref, f),
-                    bottomPadding: 150,
+                ),
+                if (selectMode &&
+                    Theme.of(context).platform == TargetPlatform.iOS)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: DriveSelectionBar(
+                      actionsOnly: true,
+                      selectedCount: selectedCount,
+                      onSelectAll: () => selectAllItems(files, folders),
+                      onClear: clearSelection,
+                      onCancel: exitSelect,
+                      onShare: () => bulkShare(context),
+                      onStar: bulkStar,
+                      onMove: () =>
+                          bulkMove(context, currentParentId: widget.folderId),
+                      onDelete: () => bulkDelete(context),
+                    ),
                   ),
-                  if (loadingMore)
-                    const SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Center(child: CircularProgressIndicator()),
+                if (!(selectMode &&
+                    Theme.of(context).platform == TargetPlatform.iOS))
+                  Positioned(
+                    left: AppSpacing.md,
+                    right: AppSpacing.md,
+                    bottom: 16,
+                    child: SafeArea(
+                      top: false,
+                      child: BottomActionSystem(
+                        showFab: !selectMode,
+                        parentId: widget.folderId,
                       ),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
           ),
-          if (selectMode && Theme.of(context).platform == TargetPlatform.iOS)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: DriveSelectionBar(
-                actionsOnly: true,
-                selectedCount: selectedCount,
-                onSelectAll: () => selectAllItems(files, folders),
-                onClear: clearSelection,
-                onCancel: exitSelect,
-                onShare: () => bulkShare(context),
-                onStar: bulkStar,
-                onMove: () =>
-                    bulkMove(context, currentParentId: widget.folderId),
-                onDelete: () => bulkDelete(context),
-              ),
-            ),
-          if (!(selectMode && Theme.of(context).platform == TargetPlatform.iOS))
-            Positioned(
-              left: AppSpacing.md,
-              right: AppSpacing.md,
-              bottom: 16,
-              child: SafeArea(
-                top: false,
-                child: BottomActionSystem(
-                  showFab: !selectMode,
-                  parentId: widget.folderId,
-                ),
-              ),
-            ),
         ],
       ),
     );

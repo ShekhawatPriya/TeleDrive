@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import '../../../models/drive_models.dart';
@@ -44,10 +45,43 @@ class _PhotosGridViewState extends State<PhotosGridView> {
   late List<PhotoDateSection> _sections = groupByDate(widget.files);
   DateTime _groupedDay = DateUtils.dateOnly(DateTime.now());
   final Map<String, GlobalKey> _tileKeys = <String, GlobalKey>{};
+  final _random = Random();
+  final List<String> _highlightIds = [];
+  int _highlightIndex = 0;
+
+  void _updateHighlights() {
+    final photos = widget.files
+        .where((file) => file.kind == FileKind.image && !file.isOptimistic)
+        .toList();
+    final ids = photos.map((file) => file.id).toSet();
+    _highlightIds.removeWhere((id) => !ids.contains(id));
+    final remaining =
+        photos.where((file) => !_highlightIds.contains(file.id)).toList()
+          ..shuffle(_random);
+    _highlightIds.addAll(
+      remaining.take(5 - _highlightIds.length).map((file) => file.id),
+    );
+    if (_highlightIds.length > 1 && _highlightIds.first == photos.first.id) {
+      final other = _highlightIds[1];
+      _highlightIds[1] = _highlightIds.first;
+      _highlightIds[0] = other;
+    }
+    _highlightIndex = _highlightIndex.clamp(
+      0,
+      max(0, _highlightIds.length - 1),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _updateHighlights();
+  }
 
   @override
   void didUpdateWidget(covariant PhotosGridView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _updateHighlights();
     final today = DateUtils.dateOnly(DateTime.now());
     if (!listEquals(oldWidget.files, widget.files) || today != _groupedDay) {
       _sections = groupByDate(widget.files);
@@ -70,21 +104,74 @@ class _PhotosGridViewState extends State<PhotosGridView> {
             onTilePan: widget.onTilePanSelect,
             child: NotificationListener<ScrollNotification>(
               onNotification: (n) {
-                if (n.metrics.pixels >= n.metrics.maxScrollExtent - 600) {
+                if (n.metrics.axis == Axis.vertical &&
+                    n.metrics.pixels >= n.metrics.maxScrollExtent - 600) {
                   widget.onLoadMore();
                 }
                 return false;
               },
               child: CustomScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
                   if (widget.showCover &&
                       !widget.selectMode &&
-                      widget.files.isNotEmpty)
+                      _highlightIds.isNotEmpty)
                     SliverToBoxAdapter(
-                      child: PhotoLibraryCover(
-                        file: widget.files.first,
-                        onTap: () => widget.onTileTap(widget.files.first.id),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height:
+                                264 +
+                                (MediaQuery.textScalerOf(context).scale(24) -
+                                        24) *
+                                    2,
+                            child: PageView.builder(
+                              key: const ValueKey('photo-highlights'),
+                              itemCount: _highlightIds.length,
+                              onPageChanged: (index) =>
+                                  setState(() => _highlightIndex = index),
+                              itemBuilder: (_, index) {
+                                final file = widget.files.firstWhere(
+                                  (file) => file.id == _highlightIds[index],
+                                );
+                                return PhotoLibraryCover(
+                                  file: file,
+                                  onTap: () => widget.onTileTap(file.id),
+                                );
+                              },
+                            ),
+                          ),
+                          if (_highlightIds.length > 1)
+                            Semantics(
+                              label:
+                                  'Highlight ${_highlightIndex + 1} of ${_highlightIds.length}',
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  for (var i = 0; i < _highlightIds.length; i++)
+                                    Container(
+                                      width: i == _highlightIndex ? 16 : 6,
+                                      height: 6,
+                                      margin: const EdgeInsets.symmetric(
+                                        horizontal: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(3),
+                                        color: i == _highlightIndex
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.primary
+                                            : Theme.of(
+                                                context,
+                                              ).colorScheme.outlineVariant,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   for (final section in _sections)

@@ -1,5 +1,9 @@
 # TeleDrive frontend design direction
 
+Current contracts for the September 20 fixes are in
+[Mobile UX refinements](mobile-ux-refinements.md). They supersede the historical
+search, gallery and Account presentation described below.
+
 ## What changed
 
 The interface now gives content different levels of emphasis: larger recent previews, folder collections, a photographic library cover, compact file rows, readable metadata, and floating controls. Layout and information hierarchy do the work; color remains the existing brand system. Account/profile composition, routes, repositories, backend APIs, storage contracts, and account isolation remain intact.

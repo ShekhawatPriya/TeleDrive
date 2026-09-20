@@ -31,6 +31,8 @@ extension _DriveFolderLoading on DriveController {
     _lastRefreshCompletedAt = null;
     _staleFolderIds.clear();
     _resolvedFiles.clear();
+    _starMutations.clear();
+    _sharedVersions.clear();
     _fileFetches.clear();
     for (final key in _folderLoadGen.keys.toList()) {
       _folderLoadGen[key] = (_folderLoadGen[key] ?? 0) + 1;

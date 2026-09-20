@@ -43,7 +43,12 @@ class DriveFile {
   final String name;
   final FileKind kind;
   final int size;
+
+  /// Server record revision, also changed by metadata actions. Used by caches;
+  /// never use this as a photo's upload/capture date.
   final String modifiedAt;
+
+  /// Immutable upload/creation timestamp. This is not an EXIF capture date.
   final String createdAt;
   final String? parentId;
   final bool starred;

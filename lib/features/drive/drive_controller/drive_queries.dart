@@ -3,12 +3,18 @@ part of '../drive_controller.dart';
 extension _DriveQueries on DriveController {
   DriveFile? _file(String id) {
     _rebuildIndexesIfDirty();
-    return _fileById[id] ?? _resolvedFiles[id];
+    return _fileById[id] ??
+        _mediaFileById[id] ??
+        _resolvedFiles[id] ??
+        state.starred.files.firstWhereOrNull((file) => file.id == id);
   }
 
   DriveFile? _anyFile(String id) {
     _rebuildIndexesIfDirty();
-    return _fileById[id] ?? _mediaFileById[id] ?? _resolvedFiles[id];
+    return _fileById[id] ??
+        _mediaFileById[id] ??
+        _resolvedFiles[id] ??
+        state.starred.files.firstWhereOrNull((file) => file.id == id);
   }
 
   Future<DriveFile?> _ensureFileLoaded(String id) {
@@ -100,7 +106,7 @@ extension _DriveQueries on DriveController {
 
   List<DriveFile> _photoFiles(String filter) {
     final list = [...mediaFiles.where(isMediaFile)]
-      ..sort((a, b) => b.modifiedAt.compareTo(a.modifiedAt));
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return switch (filter) {
       'images' => list.where(isImageFile).toList(),
       'videos' => list.where(isVideoFile).toList(),

@@ -81,6 +81,65 @@ class DriveController extends ChangeNotifier {
   // (which is rebuilt from folder pages) so a starred/search-tap stays openable
   // after the user navigates away. Cleared on account switch.
   final Map<String, DriveFile> _resolvedFiles = {};
+  final Set<String> _starMutations = {};
+  final Map<String, int> _sharedVersions = {};
+
+  /// Reconcile only affected flags after revocation: another link can still
+  /// grant access. Bounded reads leave the current page and thumbnails intact.
+  Future<void> reconcileSharedItems({
+    required Set<String> fileIds,
+    required Set<String> folderIds,
+  }) async {
+    final generation = _accountGeneration;
+    final tasks = <Future<void> Function()>[];
+    for (final id in fileIds) {
+      final key = 'file:$id';
+      final version = (_sharedVersions[key] ?? 0) + 1;
+      _sharedVersions[key] = version;
+      tasks.add(() async {
+        if (!_isCurrentAccount(generation)) return;
+        try {
+          final file = await _repo.getFile(id);
+          if (_isCurrentAccount(generation) &&
+              _sharedVersions[key] == version) {
+            _patchFlags(fileIds: {id}, shared: file.shared);
+          }
+        } catch (_) {
+          /* A later refresh reconciles an unavailable record. */
+        }
+      });
+    }
+    for (final id in folderIds) {
+      final key = 'folder:$id';
+      final version = (_sharedVersions[key] ?? 0) + 1;
+      _sharedVersions[key] = version;
+      tasks.add(() async {
+        if (!_isCurrentAccount(generation)) return;
+        try {
+          final result = await _repo.listFolderChildren(parentId: id, limit: 1);
+          if (!_isCurrentAccount(generation) || _sharedVersions[key] != version)
+            return;
+          final folder = result.path.firstWhereOrNull(
+            (folder) => folder.id == id,
+          );
+          if (folder != null)
+            _patchFlags(folderIds: {id}, shared: folder.shared);
+        } catch (_) {
+          /* A later refresh reconciles an unavailable record. */
+        }
+      });
+    }
+    for (var i = 0; i < tasks.length; i += 6) {
+      await Future.wait(tasks.skip(i).take(6).map((task) => task()));
+    }
+  }
+
+  /// Search results participate in mutations before their parent is visited.
+  void cacheSearchFiles(Iterable<DriveFile> files) {
+    for (final file in files) {
+      _resolvedFiles.putIfAbsent(file.id, () => file);
+    }
+  }
 
   // Global folder metadata cache. Populated from every folder we encounter
   // (root bootstrap, child listings, paths from G4, mutations). Intentionally

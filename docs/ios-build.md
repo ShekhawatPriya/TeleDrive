@@ -37,7 +37,7 @@ and friends have shifted between 1.8.x releases.
 
 ## Prerequisites
 
-- macOS with **Xcode 16+** (`xcode-select --install` for command-line tools)
+- macOS with **Xcode 26+** (`xcode-select --install` for command-line tools)
 - **CocoaPods** (`sudo gem install cocoapods` or via Homebrew) — the project
   uses Swift Package Manager for SPM-ready plugins and CocoaPods for the rest
 - **Flutter 3.44.x** on the stable channel (`flutter --version` should match

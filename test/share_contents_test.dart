@@ -107,12 +107,19 @@ void main() {
             ),
           );
           expect(find.text('Holiday.jpg'), findsNothing);
-          await tester.tap(find.widgetWithText(ListTile, 'SM'));
+          await tester.tap(
+            find
+                .descendant(
+                  of: find.byType(ShareContents),
+                  matching: find.text('SM'),
+                )
+                .first,
+          );
           await tester.pumpAndSettle();
-          await tester.tap(find.widgetWithText(ListTile, 'Photos'));
+          await tester.tap(find.text('Photos'));
           await tester.pumpAndSettle();
           expect(find.text('Holiday.jpg'), findsOneWidget);
-          expect(find.textContaining('2048 bytes'), findsOneWidget);
+          expect(find.textContaining('2.0 KB'), findsOneWidget);
           expect(tester.takeException(), isNull);
           if (const bool.fromEnvironment('WRITE_UI_PREVIEWS')) {
             final boundary = tester.renderObject<RenderRepaintBoundary>(
@@ -131,7 +138,7 @@ void main() {
               image.dispose();
             });
           }
-          await tester.tap(find.widgetWithText(TextButton, 'Photos'));
+          await tester.tap(find.byTooltip('Back to SM'));
           await tester.pumpAndSettle();
           expect(find.text('Holiday.jpg'), findsNothing);
         });

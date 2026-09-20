@@ -24,10 +24,11 @@ Missing native bridges fall back to working Flutter controls for tests/old hosts
 
 ## Account destinations
 
-The iOS account route uses `showCupertinoSheet` and a scroll-controlled `IosPage`.
-The page paints its own theme-aware background, avoiding a fixed dark sheet
-background after switching to Light. Choosing an account destination dismisses
-the sheet before navigating.
+The iOS `/account` route is a dedicated `CupertinoPage` with a compact `IosPage`
+header and standard Back control. It supports the Cupertino edge-back gesture.
+Destinations push above Account; Back returns to Account, preserving its scroll
+and expanded switcher state. Android retains its account sheet. Saved account
+rows include `ProfileAvatar` and keep the existing switch/remove contracts.
 
 `IosPage`, `IosGroup` and `IosRow` provide Cupertino large-title navigation,
 inset lists, disclosure indicators, switches and accessible wrapping text.
@@ -82,9 +83,10 @@ menus retain the system's glass rendering.
 Share details use an unboxed summary, Cupertino copy/share controls, access and
 expiry metadata, inline counters and a simple activity list. Android retains its
 existing card/list styling.
-The Share detail revoke action uses the native trash symbol (and Cupertino trash
-fallback), labeled “Revoke link”; the existing confirmation explains that the
-link stops working. Android retains its broken-link icon.
+The Share detail and item-menu revoke actions use the native
+`person.crop.circle.badge.minus` symbol (and matching Cupertino fallback), labeled
+“Revoke link” / “Revoke share”. The confirmation explains that access ends;
+Android retains its broken-link icon.
 
 Surface validation: 74 tests passed across modernization UI, glass/opacity,
 iOS action contracts, platform folder UI and navigation. Pixel sampling verifies
@@ -131,7 +133,7 @@ and country-picker sheets omit the redundant header cross. Headers reclaim that
 space with balanced insets. Swipe down from the sheet header/drag indicator or tap
 the backdrop to cancel; the indicator also exposes a semantic dismiss action to
 assistive technology. Scrollable content and keyboard-safe geometry are retained.
-The Account/profile sheet explicitly keeps its native close button. Android
+Account is now a dedicated page with Back and no close button. Android
 controls, text-field clear buttons, transfer cancellation, and confirmation-alert
 choices retain their existing roles.
 
@@ -314,3 +316,12 @@ verified in this pass.
 See [Photo viewer design](photo-viewer-design.md) for the current nonmodal
 inspector, thumbnail browsing, edge actions and grouped UIKit toolbar. This
 supersedes the earlier modal photo-information composition.
+
+
+## Search, upload sources and current browsing refinements
+
+See [Mobile UX refinements](mobile-ux-refinements.md) for the native glass search
+container, separate cancel target, keyboard lifecycle, Photos/Files source
+chooser, gallery mosaic/highlights, metadata reconciliation and current checks.
+Free Up Space uses the same compact navigation header as Settings. Its bottom
+Check Again action owns rescanning; there is no duplicate refresh icon.

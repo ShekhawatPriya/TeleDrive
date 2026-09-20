@@ -99,7 +99,11 @@ void main() {
           );
           await tester.tap(find.byType(DriveFab));
           await tester.pumpAndSettle();
-          for (final label in ['Upload File', 'Take Photo', 'Create Folder']) {
+          for (final label in [
+            platform == TargetPlatform.iOS ? 'Upload' : 'Upload File',
+            'Take Photo',
+            'Create Folder',
+          ]) {
             expect(find.text(label), findsOneWidget);
           }
           if (platform == TargetPlatform.iOS) {

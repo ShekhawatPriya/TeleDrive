@@ -18,13 +18,23 @@ final driveSearchProvider =
       final controller = DriveSearchController(
         ref.watch(driveRepositoryProvider),
         query,
+        drive: ref.read(driveControllerProvider),
       );
       if (query.isNotEmpty) unawaited(controller.loadMore());
       return controller;
     });
 
 class DriveSearchController extends ChangeNotifier {
-  DriveSearchController(this._repository, this.query);
+  DriveSearchController(this._repository, this.query, {this.drive}) {
+    drive?.addListener(_itemsChanged);
+  }
+  final DriveController? drive;
+  void _itemsChanged() {
+    if (_disposed) return;
+    files = files.map((file) => drive?.anyFile(file.id) ?? file).toList();
+    notifyListeners();
+  }
+
   final DriveRepository _repository;
   final String query;
   List<DriveFile> files = const [];
@@ -59,6 +69,7 @@ class DriveSearchController extends ChangeNotifier {
         limit: 60,
       );
       if (_disposed || generation != _generation) return;
+      drive?.cacheSearchFiles(page.files);
       final seen = files.map((file) => file.id).toSet();
       files = [...files, ...page.files.where((file) => seen.add(file.id))];
       cursor = page.nextCursor;
@@ -77,6 +88,7 @@ class DriveSearchController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    drive?.removeListener(_itemsChanged);
     _generation++;
     super.dispose();
   }

@@ -280,6 +280,7 @@ class IosRow extends StatelessWidget {
     this.value,
     this.trailing,
     this.onTap,
+    this.leading,
     this.destructive = false,
     this.action = false,
     this.enabled = true,
@@ -289,6 +290,7 @@ class IosRow extends StatelessWidget {
   final IconData? icon;
   final Color? color;
   final Widget? trailing;
+  final Widget? leading;
   final VoidCallback? onTap;
   final bool destructive, action, enabled;
   @override
@@ -299,17 +301,19 @@ class IosRow extends StatelessWidget {
     return CupertinoListTile.notched(
       backgroundColor: scheme.surfaceContainerLow,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      leadingSize: 28,
-      leading: icon == null
-          ? null
-          : Container(
-              decoration: BoxDecoration(
-                color: tint,
-                borderRadius: BorderRadius.circular(7),
-              ),
-              alignment: Alignment.center,
-              child: Icon(icon, size: 19, color: Colors.white),
-            ),
+      leadingSize: leading == null ? 28 : 40,
+      leading:
+          leading ??
+          (icon == null
+              ? null
+              : Container(
+                  decoration: BoxDecoration(
+                    color: tint,
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(icon, size: 19, color: Colors.white),
+                )),
       title: Text(
         title,
         maxLines: 4,

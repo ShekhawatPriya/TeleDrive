@@ -16,6 +16,40 @@ class UploadPickerResult {
 class UploadPickerHelper {
   static const _uuid = Uuid();
 
+  static Future<UploadPickerResult> pickPhotos({required int maxFiles}) async {
+    try {
+      final media = await ImagePicker().pickMultipleMedia(
+        limit: maxFiles,
+        requestFullMetadata: false,
+      );
+      if (media.isEmpty) return UploadPickerResult();
+      if (media.length > maxFiles)
+        return UploadPickerResult(
+          error: 'Select at most $maxFiles files at once.',
+        );
+      final items = <UploadItem>[];
+      for (final file in media) {
+        items.add(
+          UploadItem(
+            localId: _uuid.v4(),
+            uploadClientId: _uuid.v4(),
+            name: file.name,
+            size: await file.length(),
+            mimeType:
+                file.mimeType ??
+                lookupMimeType(file.path) ??
+                'application/octet-stream',
+            path: file.path,
+            status: UploadStatus.selected,
+          ),
+        );
+      }
+      return UploadPickerResult(items: items, sessionId: _uuid.v4());
+    } catch (err) {
+      return UploadPickerResult(error: err.toString());
+    }
+  }
+
   static Future<UploadPickerResult> pickFiles({required int maxFiles}) async {
     try {
       final files = await FilePicker.pickFiles();

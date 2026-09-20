@@ -7,6 +7,7 @@ import UserNotifications
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private let tdlibBridge = TdlibBridge()
+  private let uploadSourceChooser = UploadSourceChooser()
   private let mediaChannelHandler = MediaChannelHandler()
 
   override func application(
@@ -33,9 +34,18 @@ import UserNotifications
       ItemContextMenuFactory(messenger: messenger), withId: "teledrive/item-context-menu")
     engineBridge.applicationRegistrar.register(
       SelectionToolbarFactory(messenger: messenger), withId: "teledrive/selection-toolbar")
+    engineBridge.applicationRegistrar.register(
+      NativeSearchFactory(messenger: messenger), withId: "teledrive/search")
     FlutterMethodChannel(name: "teledrive/appearance", binaryMessenger: messenger)
       .setMethodCallHandler { call, result in
-        if call.method == "supportsContextMenus" { result(true) }
+        if call.method == "chooseUploadSource" { self.uploadSourceChooser.show(result) }
+        else if call.method == "dismissKeyboard" {
+          UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }.forEach { $0.endEditing(true) }
+          result(nil)
+        }
+        else if call.method == "supportsNativeSearch" { result(true) }
+        else if call.method == "supportsContextMenus" { result(true) }
         else if call.method == "supportsSelectionToolbar" { result(true) }
         else if call.method == "supportsNativeTabs" { result(true) }
         else if call.method == "supportsGlass" {

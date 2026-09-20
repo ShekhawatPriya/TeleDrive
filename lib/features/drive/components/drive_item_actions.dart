@@ -46,6 +46,7 @@ class DriveItemActions {
     WidgetRef ref,
     DriveFile file,
   ) async {
+    file = ref.read(driveControllerProvider).file(file.id) ?? file;
     final actions = fileActions(file);
     final action = await _showActions(
       context,
@@ -147,6 +148,7 @@ class DriveItemActions {
     DriveFolder folder, {
     bool allowRename = true,
   }) async {
+    folder = ref.read(driveControllerProvider).folder(folder.id) ?? folder;
     final actions = folderActions(folder, allowRename: allowRename);
     final action = await _showActions(
       context,
@@ -296,7 +298,7 @@ String _fileSubtitle(DriveFile file) {
   final parts = <String>[
     formatLabel(file),
     formatFileSize(file.size),
-    if (formatDate(file.modifiedAt).isNotEmpty) formatDate(file.modifiedAt),
+    if (formatDate(file.createdAt).isNotEmpty) formatDate(file.createdAt),
   ];
   return parts.join(' • ');
 }

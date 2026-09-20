@@ -2,113 +2,65 @@ part of '../drive_controller.dart';
 
 extension _DriveStarMutations on DriveController {
   Future<void> _toggleStar(String id, {bool folder = false}) async {
-    if (folder) {
-      await _toggleFolderStar(id);
-    } else {
-      await _toggleFileStar(id);
-    }
-  }
-
-  Future<void> _toggleFolderStar(String id) async {
+    final key = '${folder ? 'folder' : 'file'}:$id';
+    if (!_starMutations.add(key)) return;
     final generation = _accountGeneration;
-    final current =
-        state.folders.firstWhereOrNull((folder) => folder.id == id) ??
-        state.starred.folders.firstWhereOrNull((folder) => folder.id == id);
-    if (current == null) return;
-    final next = !current.starred;
-    final previousFolders = state.folders;
-    final previousStarred = state.starred;
-    final optimistic = current.copyWith(starred: next);
-    _mergeFolderMetadata([optimistic]);
-    final pages = Map<String?, DriveFolderPage>.of(state.folderPages);
-    pages.forEach((parent, page) {
-      if (page.subfolders.any((folder) => folder.id == id)) {
-        pages[parent] = page.copyWith(
-          subfolders: page.subfolders
-              .map((folder) => folder.id == id ? optimistic : folder)
-              .toList(),
+    final currentFile = folder
+        ? null
+        : anyFile(id) ??
+              state.starred.files.firstWhereOrNull((f) => f.id == id);
+    final currentFolder = folder
+        ? this.folder(id) ??
+              state.starred.folders.firstWhereOrNull((f) => f.id == id)
+        : null;
+    final before = currentFolder?.starred ?? currentFile?.starred;
+    if (before == null) {
+      _starMutations.remove(key);
+      return;
+    }
+    void apply(bool value) {
+      _patchFlags(
+        fileIds: folder ? {} : {id},
+        folderIds: folder ? {id} : {},
+        starred: value,
+      );
+      if (currentFile != null) {
+        _patchStarredFile(
+          (anyFile(id) ?? currentFile).copyWith(starred: value),
+          starred: value,
         );
       }
-    });
-    state = state.copyWith(folderPages: pages, clearError: true);
-    _patchStarredFolder(optimistic, starred: next);
-    _notifyListeners();
-    try {
-      final updated = await _repo.setFolderStarred(id, next);
-      if (!_isCurrentAccount(generation)) return;
-      _replaceFolderEverywhere(id, updated);
-      _patchStarredFolder(updated, starred: next);
-      _notifyListeners();
-    } catch (err) {
-      if (!_isCurrentAccount(generation)) return;
-      state = state.copyWith(
-        folders: previousFolders,
-        starred: previousStarred,
-        error: _repo.api.errorMessage(err, 'Could not update star.'),
-      );
-      _notifyListeners();
-    }
-  }
-
-  Future<void> _toggleFileStar(String id) async {
-    final generation = _accountGeneration;
-    final current =
-        state.files.firstWhereOrNull((file) => file.id == id) ??
-        state.mediaFiles.firstWhereOrNull((file) => file.id == id) ??
-        state.starred.files.firstWhereOrNull((file) => file.id == id);
-    if (current == null) return;
-    final next = !current.starred;
-    final previousState = state;
-    final optimistic = current.copyWith(starred: next);
-    final pages = Map<String?, DriveFolderPage>.of(state.folderPages);
-    pages.forEach((parent, page) {
-      if (page.files.any((file) => file.id == id)) {
-        pages[parent] = page.copyWith(
-          files: page.files
-              .map((file) => file.id == id ? optimistic : file)
-              .toList(),
+      if (currentFolder != null) {
+        _patchStarredFolder(
+          (this.folder(id) ?? currentFolder).copyWith(starred: value),
+          starred: value,
         );
       }
-    });
-    state = state.copyWith(
-      mediaFiles: state.mediaFiles
-          .map((file) => file.id == id ? optimistic : file)
-          .toList(),
-      folderPages: pages,
-      clearError: true,
-    );
-    _refreshFlatAggregates();
-    _patchStarredFile(optimistic, starred: next);
-    _notifyListeners();
+      _notifyListeners();
+    }
+
+    // Keep starred-only items addressable while an optimistic unstar removes
+    // them from that collection, so concurrent metadata changes are retained.
+    if (currentFile != null) _resolvedFiles.putIfAbsent(id, () => currentFile);
+    if (currentFolder != null) _mergeFolderMetadata([currentFolder]);
+    state = state.copyWith(clearError: true);
+    apply(!before);
     try {
-      final updated = await _repo.setFileStarred(id, next);
-      if (!_isCurrentAccount(generation)) return;
-      final pagesAfter = Map<String?, DriveFolderPage>.of(state.folderPages);
-      pagesAfter.forEach((parent, page) {
-        if (page.files.any((file) => file.id == id)) {
-          pagesAfter[parent] = page.copyWith(
-            files: page.files
-                .map((file) => file.id == id ? updated : file)
-                .toList(),
-          );
-        }
-      });
-      state = state.copyWith(
-        mediaFiles: state.mediaFiles
-            .map((file) => file.id == id ? updated : file)
-            .toList(),
-        folderPages: pagesAfter,
-      );
-      _refreshFlatAggregates();
-      _patchStarredFile(updated, starred: next);
-      _notifyListeners();
+      final confirmed = folder
+          ? (await _repo.setFolderStarred(id, !before)).starred
+          : (await _repo.setFileStarred(id, !before)).starred;
+      if (_isCurrentAccount(generation)) apply(confirmed);
     } catch (err) {
-      if (!_isCurrentAccount(generation)) return;
-      state = previousState.copyWith(
-        error: _repo.api.errorMessage(err, 'Could not update star.'),
-      );
-      _refreshFlatAggregates();
-      _notifyListeners();
+      if (_isCurrentAccount(generation)) {
+        // Roll back only this flag, preserving concurrent shares/other items.
+        apply(before);
+        state = state.copyWith(
+          error: _repo.api.errorMessage(err, 'Could not update star.'),
+        );
+        _notifyListeners();
+      }
+    } finally {
+      if (_isCurrentAccount(generation)) _starMutations.remove(key);
     }
   }
 }

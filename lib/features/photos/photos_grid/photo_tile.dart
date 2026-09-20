@@ -5,6 +5,7 @@ import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
 import '../../../widgets/file_list_tile.dart';
 import '../../../widgets/item_status_indicators.dart';
+import '../../../widgets/starred_badge.dart';
 import '../../../widgets/media_thumb.dart';
 import '../../drive/components/drive_item_context_menu.dart';
 
@@ -78,6 +79,14 @@ class PhotoTile extends StatelessWidget {
                               starred: file.starred,
                               shared: file.shared,
                             ),
+                          ),
+                        if (Theme.of(context).platform == TargetPlatform.iOS &&
+                            file.starred &&
+                            !file.isOptimistic)
+                          const Positioned(
+                            right: 8,
+                            top: 8,
+                            child: StarredBadge(size: 24),
                           ),
                         if (Theme.of(context).platform == TargetPlatform.iOS &&
                             file.shared &&

@@ -77,11 +77,16 @@ class FileListTile extends StatelessWidget {
                   ? Center(
                       child: theme.platform == TargetPlatform.iOS
                           ? Icon(
-                              CupertinoIcons.folder_fill,
+                              isShared
+                                  ? CupertinoIcons.folder_badge_person_crop
+                                  : CupertinoIcons.folder_fill,
                               size: 36,
                               color: scheme.primary,
                             )
-                          : GoogleDriveIcon.folder(isShared: false, size: 34),
+                          : GoogleDriveIcon.folder(
+                              isShared: isShared,
+                              size: 40,
+                            ),
                     )
                   : MediaThumb(
                       file: file!,
@@ -176,7 +181,7 @@ class FileListTile extends StatelessWidget {
             ),
           Text(
             ios && file != null && !isOptimistic
-                ? '${formatLabel(file!)} · ${formatFileSize(file!.size)} · ${_fileDate(file!.modifiedAt)}'
+                ? '${formatLabel(file!)} · ${formatFileSize(file!.size)} · ${_fileDate(file!.createdAt)}'
                 : subtitle,
             maxLines: ios && inSelectMode ? null : 2,
             overflow: ios && inSelectMode

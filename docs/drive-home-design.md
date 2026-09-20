@@ -6,7 +6,7 @@ The reference screenshot had three different visual languages: uncontained utili
 
 Apple's [Get to know the new design system](https://developer.apple.com/videos/play/wwdc2025/356/) recommends expressing hierarchy through layout and grouping and keeping shapes harmonious. Here, the three spaces share one opaque rounded panel. Folder cards use the same surface and corner treatment, with names taking precedence over metadata. Glass remains a navigation/control treatment.
 
-Apple's [Design intuitive search experiences](https://developer.apple.com/videos/play/wwdc2026/292/) describes recognizable search/clear controls, explicit exit controls during focus, and inline placement for searches scoped to a tab. We retain inline scoped search. Our Done action specifically closes the keyboard while preserving results; clearing remains a separate action. This is an application-specific adaptation, not a claim that Done reproduces Apple's Cancel semantics.
+Apple's [Design intuitive search experiences](https://developer.apple.com/videos/play/wwdc2026/292/) describes recognizable search/clear controls, explicit exit controls during focus, and inline placement for searches scoped to a tab. We retain inline scoped search. Keyboard Search submits immediately and resigns focus while preserving results. Clear retains editing; a separate X cancels the query and exits search. See [current mobile interactions](mobile-ux-refinements.md).
 
 Apple's [UI Design Dos and Don'ts](https://developer.apple.com/design/tips/) recommends touch targets of at least 44 points. Folder menus and the header menu retain that size. Spaces are whole-cell targets, not just tappable icons. At larger text sizes the spaces become vertically arranged rows; the existing folder list fallback remains available.
 
@@ -14,10 +14,10 @@ Apple's [UI Design Dos and Don'ts](https://developer.apple.com/design/tips/) rec
 
 - Archive, Locked, and Trash move above recents into one grouped panel. iOS uses a consistent Cupertino outline icon family and system-blue tint, separated by subtle dividers.
 - Recent-file cards are shorter, with integrated thumbnail/metadata surfaces and a concise section heading.
-- Folder cards use a 32-point folder icon, a two-line name, and one secondary count/size line. Shared, starred, optimistic, selection, and action behaviors remain supported.
+- Folder cards use a 40-point iOS / 44-point Android folder icon, an 18-point iOS / 20-point Android two-line name, and a secondary count/size line. Normal heights are 156 and 176 points respectively, growing with text; large text uses rows. Shared, starred, optimistic, selection, and action behaviors remain supported.
 - Section headings and content share alignment. Header spacing and menu size are tightened.
-- Search has an iOS Done button while focused, touch-outside dismissal on both platforms, and drag dismissal in the home feed and recent carousel. Clear keeps editing active. Done and submitting preserve the query.
-- Floating upload controls are hidden while the keyboard occupies the main shell. Keyboard visibility is read above Scaffold because its resized body removes the inset.
+- Search separates into a field and independent X while editing. iOS uses UIKit glass on supported systems; Android uses opaque Material surfaces. Clear keeps editing active, keyboard Search preserves the query, and X clears/exits. Touch outside and navigation resign focus.
+- Floating upload controls are hidden but remain mounted while the keyboard occupies the main shell. This preserves pending create-folder callbacks. Keyboard visibility is read above Scaffold because its resized body removes the inset.
 
 ## Verification
 

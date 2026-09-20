@@ -187,6 +187,9 @@ class UploadController extends ChangeNotifier {
   Future<void> pickPhoto({String? folderId, BuildContext? context}) =>
       _pickPhoto(folderId: folderId, context: context);
 
+  Future<void> pickPhotos({String? folderId, BuildContext? context}) =>
+      _pickPhotos(folderId: folderId, context: context);
+
   Future<void> confirmUpload() => _confirmUpload();
 
   Future<void> enqueueGalleryBackupItems(List<UploadItem> backupItems) =>

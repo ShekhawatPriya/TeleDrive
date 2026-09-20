@@ -114,7 +114,9 @@ class _ShareDetailScreenState extends ConsumerState<ShareDetailScreen> {
     if (!ok || !mounted) return;
     setState(() => _busy = true);
     try {
-      await ref.read(shareControllerProvider).revokeShare(share.id);
+      await ref
+          .read(shareControllerProvider)
+          .revokeShare(share.id, detail: share);
       if (mounted) Navigator.pop(context);
     } catch (err) {
       if (!mounted) return;
@@ -133,8 +135,8 @@ class _ShareDetailScreenState extends ConsumerState<ShareDetailScreen> {
         title: 'Share',
         trailing: NativeGlassButton(
           label: 'Revoke link',
-          symbol: 'trash',
-          icon: CupertinoIcons.trash,
+          symbol: 'person.crop.circle.badge.minus',
+          icon: CupertinoIcons.person_crop_circle_badge_minus,
           onPressed: share == null || _busy ? null : _revoke,
         ),
         children: [

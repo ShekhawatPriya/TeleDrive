@@ -19,12 +19,14 @@ List<PhotoDateSection> groupByDate(List<DriveFile> files) {
   final order = <String>[];
 
   for (final file in files) {
-    final date = DateTime.tryParse(file.modifiedAt)?.toLocal();
+    final date = DateTime.tryParse(file.createdAt)?.toLocal();
     final day = date == null
         ? today
         : DateTime(date.year, date.month, date.day);
     final String label;
-    if (date == null || day == today) {
+    if (date == null) {
+      label = 'Date unknown';
+    } else if (day == today) {
       label = 'Today';
     } else if (day == yesterday) {
       label = 'Yesterday';

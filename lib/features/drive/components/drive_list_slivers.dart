@@ -49,7 +49,7 @@ class DriveFolderSliver extends ConsumerWidget {
           gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
             maxCrossAxisExtent: 280,
             mainAxisExtent:
-                (Theme.of(context).platform == TargetPlatform.iOS ? 148 : 176) +
+                (Theme.of(context).platform == TargetPlatform.iOS ? 156 : 176) +
                 (MediaQuery.textScalerOf(context).scale(14) - 14) * 4,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
@@ -207,7 +207,7 @@ class DriveFilesSliver extends ConsumerWidget {
               name: file.name,
               subtitle: file.isOptimistic
                   ? '${formatUploadStatus(file)} · ${formatFileSize(file.size)}'
-                  : '${formatLabel(file)} · ${formatFileSize(file.size)} · ${formatDate(file.modifiedAt)}',
+                  : '${formatLabel(file)} · ${formatFileSize(file.size)} · ${formatDate(file.createdAt)}',
               file: file,
               isOptimistic: file.isOptimistic,
               starred: file.starred,

@@ -28,8 +28,17 @@ class FolderCollectionCard extends StatelessWidget {
         : scheme.primary;
     final count = folder.recursiveFileCount;
     return Material(
-      color: scheme.surfaceContainerLow,
-      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(22)),
+      color: ios
+          ? (theme.brightness == Brightness.dark
+                ? scheme.surfaceContainerLowest
+                : scheme.primaryContainer)
+          : scheme.surfaceContainerLow,
+      shape: RoundedSuperellipseBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: ios && theme.brightness == Brightness.dark
+            ? BorderSide(color: scheme.outlineVariant)
+            : BorderSide.none,
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -49,8 +58,10 @@ class FolderCollectionCard extends StatelessWidget {
                             ? (folder.shared
                                   ? CupertinoIcons.folder_badge_person_crop
                                   : CupertinoIcons.folder_fill)
-                            : Icons.folder_rounded,
-                        size: 32,
+                            : (folder.shared
+                                  ? Icons.folder_shared_rounded
+                                  : Icons.folder_rounded),
+                        size: ios ? 40 : 44,
                         color: folderInk,
                       ),
                       if (ios && folder.starred)
@@ -83,7 +94,7 @@ class FolderCollectionCard extends StatelessWidget {
                     const SizedBox(height: 44),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Expanded(
                 child: Align(
                   alignment: AlignmentDirectional.centerStart,
@@ -92,8 +103,8 @@ class FolderCollectionCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium?.copyWith(
-                      fontSize: 16,
-                      height: 1.2,
+                      fontSize: ios ? 18 : 20,
+                      height: 1.15,
                       letterSpacing: -.25,
                       fontWeight: FontWeight.w600,
                     ),

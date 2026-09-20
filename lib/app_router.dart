@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -24,6 +25,7 @@ import 'features/profile/locked_screen.dart';
 import 'features/profile/my_data_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/settings_screen.dart';
+import 'features/profile/widgets/account_bottom_sheet.dart';
 import 'features/profile/trash_screen.dart';
 import 'features/project/changelog_screen.dart';
 import 'features/project/project_screen.dart';
@@ -31,12 +33,14 @@ import 'features/share/my_shares_screen.dart';
 import 'features/share/share_detail_screen.dart';
 import 'main_shell.dart';
 import 'shared/splash_screen.dart';
+import 'widgets/search_keyboard.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.read(authControllerProvider);
   final tdlib = ref.read(tdlibSessionControllerProvider);
   final router = GoRouter(
     navigatorKey: rootNavigatorKey,
+    observers: [SearchKeyboardObserver()],
     initialLocation: '/',
     refreshListenable: Listenable.merge([auth, tdlib]),
     redirect: (context, state) {
@@ -160,6 +164,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: '/account',
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: const AccountBottomSheet(),
+        ),
       ),
       GoRoute(
         path: '/profile',

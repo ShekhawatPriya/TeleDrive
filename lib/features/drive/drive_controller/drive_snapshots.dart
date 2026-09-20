@@ -120,6 +120,8 @@ class DriveRecentsSnapshot {
     if (other.files.length != files.length) return false;
     for (var i = 0; i < files.length; i++) {
       if (other.files[i].id != files[i].id ||
+          other.files[i].starred != files[i].starred ||
+          other.files[i].shared != files[i].shared ||
           other.files[i].lastAccessedAt != files[i].lastAccessedAt) {
         return false;
       }
@@ -131,7 +133,7 @@ class DriveRecentsSnapshot {
   int get hashCode {
     var h = files.length;
     for (final f in files) {
-      h = Object.hash(h, f.id, f.lastAccessedAt);
+      h = Object.hash(h, f.id, f.lastAccessedAt, f.starred, f.shared);
     }
     return h;
   }

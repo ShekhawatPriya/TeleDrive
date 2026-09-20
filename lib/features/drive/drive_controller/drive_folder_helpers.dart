@@ -5,9 +5,10 @@ extension _DriveFolderHelpers on DriveController {
     final cache = state.starred;
     if (!cache.loaded) return;
     if (starred) {
-      if (cache.files.any((f) => f.id == file.id)) return;
       state = state.copyWith(
-        starred: cache.copyWith(files: [file, ...cache.files]),
+        starred: cache.copyWith(
+          files: [file, ...cache.files.where((f) => f.id != file.id)],
+        ),
       );
     } else {
       final next = cache.files.where((f) => f.id != file.id).toList();
@@ -20,9 +21,10 @@ extension _DriveFolderHelpers on DriveController {
     final cache = state.starred;
     if (!cache.loaded) return;
     if (starred) {
-      if (cache.folders.any((f) => f.id == folder.id)) return;
       state = state.copyWith(
-        starred: cache.copyWith(folders: [folder, ...cache.folders]),
+        starred: cache.copyWith(
+          folders: [folder, ...cache.folders.where((f) => f.id != folder.id)],
+        ),
       );
     } else {
       final next = cache.folders.where((f) => f.id != folder.id).toList();
@@ -51,7 +53,13 @@ extension _DriveFolderHelpers on DriveController {
       }
     });
     state = state.copyWith(folderPages: pages);
-    _mergeFolderMetadata([replacement]);
+    state = state.copyWith(
+      folders: [
+        for (final folder in state.folders)
+          if (folder.id != oldId && folder.id != replacement.id) folder,
+        replacement,
+      ],
+    );
   }
 
   void _removeFolderEverywhere(String folderId) {

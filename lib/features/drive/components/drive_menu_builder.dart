@@ -52,5 +52,13 @@ Future<void> _newFolder(
   if (name == null || !context.mounted) return;
   try {
     await ref.read(driveControllerProvider).createFolder(name, parentId);
-  } catch (_) {}
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not create folder. Please try again.'),
+        ),
+      );
+    }
+  }
 }
