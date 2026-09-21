@@ -1,5 +1,5 @@
-# The simulator must already run the isolated tools/ios_item_preview.dart build.
-# Usage: ruby scripts/test_ios_item_menus.rb <booted-simulator-uuid>
+# Install the isolated fixture matching the selected test source first.
+# Usage: ruby scripts/test_ios_item_menus.rb <booted-simulator-uuid> [test-source]
 require 'xcodeproj'
 require 'tmpdir'
 require 'fileutils'
@@ -11,7 +11,7 @@ output = Dir.mktmpdir('native-item-tests-', File.join(root, 'build'))
 path = File.join(output, 'NativeQA.xcodeproj')
 project = Xcodeproj::Project.new(path)
 target = project.new_target(:ui_test_bundle, 'NativeQA', :ios, '16.0')
-source = project.main_group.new_file(File.join(root, 'test/native/ItemContextMenuUITests.swift'))
+source = project.main_group.new_file(File.join(root, ARGV.fetch(1, 'test/native/ItemContextMenuUITests.swift')))
 target.source_build_phase.add_file_reference(source)
 target.build_configurations.each do |config|
   config.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'com.sree.teledrive.nativeqa'

@@ -24,6 +24,7 @@ final class NativeSearchView: NSObject, FlutterPlatformView, UITextFieldDelegate
   private var reduceMotion = false
   private var highContrast = false
   private var lastSize = CGSize.zero
+  private var transitionGeneration = 0
 
   init(frame: CGRect, id: Int64, arguments: Any?, messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(name: "teledrive/search/\(id)", binaryMessenger: messenger)
@@ -70,6 +71,7 @@ final class NativeSearchView: NSObject, FlutterPlatformView, UITextFieldDelegate
     }
     update(arguments)
     layoutShapes()
+    cancelGlass.isHidden = !active
   }
 
   func view() -> UIView { root }
@@ -131,6 +133,9 @@ final class NativeSearchView: NSObject, FlutterPlatformView, UITextFieldDelegate
     }
     field.frame = fieldGlass.bounds.insetBy(dx: 12, dy: 4)
     cancel.frame = cancelGlass.bounds
+    // Fade the material too: an overlapping glass circle still changes the
+    // merged silhouette even when its X is transparent.
+    cancelGlass.alpha = active ? 1 : 0
     cancel.alpha = active ? 1 : 0
     cancelGlass.isUserInteractionEnabled = active
     cancelGlass.accessibilityElementsHidden = !active
@@ -139,12 +144,19 @@ final class NativeSearchView: NSObject, FlutterPlatformView, UITextFieldDelegate
   private func setActive(_ value: Bool) {
     guard active != value else { return }
     active = value
+    transitionGeneration += 1
+    let generation = transitionGeneration
+    cancelGlass.isHidden = false
     if reduceMotion || UIAccessibility.isReduceMotionEnabled {
       UIView.performWithoutAnimation { self.layoutShapes() }
+      cancelGlass.isHidden = !active
     } else {
       UIView.animate(withDuration: 0.42, delay: 0, usingSpringWithDamping: 0.92,
         initialSpringVelocity: 0, options: [.beginFromCurrentState, .allowUserInteraction]) {
           self.layoutShapes()
+      } completion: { [weak self] _ in
+        guard let self = self, self.transitionGeneration == generation else { return }
+        self.cancelGlass.isHidden = !self.active
       }
     }
   }
@@ -183,7 +195,7 @@ private final class SearchLayoutView: UIView {
 /// system picker is presented only after this controller finishes dismissing.
 final class UploadSourceChooser: NSObject, UIAdaptivePresentationControllerDelegate {
   private var pending: FlutterResult?
-  func show(_ result: @escaping FlutterResult) {
+  func show(_ arguments: Any?, result: @escaping FlutterResult) {
     guard pending == nil else { result(FlutterError(code: "busy", message: "A picker is already open", details: nil)); return }
     guard let window = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene })
       .flatMap({ $0.windows }).first(where: { $0.isKeyWindow }),
@@ -207,8 +219,21 @@ final class UploadSourceChooser: NSObject, UIAdaptivePresentationControllerDeleg
     add("Cancel", nil, .cancel)
     if let popover = alert.popoverPresentationController {
       popover.sourceView = presenter.view
-      popover.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.maxY - 64, width: 1, height: 1)
-      popover.permittedArrowDirections = .down
+      // Flutter sends the actual Add control in root-view logical coordinates.
+      // Convert to the presenting view rather than guessing a footer location.
+      if let args = arguments as? [String: Any],
+         let x = args["x"] as? Double, let y = args["y"] as? Double,
+         let width = args["width"] as? Double, let height = args["height"] as? Double,
+         x.isFinite, y.isFinite, width.isFinite, height.isFinite, width > 0, height > 0,
+         let rootView = window.rootViewController?.view {
+        popover.sourceRect = presenter.view.convert(
+          CGRect(x: x, y: y, width: width, height: height), from: rootView)
+        popover.permittedArrowDirections = [.up, .down, .left, .right]
+      } else {
+        popover.sourceRect = CGRect(x: presenter.view.bounds.midX,
+          y: presenter.view.bounds.midY, width: 1, height: 1)
+        popover.permittedArrowDirections = []
+      }
     }
     alert.presentationController?.delegate = self
     presenter.present(alert, animated: true) {

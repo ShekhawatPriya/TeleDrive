@@ -122,3 +122,41 @@ September 20, 2026 verification on Windows: static analysis was clean; the full
 compilation passed. Populated folder, gallery, search, share, Account/Settings,
 Free Up Space and enlarged-text selection previews were inspected. UIKit search
 and source selection remain source-reviewed and require the native checks above.
+
+## iOS control geometry and launcher assets
+
+The collapsed search has one visible glass surface. Its cancel material fades
+with the X and is hidden after the merge; interrupted transitions retain the
+latest state. This prevents a second glass rim at the right end.
+
+The upload chooser measures the initiating Add control after the previous sheet
+has dismissed. UIKit converts that rectangle into the presenter coordinate space
+and chooses an arrow direction with room for the menu. If an anchor is unavailable,
+the fallback has no arrow rather than pointing at an unrelated tab.
+See Apple's [popover source rectangle](https://developer.apple.com/documentation/uikit/uipopoverpresentationcontroller/sourcerect).
+
+Native tab selection is applied after the platform view receives its real bounds,
+without an initial selection animation. The native bar uses its fitted height
+instead of stretching its selection lens to the reserved Flutter footer. Unchanged selection updates from loading
+or provider rebuilds do not restart the lens; UIKit still owns user tab presses.
+
+The iOS launcher uses `assets/icon/app_icon_ios.png`, an opaque, full-bleed version
+of the existing box-and-plane artwork. iOS applies its own corner mask. Keep
+`image_path_ios` in `pubspec.yaml`: `dart run flutter_launcher_icons` must not
+flatten the padded Android source against white for iOS. Android artwork and
+launch-screen artwork are independent and unchanged.
+
+Native fixture: build `tools/ios_design_preview.dart` for a simulator, then run
+`ruby scripts/test_ios_item_menus.rb <simulator-uuid> test/native/SearchInteractionUITests.swift`.
+This checks search dismissal/cancel, navigation and source presentation without
+opening a picker or modifying a live account.
+
+Verification for the iOS geometry correction: Flutter analysis and all 452
+unit/widget tests passed, including measured upload-anchor and launcher-edge
+regressions. Populated light/dark previews were regenerated and inspected.
+Both the fixture and `lib/main.dart` compiled for the iOS simulator. Native
+search submission/cancellation and upload source presentation passed; captured
+UIKit images were inspected for the merged field, arrow target and fitted footer.
+The native Account-navigation check also passed after correcting its test
+selectors for the grouped accessibility title. Physical iOS 27 animation/launcher
+verification and VoiceOver were not performed.

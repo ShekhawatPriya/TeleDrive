@@ -38,7 +38,7 @@ import UserNotifications
       NativeSearchFactory(messenger: messenger), withId: "teledrive/search")
     FlutterMethodChannel(name: "teledrive/appearance", binaryMessenger: messenger)
       .setMethodCallHandler { call, result in
-        if call.method == "chooseUploadSource" { self.uploadSourceChooser.show(result) }
+        if call.method == "chooseUploadSource" { self.uploadSourceChooser.show(call.arguments, result: result) }
         else if call.method == "dismissKeyboard" {
           UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
             .flatMap { $0.windows }.forEach { $0.endEditing(true) }
@@ -177,11 +177,15 @@ final class NativeTabBarFactory: NSObject, FlutterPlatformViewFactory {
 }
 final class NativeTabBarView: NSObject, FlutterPlatformView, UITabBarDelegate {
   private let bar = UITabBar()
+  private let root = TabBarLayoutView()
+  private var selectedIndex = 0
   private let channel: FlutterMethodChannel
   init(frame: CGRect, id: Int64, arguments: Any?, messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(name: "teledrive/tab-bar/\(id)", binaryMessenger: messenger)
     super.init()
-    bar.frame = frame
+    root.frame = frame
+    root.addSubview(bar)
+    root.onLayout = { [weak self] in self?.layoutBar() }
     let labels = ["Drive", "Photos", "Starred", "Shared"]
     let symbols = ["folder", "photo.on.rectangle", "star", "person.2"]
     let selected = ["folder.fill", "photo.on.rectangle.fill", "star.fill", "person.2.fill"]
@@ -199,18 +203,43 @@ final class NativeTabBarView: NSObject, FlutterPlatformView, UITabBarDelegate {
       else { result(FlutterMethodNotImplemented) }
     }
   }
-  func view() -> UIView { bar }
+  func view() -> UIView { root }
+  private func layoutBar() {
+    guard root.bounds.width > 0, root.bounds.height > 0 else { return }
+    UIView.performWithoutAnimation {
+      // Use UIKit's fitted height instead of stretching its selection lens to
+      // Flutter's reserved footer height. Keep the native safe-area inset.
+      let height = min(root.bounds.height, bar.sizeThatFits(root.bounds.size).height)
+      bar.frame = CGRect(x: 0, y: root.bounds.height - height,
+        width: root.bounds.width, height: height)
+      bar.layoutIfNeeded()
+      if let items = bar.items, items.indices.contains(selectedIndex),
+         bar.selectedItem !== items[selectedIndex] {
+        bar.selectedItem = items[selectedIndex]
+        bar.layoutIfNeeded()
+      }
+    }
+  }
   private func update(_ arguments: Any?) {
     guard let args = arguments as? [String: Any] else { return }
-    bar.overrideUserInterfaceStyle = (args["dark"] as? Bool ?? false) ? .dark : .light
+    root.overrideUserInterfaceStyle = (args["dark"] as? Bool ?? false) ? .dark : .light
     bar.tintColor = .systemBlue
-    let index = args["selectedIndex"] as? Int ?? 0
-    if let items = bar.items, items.indices.contains(index) { bar.selectedItem = items[index] }
+    selectedIndex = args["selectedIndex"] as? Int ?? 0
+    // Wait for a real platform-view frame before creating the selection lens.
+    // Loading/provider rebuilds must not restart its selection animation.
+    layoutBar()
   }
   func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
+    selectedIndex = item.tag
     channel.invokeMethod("select", arguments: item.tag)
   }
   deinit { channel.setMethodCallHandler(nil) }
+}
+
+private final class TabBarLayoutView: UIView {
+  var onLayout: (() -> Void)?
+  override func layoutSubviews() { super.layoutSubviews(); onLayout?() }
+  override func safeAreaInsetsDidChange() { super.safeAreaInsetsDidChange(); setNeedsLayout() }
 }
 
 

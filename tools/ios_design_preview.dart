@@ -1,3 +1,4 @@
+import 'package:flutter_m_fsdk/features/upload/upload_source_picker.dart';
 import 'package:flutter_m_fsdk/widgets/drive_search_field.dart';
 import 'package:flutter_m_fsdk/widgets/search_keyboard.dart';
 import 'package:flutter_m_fsdk/features/search/search_controller.dart';
@@ -168,6 +169,15 @@ class _PreviewHomeState extends State<PreviewHome> {
               ),
             ),
         ],
+      ),
+    ),
+    floatingActionButton: Builder(
+      builder: (buttonContext) => CupertinoButton(
+        onPressed: () => chooseUploadSource(buttonContext),
+        child: const Icon(
+          CupertinoIcons.plus,
+          semanticLabel: 'Choose upload source',
+        ),
       ),
     ),
     bottomNavigationBar: FloatingPillNavigationBar(

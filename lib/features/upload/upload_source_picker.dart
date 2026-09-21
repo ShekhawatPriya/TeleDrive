@@ -2,10 +2,24 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
 Future<String?> chooseUploadSource(BuildContext context) async {
+  final box = context.findRenderObject();
+  final rect = box is RenderBox && box.hasSize
+      ? box.localToGlobal(Offset.zero) & box.size
+      : null;
   try {
     return await const MethodChannel(
       'teledrive/appearance',
-    ).invokeMethod<String>('chooseUploadSource');
+    ).invokeMethod<String>(
+      'chooseUploadSource',
+      rect == null
+          ? null
+          : {
+              'x': rect.left,
+              'y': rect.top,
+              'width': rect.width,
+              'height': rect.height,
+            },
+    );
   } on MissingPluginException {
     // Portable tests and hosts without the bridge retain a Cupertino fallback.
   } on PlatformException {

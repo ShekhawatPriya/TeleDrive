@@ -12,8 +12,8 @@ final class SearchInteractionUITests: XCTestCase {
   }
   func testSearchAndCancelOwnSeparateTargets() {
     let app = fixture()
-    let field = app.searchFields["drive-search-field"]
-    XCTAssertTrue(field.waitForExistence(timeout: 5))
+    let field = app.descendants(matching: .any)["drive-search-field"].firstMatch
+    XCTAssertTrue(field.waitForExistence(timeout: 5), app.debugDescription)
     field.tap()
     field.typeText("Travel")
     let cancel = app.buttons["drive-search-cancel"]
@@ -32,13 +32,27 @@ final class SearchInteractionUITests: XCTestCase {
     shot.lifetime = .keepAlways
     add(shot)
   }
+  func testUploadChooserAndInitialNavigation() {
+    let app = fixture()
+    let initial = XCTAttachment(screenshot: app.screenshot())
+    initial.name = "native-initial-navigation"
+    initial.lifetime = .keepAlways
+    add(initial)
+    app.buttons["Choose upload source"].tap()
+    XCTAssertTrue(app.buttons["Upload from Photos"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["Upload from Files"].exists)
+    let chooser = XCTAttachment(screenshot: app.screenshot())
+    chooser.name = "native-upload-anchor"
+    chooser.lifetime = .keepAlways
+    add(chooser)
+  }
   func testLeavingSearchResignsNativeKeyboard() {
     let app = fixture()
-    let field = app.searchFields["drive-search-field"]
+    let field = app.descendants(matching: .any)["drive-search-field"].firstMatch
     field.tap()
     field.typeText("Project")
-    app.buttons["Account and settings"].tap()
-    XCTAssertTrue(app.staticTexts["Account"].waitForExistence(timeout: 5))
+    app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Account and settings")).firstMatch.tap()
+    XCTAssertTrue(app.descendants(matching: .any)["Account"].firstMatch.waitForExistence(timeout: 5))
     XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
     XCTAssertFalse(app.buttons["Close"].exists)
     app.buttons["Back"].tap()
