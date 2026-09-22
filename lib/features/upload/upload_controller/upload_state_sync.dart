@@ -11,6 +11,14 @@ extension _UploadStateSync on UploadController {
   UploadItem? _findItem(String localId) =>
       items.where((i) => i.localId == localId).firstOrNull;
 
+  bool _isCurrentUpload(UploadItem item) {
+    final current = _findItem(item.localId);
+    return !_disposed &&
+        current != null &&
+        current.uploadClientId == item.uploadClientId &&
+        !current.cancelRequested;
+  }
+
   bool _isActive(UploadItem item) => {
     UploadStatus.queued,
     UploadStatus.waitingForWifi,

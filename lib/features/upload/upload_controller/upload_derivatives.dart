@@ -23,6 +23,7 @@ extension _UploadDerivatives on UploadController {
     required Map<String, dynamic> intent,
     required TelegramUploadTarget target,
   }) async {
+    if (!_isCurrentUpload(item)) return {};
     if (!_auth.clientDerivativeGenerationEnabled) {
       debugPrint(
         'Direct upload derivatives disabled for ${item.name}: '
@@ -86,9 +87,8 @@ extension _UploadDerivatives on UploadController {
     );
     final payloads = <String, Map<String, dynamic>>{};
     for (final asset in generatedAssets) {
-      final current = _findItem(item.localId);
-      if (current == null || current.cancelRequested) break;
       try {
+        if (!_isCurrentUpload(item)) continue;
         _setItem(
           item.localId,
           status: asset.variant == 'thumbnail'

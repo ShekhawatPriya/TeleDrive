@@ -45,24 +45,46 @@ class AuthRepository {
       '/telegram/auth/start',
       data: {'phone_number': phone},
     );
-    return Map<String, dynamic>.from(res.data as Map);
+    final data = Map<String, dynamic>.from(res.data as Map);
+    final attemptToken = data['attempt_token'];
+    if (data['attempt_id'] is! int ||
+        attemptToken is! String ||
+        !RegExp(r'^[A-Za-z0-9_-]{43}$').hasMatch(attemptToken)) {
+      throw Exception(
+        'The service could not start a secure sign-in. Please try again later.',
+      );
+    }
+    return data;
   }
 
-  Future<Map<String, dynamic>> verifyCode(int attemptId, String code) async {
+  Future<Map<String, dynamic>> verifyCode(
+    int attemptId,
+    String attemptToken,
+    String code,
+  ) async {
     final res = await api.dio.post(
       '/telegram/auth/verify-code',
-      data: {'attempt_id': attemptId, 'code': code},
+      data: {
+        'attempt_id': attemptId,
+        'attempt_token': attemptToken,
+        'code': code,
+      },
     );
     return Map<String, dynamic>.from(res.data as Map);
   }
 
   Future<Map<String, dynamic>> verifyPassword(
     int attemptId,
+    String attemptToken,
     String password,
   ) async {
     final res = await api.dio.post(
       '/telegram/auth/verify-password',
-      data: {'attempt_id': attemptId, 'password': password},
+      data: {
+        'attempt_id': attemptId,
+        'attempt_token': attemptToken,
+        'password': password,
+      },
     );
     return Map<String, dynamic>.from(res.data as Map);
   }
@@ -180,7 +202,6 @@ class AuthRepository {
         ? AuthUser.fromMeJson(data)
         : AuthUser.fromMe(data, current);
     final user = _withLoadablePhotoUrl(parsed);
-    await storage.saveUser(user);
     return user;
   }
 

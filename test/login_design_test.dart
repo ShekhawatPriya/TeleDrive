@@ -14,6 +14,8 @@ import 'package:flutter_m_fsdk/features/auth/auth_repository.dart';
 import 'package:flutter_m_fsdk/features/auth/login_screen.dart';
 import 'platform_folder_ui_test.dart' show capture;
 
+const _challengeToken = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG';
+
 class _FixtureAuth extends AuthRepository {
   _FixtureAuth() : super(ApiClient(), SecureStorageService());
   String? phone, code, password;
@@ -21,12 +23,19 @@ class _FixtureAuth extends AuthRepository {
   @override
   Future<Map<String, dynamic>> start(String value) async {
     phone = value;
-    return pending == null ? {'attempt_id': 42} : pending!.future;
+    return pending == null
+        ? {'attempt_id': 42, 'attempt_token': _challengeToken}
+        : pending!.future;
   }
 
   @override
-  Future<Map<String, dynamic>> verifyCode(int attemptId, String value) async {
+  Future<Map<String, dynamic>> verifyCode(
+    int attemptId,
+    String attemptToken,
+    String value,
+  ) async {
     expect(attemptId, 42);
+    expect(attemptToken, _challengeToken);
     code = value;
     return {'status': 'requires_2fa'};
   }
@@ -34,9 +43,11 @@ class _FixtureAuth extends AuthRepository {
   @override
   Future<Map<String, dynamic>> verifyPassword(
     int attemptId,
+    String attemptToken,
     String value,
   ) async {
     expect(attemptId, 42);
+    expect(attemptToken, _challengeToken);
     password = value;
     return {};
   }
@@ -189,7 +200,10 @@ void main() {
     await tester.tap(find.text('Continue'));
     await tester.pump();
     await tester.pumpWidget(const SizedBox());
-    repo.pending!.complete({'attempt_id': 42});
+    repo.pending!.complete({
+      'attempt_id': 42,
+      'attempt_token': _challengeToken,
+    });
     await tester.pump();
     expect(tester.takeException(), isNull);
   });

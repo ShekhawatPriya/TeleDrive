@@ -256,7 +256,7 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         val filename = stringArg(args, "filename") ?: File(filePath).name
         val mimeType = stringArg(args, "mimeType")
         val sizeBytes = longArg(args, "sizeBytes")
-        val transfer = Transfer(transferId)
+        val transfer = Transfer(transferId, uploadChatId = chatId)
         transfers[transferId] = transfer
         emitProgress(transferId, "uploading", 0, sizeBytes, null)
 
@@ -271,29 +271,41 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
             .put("chat_id", chatId)
             .put("input_message_content", inputContent)
 
-        val operation = waitForConnectionReady(timeoutMs = 45000L).thenCompose {
-            send(request)
+        val operation = CompletableFuture.anyOf(
+            waitForConnectionReady(timeoutMs = 45000L),
+            transfer.cancellation
+        ).thenCompose {
+            // Admission and cancelTransfer use the same lock: a readiness
+            // callback cannot submit bytes after cancellation has won.
+            synchronized(downloadsLock) {
+                if (transfers[transferId] !== transfer || transfer.cancelled) {
+                    throw TdlibException("tdlib_cancelled", "Transfer was cancelled.")
+                }
+                send(request)
+            }
         }.thenCompose { message ->
-            extractFile(message)?.let { transfer.fileId = it.optInt("id").takeIf { id -> id > 0 } }
+            synchronized(downloadsLock) {
+                extractFile(message)?.let { transfer.fileId = it.optInt("id").takeIf { id -> id > 0 } }
+            }
             if (isFinalMessage(message)) {
                 CompletableFuture.completedFuture(message)
             } else {
                 val oldId = message.optLong("id", 0L)
                 emitProgress(transferId, "waitingForFinalMessage", 0, sizeBytes, null)
-                waitForFinalMessage("$chatId:$oldId", transferId, sizeBytes)
+                waitForCancellableFinalMessage(chatId, oldId, transfer, sizeBytes)
             }
         }.thenApply { finalMessage ->
-            if (transfer.cancelled) {
-                throw TdlibException("tdlib_cancelled", "Transfer was cancelled.")
-            }
+            // A final success may beat cancellation. Preserve its reference so
+            // Flutter can durably commit the original instead of orphaning it.
             val ref = messageRef(finalMessage, filename, mimeType, sizeBytes)
             emitProgress(transferId, "completed", sizeBytes ?: 0L, sizeBytes, null)
-            transfers.remove(transferId)
             ref
         }
-        return operation.whenComplete { _, error ->
-            if (error != null) {
-                transfers.remove(transferId)
+        return operation.whenComplete { _, _ ->
+            synchronized(downloadsLock) {
+                transfer.cancelPendingUpload = null
+                transfer.onUploadDeleted = null
+                transfers.remove(transferId, transfer)
             }
         }
     }
@@ -433,25 +445,26 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
 
     fun cancelTransfer(args: Map<String, Any?>): CompletableFuture<Map<String, Any?>> {
         val transferId = requireString(args, "transferId")
-        var fileId: Int? = null
+        var cancelledTransfer: Transfer? = null
         val waiter = synchronized(downloadsLock) {
             val transfer = transfers[transferId]
+            if (transfer?.uploadChatId == null) transfers.remove(transferId)
+            cancelledTransfer = transfer
             transfer?.cancelled = true
             val activeFileId = transfer?.fileId
-            fileId = activeFileId
             val removed = if (activeFileId == null) null else removeDownloadWaiter(activeFileId, transferId)
             if (clientId != 0 && activeFileId != null && !downloads.containsKey(activeFileId)) {
                 sendNoWait(JSONObject().put("@type", "cancelDownloadFile").put("file_id", activeFileId).put("only_if_pending", false))
             }
             removed
         }
+        cancelledTransfer?.cancellation?.completeExceptionally(
+            TdlibException("tdlib_cancelled", "Transfer was cancelled.")
+        )
         waiter?.future?.completeExceptionally(
             TdlibException("tdlib_cancelled", "Transfer was cancelled.")
         )
-        if (clientId != 0 && fileId != null) {
-            sendNoWait(JSONObject().put("@type", "cancelUploadFile").put("file_id", fileId))
-        }
-        transfers.remove(transferId)
+        cancelledTransfer?.cancelPendingUpload?.invoke()
         emitProgress(transferId, "cancelled", 0, null, null)
         return CompletableFuture.completedFuture(mapOf("cancelled" to true))
     }
@@ -506,6 +519,7 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
             "updateConnectionState" -> handleConnectionState(json.getJSONObject("state"))
             "updateMessageSendSucceeded" -> handleSendSucceeded(json)
             "updateMessageSendFailed" -> handleSendFailed(json)
+            "updateDeleteMessages" -> handleDeletedMessages(json)
             "updateFile" -> handleUpdatedFile(json.getJSONObject("file"))
         }
     }
@@ -693,6 +707,132 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         }
     }
 
+    private fun waitForCancellableFinalMessage(
+        chatId: Long,
+        messageId: Long,
+        transfer: Transfer,
+        sizeBytes: Long?
+    ): CompletableFuture<JSONObject> {
+        val key = "$chatId:$messageId"
+        val finalMessage = waitForFinalMessage(key, transfer.transferId, sizeBytes)
+        val result = CompletableFuture<JSONObject>()
+        var deletionRequested = false
+        var deletionSucceeded: Boolean? = null
+        var verificationStarted = false
+        var settled = false
+        var finalOutcome: Pair<JSONObject?, Throwable?>? = null
+        fun completeOutcome(outcome: Pair<JSONObject?, Throwable?>) {
+            val (message, error) = outcome
+            if (error != null) result.completeExceptionally(error)
+            else result.complete(message)
+        }
+        fun completeCancelled() {
+            val cancelled = TdlibException("tdlib_cancelled", "Transfer was cancelled.")
+            sendWaiters.remove(key, finalMessage)
+            finalMessage.completeExceptionally(cancelled)
+            result.completeExceptionally(cancelled)
+        }
+        fun maybeFinish() {
+            var cancelled = false
+            var complete: Pair<JSONObject?, Throwable?>? = null
+            var verify: JSONObject? = null
+            synchronized(downloadsLock) {
+                if (!settled) {
+                    val outcome = finalOutcome
+                    val finalId = outcome?.first?.optLong("id", 0L)
+                    cancelled = transfer.deletedMessageIds.contains(messageId) ||
+                        (finalId != null && transfer.deletedMessageIds.contains(finalId))
+                    when {
+                        cancelled -> settled = true
+                        outcome == null -> Unit
+                        outcome.second != null || !deletionRequested || deletionSucceeded == false -> {
+                            settled = true
+                            complete = outcome
+                        }
+                        deletionSucceeded == true && !verificationStarted -> {
+                            verificationStarted = true
+                            verify = outcome.first
+                        }
+                    }
+                }
+            }
+            if (cancelled) completeCancelled()
+            complete?.let { completeOutcome(it) }
+            verify?.let { message ->
+                // OK for the old id may be a no-op. Confirm a known final ref
+                // separately; only a matching deletion or 404 can discard it.
+                fun finishVerification(error: Throwable?) {
+                    val completion = synchronized(downloadsLock) {
+                        if (settled) Pair(false, false) else {
+                            settled = true
+                            Pair(true, transfer.deletedMessageIds.contains(messageId) ||
+                                transfer.deletedMessageIds.contains(message.optLong("id")))
+                        }
+                    }
+                    if (completion.first) {
+                        val cause = error?.cause ?: error
+                        if (completion.second || (cause is TdlibException && cause.code == "tdlib_404")) completeCancelled()
+                        else completeOutcome(Pair(message, null))
+                    }
+                }
+                send(JSONObject().put("@type", "getMessage")
+                    .put("chat_id", chatId).put("message_id", message.optLong("id")))
+                    .whenComplete { _, error -> finishVerification(error) }
+                thread(name = "teledrive-tdlib-cancel-verification", isDaemon = true) {
+                    Thread.sleep(5000L)
+                    finishVerification(null)
+                }
+            }
+        }
+        transfer.onUploadDeleted = { maybeFinish() }
+        finalMessage.whenComplete { message, error ->
+            synchronized(downloadsLock) { finalOutcome = Pair(message, error) }
+            maybeFinish()
+        }
+        val cancelPendingUpload = {
+            val shouldDelete = synchronized(downloadsLock) {
+                if (deletionRequested || settled) false else {
+                    deletionRequested = true
+                    true
+                }
+            }
+            if (shouldDelete) {
+                // TDLib cancels sendMessage uploads by deleting the temporary
+                // message. cancelUploadFile is not part of the pinned API.
+                val deletion = send(
+                    JSONObject().put("@type", "deleteMessages")
+                        .put("chat_id", chatId)
+                        .put("message_ids", JSONArray().put(messageId))
+                        .put("revoke", true)
+                )
+                deletion.whenComplete { _, error ->
+                    synchronized(downloadsLock) { deletionSucceeded = error == null }
+                    maybeFinish()
+                }
+            }
+            Unit
+        }
+        transfer.cancelPendingUpload = cancelPendingUpload
+        if (transfer.cancelled) cancelPendingUpload()
+        maybeFinish()
+        return result
+    }
+
+    private fun handleDeletedMessages(update: JSONObject) {
+        if (!update.optBoolean("is_permanent", false) || update.optBoolean("from_cache", false)) return
+        val chatId = update.optLong("chat_id", 0L)
+        val ids = update.optJSONArray("message_ids") ?: return
+        val callbacks = synchronized(downloadsLock) {
+            transfers.values.filter { it.uploadChatId == chatId }.mapNotNull { transfer ->
+                for (index in 0 until ids.length()) {
+                    if (transfer.deletedMessageIds.size < 256) transfer.deletedMessageIds.add(ids.optLong(index))
+                }
+                transfer.onUploadDeleted
+            }
+        }
+        callbacks.forEach { it() }
+    }
+
     private fun waitForFinalMessage(key: String, transferId: String, sizeBytes: Long?): CompletableFuture<JSONObject> {
         completedSends.remove(key)?.let { return CompletableFuture.completedFuture(it) }
         failedSends.remove(key)?.let { return failed(it) }
@@ -777,7 +917,7 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         val downloaded = local?.optBoolean("is_downloading_completed", false) == true
         val downloadedBytes = local?.optLong("downloaded_size", 0L) ?: 0L
         val uploadedBytes = remote?.optLong("uploaded_size", 0L) ?: 0L
-        transfers.values.filter { it.fileId == fileId }.forEach { transfer ->
+        transfers.values.filter { it.fileId == fileId && !it.cancelled }.forEach { transfer ->
             if (downloads.containsKey(fileId)) {
                 emitProgress(transfer.transferId, "downloading", downloadedBytes, size, null)
             } else {

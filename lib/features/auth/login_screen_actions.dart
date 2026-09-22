@@ -5,6 +5,13 @@ extension _LoginScreenActions on _LoginScreenState {
     _setUiState(() {
       _step = next;
       _error = null;
+      if (next == _Step.phone) {
+        _attemptId = null;
+        _attemptToken = null;
+        _code.clear();
+        _password.clear();
+        _obscurePassword = true;
+      }
     });
     HapticFeedback.lightImpact();
   }
@@ -43,13 +50,16 @@ extension _LoginScreenActions on _LoginScreenState {
       );
       if (!mounted) return;
       _attemptId = (data['attempt_id'] as num).toInt();
+      _attemptToken = data['attempt_token'] as String;
       _setStep(_Step.code);
     } catch (_) {}
   }
 
   Future<void> _verifyCode() async {
     if (_loading) return;
-    if (_attemptId == null || _code.text.trim().isEmpty) {
+    if (_attemptId == null ||
+        _attemptToken == null ||
+        _code.text.trim().isEmpty) {
       _setUiState(() => _error = 'Please enter the verification code');
       return;
     }
@@ -57,7 +67,7 @@ extension _LoginScreenActions on _LoginScreenState {
       final data = await _call(
         () => ref
             .read(authRepositoryProvider)
-            .verifyCode(_attemptId!, _code.text.trim()),
+            .verifyCode(_attemptId!, _attemptToken!, _code.text.trim()),
       );
       if (!mounted) return;
       if (data['status'] == 'requires_2fa') {
@@ -70,7 +80,9 @@ extension _LoginScreenActions on _LoginScreenState {
 
   Future<void> _verifyPassword() async {
     if (_loading) return;
-    if (_attemptId == null || _password.text.trim().isEmpty) {
+    if (_attemptId == null ||
+        _attemptToken == null ||
+        _password.text.trim().isEmpty) {
       _setUiState(() => _error = 'Please enter your password');
       return;
     }
@@ -78,7 +90,7 @@ extension _LoginScreenActions on _LoginScreenState {
       final data = await _call(
         () => ref
             .read(authRepositoryProvider)
-            .verifyPassword(_attemptId!, _password.text.trim()),
+            .verifyPassword(_attemptId!, _attemptToken!, _password.text.trim()),
       );
       if (!mounted) return;
       if (data['token'] != null) {
@@ -99,6 +111,10 @@ extension _LoginScreenActions on _LoginScreenState {
     _setUiState(() {
       _loading = true;
       _error = null;
+      _attemptId = null;
+      _attemptToken = null;
+      _code.clear();
+      _password.clear();
     });
     try {
       final auth = ref.read(authControllerProvider);
@@ -152,7 +168,12 @@ extension _LoginScreenActions on _LoginScreenState {
         auth.clearEphemeralTelegramCloudPassword();
       }
       final repo = ref.read(authRepositoryProvider);
-      if (mounted) _setUiState(() => _error = repo.api.errorMessage(err));
+      if (mounted) {
+        _setUiState(() {
+          _step = _Step.phone;
+          _error = repo.api.errorMessage(err);
+        });
+      }
     } finally {
       if (mounted) _setUiState(() => _loading = false);
     }

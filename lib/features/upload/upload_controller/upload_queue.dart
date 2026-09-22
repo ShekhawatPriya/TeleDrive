@@ -44,6 +44,7 @@ extension _UploadQueue on UploadController {
   Future<void> _uploadMany(List<UploadItem> batchItems) async {
     try {
       await _requireDirectUploadReady();
+      if (!batchItems.any(_isCurrentUpload)) return;
       await _uploadManyDirect(batchItems);
     } on TelegramClientException catch (err) {
       await _failBatchBeforeUpload(
@@ -57,6 +58,16 @@ extension _UploadQueue on UploadController {
         _tdlibRequiredMessage('$err'),
         failureCode: 'tdlib_unavailable',
       );
+    } finally {
+      for (final item in batchItems) {
+        // Keep this reservation until native work settles. A cancellation can
+        // still return a successful original that must be committed first.
+        await _finishCancelledUpload(item);
+        _runningLocalIds.remove(item.localId);
+      }
+      _flushSetItemBatch(force: true);
+      await _refreshIfSettled();
+      _pumpQueue();
     }
   }
 
@@ -111,13 +122,13 @@ extension _UploadQueue on UploadController {
   }) async {
     final scope = _backupScope();
     for (final item in batchItems) {
+      if (!_isCurrentUpload(item)) continue;
       _setItem(
         item.localId,
         status: UploadStatus.failed,
         error: message,
         notify: false,
       );
-      _runningLocalIds.remove(item.localId);
       if (scope != null && item.backupFingerprint != null) {
         await _backupAssetStore.mark(
           scope,
@@ -129,8 +140,6 @@ extension _UploadQueue on UploadController {
       }
     }
     _flushSetItemBatch(force: true);
-    await _refreshIfSettled();
-    _pumpQueue();
   }
 
   String _tdlibRequiredMessage(String detail) {

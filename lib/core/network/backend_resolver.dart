@@ -98,6 +98,11 @@ class BackendResolver extends ChangeNotifier {
   String get baseUrl => _baseUrl;
   BackendStatus get status => _status;
   BackendSource get source => _source;
+
+  /// Discovery/health checks establish reachability, never server identity.
+  /// A LAN result must be explicitly selected before it receives credentials.
+  bool get allowsCredentials =>
+      source == BackendSource.environment || source == BackendSource.manual;
   String? get manualUrl => _manualUrl;
   bool get autoMode =>
       _manualUrl == null && AppConfig.configuredApiBaseUrl == null;
@@ -237,6 +242,11 @@ class BackendResolver extends ChangeNotifier {
     var value = raw.trim();
     if (!value.contains('://')) value = 'http://$value';
     final uri = Uri.parse(value);
+    if (!{'http', 'https'}.contains(uri.scheme) ||
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty) {
+      throw const FormatException('Enter an HTTP or HTTPS server address.');
+    }
     final port = uri.hasPort
         ? uri.port
         : (raw.contains('://') ? uri.port : AppConfig.backendPort);

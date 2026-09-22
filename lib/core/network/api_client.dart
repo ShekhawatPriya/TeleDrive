@@ -68,11 +68,71 @@ class ApiClient {
         ),
       );
     }
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          try {
+            final destination = options.uri;
+            _requireBackendOrigin(destination);
+            // Login bodies, bearer headers and signed/query media URLs all
+            // contain credentials. Do not send any API request to an unpaired
+            // discovery result, including a candidate-login bootstrap.
+            _requireTrustedBackend();
+            final hasCredentials =
+                options.headers.keys.any(
+                  (key) => key.toLowerCase() == 'authorization',
+                ) ||
+                destination.queryParameters.containsKey('token');
+            if (hasCredentials &&
+                _tokenOrigin != null &&
+                _origin(destination) != _tokenOrigin) {
+              throw StateError(
+                'The server address changed. Sign in to the selected server again.',
+              );
+            }
+            // A redirect must not carry bearer/query credentials to a second
+            // authority. API paths are canonical and need no redirect replay.
+            options.followRedirects = false;
+            handler.next(options);
+          } catch (error) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                type: DioExceptionType.cancel,
+                message: error.toString().replaceFirst('Bad state: ', ''),
+                error: error,
+              ),
+            );
+          }
+        },
+      ),
+    );
   }
 
   final BackendResolver? _resolver;
   late final Dio dio;
   String? _token;
+  String? _tokenOrigin;
+
+  static String _origin(Uri uri) => '${uri.scheme}://${uri.host}:${uri.port}';
+
+  void _requireBackendOrigin(Uri uri) {
+    final backend = Uri.parse(_baseUrl);
+    if (!{'https', 'http'}.contains(uri.scheme) ||
+        uri.userInfo.isNotEmpty ||
+        _origin(uri) != _origin(backend)) {
+      throw StateError('The requested URL is outside the selected backend.');
+    }
+  }
+
+  void _requireTrustedBackend() {
+    if (_resolver != null && !_resolver.allowsCredentials) {
+      throw StateError(
+        'Select the server address explicitly in Server Connection settings '
+        'before signing in. Automatic discovery cannot verify its identity.',
+      );
+    }
+  }
 
   static bool _isConnectionFailure(DioException err) =>
       err.type == DioExceptionType.connectionError ||
@@ -83,6 +143,7 @@ class ApiClient {
 
   void setToken(String? token) {
     _token = token;
+    _tokenOrigin = token == null ? null : _origin(Uri.parse(_baseUrl));
     if (token == null) {
       dio.options.headers.remove('Authorization');
     } else {
@@ -101,6 +162,12 @@ class ApiClient {
         ? path.substring(basePath.length)
         : path;
     final token = _token;
+    if (token != null || params['token'] != null) {
+      _requireTrustedBackend();
+      if (_tokenOrigin != null && _origin(Uri.parse(base)) != _tokenOrigin) {
+        throw StateError('The server address changed. Sign in again.');
+      }
+    }
     if (token == null) {
       return AppConfig.buildApiUri(base, normalizedPath, params).toString();
     }
@@ -122,7 +189,10 @@ class ApiClient {
         DioExceptionType.sendTimeout ||
         DioExceptionType.receiveTimeout =>
           'The request timed out. Please try again.',
-        DioExceptionType.cancel => 'Request cancelled.',
+        DioExceptionType.cancel =>
+          err.error is StateError
+              ? err.message ?? fallback
+              : 'Request cancelled.',
         DioExceptionType.badCertificate =>
           'The server could not establish a secure connection.',
         _ => fallback,

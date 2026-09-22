@@ -61,6 +61,36 @@ switching/removal is blocked while the active account has pending commit
 records, because those records belong to a specific backend and Telegram
 identity.
 
+## Upload cancellation
+
+Cancellation applies while backend file-start metadata, target resolution, or
+native connection readiness is pending. Delayed callbacks must check the same
+upload attempt before sending. Android and iOS order native send admission and
+cancellation under their transfer lock, including uploads whose first TDLib
+response has not yet supplied a file id. Cancelling an item also cancels its
+active thumbnail and preview transfers.
+
+Once TDLib returns a temporary message id, cancellation deletes that pending
+message using `deleteMessages`, as supported by the pinned TDLib API. Its `ok`
+response is only an acknowledgment. Permanent deletion updates are correlated
+with the provisional and final message ids; cached deletions do not count. If
+final success races the acknowledgment, the bridge checks the final message
+before deciding whether it was deleted. An unavailable verification preserves
+the known final reference after a bounded wait. Already observed final success
+is never submitted for deletion.
+
+An upload remains in the cancelling state, with account switching blocked, until
+its worker settles. Backend cancellation and temporary-file deletion happen
+after that point. If Telegram wins the race and reports final send success, the
+original is saved to the pending commit queue and committed normally; optional
+derivatives stop. Cancellation must not discard a successful original or cancel
+the backend slot before its final outcome is known.
+
+`test/upload_cancellation_test.dart` and
+`test/telegram_upload_cancellation_test.dart` use delayed fixture metadata and
+method-channel responses to exercise these boundaries. Native compilation and
+real-device cancellation remain separate checks from the Flutter fixtures.
+
 ## Real-Device Smoke Test
 
 Date: 2026-05-24

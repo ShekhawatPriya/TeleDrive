@@ -93,6 +93,7 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
   final _uuid = const Uuid();
   final Map<String, StreamController<TelegramTransferProgress>> _progress = {};
   final Set<String> _observedTransferIds = {};
+  final Map<String, _PendingUpload> _uploads = {};
   // Kept to keep the native EventChannel subscription alive for bridge events.
   StreamSubscription<dynamic>? _eventSubscription;
 
@@ -236,55 +237,72 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
     String? transferId,
   }) async {
     final effectiveTransferId = transferId ?? _uuid.v4();
-    final tdlibChatId = await resolveUploadTarget(target);
-    if (tdlibChatId == null) {
-      throw const TelegramClientUnavailableException(
-        'Could not resolve Telegram upload target.',
-        code: 'tdlib_target_unresolved',
-      );
-    }
-    _emit(
-      TelegramTransferProgress(
-        transferId: effectiveTransferId,
-        state: TelegramTransferState.uploading,
-        totalBytes: sizeBytes,
-      ),
-    );
-    final result = await _invokeMap(method, {
-      'transferId': effectiveTransferId,
-      'chatId': tdlibChatId,
-      'filePath': filePath,
-      'filename': filename,
-      'mimeType': mimeType,
-      'sizeBytes': sizeBytes,
-      'variant': variant,
-    });
-    final ref = TelegramMediaRef.fromJson({
-      ...result,
-      'variant': variant,
-      'clientProvider': 'tdlib',
-      'storageBackend': 'telegram',
-    });
-    if (ref.tdlibMessageId == null || ref.tdlibMessageId! <= 0) {
+    if (_uploads.containsKey(effectiveTransferId)) {
       throw const TelegramClientException(
-        'TDLib did not return a final message reference.',
-        code: 'tdlib_final_message_missing',
+        'This upload is already running.',
+        code: 'tdlib_transfer_active',
       );
     }
-    _emit(
-      TelegramTransferProgress(
+    final upload = _PendingUpload();
+    _uploads[effectiveTransferId] = upload;
+    try {
+      final tdlibChatId = await Future.any([
+        resolveUploadTarget(target),
+        upload.cancelled.future.then<int?>((_) => throw _uploadCancelled),
+      ]);
+      if (upload.cancelled.isCompleted) throw _uploadCancelled;
+      if (tdlibChatId == null) {
+        throw const TelegramClientUnavailableException(
+          'Could not resolve Telegram upload target.',
+          code: 'tdlib_target_unresolved',
+        );
+      }
+      _emit(
+        TelegramTransferProgress(
+          transferId: effectiveTransferId,
+          state: TelegramTransferState.uploading,
+          totalBytes: sizeBytes,
+        ),
+      );
+      final result = await _invokeMap(method, {
+        'transferId': effectiveTransferId,
+        'chatId': tdlibChatId,
+        'filePath': filePath,
+        'filename': filename,
+        'mimeType': mimeType,
+        'sizeBytes': sizeBytes,
+        'variant': variant,
+      });
+      final ref = TelegramMediaRef.fromJson({
+        ...result,
+        'variant': variant,
+        'clientProvider': 'tdlib',
+        'storageBackend': 'telegram',
+      });
+      if (ref.tdlibMessageId == null || ref.tdlibMessageId! <= 0) {
+        throw const TelegramClientException(
+          'TDLib did not return a final message reference.',
+          code: 'tdlib_final_message_missing',
+        );
+      }
+      _emit(
+        TelegramTransferProgress(
+          transferId: effectiveTransferId,
+          state: TelegramTransferState.completed,
+          bytesDone: sizeBytes,
+          totalBytes: sizeBytes,
+        ),
+      );
+      return TelegramUploadResult(
         transferId: effectiveTransferId,
-        state: TelegramTransferState.completed,
-        bytesDone: sizeBytes,
-        totalBytes: sizeBytes,
-      ),
-    );
-    return TelegramUploadResult(
-      transferId: effectiveTransferId,
-      ref: ref,
-      sizeBytes: sizeBytes,
-      mimeType: mimeType,
-    );
+        ref: ref,
+        sizeBytes: sizeBytes,
+        mimeType: mimeType,
+      );
+    } finally {
+      _uploads.remove(effectiveTransferId);
+      _closeTransferController(effectiveTransferId);
+    }
   }
 
   @override
@@ -308,6 +326,9 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
 
   @override
   Future<void> cancelTransfer(String transferId) async {
+    // Target lookup precedes native transfer registration. Remember cancellation
+    // here so its delayed result cannot start a new send after native cancel.
+    _uploads[transferId]?.cancel();
     await _channel
         .invokeMethod<void>('cancelTransfer', {'transferId': transferId})
         .catchError((_) {});
@@ -422,6 +443,9 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
   }
 
   void dispose() {
+    for (final upload in _uploads.values) {
+      upload.cancel();
+    }
     unawaited(_eventSubscription?.cancel());
     _eventSubscription = null;
     for (final controller in _progress.values) {
@@ -490,5 +514,18 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value);
     return null;
+  }
+}
+
+const _uploadCancelled = TelegramClientException(
+  'Transfer was cancelled.',
+  code: 'tdlib_cancelled',
+);
+
+class _PendingUpload {
+  final cancelled = Completer<void>();
+
+  void cancel() {
+    if (!cancelled.isCompleted) cancelled.complete();
   }
 }

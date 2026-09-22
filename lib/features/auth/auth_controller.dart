@@ -54,6 +54,33 @@ class AuthController extends ChangeNotifier {
 
   final AuthRepository _repo;
   final SecureStorageService _storage;
+  int _authGeneration = 0;
+  bool _disposed = false;
+  Future<void> _authStorageTail = Future<void>.value();
+
+  // Keep secure-storage writes ordered with removal/sign-out. A slow older
+  // write must never finish after a newer deletion and restore credentials.
+  Future<void> _persistAuth(Future<void> Function() write) {
+    final pending = _authStorageTail.then((_) => write());
+    _authStorageTail = pending.catchError((Object _) {});
+    return pending;
+  }
+
+  Future<void> _saveVault([AccountVault? snapshot]) {
+    final current = snapshot ?? vault;
+    return _persistAuth(() => _repo.saveVault(current));
+  }
+
+  bool _isCurrentAccount(int generation, SavedAccount account) =>
+      generation == _authGeneration &&
+      vault.accountByUserId(account.userId)?.token == account.token;
+
+  void _requireGeneration(int generation) {
+    if (generation != _authGeneration) {
+      throw StateError('Account changed. Please try again.');
+    }
+  }
+
   final PendingTelegramCommitQueue _pendingCommits =
       PendingTelegramCommitQueue();
   AuthUser? user;
@@ -178,6 +205,13 @@ class AuthController extends ChangeNotifier {
   Future<void> disconnectTelegram() => _disconnectTelegram();
 
   void _emitChange() {
-    notifyListeners();
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    ++_authGeneration;
+    super.dispose();
   }
 }
