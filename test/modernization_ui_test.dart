@@ -270,12 +270,13 @@ class _DesignChangelog extends ChangeNotifier implements ChangelogController {
     hasLoadedOnce: true,
     releases: [
       GithubRelease(
-        tagName: 'v2.1.10',
-        title: 'TeleDrive 2.1.10',
+        tagName: 'v3.1.2',
+        title: 'v3.1.2',
         body:
-            '## Improvements\n- Clearer settings and navigation.\n- Improved photo backup controls.',
-        htmlUrl: 'https://github.com/example/releases',
-        publishedAt: DateTime(2026, 9, 17),
+            '**Full Changelog**: https://github.com/ShekhawatPriya/TeleDrive/compare/v3.1.1...v3.1.2',
+        htmlUrl:
+            'https://github.com/ShekhawatPriya/TeleDrive/releases/tag/v3.1.2',
+        publishedAt: DateTime.utc(2026, 9, 18, 16, 25, 54),
       ),
     ],
   );
@@ -340,8 +341,12 @@ class _Auth extends ChangeNotifier implements AuthController {
   Future<void> refreshSavedAccountSnapshots() async {}
 
   @override
-  AuthUser? get user =>
-      const AuthUser(userId: 1, telegramId: 1, firstName: 'Alex');
+  AuthUser? get user => const AuthUser(
+    userId: 1,
+    telegramId: 1468204194,
+    firstName: 'Alex',
+    username: 'alex_reid',
+  );
 
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
@@ -1577,6 +1582,199 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final dark in [false, true]) {
+      testWidgets('account identity footer $platform dark=$dark', (
+        tester,
+      ) async {
+        SharedPreferences.setMockInitialValues({});
+        await _pump(
+          tester,
+          const Scaffold(body: AccountBottomSheet()),
+          platform: platform,
+          brightness: dark ? Brightness.dark : Brightness.light,
+        );
+        expect(find.text('@alex_reid'), findsOneWidget);
+        expect(find.text('Telegram ID'), findsOneWidget);
+        expect(find.text('1468204194'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await _preview(tester, 'account-refined-${platform.name}-$dark');
+      });
+      testWidgets(
+        'gallery scroll, continuous reflow and pinch $platform dark=$dark',
+        (tester) async {
+          SharedPreferences.setMockInitialValues({});
+          final density = PhotoGridDensity();
+          addTearDown(density.dispose);
+          final files = List.generate(
+            100,
+            (i) => DriveFile(
+              id: 'motion-$i',
+              name: 'Alpine $i.jpg',
+              kind: i % 8 == 0 ? FileKind.video : FileKind.image,
+              size: 10,
+              modifiedAt: '2026-09-16',
+              createdAt: '2026-09-16',
+              parentId: null,
+              starred: false,
+              thumbnailUrl: _fixturePath,
+              widthPx: i % 4 == 0 ? 1800 : 1200,
+              heightPx: i % 4 == 1 ? 1800 : 1200,
+            ),
+          );
+          await _pump(
+            tester,
+            Scaffold(
+              body: PhotosGridView(
+                files: files,
+                showCover: false,
+                density: density,
+                onLoadMore: () {},
+                loadingMore: false,
+                selectMode: false,
+                selectedIds: const {},
+                onTileTap: (_) {},
+                onTileLongPress: (_, _) {},
+                onTilePanSelect: (_) {},
+              ),
+            ),
+            platform: platform,
+            brightness: dark ? Brightness.dark : Brightness.light,
+            reduceEffects: false,
+          );
+          final scroll = tester.widget<CustomScrollView>(
+            find.byType(CustomScrollView),
+          );
+          await tester.fling(
+            find.byType(CustomScrollView),
+            const Offset(0, -500),
+            1400,
+          );
+          await tester.pumpAndSettle();
+          expect(scroll.controller!.offset, greaterThan(400));
+          expect(find.byType(PhotoTile).evaluate().length, lessThan(60));
+          final visibleTiles =
+              find.byType(PhotoTile).evaluate().where((element) {
+                final center = tester
+                    .getRect(find.byWidget(element.widget))
+                    .center
+                    .dy;
+                return center >= 0 && center <= 844;
+              }).toList()..sort(
+                (a, b) =>
+                    (tester.getRect(find.byWidget(a.widget)).center.dy -
+                            844 * .35)
+                        .abs()
+                        .compareTo(
+                          (tester.getRect(find.byWidget(b.widget)).center.dy -
+                                  844 * .35)
+                              .abs(),
+                        ),
+              );
+          final visible = visibleTiles.first.widget as PhotoTile;
+          final tile = find.byWidgetPredicate(
+            (widget) =>
+                widget is PhotoTile && widget.file.id == visible.file.id,
+          );
+          final before = tester.getRect(tile);
+          final state = tester.element(tile);
+          await _preview(tester, 'gallery-${platform.name}-$dark-before');
+          density.zoomIn();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 80));
+          final during = tester.getRect(tile);
+          expect(during.size, isNot(before.size));
+          expect(tester.element(tile), same(state));
+          expect((during.center.dy - before.center.dy).abs(), lessThan(3));
+          await _preview(tester, 'gallery-${platform.name}-$dark-moving');
+          await tester.pumpAndSettle();
+          await _preview(tester, 'gallery-${platform.name}-$dark-after');
+          final first = await tester.startGesture(
+            const Offset(100, 350),
+            pointer: 1,
+          );
+          final second = await tester.startGesture(
+            const Offset(260, 350),
+            pointer: 2,
+          );
+          for (var step = 1; step <= 5; step++) {
+            await first.moveTo(Offset(100 + step * 8, 350));
+            await second.moveTo(Offset(260 - step * 8, 350));
+            await tester.pump(const Duration(milliseconds: 16));
+          }
+          await _preview(tester, 'gallery-${platform.name}-$dark-pinching');
+          await first.up();
+          await second.up();
+          await tester.pumpAndSettle();
+          expect(density.columns, greaterThan(2));
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final dark in [false, true]) {
+      testWidgets(
+        'compact gallery supports large text and reduced motion $platform dark=$dark',
+        (tester) async {
+          SharedPreferences.setMockInitialValues({});
+          final density = PhotoGridDensity(initial: 5);
+          addTearDown(density.dispose);
+          final files = List.generate(
+            60,
+            (i) => DriveFile(
+              id: 'compact-$i',
+              name: 'Video $i.mp4',
+              kind: FileKind.video,
+              duration: 3723,
+              size: 10,
+              createdAt: '2026-09-16',
+              modifiedAt: '2026-09-16',
+              parentId: null,
+              starred: false,
+              thumbnailUrl: _fixturePath,
+            ),
+          );
+          await _pump(
+            tester,
+            Scaffold(
+              body: PhotosGridView(
+                files: files,
+                showCover: false,
+                density: density,
+                onLoadMore: () {},
+                loadingMore: false,
+                selectMode: false,
+                selectedIds: const {},
+                onTileTap: (_) {},
+                onTileLongPress: (_, _) {},
+                onTilePanSelect: (_) {},
+              ),
+            ),
+            width: 320,
+            scale: 2,
+            highContrast: true,
+            platform: platform,
+            brightness: dark ? Brightness.dark : Brightness.light,
+          );
+          for (final element in find.byType(PhotoTile).evaluate()) {
+            expect(
+              tester.getSize(find.byWidget(element.widget)).shortestSide,
+              greaterThanOrEqualTo(44),
+            );
+          }
+          expect(
+            find.byKey(const ValueKey('photo-duration-compact-0')),
+            findsNothing,
+          );
+          density.zoomIn();
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+          await _preview(tester, 'gallery-accessible-${platform.name}-$dark');
+        },
+      );
+    }
+  }
   testWidgets('a thousand photos build only the visible tiles', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final density = PhotoGridDensity();

@@ -355,3 +355,22 @@ container, separate cancel target, keyboard lifecycle, Photos/Files source
 chooser, gallery mosaic/highlights, metadata reconciliation and current checks.
 Free Up Space uses the same compact navigation header as Settings. Its bottom
 Check Again action owns rescanning; there is no duplicate refresh icon.
+
+## Account identity and public About content
+
+The Account identity card retains the avatar/name/username header. A divider
+separates a full-width connection information action from the quiet, selectable
+Telegram ID below it. Missing usernames use “Telegram account” rather than
+repeating the ID. The same information hierarchy applies to the Android sheet,
+with Material actions and 48-point targets; iOS keeps Cupertino actions with
+44-point minimums. Values wrap at large text sizes.
+
+About TeleDrive uses a smaller app mark, installed version, and a live published
+release preview before source navigation. Loading, no releases, and retry states
+remain explicit. Public GitHub release history is fetched without a bundled
+GitHub token and follows pagination. Notes and comparison links remain real
+published content. The canonical public repository is
+[ShekhawatPriya/TeleDrive](https://github.com/ShekhawatPriya/TeleDrive).
+
+See [Gallery density and profile refresh](gallery-and-profile-refresh.md) for
+current motion, layout and main Telegram photo refresh contracts.
