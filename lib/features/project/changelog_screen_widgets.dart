@@ -65,8 +65,7 @@ class _ReleaseCard extends StatelessWidget {
               child: TextButton.icon(
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: const Size(0, 36),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size(0, 48),
                 ),
                 onPressed: () => _open(release.htmlUrl),
                 icon: const Icon(Icons.open_in_new_rounded, size: 16),
@@ -252,16 +251,41 @@ class _MarkdownBody extends StatelessWidget {
 }
 
 /// Renders a single line of text with `**bold**` and `` `code` `` inline spans.
-class _InlineText extends StatelessWidget {
+class _InlineText extends StatefulWidget {
   const _InlineText({required this.text, required this.baseStyle});
 
   final String text;
   final TextStyle? baseStyle;
 
   @override
+  State<_InlineText> createState() => _InlineTextState();
+}
+
+class _InlineTextState extends State<_InlineText> {
+  final _links = <TapGestureRecognizer>[];
+
+  void _clearLinks() {
+    for (final link in _links) {
+      link.dispose();
+    }
+    _links.clear();
+  }
+
+  @override
+  void dispose() {
+    _clearLinks();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    _clearLinks();
+    final text = widget.text;
+    final baseStyle = widget.baseStyle;
     final spans = <InlineSpan>[];
-    final pattern = RegExp(r'(\*\*([^*]+)\*\*|`([^`]+)`)');
+    final pattern = RegExp(
+      r'(\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\((https?://[^\s)]+)\)|(https?://[^\s]+))',
+    );
     var lastEnd = 0;
 
     for (final match in pattern.allMatches(text)) {
@@ -282,6 +306,31 @@ class _InlineText extends StatelessWidget {
           TextSpan(
             text: code,
             style: const TextStyle(fontFamily: 'JetBrains Mono', fontSize: 13),
+          ),
+        );
+      } else {
+        final url = match.group(5) ?? match.group(6)!;
+        final uri = Uri.tryParse(url);
+        final link = TapGestureRecognizer()
+          ..onTap = () {
+            if (uri != null &&
+                (uri.scheme == 'https' || uri.scheme == 'http')) {
+              launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          };
+        _links.add(link);
+        spans.add(
+          TextSpan(
+            text:
+                match.group(4) ??
+                (uri?.path.contains('/compare/') == true
+                    ? 'View full changelog'
+                    : url),
+            recognizer: link,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
+              decoration: TextDecoration.underline,
+            ),
           ),
         );
       }

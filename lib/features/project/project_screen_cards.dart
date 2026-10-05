@@ -150,21 +150,20 @@ class _AboutCard extends StatelessWidget {
     const points = <(IconData, String, String)>[
       (
         Icons.all_inclusive_rounded,
-        'Unlimited by design',
-        'Files live in your own Telegram account, so storage scales with you, '
-            'not a paid tier.',
+        'Your Telegram library',
+        'Keep files, photos, and videos together in your Telegram account.',
       ),
       (
         Icons.lock_outline_rounded,
         'Yours, privately',
-        'No middle-man servers hold your data. TeleDrive talks to Telegram '
-            'directly on your behalf.',
+        'Original files transfer directly between this device and Telegram. '
+            'The service keeps your library metadata.',
       ),
       (
         Icons.auto_awesome_outlined,
-        'Where it is heading',
-        'Smarter organisation, shared spaces, and faster transfers are on the '
-            'roadmap. The changelog tracks every step.',
+        'Organised around you',
+        'Browse folders, star favourites, share files, and switch between '
+            'your saved accounts.',
       ),
     ];
 

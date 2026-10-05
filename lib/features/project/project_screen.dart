@@ -3,6 +3,8 @@ import '../../widgets/ios/ios_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'github_release_models.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
@@ -13,6 +15,7 @@ part 'project_screen_cards.dart';
 part 'project_screen_developer.dart';
 part 'project_screen_header.dart';
 part 'project_screen_ios.dart';
+part 'project_release_preview.dart';
 
 class ProjectScreen extends ConsumerStatefulWidget {
   const ProjectScreen({super.key});
@@ -38,14 +41,9 @@ class _ProjectScreenState extends ConsumerState<ProjectScreen> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final changelog = ref.watch(changelogControllerProvider).state;
-    final latest = changelog.latest;
-
-    final changelogSubtitle = latest != null
-        ? 'Latest ${latest.tagName} · full version history'
-        : 'Release notes and version history';
 
     if (theme.platform == TargetPlatform.iOS)
-      return _buildIosProject(context, changelogSubtitle);
+      return _buildIosProject(context, changelog);
 
     return Scaffold(
       appBar: AppBar(
@@ -56,10 +54,10 @@ class _ProjectScreenState extends ConsumerState<ProjectScreen> {
           tooltip: 'Back',
           onPressed: () => context.pop(),
         ),
-        title: const Text('Project'),
+        title: const Text('About TeleDrive'),
       ),
       body: ListView(
-        physics: const BouncingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, AppSpacing.sm, 20, 48),
         children: [
           Align(
@@ -73,24 +71,18 @@ class _ProjectScreenState extends ConsumerState<ProjectScreen> {
                   const SizedBox(height: AppSpacing.xl),
                   _SectionLabel('Source & releases'),
                   const SizedBox(height: AppSpacing.sm),
+                  _ProjectReleasePreview(
+                    state: changelog,
+                    onRetry: () =>
+                        ref.read(changelogControllerProvider).load(force: true),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
                   _CategoryCard(
                     icon: GitHubIcon(size: 22, color: scheme.primary),
                     title: 'Open Source',
                     subtitle: 'TeleDrive is free and open on GitHub',
                     trailing: _CardTrailing.external,
                     onTap: AppConfig.openRepository,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  _CategoryCard(
-                    icon: Icon(
-                      Icons.history_rounded,
-                      size: 22,
-                      color: scheme.primary,
-                    ),
-                    title: 'Changelog',
-                    subtitle: changelogSubtitle,
-                    trailing: _CardTrailing.chevron,
-                    onTap: () => context.push('/settings/project/changelog'),
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   _SectionLabel('The story'),

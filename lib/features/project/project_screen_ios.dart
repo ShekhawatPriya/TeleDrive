@@ -1,34 +1,34 @@
 part of 'project_screen.dart';
 
-Widget _buildIosProject(BuildContext context, String changelogSubtitle) {
+Widget _buildIosProject(BuildContext context, ChangelogState changelog) {
   final theme = Theme.of(context);
   final scheme = theme.colorScheme;
   final text = theme.textTheme;
   return IosPage(
-    title: 'About',
+    title: 'About TeleDrive',
     compact: true,
-    horizontalPadding: 24,
+    horizontalPadding: 20,
     children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 32),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 28),
         child: Column(
           children: [
             Image.asset(
               'assets/icon/app_icon.png',
-              width: 128,
-              height: 128,
+              width: 88,
+              height: 88,
               excludeFromSemantics: true,
             ),
             const SizedBox(height: 12),
             Text(
               'TeleDrive',
-              style: text.displaySmall,
+              style: text.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               'A little more space.\nA lot more possibility.',
-              style: text.titleLarge?.copyWith(
+              style: text.bodyLarge?.copyWith(
                 fontWeight: FontWeight.w400,
                 color: scheme.onSurfaceVariant,
                 height: 1.25,
@@ -40,11 +40,11 @@ Widget _buildIosProject(BuildContext context, String changelogSubtitle) {
           ],
         ),
       ),
-      _AboutDestination(
-        icon: CupertinoIcons.sparkles,
-        title: 'What’s New',
-        subtitle: changelogSubtitle,
-        onTap: () => context.push('/settings/project/changelog'),
+      _ProjectReleasePreview(
+        state: changelog,
+        onRetry: () => ProviderScope.containerOf(
+          context,
+        ).read(changelogControllerProvider).load(force: true),
       ),
       const SizedBox(height: 12),
       _AboutDestination(
