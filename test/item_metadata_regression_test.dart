@@ -266,35 +266,49 @@ void main() {
     expect(drive.mediaFiles, isEmpty);
   });
 
-  test('justified layout respects each aspect ratio, width and chronology', () {
-    final photos = List.generate(
-      100,
-      (i) =>
-          _photo('$i', w: i % 3 == 0 ? 1800 : 600, h: i % 3 == 1 ? 1200 : 800),
-    );
-    for (final width in [280.0, 350.0, 800.0]) {
-      final rows = justifyPhotos(
-        photos,
-        width: width,
-        targetHeight: 130,
-        gap: 4,
+  test(
+    'gallery geometry keeps chronological tiles bounded at every density',
+    () {
+      final photos = List.generate(
+        100,
+        (i) => _photo(
+          '$i',
+          w: i % 3 == 0 ? 1800 : 600,
+          h: i % 3 == 1 ? 1200 : 800,
+        ),
       );
-      expect(
-        rows.expand((row) => row.files).map((file) => file.id),
-        photos.map((file) => file.id),
-      );
-      for (final row in rows) {
-        expect(
-          row.widths.reduce((a, b) => a + b) + 4 * (row.files.length - 1),
-          lessThanOrEqualTo(width + .001),
-        );
-        for (var i = 0; i < row.files.length; i++) {
-          expect(
-            row.widths[i] / row.height,
-            closeTo(row.files[i].widthPx! / row.files[i].heightPx!, .001),
+      for (final width in [280.0, 350.0, 800.0]) {
+        for (final columns in [2, 3, 4, 5]) {
+          final layout = layoutPhotos(
+            photos,
+            width: width,
+            columns: columns,
+            gap: 4,
           );
+          expect(layout.rects.length, photos.length);
+          var previousTop = 0.0;
+          for (final rect in layout.rects) {
+            expect(rect.left, greaterThanOrEqualTo(0));
+            expect(rect.right, lessThanOrEqualTo(width + .001));
+            expect(rect.top, greaterThanOrEqualTo(previousTop));
+            expect(rect.shortestSide, greaterThan(0));
+            previousTop = rect.top;
+          }
         }
       }
-    }
+    },
+  );
+  test('unknown dimensions receive stable interior emphasis', () {
+    final photos = List.generate(100, (i) => _photo('$i', w: 0, h: 0));
+    final layout = layoutPhotos(photos, width: 350, columns: 3, gap: 4);
+    final interiorLarge = layout.rects
+        .sublist(0, 95)
+        .where((rect) => rect.width > 180);
+    expect(interiorLarge.length, greaterThan(5));
+    expect(
+      layoutPhotos(photos, width: 350, columns: 3, gap: 4).rects,
+      layout.rects,
+    );
+    expect(layout.rects.last.height, lessThanOrEqualTo(350 / 3));
   });
 }

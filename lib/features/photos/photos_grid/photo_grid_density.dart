@@ -59,41 +59,60 @@ final photoGridDensityProvider = ChangeNotifierProvider<PhotoGridDensity>((
   return density;
 });
 
+/// Pointer observation leaves one-finger scrolling out of the scale arena.
+/// A regular ScaleGestureRecognizer can win a vertical drag before a second
+/// finger arrives, which makes gallery flings feel as though they get stuck.
 class PhotoGridPinchDetector extends StatefulWidget {
   const PhotoGridPinchDetector({
-    required this.density,
+    required this.onStart,
+    required this.onUpdate,
+    required this.onEnd,
     required this.child,
     super.key,
   });
-
-  final PhotoGridDensity density;
+  final ValueChanged<Offset> onStart;
+  final ValueChanged<double> onUpdate;
+  final VoidCallback onEnd;
   final Widget child;
-
   @override
   State<PhotoGridPinchDetector> createState() => _PhotoGridPinchDetectorState();
 }
 
 class _PhotoGridPinchDetectorState extends State<PhotoGridPinchDetector> {
-  bool _committed = false;
+  final _pointers = <int, Offset>{};
+  double? _initialDistance;
+  void _down(PointerDownEvent event) {
+    _pointers[event.pointer] = event.position;
+    if (_pointers.length == 2) {
+      final points = _pointers.values.toList();
+      _initialDistance = (points[0] - points[1]).distance;
+      widget.onStart((points[0] + points[1]) / 2);
+    }
+  }
+
+  void _move(PointerMoveEvent event) {
+    if (!_pointers.containsKey(event.pointer)) return;
+    _pointers[event.pointer] = event.position;
+    final initial = _initialDistance;
+    if (initial == null || initial <= 0 || _pointers.length < 2) return;
+    final points = _pointers.values.take(2).toList();
+    widget.onUpdate((points[0] - points[1]).distance / initial);
+  }
+
+  void _up(PointerEvent event) {
+    _pointers.remove(event.pointer);
+    if (_pointers.length < 2 && _initialDistance != null) {
+      _initialDistance = null;
+      widget.onEnd();
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.deferToChild,
-      onScaleStart: (_) => _committed = false,
-      onScaleUpdate: (details) {
-        if (details.pointerCount < 2 || _committed) return;
-        final delta = details.scale - 1;
-        if (delta > 0.35) {
-          widget.density.zoomIn();
-          _committed = true;
-        } else if (delta < -0.35) {
-          widget.density.zoomOut();
-          _committed = true;
-        }
-      },
-      onScaleEnd: (_) => _committed = false,
-      child: widget.child,
-    );
-  }
+  Widget build(BuildContext context) => Listener(
+    onPointerDown: _down,
+    onPointerMove: _move,
+    onPointerUp: _up,
+    onPointerCancel: _up,
+    child: widget.child,
+  );
 }

@@ -31,77 +31,109 @@ class PhotoTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final selectedWash = scheme.primary.withValues(alpha: .12);
-    return DriveItemContextMenu(
-      file: file,
-      enabled: !selectMode,
-      onOpen: onTap,
-      onSelect: onSelect ?? onLongPress,
-      child: Semantics(
-        button: true,
-        label: file.name,
-        selected: selected,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          onLongPress:
-              Theme.of(context).platform == TargetPlatform.iOS && !selectMode
-              ? null
-              : onLongPress,
-          child: Hero(
-            tag: 'photo-${file.id}',
-            flightShuttleBuilder: (_, __, ___, ____, _____) {
-              return MediaThumb(file: file, fit: BoxFit.cover, radius: 0);
-            },
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                AnimatedContainer(
-                  duration: MediaQuery.disableAnimationsOf(context)
-                      ? Duration.zero
-                      : AppDurations.short3,
-                  curve: AppEasing.standardDecelerate,
-                  padding: selected ? const EdgeInsets.all(8) : EdgeInsets.zero,
-                  color: selected ? selectedWash : Colors.transparent,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        _thumb(selectedWash),
-                        if (isVideoFile(file)) _videoBadge(),
-                        if (Theme.of(context).platform != TargetPlatform.iOS &&
-                            !file.isOptimistic &&
-                            (file.starred || file.shared))
-                          Positioned(
-                            right: 8,
-                            top: 8,
-                            child: ItemStatusIndicators(
-                              starred: file.starred,
-                              shared: file.shared,
-                            ),
-                          ),
-                        if (Theme.of(context).platform == TargetPlatform.iOS &&
-                            file.starred &&
-                            !file.isOptimistic)
-                          const Positioned(
-                            right: 8,
-                            top: 8,
-                            child: StarredBadge(size: 24),
-                          ),
-                        if (Theme.of(context).platform == TargetPlatform.iOS &&
-                            file.shared &&
-                            !file.isOptimistic)
-                          _sharedBadge(),
-                      ],
-                    ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final duration = file.duration;
+        final durationText = duration == null ? null : formatDuration(duration);
+        final durationPainter = durationText == null
+            ? null
+            : (TextPainter(
+                text: TextSpan(
+                  text: durationText,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                if (selectMode) _selectionMark(context),
-              ],
+                textScaler: MediaQuery.textScalerOf(context),
+                textDirection: Directionality.of(context),
+              )..layout());
+        final showDuration =
+            durationPainter != null &&
+            durationPainter.width + 50 <= constraints.maxWidth;
+        durationPainter?.dispose();
+        return DriveItemContextMenu(
+          file: file,
+          enabled: !selectMode,
+          onOpen: onTap,
+          onSelect: onSelect ?? onLongPress,
+          child: Semantics(
+            button: true,
+            label: isVideoFile(file) && durationText != null
+                ? '${file.name}, video, $durationText'
+                : file.name,
+            selected: selected,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onTap,
+              onLongPress:
+                  Theme.of(context).platform == TargetPlatform.iOS &&
+                      !selectMode
+                  ? null
+                  : onLongPress,
+              child: Hero(
+                tag: 'photo-${file.id}',
+                flightShuttleBuilder: (_, __, ___, ____, _____) {
+                  return MediaThumb(file: file, fit: BoxFit.cover, radius: 0);
+                },
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    AnimatedContainer(
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : AppDurations.short3,
+                      curve: AppEasing.standardDecelerate,
+                      padding: selected
+                          ? const EdgeInsets.all(8)
+                          : EdgeInsets.zero,
+                      color: selected ? selectedWash : Colors.transparent,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            _thumb(selectedWash),
+                            if (isVideoFile(file))
+                              _videoBadge(showDuration: showDuration),
+                            if (Theme.of(context).platform !=
+                                    TargetPlatform.iOS &&
+                                !file.isOptimistic &&
+                                (file.starred || file.shared))
+                              Positioned(
+                                right: 8,
+                                top: 8,
+                                child: ItemStatusIndicators(
+                                  starred: file.starred,
+                                  shared: file.shared,
+                                ),
+                              ),
+                            if (Theme.of(context).platform ==
+                                    TargetPlatform.iOS &&
+                                file.starred &&
+                                !file.isOptimistic)
+                              const Positioned(
+                                right: 8,
+                                top: 8,
+                                child: StarredBadge(size: 24),
+                              ),
+                            if (Theme.of(context).platform ==
+                                    TargetPlatform.iOS &&
+                                file.shared &&
+                                !file.isOptimistic)
+                              _sharedBadge(),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (selectMode) _selectionMark(context),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -118,8 +150,8 @@ class PhotoTile extends StatelessWidget {
     return const Positioned(right: 8, bottom: 8, child: SharedBadge(size: 20));
   }
 
-  Widget _videoBadge() {
-    final hasDuration = file.duration != null;
+  Widget _videoBadge({required bool showDuration}) {
+    final hasDuration = showDuration && file.duration != null;
     return Positioned(
       left: 8,
       bottom: 8,
@@ -145,6 +177,7 @@ class PhotoTile extends StatelessWidget {
                 const SizedBox(width: 2),
                 Text(
                   formatDuration(file.duration!),
+                  key: ValueKey('photo-duration-${file.id}'),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 11,
