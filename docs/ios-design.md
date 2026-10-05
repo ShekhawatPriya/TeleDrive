@@ -16,11 +16,41 @@ selection lens and native touch handling. Flutter owns the existing tab routes;
 UIKit sends selection events and receives updated index/appearance values.
 Android retains its separate Flutter navigation.
 
+On wider iPad layouts, the shell uses a scrollable Cupertino sidebar with the
+same destinations and route callbacks. Android keeps its Material navigation
+rail. Selected semantics, 48-point minimum targets and wrapping labels remain
+available at larger text sizes. This sidebar is Flutter-rendered, not a native
+`UITabBarController` sidebar.
+
 `NativeGlassButton` uses `UIButton.Configuration.glass()` on supported iOS.
 Overflow buttons use a real `UIMenu` with `UIAction` entries. An uncached deferred
 menu requests a fresh Dart snapshot each time it opens, preserving callbacks,
 checkmarks, subtitles and destructive state. Layout and sorting are submenus.
 Missing native bridges fall back to working Flutter controls for tests/old hosts.
+
+The glass APIs remain guarded at iOS 26, where they were introduced. Menu
+subtitles have their own iOS 16 availability guard, preserving the iOS 15
+deployment target. Rebuilding with a newer SDK does not require raising either
+availability check to iOS 27.
+
+Unchanged button/tab/selection configurations do not trigger repeated bridge
+updates. Native toolbar items and photo buttons are retained across selected,
+enabled and appearance updates; their callbacks read the current action label.
+Menu contents still resolve afresh on every opening.
+
+`IosAccessibility` surrounds the Navigator and overlays. Its native preference
+bridge reads and observes Reduce Transparency, and refreshes on foregrounding.
+Flutter navigation materials use an opaque fallback for that setting as well
+as increased contrast. UIKit continues to own native glass adaptation.
+The upload source chooser receives the app's resolved appearance as well as its
+measured anchor, so it matches explicit Light/Dark choices independently of the
+device appearance.
+
+TeleDrive combines native UIKit Liquid Glass controls with Flutter Cupertino
+layouts. Account/Settings navigation bars are Cupertino widgets; they are not
+native `UINavigationBar` instances. `AdaptiveSurface` remains a Flutter frosted
+material approximation. The conventional full-bleed PNG launcher icon remains
+valid; a layered Icon Composer icon is a separate artwork enhancement.
 
 ## Account destinations
 

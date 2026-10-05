@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'ios/ios_accessibility.dart';
 
 enum GlassRole { sheet, navigation }
 
@@ -33,7 +34,8 @@ class AdaptiveSurface extends StatelessWidget {
     final dark = theme.brightness == Brightness.dark;
     final glass =
         theme.platform == TargetPlatform.iOS &&
-        !MediaQuery.highContrastOf(context);
+        !MediaQuery.highContrastOf(context) &&
+        !IosAccessibilityPreferences.reduceTransparencyOf(context);
     final content = DecoratedBox(
       decoration: BoxDecoration(
         color: glass ? null : scheme.surfaceContainerLow,

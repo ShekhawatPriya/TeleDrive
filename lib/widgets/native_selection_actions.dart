@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -31,6 +32,8 @@ class NativeSelectionActions extends StatefulWidget {
 class _NativeSelectionActionsState extends State<NativeSelectionActions> {
   MethodChannel? _channel;
   bool _available = false, _checked = false;
+  List<String>? _lastLabels;
+  (bool, bool, bool, bool)? _lastState;
   static String symbol(String label) => switch (label) {
     'Share' => 'square.and.arrow.up',
     'Star' => 'star',
@@ -86,9 +89,23 @@ class _NativeSelectionActionsState extends State<NativeSelectionActions> {
     _update();
   }
 
-  void _update() => _channel
-      ?.invokeMethod<void>('update', configuration)
-      .catchError((Object _) {});
+  void _update() {
+    if (_channel == null) return;
+    final labels = widget.actions.map((a) => a.label).toList();
+    final state = (
+      Theme.of(context).brightness == Brightness.dark,
+      widget.enabled,
+      widget.onSelectAll != null,
+      widget.onClear != null && widget.enabled,
+    );
+    if (state == _lastState && listEquals(labels, _lastLabels)) return;
+    _lastState = state;
+    _lastLabels = labels;
+    _channel
+        ?.invokeMethod<void>('update', configuration)
+        .catchError((Object _) {});
+  }
+
   @override
   void dispose() {
     _channel?.setMethodCallHandler(null);
@@ -104,6 +121,8 @@ class _NativeSelectionActionsState extends State<NativeSelectionActions> {
             creationParamsCodec: const StandardMessageCodec(),
             creationParams: configuration,
             onPlatformViewCreated: (id) {
+              _lastState = null;
+              _lastLabels = null;
               _channel = MethodChannel('teledrive/selection-toolbar/$id');
               _channel!.setMethodCallHandler((call) async {
                 if (!mounted || call.method != 'action') return;

@@ -77,7 +77,12 @@ class _NativePhotoControlsState extends State<NativePhotoControls> {
   @override
   void didUpdateWidget(covariant NativePhotoControls oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _update();
+    if (oldWidget.starred != widget.starred ||
+        oldWidget.infoSelected != widget.infoSelected ||
+        oldWidget.download != widget.download ||
+        (oldWidget.onDelete == null) != (widget.onDelete == null)) {
+      _update();
+    }
   }
 
   void _update() => _channel

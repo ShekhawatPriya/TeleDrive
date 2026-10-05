@@ -9,6 +9,7 @@ import UserNotifications
   private let tdlibBridge = TdlibBridge()
   private let uploadSourceChooser = UploadSourceChooser()
   private let mediaChannelHandler = MediaChannelHandler()
+  private var accessibilityPreferences: AccessibilityPreferences?
 
   override func application(
     _ application: UIApplication,
@@ -26,6 +27,7 @@ import UserNotifications
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     let messenger = engineBridge.applicationRegistrar.messenger()
+    accessibilityPreferences = AccessibilityPreferences(messenger: messenger)
     engineBridge.applicationRegistrar.register(
       GlassButtonFactory(messenger: messenger), withId: "teledrive/glass-button")
     engineBridge.applicationRegistrar.register(
@@ -69,6 +71,25 @@ import UserNotifications
   }
 }
 
+/// UIKit owns the preference; Flutter receives both the initial value and live changes.
+final class AccessibilityPreferences: NSObject {
+  private let channel: FlutterMethodChannel
+  init(messenger: FlutterBinaryMessenger) {
+    channel = FlutterMethodChannel(name: "teledrive/accessibility", binaryMessenger: messenger)
+    super.init()
+    channel.setMethodCallHandler { call, result in
+      if call.method == "getReduceTransparency" { result(UIAccessibility.isReduceTransparencyEnabled) }
+      else { result(FlutterMethodNotImplemented) }
+    }
+    NotificationCenter.default.addObserver(self, selector: #selector(changed),
+      name: UIAccessibility.reduceTransparencyStatusDidChangeNotification, object: nil)
+  }
+  @objc private func changed() {
+    channel.invokeMethod("reduceTransparencyChanged", arguments: UIAccessibility.isReduceTransparencyEnabled)
+  }
+  deinit { NotificationCenter.default.removeObserver(self); channel.setMethodCallHandler(nil) }
+}
+
 /// System-rendered controls keep Liquid Glass and accessibility preferences
 /// owned by UIKit. File content never crosses this platform-view bridge.
 final class GlassButtonFactory: NSObject, FlutterPlatformViewFactory {
@@ -83,6 +104,7 @@ final class GlassButtonFactory: NSObject, FlutterPlatformViewFactory {
 final class GlassButtonView: NSObject, FlutterPlatformView {
   private let button = UIButton(type: .system)
   private let channel: FlutterMethodChannel
+  private var lastArguments: NSDictionary?
   init(frame: CGRect, id: Int64, arguments: Any?, messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(name: "teledrive/glass-button/\(id)", binaryMessenger: messenger)
     super.init()
@@ -97,6 +119,9 @@ final class GlassButtonView: NSObject, FlutterPlatformView {
   func view() -> UIView { button }
   private func update(_ arguments: Any?) {
     guard let args = arguments as? [String: Any] else { return }
+    let snapshot = args as NSDictionary
+    guard lastArguments?.isEqual(snapshot) != true else { return }
+    lastArguments = snapshot
     let label = args["label"] as? String ?? ""
     let symbol = args["symbol"] as? String ?? ""
     let prominent = args["prominent"] as? Bool ?? false
@@ -123,7 +148,7 @@ final class GlassButtonView: NSObject, FlutterPlatformView {
                 attributes: (item["destructive"] as? Bool ?? false) ? .destructive : [],
                 state: (item["checked"] as? Bool ?? false) ? .on : .off
               ) { [weak self] _ in self?.channel.invokeMethod("menuAction", arguments: id) }
-              action.subtitle = item["subtitle"] as? String
+              if #available(iOS 16.0, *) { action.subtitle = item["subtitle"] as? String }
               return action
             }
             let title = section["title"] as? String ?? ""
@@ -180,6 +205,7 @@ final class NativeTabBarView: NSObject, FlutterPlatformView, UITabBarDelegate {
   private let root = TabBarLayoutView()
   private var selectedIndex = 0
   private let channel: FlutterMethodChannel
+  private var lastArguments: NSDictionary?
   init(frame: CGRect, id: Int64, arguments: Any?, messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(name: "teledrive/tab-bar/\(id)", binaryMessenger: messenger)
     super.init()
@@ -222,6 +248,9 @@ final class NativeTabBarView: NSObject, FlutterPlatformView, UITabBarDelegate {
   }
   private func update(_ arguments: Any?) {
     guard let args = arguments as? [String: Any] else { return }
+    let snapshot = args as NSDictionary
+    guard lastArguments?.isEqual(snapshot) != true else { return }
+    lastArguments = snapshot
     root.overrideUserInterfaceStyle = (args["dark"] as? Bool ?? false) ? .dark : .light
     bar.tintColor = .systemBlue
     selectedIndex = args["selectedIndex"] as? Int ?? 0
@@ -570,6 +599,10 @@ final class SelectionToolbarFactory: NSObject, FlutterPlatformViewFactory {
 final class SelectionToolbarView: NSObject, FlutterPlatformView {
   private let bar = UIToolbar()
   private let channel: FlutterMethodChannel
+  private var lastArguments: NSDictionary?
+  private var actionItems: [UIBarButtonItem] = []
+  private var actionLabels: [String] = []
+  private var photoControls = false
   init(frame: CGRect, id: Int64, arguments: Any?, messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(name: "teledrive/selection-toolbar/\(id)", binaryMessenger: messenger)
     super.init()
@@ -585,21 +618,44 @@ final class SelectionToolbarView: NSObject, FlutterPlatformView {
   func view() -> UIView { bar }
   private func update(_ arguments: Any?) {
     guard let args = arguments as? [String: Any] else { return }
+    let snapshot = args as NSDictionary
+    guard lastArguments?.isEqual(snapshot) != true else { return }
+    let previous = lastArguments
+    lastArguments = snapshot
     bar.overrideUserInterfaceStyle = (args["dark"] as? Bool ?? false) ? .dark : .light
     let enabled = args["enabled"] as? Bool ?? false
     let actions = args["actions"] as? [[String: String]] ?? []
     let photoViewer = args["photoViewer"] as? Bool ?? false
     let photoSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 22, weight: .regular, scale: .medium)
-    var items = actions.map { action -> UIBarButtonItem in
+    let rebuildActions = actionItems.count != actions.count || photoControls != photoViewer
+    actionLabels = actions.map { $0["label"] ?? "" }
+    photoControls = photoViewer
+    if rebuildActions {
+      actionItems = actions.indices.map { index in
+        let callback = UIAction { [weak self] _ in
+          guard let self = self, self.actionLabels.indices.contains(index) else { return }
+          self.channel.invokeMethod("action", arguments: self.actionLabels[index])
+        }
+        let item: UIBarButtonItem
+        if photoViewer {
+          // Retain the button and its target constraints across state updates.
+          let button = UIButton(type: .system, primaryAction: callback)
+          button.widthAnchor.constraint(equalToConstant: 48).isActive = true
+          button.heightAnchor.constraint(equalToConstant: 44).isActive = true
+          item = UIBarButtonItem(customView: button)
+        } else { item = UIBarButtonItem(title: nil, image: nil, primaryAction: callback) }
+        item.width = 48
+        return item
+      }
+    }
+    for (index, action) in actions.enumerated() {
+      let item = actionItems[index]
       let label = action["label"] ?? ""
       let image = UIImage(systemName: action["symbol"] ?? "",
         withConfiguration: photoViewer ? photoSymbolConfiguration : nil)
-      let callback = UIAction { [weak self] _ in self?.channel.invokeMethod("action", arguments: label) }
-      let item: UIBarButtonItem
-      if photoViewer {
+      if let button = item.customView as? UIButton {
         // System toolbar items may report a 38-point target on iOS 26. Give
         // the native button explicit bounds while retaining toolbar-owned glass.
-        let button = UIButton(type: .system, primaryAction: callback)
         var configuration = UIButton.Configuration.plain()
         configuration.image = image
         configuration.baseForegroundColor = .white
@@ -607,25 +663,27 @@ final class SelectionToolbarView: NSObject, FlutterPlatformView {
         button.configuration = configuration
         button.accessibilityLabel = label
         button.isEnabled = enabled
-        button.widthAnchor.constraint(equalToConstant: 48).isActive = true
-        button.heightAnchor.constraint(equalToConstant: 44).isActive = true
         if action["selected"] == "true" { button.accessibilityTraits.insert(.selected) }
-        item = UIBarButtonItem(customView: button)
+        else { button.accessibilityTraits.remove(.selected) }
       } else {
-        item = UIBarButtonItem(title: nil, image: image, primaryAction: callback)
+        item.image = image
         item.accessibilityLabel = label
         item.isEnabled = enabled
       }
-      item.width = 48
-      return item
     }
+    let selectAll = args["selectAll"] as? Bool ?? false
+    let clear = args["clear"] as? Bool ?? false
+    // Updating a star, selection or appearance must not replace focused items.
+    let rebuildLayout = previous == nil || rebuildActions ||
+      (previous?["selectAll"] as? Bool ?? false) != selectAll ||
+      (previous?["clear"] as? Bool ?? false) != clear
+    guard rebuildLayout else { return }
+    var items = actionItems
     if photoViewer {
       // Flexible spaces form three system-glass groups with identical symbols.
       items.insert(UIBarButtonItem(systemItem: .flexibleSpace), at: 1)
       if items.count > 4 { items.insert(UIBarButtonItem(systemItem: .flexibleSpace), at: 4) }
     }
-    let selectAll = args["selectAll"] as? Bool ?? false
-    let clear = args["clear"] as? Bool ?? false
     if selectAll || clear {
       items.append(UIBarButtonItem(systemItem: .flexibleSpace))
       var menu: [UIAction] = []

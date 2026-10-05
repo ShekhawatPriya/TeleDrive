@@ -204,6 +204,9 @@ final class UploadSourceChooser: NSObject, UIAdaptivePresentationControllerDeleg
     presenter.view.endEditing(true)
     pending = result
     let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+    if let args = arguments as? [String: Any], let dark = args["dark"] as? Bool {
+      alert.overrideUserInterfaceStyle = dark ? .dark : .light
+    }
     func add(_ title: String, _ value: String?, _ style: UIAlertAction.Style = .default) {
       alert.addAction(UIAlertAction(title: title, style: style) { [weak self, weak alert] _ in
         guard let self = self else { return }

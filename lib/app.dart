@@ -5,6 +5,7 @@ import 'app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/app_update/app_update_gate.dart';
 import 'features/profile/theme_controller.dart';
+import 'widgets/ios/ios_accessibility.dart';
 
 class TeleDriveApp extends ConsumerWidget {
   const TeleDriveApp({super.key});
@@ -28,7 +29,9 @@ class TeleDriveApp extends ConsumerWidget {
       themeMode: theme.mode,
       routerConfig: router,
       builder: (context, child) {
-        return AppUpdateGate(child: child ?? const SizedBox.shrink());
+        return IosAccessibility(
+          child: AppUpdateGate(child: child ?? const SizedBox.shrink()),
+        );
       },
     );
   }

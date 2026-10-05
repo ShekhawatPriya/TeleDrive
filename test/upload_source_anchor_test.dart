@@ -49,11 +49,50 @@ void main() {
     await tester.pump();
     expect(request?.method, 'chooseUploadSource');
     expect(request?.arguments, {
+      'dark': false,
       'x': rect.left,
       'y': rect.top,
       'width': rect.width,
       'height': rect.height,
     });
     expect(selected, 'photos');
+  });
+
+  testWidgets('source chooser uses the app appearance over system appearance', (
+    tester,
+  ) async {
+    const channel = MethodChannel('teledrive/appearance');
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    final requests = <Map<Object?, Object?>>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+      call,
+    ) async {
+      requests.add(Map<Object?, Object?>.from(call.arguments as Map));
+      return null;
+    });
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        channel,
+        null,
+      ),
+    );
+    for (final brightness in Brightness.values) {
+      tester.platformDispatcher.platformBrightnessTestValue =
+          brightness == Brightness.dark ? Brightness.light : Brightness.dark;
+      await tester.pumpWidget(
+        CupertinoApp(
+          theme: CupertinoThemeData(brightness: brightness),
+          home: Builder(
+            builder: (context) => CupertinoButton(
+              onPressed: () => chooseUploadSource(context),
+              child: const Text('Upload'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Upload'));
+      await tester.pump();
+      expect(requests.last['dark'], brightness == Brightness.dark);
+    }
   });
 }

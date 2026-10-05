@@ -20,7 +20,7 @@ The interface now gives content different levels of emphasis: larger recent prev
 | Secondary app bars | Centered titles by theme unless a screen overrides it | Leading titles by theme unless overridden |
 | Viewer controls | Frosted dark floating toolbar | Opaque dark floating toolbar |
 
-`AdaptiveSurface` is a Flutter approximation of frosted glass, not Apple's native Liquid Glass rendering engine. Glass is restricted to controls, with opaque fallbacks for high contrast, accessible navigation, and reduced animation. Flutter does not expose the independent iOS Reduce Transparency setting here; a native bridge is not implemented. Content cards stay opaque. Transitions retain the existing platform route behavior.
+`AdaptiveSurface` is a Flutter approximation of frosted glass, not Apple's native Liquid Glass rendering engine. Glass is restricted to controls, with opaque fallbacks for high contrast and the independently bridged iOS Reduce Transparency setting. Native UIKit controls and the current iPad sidebar are described in [iOS design](ios-design.md). Content cards stay opaque. Transitions retain the existing platform route behavior.
 
 ## Screen-by-screen review
 

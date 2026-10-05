@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -17,6 +18,7 @@ class NativeTabBar extends StatefulWidget {
 class _NativeTabBarState extends State<NativeTabBar> {
   MethodChannel? _channel;
   bool _native = false;
+  Map<String, Object>? _lastConfiguration;
   Map<String, Object> get _config => {
     'selectedIndex': widget.selectedIndex,
     'dark': Theme.of(context).brightness == Brightness.dark,
@@ -55,7 +57,13 @@ class _NativeTabBarState extends State<NativeTabBar> {
   }
 
   void _update() {
-    _channel?.invokeMethod<void>('update', _config).catchError((Object _) {});
+    if (_channel == null) return;
+    final configuration = _config;
+    if (mapEquals(configuration, _lastConfiguration)) return;
+    _lastConfiguration = configuration;
+    _channel
+        ?.invokeMethod<void>('update', configuration)
+        .catchError((Object _) {});
   }
 
   @override
@@ -101,6 +109,7 @@ class _NativeTabBarState extends State<NativeTabBar> {
         creationParamsCodec: const StandardMessageCodec(),
         creationParams: _config,
         onPlatformViewCreated: (id) {
+          _lastConfiguration = null;
           _channel = MethodChannel('teledrive/tab-bar/$id');
           _channel!.setMethodCallHandler((call) async {
             if (call.method == 'select' && mounted)
