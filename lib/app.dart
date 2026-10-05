@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/app_update/app_update_gate.dart';
+import 'features/auth/profile_refresh_gate.dart';
 import 'features/profile/theme_controller.dart';
 import 'widgets/ios/ios_accessibility.dart';
 
@@ -30,7 +31,9 @@ class TeleDriveApp extends ConsumerWidget {
       routerConfig: router,
       builder: (context, child) {
         return IosAccessibility(
-          child: AppUpdateGate(child: child ?? const SizedBox.shrink()),
+          child: ProfileRefreshGate(
+            child: AppUpdateGate(child: child ?? const SizedBox.shrink()),
+          ),
         );
       },
     );

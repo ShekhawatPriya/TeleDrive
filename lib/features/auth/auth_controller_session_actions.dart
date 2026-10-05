@@ -57,6 +57,7 @@ extension _AuthControllerSessionActions on AuthController {
       throw Exception('Session expired. Please log in again.');
     }
 
+    _invalidateProfileRefreshes();
     switchingAccount = true;
     _emitChange();
     try {

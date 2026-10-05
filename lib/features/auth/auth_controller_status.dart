@@ -47,27 +47,73 @@ extension _AuthControllerStatus on AuthController {
     this._emitChange();
   }
 
-  Future<void> _refreshProfile() async {
-    try {
-      user = await _repo.fetchProfile(current: user);
-      final active = activeAccount;
-      if (user != null && active != null) {
-        final localPhotoPath =
-            await _repo.cacheProfilePhoto(user!) ??
-            this._trustedLocalPhotoPath(active);
-        final updated = active.copyWith(
-          firstName: user!.firstName,
-          lastName: user!.lastName,
-          username: user!.username,
-          photoUrl: user!.photoUrl,
-          localPhotoPath: localPhotoPath,
-        );
-        vault = vault.upsert(updated, makeActive: true);
-        await _repo.saveVault(vault);
-      }
-      this._emitChange();
-    } catch (_) {}
+  Future<void> _refreshProfile() {
+    final pending = _profileRefresh;
+    if (pending != null) return pending;
+    final future = _refreshActiveProfile();
+    _profileRefresh = future;
+    return future.whenComplete(() {
+      if (identical(_profileRefresh, future)) _profileRefresh = null;
+    });
   }
+
+  Future<void> _refreshActiveProfile() async {
+    final account = activeAccount;
+    final epoch = _sessionEpoch;
+    if (account == null || !isAuthenticated || switchingAccount) return;
+    try {
+      final profile = await _repo.fetchAccountProfile(account);
+      if (!_profileRequestIsCurrent(account, epoch) || token != account.token)
+        return;
+      final local = await _profileLocalPhoto(account, profile);
+      if (!_profileRequestIsCurrent(account, epoch) || token != account.token)
+        return;
+      user = profile;
+      final latest = vault.accountByUserId(account.userId)!;
+      vault = vault.upsert(_updatedProfile(latest, profile, local));
+      await _repo.saveActiveUser(profile);
+      if (!_profileRequestIsCurrent(account, epoch)) return;
+      await _repo.saveVault(vault);
+      _emitChange();
+    } catch (_) {
+      /* Keep the last good identity on a transient failure. */
+    }
+  }
+
+  bool _profileRequestIsCurrent(SavedAccount account, int epoch) {
+    final current = vault.accountByUserId(account.userId);
+    return !_disposed &&
+        epoch == _sessionEpoch &&
+        current != null &&
+        current.token == account.token &&
+        current.addedAt == account.addedAt &&
+        current.telegramId == account.telegramId;
+  }
+
+  Future<String?> _profileLocalPhoto(SavedAccount account, AuthUser profile) {
+    if (profile.photoUrl == null) return Future.value(null);
+    if (profile.photoUrl == account.photoUrl &&
+        account.localPhotoPath != null) {
+      return Future.value(account.localPhotoPath);
+    }
+    return _repo.cacheProfilePhoto(profile);
+  }
+
+  SavedAccount _updatedProfile(
+    SavedAccount account,
+    AuthUser profile,
+    String? local,
+  ) => account.copyWith(
+    firstName: profile.firstName,
+    lastName: profile.lastName,
+    clearLastName: profile.lastName == null,
+    username: profile.username,
+    clearUsername: profile.username == null,
+    photoUrl: profile.photoUrl,
+    clearPhotoUrl: profile.photoUrl == null,
+    localPhotoPath: local,
+    clearLocalPhotoPath: local == null,
+  );
 
   Future<void> _disconnectTelegram() async {
     await _repo.disconnectTelegram();

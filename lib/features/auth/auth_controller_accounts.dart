@@ -103,38 +103,37 @@ extension _AuthControllerAccounts on AuthController {
     _clearSessionState(clearVault: false);
   }
 
-  Future<void> _refreshSavedAccountSnapshots() async {
+  Future<void> _refreshSavedAccountSnapshots() {
+    final pending = _savedProfileRefresh;
+    if (pending != null) return pending;
+    final future = _refreshOtherProfiles();
+    _savedProfileRefresh = future;
+    return future.whenComplete(() {
+      if (identical(_savedProfileRefresh, future)) _savedProfileRefresh = null;
+    });
+  }
+
+  Future<void> _refreshOtherProfiles() async {
+    final epoch = _sessionEpoch;
+    // Sequential, at most four requests. Do not activate another TDLib session
+    // or download unchanged avatars while transfers use the active identity.
     for (final account in [...vault.accounts]) {
-      if (account.userId == activeAccount?.userId) continue;
-      if (account.tokenStatus != TokenStatus.valid ||
-          _repo.isExpired(account.token)) {
+      if (account.userId == activeAccount?.userId ||
+          account.tokenStatus != TokenStatus.valid ||
+          _repo.isExpired(account.token))
         continue;
-      }
       try {
-        final bootstrap = await _repo.bootstrapWithToken(
-          account.token,
-          includeDrive: false,
-        );
-        if (!_bootstrapMatchesAccount(account, bootstrap)) {
-          vault = vault.markTokenStatus(account.userId, TokenStatus.needsLogin);
-          await _repo.saveVault(vault);
-          _emitChange();
-          continue;
-        }
-        final localPhotoPath =
-            await _repo.cacheProfilePhoto(bootstrap.user) ??
-            _trustedLocalPhotoPath(account);
-        final updated = _accountFromBootstrap(
-          account.token,
-          bootstrap,
-          existing: account,
-          localPhotoPath: localPhotoPath,
-        );
-        vault = vault.upsert(updated, makeActive: false);
+        final profile = await _repo.fetchAccountProfile(account);
+        if (!_profileRequestIsCurrent(account, epoch)) return;
+        final local = await _profileLocalPhoto(account, profile);
+        if (!_profileRequestIsCurrent(account, epoch)) return;
+        final latest = vault.accountByUserId(account.userId)!;
+        vault = vault.upsert(_updatedProfile(latest, profile, local));
         await _repo.saveVault(vault);
         _emitChange();
       } on DioException catch (err) {
-        if (err.response?.statusCode == 401) {
+        if (_profileRequestIsCurrent(account, epoch) &&
+            err.response?.statusCode == 401) {
           vault = vault.markTokenStatus(account.userId, TokenStatus.needsLogin);
           await _repo.saveVault(vault);
           _emitChange();
@@ -149,6 +148,7 @@ extension _AuthControllerAccounts on AuthController {
     SavedAccount? existing,
     bool cachePhoto = true,
   }) async {
+    _invalidateProfileRefreshes();
     // A returning session must not wait for an extra avatar download. The
     // ProfileAvatar widget already loads/caches the current URL asynchronously;
     // explicit profile refresh still maintains the account's local fallback.
@@ -267,6 +267,7 @@ extension _AuthControllerAccounts on AuthController {
   }
 
   void _clearSessionState({bool clearVault = true}) {
+    _invalidateProfileRefreshes();
     clearEphemeralTelegramCloudPassword();
     token = null;
     user = null;

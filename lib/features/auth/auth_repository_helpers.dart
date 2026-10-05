@@ -29,7 +29,7 @@ extension _AuthRepositoryHelpers on AuthRepository {
   Future<Directory> _profilePhotoDir() async {
     final root = await getApplicationSupportDirectory();
     final dir = Directory(
-      '${root.path}${Platform.pathSeparator}teledrive${Platform.pathSeparator}profile_photos',
+      '${root.path}${Platform.pathSeparator}teledrive${Platform.pathSeparator}profile_photos${Platform.pathSeparator}${stableHash(AppConfig.storageNamespace)}',
     );
     if (!await dir.exists()) await dir.create(recursive: true);
     return dir;
@@ -42,11 +42,21 @@ extension _AuthRepositoryHelpers on AuthRepository {
   }
 
   Future<List<int>?> _downloadProfilePhoto(String source) async {
-    final response = await Dio().get<List<int>>(
-      source,
-      options: Options(responseType: ResponseType.bytes),
+    final client = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 8),
+        receiveTimeout: const Duration(seconds: 12),
+      ),
     );
-    return response.data;
+    try {
+      final response = await client.get<List<int>>(
+        source,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data;
+    } finally {
+      client.close();
+    }
   }
 
   Future<void> _deleteCachedProfilePhotoFiles(int userId) async {

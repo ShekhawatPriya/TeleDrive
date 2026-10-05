@@ -96,9 +96,7 @@ class ProfileAvatar extends StatelessWidget {
     if (uri == null) return 'profile-photo-${user?.userId ?? 'anon'}';
     final params = Map<String, String>.from(uri.queryParameters)
       ..remove('token');
-    final stableUri = uri.replace(
-      queryParameters: params.isEmpty ? null : params,
-    );
+    final stableUri = uri.replace(queryParameters: params);
     return 'profile-photo-${user?.userId ?? 'anon'}-$stableUri';
   }
 }

@@ -59,6 +59,16 @@ class AuthController extends ChangeNotifier {
   AuthUser? user;
   String? token;
   bool loading = true;
+  bool _disposed = false;
+  int _sessionEpoch = 0;
+  Future<void>? _profileRefresh;
+  Future<void>? _savedProfileRefresh;
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
   bool switchingAccount = false;
   bool? telegramConnected;
   BackendFeatureFlags featureFlags = const BackendFeatureFlags();
@@ -177,7 +187,13 @@ class AuthController extends ChangeNotifier {
 
   Future<void> disconnectTelegram() => _disconnectTelegram();
 
+  void _invalidateProfileRefreshes() {
+    _sessionEpoch++;
+    _profileRefresh = null;
+    _savedProfileRefresh = null;
+  }
+
   void _emitChange() {
-    notifyListeners();
+    if (!_disposed) notifyListeners();
   }
 }
