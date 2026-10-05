@@ -11,7 +11,6 @@ extension _IosAccountSheet on _AccountBottomSheetState {
   ) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final connected = ref.watch(authControllerProvider).telegramConnected;
     return IosPage(
       title: 'Account',
       compact: true,
@@ -63,47 +62,8 @@ extension _IosAccountSheet on _AccountBottomSheetState {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      CupertinoButton(
-                        padding: EdgeInsets.zero,
-                        onPressed: () =>
-                            _showIosConnectionInfo(context, connected),
-                        child: Row(
-                          children: [
-                            Icon(
-                              connected == true
-                                  ? CupertinoIcons.checkmark_seal_fill
-                                  : CupertinoIcons.exclamationmark_circle,
-                              size: 16,
-                              color: connected == true
-                                  ? CupertinoColors.systemGreen
-                                  : scheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                connected == true
-                                    ? 'Telegram connected'
-                                    : connected == false
-                                    ? 'Reconnect Telegram'
-                                    : 'Connecting…',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (!label.startsWith('ID '))
-                        Text(
-                          'Telegram ID ${account.telegramId}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
+                      const SizedBox(height: 20),
+                      _buildAccountConnectionDetails(context, account),
                     ],
                   ),
                 ),
