@@ -49,4 +49,48 @@ void main() {
       ]);
     },
   );
+  test(
+    'recovery and link menus include UIKit symbols and destructive roles',
+    () {
+      final payload = NativeMenuPayload([
+        IosMenuSection([
+          for (final label in [
+            'Restore',
+            'Unarchive',
+            'Unlock',
+            'Copy link',
+            'Share link',
+            'Revoke link',
+            'Revoke share',
+            'Delete forever',
+            'Move to Trash',
+            'Delete All',
+          ])
+            IosMenuItem(
+              label: label,
+              destructive: [
+                'Revoke link',
+                'Revoke share',
+                'Delete forever',
+                'Move to Trash',
+                'Delete All',
+              ].contains(label),
+              onTap: () {},
+            ),
+        ]),
+      ]);
+      final items = payload.sections.single['items'] as List;
+      expect(
+        items.every((item) => (item['symbol'] as String).isNotEmpty),
+        isTrue,
+      );
+      expect(items.where((item) => item['destructive'] == true), hasLength(5));
+      for (final label in ['Revoke link', 'Revoke share']) {
+        expect(
+          items.firstWhere((item) => item['label'] == label)['symbol'],
+          'teledrive.link-off',
+        );
+      }
+    },
+  );
 }

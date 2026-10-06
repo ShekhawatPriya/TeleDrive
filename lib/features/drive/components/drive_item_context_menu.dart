@@ -24,6 +24,7 @@ class DriveItemContextMenu extends ConsumerWidget {
     this.enabled = true,
     this.allowRename = true,
     this.trailingClearance = 0,
+    this.sectionsBuilder,
     super.key,
   });
   final Widget child;
@@ -32,6 +33,7 @@ class DriveItemContextMenu extends ConsumerWidget {
   final VoidCallback onOpen, onSelect;
   final bool enabled, allowRename;
   final double trailingClearance;
+  final List<IosMenuSection> Function()? sectionsBuilder;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -101,6 +103,25 @@ class DriveItemContextMenu extends ConsumerWidget {
       },
       sectionsBuilder: () {
         if (!valid()) return [];
+        if (sectionsBuilder != null) {
+          return [
+            for (final section in sectionsBuilder!())
+              IosMenuSection([
+                for (final item in section.items)
+                  IosMenuItem(
+                    label: item.label,
+                    leadingIcon: item.leadingIcon,
+                    trailingIcon: item.trailingIcon,
+                    checked: item.checked,
+                    destructive: item.destructive,
+                    subtitle: item.subtitle,
+                    onTap: () {
+                      if (valid()) item.onTap();
+                    },
+                  ),
+              ]),
+          ];
+        }
         final drive = ref.read(driveControllerProvider);
         final currentFile = file == null ? null : drive.file(id) ?? file;
         final currentFolder = folder == null

@@ -168,22 +168,60 @@ class _NativeItemContextMenuState extends State<NativeItemContextMenu> {
   Widget build(BuildContext context) {
     if (!_available) {
       final items = widget.sectionsBuilder().expand((section) => section.items);
-      return CupertinoContextMenu(
-        actions: [
-          for (final action in items)
-            CupertinoContextMenuAction(
-              isDestructiveAction: action.destructive,
-              trailingIcon: action.leadingIcon,
-              onPressed: () {
-                Navigator.of(context, rootNavigator: true).pop();
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) action.onTap();
-                });
-              },
-              child: Text(action.label),
-            ),
-        ],
-        child: widget.child,
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          // Cupertino's lifted child receives unconstrained space. Preserve the
+          // source bounds so list rows and grid cards can still lay out safely.
+          final width = constraints.maxWidth.isFinite
+              ? constraints.maxWidth
+              : MediaQuery.sizeOf(context).width;
+          final height = constraints.hasTightHeight
+              ? constraints.maxHeight
+              : double.infinity;
+          return CupertinoContextMenu.builder(
+            actions: [
+              for (final action in items)
+                CupertinoContextMenuAction(
+                  isDestructiveAction: action.destructive,
+                  trailingIcon: action.leadingIcon,
+                  onPressed: () {
+                    Navigator.of(context, rootNavigator: true).pop();
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) action.onTap();
+                    });
+                  },
+                  child: Text(action.label),
+                ),
+            ],
+            builder: (menuContext, animation) {
+              final source =
+                  menuContext
+                      .findAncestorStateOfType<_NativeItemContextMenuState>() ==
+                  this;
+              final child = ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: width, maxHeight: height),
+                child: RepaintBoundary(
+                  // Only the source owns this key. The fallback's lifted copy
+                  // lives in an overlay and must have its own render subtree.
+                  key: source ? _snapshotKey : null,
+                  child: widget.child,
+                ),
+              );
+              return source
+                  ? child
+                  : FittedBox(
+                      fit: BoxFit.cover,
+                      child: ClipRSuperellipse(
+                        borderRadius: BorderRadius.circular(
+                          CupertinoContextMenu.kOpenBorderRadius *
+                              animation.value,
+                        ),
+                        child: child,
+                      ),
+                    );
+            },
+          );
+        },
       );
     }
     final accessible = widget.sectionsBuilder().expand(

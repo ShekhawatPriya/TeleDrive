@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/navigation/root_navigator.dart';
+import 'core/navigation/recovery_page.dart';
 import 'features/app_update/app_update_screen.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/community_onboarding_screen.dart';
@@ -216,18 +217,27 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/settings/trash',
-        pageBuilder: (context, state) =>
-            MaterialPage(key: state.pageKey, child: const TrashScreen()),
+        pageBuilder: (context, state) => recoveryPage(
+          context: context,
+          key: state.pageKey,
+          child: const TrashScreen(),
+        ),
       ),
       GoRoute(
         path: '/settings/archive',
-        pageBuilder: (context, state) =>
-            MaterialPage(key: state.pageKey, child: const ArchiveScreen()),
+        pageBuilder: (context, state) => recoveryPage(
+          context: context,
+          key: state.pageKey,
+          child: const ArchiveScreen(),
+        ),
       ),
       GoRoute(
         path: '/settings/locked',
-        pageBuilder: (context, state) =>
-            MaterialPage(key: state.pageKey, child: const LockedScreen()),
+        pageBuilder: (context, state) => recoveryPage(
+          context: context,
+          key: state.pageKey,
+          child: const LockedScreen(),
+        ),
       ),
       GoRoute(
         path: '/folder/:id',

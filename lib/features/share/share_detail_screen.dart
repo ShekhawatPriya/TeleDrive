@@ -135,8 +135,8 @@ class _ShareDetailScreenState extends ConsumerState<ShareDetailScreen> {
         title: 'Share',
         trailing: NativeGlassButton(
           label: 'Revoke link',
-          symbol: 'person.crop.circle.badge.minus',
-          icon: CupertinoIcons.person_crop_circle_badge_minus,
+          symbol: 'teledrive.link-off',
+          icon: Icons.link_off_outlined,
           onPressed: share == null || _busy ? null : _revoke,
         ),
         children: [

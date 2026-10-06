@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import '../../widgets/native_glass_button.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -16,6 +15,9 @@ import '../../widgets/media_thumb.dart';
 import '../drive/components/drive_dialogs.dart';
 import '../drive/components/selection_mode_mixin.dart';
 import '../drive/drive_controller.dart';
+import '../auth/auth_controller.dart';
+import '../../widgets/ios_more_menu.dart';
+import 'components/recovery_browser.dart';
 
 class TrashScreen extends ConsumerStatefulWidget {
   const TrashScreen({super.key});
@@ -35,8 +37,34 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    ref.listenManual(
+      authControllerProvider.select(
+        (auth) => (auth.user?.userId, auth.user?.telegramId, auth.token),
+      ),
+      (previous, next) {
+        if (previous == next || !mounted) return;
+        _loadFuture = null;
+        exitSelect();
+        setState(() {
+          _files = const [];
+          _folders = const [];
+          _loading = true;
+          _error = null;
+        });
+        unawaited(_load());
+      },
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _load();
+    });
   }
+
+  Object get _accountScope {
+    final auth = ref.read(authControllerProvider);
+    return (auth.user?.userId, auth.user?.telegramId, auth.token);
+  }
+
+  bool _current(Object scope) => mounted && scope == _accountScope;
 
   Future<void> _load({bool showSpinner = true}) {
     final inFlight = _loadFuture;
@@ -52,6 +80,7 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
   }
 
   Future<void> _loadTrash({required bool showSpinner}) async {
+    final scope = _accountScope;
     if (showSpinner) {
       setState(() {
         _loading = true;
@@ -66,14 +95,14 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
         repo.listTrashFiles(),
         repo.listTrashFolders(),
       ]);
-      if (!mounted) return;
+      if (!_current(scope)) return;
       setState(() {
         _files = results[0] as List<DriveFile>;
         _folders = results[1] as List<DriveFolder>;
         _loading = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!_current(scope)) return;
       setState(() {
         _error = 'Could not load Trash.';
         _loading = false;
@@ -87,6 +116,7 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
   bool _isFileSelected(String id) => selectedFileIds.contains(id);
 
   Future<void> _restoreFile(String id) async {
+    final scope = _accountScope;
     final match = _files.where((f) => f.id == id).toList();
     final file = match.isEmpty ? null : match.first;
     setState(() => _files = _files.where((f) => f.id != id).toList());
@@ -99,11 +129,12 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
             sizeBytes: file?.size ?? 0,
           );
     } catch (_) {
-      if (mounted) await _load(showSpinner: false);
+      if (_current(scope)) await _load(showSpinner: false);
     }
   }
 
   Future<void> _restoreFolder(String id) async {
+    final scope = _accountScope;
     final match = _folders.where((f) => f.id == id).toList();
     final folder = match.isEmpty ? null : match.first;
     setState(() => _folders = _folders.where((f) => f.id != id).toList());
@@ -117,25 +148,28 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
             sizeBytes: folder?.recursiveSize ?? 0,
           );
     } catch (_) {
-      if (mounted) await _load(showSpinner: false);
+      if (_current(scope)) await _load(showSpinner: false);
     }
   }
 
   Future<void> _purgeFile(String id) async {
+    final scope = _accountScope;
     final ok = await confirmDelete(context, 1, trashEnabled: false);
-    if (!ok || !mounted) return;
+    if (!ok || !_current(scope)) return;
     await ref.read(driveControllerProvider).purgeFile(id);
-    await _load();
+    if (_current(scope)) await _load();
   }
 
   Future<void> _purgeFolder(String id) async {
+    final scope = _accountScope;
     final ok = await confirmDelete(context, 1, trashEnabled: false);
-    if (!ok || !mounted) return;
+    if (!ok || !_current(scope)) return;
     await ref.read(driveControllerProvider).purgeFolder(id);
-    await _load();
+    if (_current(scope)) await _load();
   }
 
   Future<void> _bulkRestore() async {
+    final scope = _accountScope;
     final controller = ref.read(driveControllerProvider);
     final folderIds = selectedFolderIds.toSet();
     final fileIds = selectedFileIds.toSet();
@@ -165,13 +199,14 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
         ),
       ]);
     } catch (_) {
-      if (mounted) await _load(showSpinner: false);
+      if (_current(scope)) await _load(showSpinner: false);
     }
   }
 
   Future<void> _bulkPurge() async {
+    final scope = _accountScope;
     final ok = await confirmDelete(context, selectedCount, trashEnabled: false);
-    if (!ok || !mounted) return;
+    if (!ok || !_current(scope)) return;
     final controller = ref.read(driveControllerProvider);
     final folderIds = selectedFolderIds.toList();
     final fileIds = selectedFileIds.toList();
@@ -179,24 +214,27 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
       ...folderIds.map(controller.purgeFolder),
       ...fileIds.map(controller.purgeFile),
     ]);
-    if (!mounted) return;
+    if (!_current(scope)) return;
     exitSelect();
-    await _load();
+    if (_current(scope)) await _load();
   }
 
   Future<void> _purgeAll() async {
+    final scope = _accountScope;
     final ok = await confirmDelete(context, _totalCount, trashEnabled: false);
-    if (!ok || !mounted) return;
+    if (!ok || !_current(scope)) return;
     await ref.read(driveControllerProvider).purgeAllTrash();
-    await _load();
+    if (_current(scope)) await _load();
   }
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<DriveController>(driveControllerProvider, (previous, next) {
-      if (previous?.state.trashRevision == next.state.trashRevision) return;
-      unawaited(_load(showSpinner: false));
-    });
+    ref.listen<int>(
+      driveControllerProvider.select((drive) => drive.state.trashRevision),
+      (previous, next) {
+        if (previous != next) unawaited(_load(showSpinner: false));
+      },
+    );
 
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
@@ -204,38 +242,49 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
     final showDeleteAll =
         !selectMode && !_loading && _error == null && _totalCount > 0;
 
+    if (theme.platform == TargetPlatform.iOS) {
+      return RecoveryBrowser(
+        title: 'Trash',
+        description:
+            'Restore items to their original location, or delete them forever. Items stay in Telegram until permanently deleted.',
+        emptyBody:
+            'Items you delete appear here until you restore or permanently delete them.',
+        files: _files,
+        folders: _folders,
+        loading: _loading,
+        error: _error,
+        selectMode: selectMode,
+        selectedFiles: selectedFileIds,
+        selectedFolders: selectedFolderIds,
+        onRefresh: _load,
+        onSelect: enterSelect,
+        onDone: exitSelect,
+        onSelectAll: () => selectAllItems(_files, _folders),
+        onClear: clearSelection,
+        onFileSelect: (id) =>
+            selectMode ? toggleFileSelection(id) : enterSelect(fileId: id),
+        onFolderSelect: (id) =>
+            selectMode ? toggleFolderSelection(id) : enterSelect(folderId: id),
+        fileMenu: (file) => _itemMenu(file.id, folder: false),
+        folderMenu: (folder) => _itemMenu(folder.id, folder: true),
+        onDeleteAll: _purgeAll,
+        actions: [
+          (
+            label: 'Restore',
+            icon: CupertinoIcons.arrow_uturn_left,
+            onPressed: _bulkRestore,
+          ),
+          (
+            label: 'Delete forever',
+            icon: CupertinoIcons.trash,
+            onPressed: _bulkPurge,
+          ),
+        ],
+      );
+    }
     return Scaffold(
       appBar: selectMode
           ? _buildSelectionAppBar(context)
-          : theme.platform == TargetPlatform.iOS
-          ? PreferredSize(
-              preferredSize: const Size.fromHeight(44),
-              child: CupertinoNavigationBar(
-                automaticallyImplyLeading: false,
-                transitionBetweenRoutes: false,
-                backgroundColor: scheme.surface,
-                border: null,
-                middle: const Text('Recently Deleted'),
-                leading: NativeGlassButton(
-                  label: 'Back',
-                  symbol: 'chevron.left',
-                  icon: CupertinoIcons.chevron_back,
-                  size: 44,
-                  symbolSize: 18,
-                  onPressed: () => Navigator.of(context).maybePop(),
-                ),
-                trailing: showDeleteAll
-                    ? CupertinoButton(
-                        padding: EdgeInsets.zero,
-                        onPressed: _purgeAll,
-                        child: Text(
-                          'Delete All',
-                          style: TextStyle(color: scheme.error, fontSize: 15),
-                        ),
-                      )
-                    : null,
-              ),
-            )
           : AppBar(
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
@@ -262,6 +311,44 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
         child: _buildBody(context, theme, scheme, empty),
       ),
     );
+  }
+
+  List<IosMenuSection> _itemMenu(String id, {required bool folder}) {
+    if (folder
+        ? !_folders.any((item) => item.id == id)
+        : !_files.any((item) => item.id == id))
+      return [];
+    final scope = _accountScope;
+    void guarded(VoidCallback action) {
+      if (_current(scope)) action();
+    }
+
+    return [
+      IosMenuSection([
+        IosMenuItem(
+          label: 'Restore',
+          leadingIcon: CupertinoIcons.arrow_uturn_left,
+          onTap: () =>
+              guarded(() => folder ? _restoreFolder(id) : _restoreFile(id)),
+        ),
+        IosMenuItem(
+          label: 'Select',
+          leadingIcon: CupertinoIcons.check_mark_circled,
+          onTap: () => guarded(
+            () => folder ? enterSelect(folderId: id) : enterSelect(fileId: id),
+          ),
+        ),
+      ]),
+      IosMenuSection([
+        IosMenuItem(
+          label: 'Delete forever',
+          leadingIcon: CupertinoIcons.trash,
+          destructive: true,
+          onTap: () =>
+              guarded(() => folder ? _purgeFolder(id) : _purgeFile(id)),
+        ),
+      ]),
+    ];
   }
 
   PreferredSizeWidget _buildSelectionAppBar(BuildContext context) {

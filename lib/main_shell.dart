@@ -221,7 +221,18 @@ class _MainShellState extends ConsumerState<MainShell>
         density: ref.read(photoGridDensityProvider),
         onSelect: () => ref.read(photosTabCommandsProvider).requestSelectMode(),
       ),
-      2 => [...buildLayoutMenuSection(ref), ...buildSortMenuSection(ref)],
+      2 => [
+        IosMenuSection([
+          IosMenuItem(
+            label: 'Select',
+            leadingIcon: Icons.check_circle_outline,
+            onTap: () =>
+                ref.read(starredTabCommandsProvider).requestSelectMode(),
+          ),
+        ]),
+        ...buildLayoutMenuSection(ref),
+        ...buildSortMenuSection(ref),
+      ],
       _ => [
         IosMenuSection([
           IosMenuItem(

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/media/thumbnail_loader.dart';
@@ -301,10 +302,23 @@ class _MediaThumbState extends ConsumerState<MediaThumb> {
       return Center(
         child: Padding(
           padding: EdgeInsets.all(iconSize * 0.08),
-          child: GoogleDriveIcon.file(
-            widget.file,
-            size: math.min(iconSize * 0.84, 48.0),
-          ),
+          child: Theme.of(context).platform == TargetPlatform.iOS
+              ? Icon(
+                  switch (widget.file.kind) {
+                    FileKind.image => CupertinoIcons.photo,
+                    FileKind.video => CupertinoIcons.videocam,
+                    FileKind.audio => CupertinoIcons.music_note,
+                    FileKind.folder => CupertinoIcons.folder,
+                    FileKind.sheet => CupertinoIcons.table,
+                    _ => CupertinoIcons.doc,
+                  },
+                  size: math.min(iconSize * 0.84, 48.0),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                )
+              : GoogleDriveIcon.file(
+                  widget.file,
+                  size: math.min(iconSize * 0.84, 48.0),
+                ),
         ),
       );
     },

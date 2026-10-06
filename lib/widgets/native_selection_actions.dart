@@ -38,14 +38,20 @@ class _NativeSelectionActionsState extends State<NativeSelectionActions> {
     'Share' => 'square.and.arrow.up',
     'Star' => 'star',
     'Move' => 'folder',
-    'Delete' => 'trash',
+    'Delete' || 'Move to Trash' || 'Delete forever' => 'trash',
+    'Restore' => 'arrow.uturn.backward',
+    'Unarchive' => 'archivebox',
+    'Unlock' => 'lock.open',
     _ => 'ellipsis',
   };
   static IconData icon(String label) => switch (label) {
     'Share' => CupertinoIcons.share,
     'Star' => CupertinoIcons.star,
     'Move' => CupertinoIcons.folder,
-    'Delete' => CupertinoIcons.trash,
+    'Delete' || 'Move to Trash' || 'Delete forever' => CupertinoIcons.trash,
+    'Restore' => CupertinoIcons.arrow_uturn_left,
+    'Unarchive' => CupertinoIcons.archivebox,
+    'Unlock' => CupertinoIcons.lock_open,
     _ => CupertinoIcons.ellipsis,
   };
   Map<String, Object> get configuration => {

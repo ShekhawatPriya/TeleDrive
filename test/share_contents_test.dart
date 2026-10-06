@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_m_fsdk/features/auth/auth_controller.dart';
+import 'package:flutter_m_fsdk/features/share/share_controller.dart';
 import 'package:flutter_m_fsdk/models/share_models.dart';
 import 'package:flutter_m_fsdk/features/share/components/share_contents.dart';
 import 'package:flutter_m_fsdk/features/share/components/share_list_tile.dart';
@@ -36,6 +39,18 @@ Share fixture() => Share.fromJson({
     },
   ],
 });
+
+class _FixtureAuth extends ChangeNotifier implements AuthController {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _FixtureShares extends ChangeNotifier implements ShareController {
+  @override
+  List<Share> get shares => [fixture()];
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -75,30 +90,36 @@ void main() {
           addTearDown(tester.view.resetPhysicalSize);
           addTearDown(tester.view.resetDevicePixelRatio);
           await tester.pumpWidget(
-            MaterialApp(
-              theme: ThemeData(
-                fontFamily: 'Inter',
-                platform: platform,
-                brightness: dark ? Brightness.dark : Brightness.light,
-              ),
-              home: MediaQuery(
-                data: MediaQueryData(
-                  textScaler: TextScaler.linear(scale),
-                  highContrast: scale == 2,
-                  disableAnimations: true,
+            ProviderScope(
+              overrides: [
+                authControllerProvider.overrideWith((_) => _FixtureAuth()),
+                shareControllerProvider.overrideWith((_) => _FixtureShares()),
+              ],
+              child: MaterialApp(
+                theme: ThemeData(
+                  fontFamily: 'Inter',
+                  platform: platform,
+                  brightness: dark ? Brightness.dark : Brightness.light,
                 ),
-                child: RepaintBoundary(
-                  key: const ValueKey('preview'),
-                  child: Scaffold(
-                    body: SafeArea(
-                      child: ListView(
-                        children: [
-                          ShareListTile(share: fixture()),
-                          Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: ShareContents(share: fixture()),
-                          ),
-                        ],
+                home: MediaQuery(
+                  data: MediaQueryData(
+                    textScaler: TextScaler.linear(scale),
+                    highContrast: scale == 2,
+                    disableAnimations: true,
+                  ),
+                  child: RepaintBoundary(
+                    key: const ValueKey('preview'),
+                    child: Scaffold(
+                      body: SafeArea(
+                        child: ListView(
+                          children: [
+                            ShareListTile(share: fixture()),
+                            Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: ShareContents(share: fixture()),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

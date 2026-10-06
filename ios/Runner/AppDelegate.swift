@@ -107,6 +107,33 @@ final class GlassButtonFactory: NSObject, FlutterPlatformViewFactory {
   }
 }
 
+/// Revoke uses the system chain artwork with a simple slash. SF Symbols has
+/// no link-off symbol on every supported iOS version, so return a tintable
+/// template rather than requesting an unavailable symbol.
+private func nativeActionImage(_ symbol: String, configuration: UIImage.SymbolConfiguration? = nil) -> UIImage? {
+  guard symbol == "teledrive.link-off" else {
+    return UIImage(systemName: symbol, withConfiguration: configuration)
+  }
+  guard let link = UIImage(systemName: "link", withConfiguration: configuration) else { return nil }
+  let size = link.size
+  let image = UIGraphicsImageRenderer(size: size).image { renderer in
+    link.withTintColor(.black, renderingMode: .alwaysOriginal).draw(at: .zero)
+    let context = renderer.cgContext
+    let start = CGPoint(x: size.width * 0.12, y: size.height * 0.08)
+    let end = CGPoint(x: size.width * 0.88, y: size.height * 0.92)
+    context.setLineCap(.round)
+    // Clear a narrow halo so the slash remains readable over the chain.
+    context.setBlendMode(.clear)
+    context.setLineWidth(size.height * 0.17)
+    context.move(to: start); context.addLine(to: end); context.strokePath()
+    context.setBlendMode(.normal)
+    context.setStrokeColor(UIColor.black.cgColor)
+    context.setLineWidth(size.height * 0.08)
+    context.move(to: start); context.addLine(to: end); context.strokePath()
+  }
+  return image.withRenderingMode(.alwaysTemplate)
+}
+
 final class GlassButtonView: NSObject, FlutterPlatformView {
   private let button = UIButton(type: .system)
   private let channel: FlutterMethodChannel
@@ -150,7 +177,7 @@ final class GlassButtonView: NSObject, FlutterPlatformView {
               let id = item["id"] as? String ?? ""
               let action = UIAction(
                 title: item["label"] as? String ?? "",
-                image: UIImage(systemName: item["symbol"] as? String ?? ""),
+                image: nativeActionImage(item["symbol"] as? String ?? ""),
                 attributes: (item["destructive"] as? Bool ?? false) ? .destructive : [],
                 state: (item["checked"] as? Bool ?? false) ? .on : .off
               ) { [weak self] _ in self?.channel.invokeMethod("menuAction", arguments: id) }
@@ -185,11 +212,11 @@ final class GlassButtonView: NSObject, FlutterPlatformView {
         return updated
       }
       if symbol.isEmpty { configuration.title = label }
-      else { configuration.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: CGFloat(args["symbolSize"] as? Double ?? 19), weight: .semibold)) }
+      else { configuration.image = nativeActionImage(symbol, configuration: UIImage.SymbolConfiguration(pointSize: CGFloat(args["symbolSize"] as? Double ?? 19), weight: .semibold)) }
       button.configuration = configuration
     } else {
       if symbol.isEmpty { button.setTitle(label, for: .normal) }
-      else { button.setImage(UIImage(systemName: symbol), for: .normal) }
+      else { button.setImage(nativeActionImage(symbol), for: .normal) }
     }
   }
   @objc private func tapped() { if !button.showsMenuAsPrimaryAction { channel.invokeMethod("tap", arguments: nil) } }
@@ -408,7 +435,7 @@ final class ItemContextMenuView: NSObject, FlutterPlatformView, UIContextMenuInt
                 let sections = result as? [[String: Any]] else { completion([]); return }
           completion(sections.map { section in
             let actions = (section["items"] as? [[String: Any]] ?? []).map { item in
-              UIAction(title: item["label"] as? String ?? "", image: UIImage(systemName: item["symbol"] as? String ?? ""),
+              UIAction(title: item["label"] as? String ?? "", image: nativeActionImage(item["symbol"] as? String ?? ""),
                 attributes: (item["destructive"] as? Bool ?? false) ? .destructive : [],
                 state: (item["checked"] as? Bool ?? false) ? .on : .off) { [weak self] _ in
                   guard let self = self, let id = item["id"] as? String else { return }
@@ -432,7 +459,8 @@ final class ItemContextMenuView: NSObject, FlutterPlatformView, UIContextMenuInt
   }
 
   func contextMenuInteraction(_ interaction: UIContextMenuInteraction, willDisplayMenuFor configuration: UIContextMenuConfiguration, animator: UIContextMenuInteractionAnimating?) {
-    channel.invokeMethod("visibility", arguments: ["identity": identity, "visible": true])
+    // Hide Flutter only when a real source snapshot can replace it.
+    channel.invokeMethod("visibility", arguments: ["identity": identity, "visible": sourceImage != nil])
   }
 
   private func deliverAction() {
@@ -443,14 +471,18 @@ final class ItemContextMenuView: NSObject, FlutterPlatformView, UIContextMenuInt
   }
 
   func contextMenuInteraction(_ interaction: UIContextMenuInteraction, willEndFor configuration: UIContextMenuConfiguration, animator: UIContextMenuInteractionAnimating?) {
+    // The targeted preview is a detached snapshot, not the Flutter source.
+    // Restore that source at the start of dismissal so UIKit never animates
+    // back into an empty row while Flutter waits for the completion callback.
+    if let itemID = activeIdentity {
+      channel.invokeMethod("visibility", arguments: ["identity": itemID, "visible": false])
+      channel.invokeMethod("previewCancel", arguments: itemID)
+    }
+    // Stop loading while retaining the displayed image for UIKit's animation.
+    preview?.cancel(clearImage: false)
     let finish = { [weak self] in
       guard let self = self else { return }
       self.menuPresented = false
-      self.preview?.cancel()
-      if let itemID = self.activeIdentity {
-        self.channel.invokeMethod("previewCancel", arguments: itemID)
-        self.channel.invokeMethod("visibility", arguments: ["identity": itemID, "visible": false])
-      }
       self.deliverAction()
       self.activeIdentity = nil
       self.preview = nil
@@ -575,10 +607,10 @@ private final class ContextPreviewController: UIViewController {
     // Fit the card itself to portrait pages instead of adding empty sidebars.
     preferredContentSize = CGSize(width: min(width, height / ratio), height: height)
   }
-  func cancel() {
+  func cancel(clearImage: Bool = true) {
     cancelled = true
     if let request = request { QLThumbnailGenerator.shared.cancel(request) }
-    imageView.image = nil
+    if clearImage { imageView.image = nil }
   }
   deinit { if let request = request { QLThumbnailGenerator.shared.cancel(request) } }
 }

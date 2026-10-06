@@ -52,6 +52,21 @@ final class ItemContextMenuUITests: XCTestCase {
     app.swipeUp()
     XCTAssertFalse(app.images["Photo 0"].isHittable)
   }
+  func testOutsideDismissalRestoresSourceAndAllowsAnotherHold() {
+    let app = fixture()
+    let point = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.33))
+    for attempt in 0..<2 {
+      point.press(forDuration: 1.2)
+      XCTAssertTrue(app.buttons["Open"].waitForExistence(timeout: 5))
+      app.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.12)).tap()
+      let source = app.descendants(matching: .any)["Photo 0"].firstMatch
+      XCTAssertTrue(source.waitForExistence(timeout: 1))
+      XCTAssertTrue(source.isHittable)
+      capture(app, "native-source-restored-\(attempt)")
+    }
+    app.swipeUp()
+    XCTAssertFalse(app.images["Photo 0"].isHittable)
+  }
   func testDocumentPreviewAndUnsupportedFallback() {
     let app = fixture()
     capture(app, "native-header-control-sizes")
@@ -93,6 +108,7 @@ final class ItemContextMenuUITests: XCTestCase {
     app.buttons["More"].tap()
     XCTAssertTrue(app.buttons["View as"].waitForExistence(timeout: 5))
     XCTAssertTrue(app.buttons["Sort by"].exists)
+    XCTAssertTrue(app.buttons["Revoke link"].exists)
     capture(app, "native-overflow-menu")
     app.buttons["Select"].tap()
     XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))

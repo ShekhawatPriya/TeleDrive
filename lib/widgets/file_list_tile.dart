@@ -23,6 +23,7 @@ class FileListTile extends StatelessWidget {
     this.starred = false,
     this.shared = false,
     this.onMore,
+    this.moreButton,
     this.onStar,
     this.onRetry,
     this.onRemove,
@@ -40,6 +41,7 @@ class FileListTile extends StatelessWidget {
   final bool shared;
   final VoidCallback onTap;
   final VoidCallback? onMore;
+  final Widget? moreButton;
   final VoidCallback? onStar;
   final VoidCallback? onRetry;
   final VoidCallback? onRemove;
@@ -52,6 +54,7 @@ class FileListTile extends StatelessWidget {
     final scheme = theme.colorScheme;
     final ios = theme.platform == TargetPlatform.iOS;
     final inSelectMode = selected != null;
+    final largeText = MediaQuery.textScalerOf(context).scale(14) > 20;
     final stackedActions =
         !ios &&
         !inSelectMode &&
@@ -126,7 +129,7 @@ class FileListTile extends StatelessWidget {
       ),
     );
 
-    final tile = ListTile(
+    final standardTile = ListTile(
       onTap: onTap,
       onLongPress: onLongPress,
       selected: isSelected,
@@ -159,8 +162,10 @@ class FileListTile extends StatelessWidget {
           : thumbnail,
       title: Text(
         name,
-        maxLines: stackedActions ? null : 1,
-        overflow: stackedActions ? TextOverflow.visible : TextOverflow.ellipsis,
+        maxLines: stackedActions || (ios && largeText) ? null : 1,
+        overflow: stackedActions || (ios && largeText)
+            ? TextOverflow.visible
+            : TextOverflow.ellipsis,
         style: theme.textTheme.bodyLarge?.copyWith(
           fontWeight: ios ? FontWeight.w400 : FontWeight.w600,
           color: isFailed ? scheme.error : scheme.onSurface,
@@ -183,8 +188,8 @@ class FileListTile extends StatelessWidget {
             ios && file != null && !isOptimistic
                 ? '${formatLabel(file!)} · ${formatFileSize(file!.size)} · ${_fileDate(file!.createdAt)}'
                 : subtitle,
-            maxLines: ios && inSelectMode ? null : 2,
-            overflow: ios && inSelectMode
+            maxLines: ios && (inSelectMode || largeText) ? null : 2,
+            overflow: ios && (inSelectMode || largeText)
                 ? TextOverflow.visible
                 : TextOverflow.ellipsis,
             style: theme.textTheme.bodySmall?.copyWith(
@@ -249,26 +254,85 @@ class FileListTile extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             )
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (!ios && onStar != null)
-                  IconButton(
-                    onPressed: onStar,
-                    icon: Icon(
-                      starred ? Icons.star_rounded : Icons.star_border_rounded,
-                      color: starred ? scheme.primary : scheme.onSurfaceVariant,
+          : moreButton ??
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!ios && onStar != null)
+                      IconButton(
+                        onPressed: onStar,
+                        icon: Icon(
+                          starred
+                              ? Icons.star_rounded
+                              : Icons.star_border_rounded,
+                          color: starred
+                              ? scheme.primary
+                              : scheme.onSurfaceVariant,
+                        ),
+                        tooltip: starred ? 'Unstar $name' : 'Star $name',
+                      ),
+                    IconButton(
+                      onPressed: onMore,
+                      icon: Icon(
+                        ios ? CupertinoIcons.ellipsis : Icons.more_vert,
+                      ),
+                      tooltip: 'Actions for $name',
                     ),
-                    tooltip: starred ? 'Unstar $name' : 'Star $name',
-                  ),
-                IconButton(
-                  onPressed: onMore,
-                  icon: Icon(ios ? CupertinoIcons.ellipsis : Icons.more_vert),
-                  tooltip: 'Actions for $name',
+                  ],
                 ),
-              ],
-            ),
     );
+
+    final tile = ios && largeText && !isOptimistic
+        ? InkWell(
+            onTap: onTap,
+            onLongPress: onLongPress,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: inSelectMode ? AppSpacing.sm : 0,
+                vertical: 12,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      if (inSelectMode) ...[
+                        PremiumSelectionIndicator(isSelected: isSelected),
+                        const SizedBox(width: 16),
+                      ],
+                      thumbnail,
+                      const Spacer(),
+                      if (!inSelectMode)
+                        moreButton ??
+                            IconButton(
+                              onPressed: onMore,
+                              tooltip: 'Actions for $name',
+                              icon: const Icon(CupertinoIcons.ellipsis),
+                            ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    name,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    file == null
+                        ? subtitle
+                        : '${formatLabel(file!)} · ${formatFileSize(file!.size)} · ${_fileDate(file!.createdAt)}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 13,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        : standardTile;
 
     if (ios && inSelectMode) {
       final highContrast = MediaQuery.highContrastOf(context);
