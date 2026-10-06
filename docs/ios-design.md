@@ -290,8 +290,11 @@ menu placement, haptics and animation. Flutter reserves only the long-press
 gesture for the platform view, leaving scrolling to its existing scroll view.
 Selection mode and optimistic items bypass the native context interaction.
 
-A source snapshot serves only the lift/dismissal animation. The content preview
-is separate: the existing scoped thumbnail loader supplies a local image/video
+A source snapshot serves only the lift/dismissal animation. The source row
+remains mounted across asynchronous bridge discovery, retaining its media and
+layout. UIKit hides it only when a snapshot is available, then restores it at
+the start of dismissal; action callbacks still wait for animation completion.
+The content preview is separate: the existing scoped thumbnail loader supplies a local image/video
 poster, and UIKit downsamples it to a bounded image. Preview proportions follow
 the image and available device space; UIKit owns menu scrolling, preview
 compression, continuous corners, spring transitions and dismissal.
@@ -312,8 +315,9 @@ functional Cupertino context menu and accessible item actions.
 In the iOS full-screen photo viewer, Share, Star, Info and Delete sit along the
 bottom. The top overflow is native; Download and organization actions remain
 there. Tap-to-hide controls, paging, zoom, the existing Hero transition and the
-local-cache-first image/video pipeline remain shared Flutter behavior. This does
-not claim to embed Apple's private Photos app or replace the media engine.
+local-cache-first source resolution remain shared Flutter behavior. The current
+Photos viewer embeds AVKit playback on iOS; see the Photos contract below. This
+does not embed Apple's private Photos app.
 
 References:
 - [Apple toolbars](https://developer.apple.com/design/human-interface-guidelines/toolbars)
@@ -343,6 +347,18 @@ verified in this pass.
 
 ## Photo viewer
 
+Photos now opens directly into a dated library with a collapsing Cupertino
+header, visible All media / Photos / Videos categories, and a compact leading
+Search button that expands into a field and X. The entire row is a retained
+UIKit view: native segmented selection, sibling glass surfaces in one glass
+container, and a reversible UIKit spring that forms/separates the close surface.
+Native accessibility settings select opaque surfaces or remove motion. Select
+is in the three-dot menu with view options. Comfortable densities use stable featured
+mosaics, with a persisted square-grid alternative. The viewer has coordinated
+interactive dismissal to the current tile and embedded AVKit video controls.
+See [Gallery layout](gallery-and-profile-refresh.md) and
+[Photo viewer design](photo-viewer-design.md) for the current contracts.
+
 See [Photo viewer design](photo-viewer-design.md) for the current nonmodal
 inspector, thumbnail browsing, edge actions and grouped UIKit toolbar. This
 supersedes the earlier modal photo-information composition.
@@ -356,6 +372,64 @@ chooser, gallery mosaic/highlights, metadata reconciliation and current checks.
 Free Up Space uses the same compact navigation header as Settings. Its bottom
 Check Again action owns rescanning; there is no duplicate refresh icon.
 
+## Recovery, Starred and Shared browsing consistency
+
+Archive, Locked and Trash present immediately when tapped on iOS. Their route
+must not sweep the page and body text horizontally into the viewport. The
+Cupertino route still owns interactive edge-back gestures, including cancelling
+a swipe; Back returns to the retained Drive screen. Android keeps its Material
+route transition. Verify entry frames with animations enabled, including empty
+and loaded pages, rather than checking only the settled layout. Regression
+coverage lives in `test/recovery_browser_test.dart`. The simulator-only
+`tools/ios_recovery_preview.dart` uses the same page factory; enabling
+`RECOVERY_RECORDING=true` cycles through all three empty and populated spaces
+for a native frame recording. Production/device builds use `lib/main.dart`.
+
+Archive, Locked and Trash use the Drive file/folder rows, 40-point thumbnails,
+inset separators and platform symbols. Their iOS navigation is Cupertino, with
+Select and Refresh in a native overflow menu; Delete All is a destructive Trash
+menu action, behind the existing permanent-deletion confirmation. A hold opens
+the shared native context interaction before selection. Item menus offer Open
+for files, Unarchive/Unlock/Restore, Select and a separate destructive action.
+Normal file taps open the existing viewer. Trashed folders expose recovery actions
+rather than navigating into a deleted folder.
+
+Selection uses the same Select All/count/Done header and native bottom action
+controls as Drive. Recovery actions reflect the destination; empty selections
+disable mutations. Loaded lists clear on account changes, and late reads or menu
+callbacks cannot operate on the next account. Revision listeners refresh the
+correct shelf. On the initial load, the body shows one loading state, then
+reveals its introduction, loaded count and rows together. Lists build lazily
+and preserve available media while refreshing.
+
+Starred keeps its browsing composition and adds Drive's native hold-preview/menu
+for both files and folders, in list and grid layouts. Select works from a hold or
+the tab overflow. Its selection state participates in the shell's iOS tab-bar and
+upload-control visibility, with the existing batch handlers and confirmations.
+
+Shared retains link permission, active/revoked/expired status, views and downloads.
+iOS list rows use Drive's 20-point gutters, thumbnail size, type hierarchy and
+inset separators, with quiet link metrics below the item identity. Its introduction
+is unboxed. Shared link holds and overflow controls use the native menu bridge:
+Open, Copy link, Share link and confirmed Revoke link for an active link. Status
+is resolved fresh at opening; revoked/expired links retain their detail destination.
+Revocation uses a slashed-link icon in holds, overflow menus and the detail header,
+with the existing destructive role and confirmation. Link actions remain
+distinct from private file mutations.
+
+At large text sizes, row thumbnails, selection indicators and overflow controls
+move above the text so names and metadata can wrap across the content width.
+The unavailable UIKit bridge uses a bounded Cupertino hold preview; source width
+and grid height are retained so lifted rows cannot acquire infinite constraints.
+Unavailable image previews use platform file symbols, never Google-style icons
+on iOS. Android keeps its Material layout and interactions.
+
+Trash preview requests use the same scoped media pipeline as Archive and Locked.
+The backend owner-only media-ref endpoint must allow soft-deleted files while
+retaining ownership checks and direct-download gating. Soft deletion keeps remote
+media; purged or missing derivatives stay unavailable. See the backend's
+[media architecture](https://github.com/ShekhawatPriya/TG-Cloud-Drive-BSDK/blob/main/docs/media-architecture.md).
+
 ## Account identity and public About content
 
 The Account identity card retains the avatar/name/username header. A divider
@@ -365,12 +439,33 @@ repeating the ID. The same information hierarchy applies to the Android sheet,
 with Material actions and 48-point targets; iOS keeps Cupertino actions with
 44-point minimums. Values wrap at large text sizes.
 
-About TeleDrive uses a smaller app mark, installed version, and a live published
-release preview before source navigation. Loading, no releases, and retry states
-remain explicit. Public GitHub release history is fetched without a bundled
-GitHub token and follows pagination. Notes and comparison links remain real
-published content. The canonical public repository is
-[ShekhawatPriya/TeleDrive](https://github.com/ShekhawatPriya/TeleDrive).
+About TeleDrive orders content by purpose: app identity and installed version,
+a compact live What’s New preview, an unboxed product explanation, maker identity
+and social links, then grouped source and policy destinations. The header uses
+a 72-point app mark and concrete Telegram-library copy. Avoid repeating source
+navigation beside the update card or wrapping every explanatory section in a card.
+
+What’s New uses the same title on both platforms, a short introduction, the newest
+published release expanded, and earlier releases collapsed behind accessible
+version/date headers. Latest published does not imply installed or available as
+an update. Published headings define the categories; feature notes precede quieter
+Release/Documentation/Build sections behind an explicit details control. Full
+Changelog comparison links are deduplicated
+and presented as separate actions. Link-only and empty notes have explicit copy;
+never fill gaps with inferred features. Refresh failures retain loaded notes with
+a retry notice. Loading, empty, and initial error states remain distinct.
+
+Public GitHub history is fetched without a bundled token and follows pagination.
+Notes and comparison links remain real published content. The canonical repository
+is [ShekhawatPriya/TeleDrive](https://github.com/ShekhawatPriya/TeleDrive).
+
+The editorial grouping and dated release hierarchy were informed by the published
+[Linear changelog](https://linear.app/changelog), adapted to mobile reading and
+TeleDrive’s existing Cupertino/Material controls. This is a composition reference,
+not evidence of user testing. Preview fixtures cover a link-only release and a
+categorized release with expanded history in both platforms/themes and large text.
+At large text sizes, feature icons and release disclosure controls move above the
+copy so explanatory text can use the full content width.
 
 See [Gallery density and profile refresh](gallery-and-profile-refresh.md) for
 current motion, layout and main Telegram photo refresh contracts.

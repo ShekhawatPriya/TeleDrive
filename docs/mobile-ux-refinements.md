@@ -31,18 +31,17 @@
   Android uses 44-point symbols / 20-point names in 176-point tonal cards.
   Both grow with text and use rows at large text sizes. Shared folder symbols,
   star/link markers and freshly resolved action menus reflect the same state.
-- **Gallery:** chronological, lazy justified rows use the supplied image
-  dimensions. Row widths/heights vary with aspect ratio and available width.
-  Density controls target row height; unknown dimensions use a neutral ratio.
-  Image decoding and transfer scheduling remain bounded. A session-stable sample
-  of up to five actual photos forms a swipeable highlight carousel; the newest
-  photo is not chosen as the initial highlight when alternatives exist. There
-  is no ranking, inferred memory or fabricated recommendation. iOS and Android
-  both expose star status without covering video duration or selection controls.
+- **Gallery:** current library-first structure, stable featured mosaic/square
+  geometry, selection gestures and density behavior are documented in
+  [Gallery layout](gallery-and-profile-refresh.md). The earlier cover carousel
+  is removed. Full-screen transitions and native video playback are described in
+  [Photo viewer design](photo-viewer-design.md). Chronological creation dates,
+  scoped media caching and shared action contracts remain authoritative.
 - **Share contents:** the parent navigation target, current folder and path have
   their own header row. Item icons, names and metadata share a consistent inset.
   File sizes are human-readable; the containing path is separate from the name.
-  iOS uses person.crop.circle.badge.minus for revocation, distinct from Delete.
+  iOS uses a slashed-link icon for revocation, with the Revoke label and destructive
+  role; Delete retains the trash symbol.
 - **Search:** the keyboard Search action submits immediately and resigns focus
   while preserving the query. The independent X clears the query and exits.
   Clear inside the field keeps editing. UIKit owns the iOS text responder and

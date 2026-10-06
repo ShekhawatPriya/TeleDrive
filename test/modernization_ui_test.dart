@@ -1,3 +1,4 @@
+import 'package:flutter_m_fsdk/features/photos/components/photos_selection_bar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_m_fsdk/features/photos/components/photo_library_cover.dart';
 import 'package:go_router/go_router.dart';
@@ -149,6 +150,8 @@ final _shares = [
 
 class _DesignDrive extends ChangeNotifier implements DriveController {
   @override
+  int get accountGeneration => 0;
+  @override
   DriveState state = const DriveState();
   @override
   List<DriveFolder> get folders => _folders;
@@ -221,7 +224,13 @@ Widget _tabPreview(SearchScope scope, Widget screen) => Scaffold(
   extendBody: true,
   body: Column(
     children: [
-      TeleDriveTopBar(scope: scope),
+      Builder(
+        builder: (context) =>
+            scope == SearchScope.photos &&
+                Theme.of(context).platform == TargetPlatform.iOS
+            ? const SizedBox.shrink()
+            : TeleDriveTopBar(scope: scope),
+      ),
       Expanded(child: screen),
     ],
   ),
@@ -265,21 +274,34 @@ class _DesignBackup extends ChangeNotifier implements GalleryBackupController {
 }
 
 class _DesignChangelog extends ChangeNotifier implements ChangelogController {
+  _DesignChangelog({this.snapshot});
+  final ChangelogState? snapshot;
   @override
-  ChangelogState get state => ChangelogState(
-    hasLoadedOnce: true,
-    releases: [
-      GithubRelease(
-        tagName: 'v3.1.2',
-        title: 'v3.1.2',
-        body:
-            '**Full Changelog**: https://github.com/ShekhawatPriya/TeleDrive/compare/v3.1.1...v3.1.2',
-        htmlUrl:
-            'https://github.com/ShekhawatPriya/TeleDrive/releases/tag/v3.1.2',
-        publishedAt: DateTime.utc(2026, 9, 18, 16, 25, 54),
-      ),
-    ],
-  );
+  ChangelogState get state =>
+      snapshot ??
+      ChangelogState(
+        hasLoadedOnce: true,
+        releases: [
+          GithubRelease(
+            tagName: 'v3.1.2',
+            title: 'v3.1.2',
+            body:
+                '**Full Changelog**: https://github.com/ShekhawatPriya/TeleDrive/compare/v3.1.1...v3.1.2',
+            htmlUrl:
+                'https://github.com/ShekhawatPriya/TeleDrive/releases/tag/v3.1.2',
+            publishedAt: DateTime.utc(2026, 9, 18, 16, 25, 54),
+          ),
+          GithubRelease(
+            tagName: 'v3.1.1',
+            title: 'Sharing & photo refinements',
+            body:
+                '## Sharing\n- Choose **Share a copy** to send original files through the system share sheet, or **Create link** to retain public-link sharing.\n- See download progress, cancel preparation, and retry failures.\n\n## Photos\n- Drag the information panel freely, interrupt flings, and resize or close it with the persistent grip.\n- Preserve photo aspect ratio, zoom, and pan while opening and closing information.\n\n## Release\nVersion 3.1.1, build 7. No iOS IPA is included.\n\n**Full Changelog**: https://github.com/ShekhawatPriya/TeleDrive/compare/v3.1.0...v3.1.1',
+            htmlUrl:
+                'https://github.com/ShekhawatPriya/TeleDrive/releases/tag/v3.1.1',
+            publishedAt: DateTime.utc(2026, 9, 17),
+          ),
+        ],
+      );
   @override
   Future<void> load({bool force = false}) async {}
   @override
@@ -395,6 +417,7 @@ Future<void> _pump(
   WidgetTester tester,
   Widget child, {
   GoRouter? router,
+  ChangelogState? changelogState,
   double width = 390,
   double scale = 1,
   bool reduceEffects = true,
@@ -430,7 +453,9 @@ Future<void> _pump(
     ProviderScope(
       overrides: [
         galleryBackupControllerProvider.overrideWith((_) => _DesignBackup()),
-        changelogControllerProvider.overrideWith((_) => _DesignChangelog()),
+        changelogControllerProvider.overrideWith(
+          (_) => _DesignChangelog(snapshot: changelogState),
+        ),
         authControllerProvider.overrideWith((_) => _Auth()),
         storageSummaryControllerProvider.overrideWith((_) => _DesignStorage()),
         appSettingsControllerProvider.overrideWith((_) => _DesignSettings()),
@@ -484,7 +509,12 @@ Future<void> _pump(
       );
     });
   }
-  await tester.pumpAndSettle();
+  if (changelogState?.isLoading == true) {
+    // Indeterminate loading deliberately keeps animating.
+    await tester.pump(const Duration(milliseconds: 200));
+  } else {
+    await tester.pumpAndSettle();
+  }
 }
 
 void main() {
@@ -545,6 +575,18 @@ void main() {
             reduceEffects: false,
           );
           expect(tester.takeException(), isNull);
+          if (entry.$1 == SearchScope.photos &&
+              platform == TargetPlatform.iOS) {
+            final header = tester.widget<CupertinoSliverNavigationBar>(
+              find.byType(CupertinoSliverNavigationBar),
+            );
+            expect(
+              header.backgroundColor,
+              Theme.of(
+                tester.element(find.byType(PhotosScreen)),
+              ).colorScheme.surface,
+            );
+          }
           await _preview(
             tester,
             'full-${entry.$1.name}-${platform.name}-${brightness.name}',
@@ -571,6 +613,8 @@ void main() {
           highContrast: true,
         );
         expect(tester.takeException(), isNull);
+        if (entry.$1 == SearchScope.photos)
+          await _preview(tester, 'photos-iOS-accessible-library');
       },
     );
   }
@@ -694,24 +738,26 @@ void main() {
     });
   }
 
-  testWidgets(
-    'random photo highlights swipe without making the latest primary',
-    (tester) async {
-      SharedPreferences.setMockInitialValues({});
-      await _pump(
-        tester,
-        _tabPreview(SearchScope.photos, const PhotosScreen()),
-      );
-      final covers = find.byType(PhotoLibraryCover);
-      final first = tester.widget<PhotoLibraryCover>(covers.first).file.id;
-      expect(first, isNot(_media.first.id));
-      final pager = find.byKey(const ValueKey('photo-highlights'));
-      await tester.drag(pager, const Offset(-350, 0));
-      await tester.pumpAndSettle();
-      expect(find.bySemanticsLabel('Highlight 2 of 5'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    },
-  );
+  testWidgets('library opens directly and exposes selection and view options', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await _pump(tester, const PhotosScreen());
+    expect(find.byType(PhotoLibraryCover), findsNothing);
+    expect(find.byType(PhotoTile), findsWidgets);
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
+    expect(find.text('Featured mosaic'), findsOneWidget);
+    await tester.tap(find.text('Square grid'));
+    await tester.pumpAndSettle();
+    expect(find.text('Select'), findsNothing);
+    await tester.tap(find.byTooltip('More'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Select'));
+    await tester.pumpAndSettle();
+    expect(find.byType(PhotosSelectionBar), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
 
   for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
     for (final brightness in Brightness.values) {
@@ -993,6 +1039,167 @@ void main() {
       }
     }
   }
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    testWidgets('About opens What’s New ${platform.name}', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final router = GoRouter(
+        routes: [
+          GoRoute(path: '/', builder: (_, __) => const ProjectScreen()),
+          GoRoute(
+            path: '/settings/project/changelog',
+            builder: (_, __) => const ChangelogScreen(),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await _pump(
+        tester,
+        const ProjectScreen(),
+        router: router,
+        platform: platform,
+      );
+      await tester.ensureVisible(find.text('Explore What’s New'));
+      await tester.tap(find.text('Explore What’s New'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ChangelogScreen), findsOneWidget);
+      expect(find.text('Release notes'), findsOneWidget);
+    });
+    for (final page in <(String, Widget)>[
+      ('about', const ProjectScreen()),
+      ('releases', const ChangelogScreen()),
+    ]) {
+      testWidgets('project high contrast ${platform.name} ${page.$1}', (
+        tester,
+      ) async {
+        SharedPreferences.setMockInitialValues({});
+        await _pump(
+          tester,
+          page.$2,
+          platform: platform,
+          highContrast: true,
+          brightness: Brightness.dark,
+          width: 320,
+          scale: 2,
+        );
+        await _preview(tester, 'project-contrast-${platform.name}-${page.$1}');
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final entry in <(String, ChangelogState)>[
+      ('loading', const ChangelogState(isLoading: true)),
+      ('empty', const ChangelogState(hasLoadedOnce: true)),
+      ('error', const ChangelogState(error: 'Could not reach GitHub')),
+      (
+        'stale',
+        ChangelogState(
+          error: 'Could not reach GitHub',
+          releases: _DesignChangelog().state.releases,
+        ),
+      ),
+    ]) {
+      testWidgets('release state ${entry.$1} ${platform.name}', (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        await _pump(
+          tester,
+          const ChangelogScreen(),
+          platform: platform,
+          changelogState: entry.$2,
+        );
+        if (entry.$1 == 'empty')
+          expect(
+            find.textContaining(
+              platform == TargetPlatform.iOS
+                  ? 'No Releases Yet'
+                  : 'No releases yet',
+            ),
+            findsOneWidget,
+          );
+        if (entry.$1 == 'error')
+          expect(
+            find.textContaining(
+              platform == TargetPlatform.iOS
+                  ? 'Could Not Load Releases'
+                  : 'Could not load releases',
+            ),
+            findsOneWidget,
+          );
+        if (entry.$1 == 'stale') {
+          expect(
+            find.text('Could not refresh. Showing previously loaded releases.'),
+            findsOneWidget,
+          );
+          expect(find.text('Version 3.1.2'), findsOneWidget);
+        }
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final brightness in Brightness.values) {
+      for (final scale in [1.0, 2.0]) {
+        testWidgets(
+          'release disclosure ${platform.name} ${brightness.name} $scale',
+          (tester) async {
+            SharedPreferences.setMockInitialValues({});
+            await _pump(
+              tester,
+              const ChangelogScreen(),
+              width: scale == 1 ? 390 : 320,
+              scale: scale,
+              brightness: brightness,
+              platform: platform,
+            );
+            expect(find.text('Sharing'), findsNothing);
+            expect(
+              find.textContaining('Detailed app changes were not published'),
+              findsOneWidget,
+            );
+            final scroll = find.byType(Scrollable).first;
+            await tester.scrollUntilVisible(
+              find.text('Sharing & photo refinements'),
+              240,
+              scrollable: scroll,
+            );
+            await tester.ensureVisible(
+              find.text('Sharing & photo refinements'),
+            );
+            await tester.pumpAndSettle();
+            await tester.tap(find.text('Sharing & photo refinements'));
+            await tester.pumpAndSettle();
+            expect(find.text('Sharing'), findsOneWidget);
+            await _preview(
+              tester,
+              'release-expanded-${platform.name}-${brightness.name}-$scale',
+            );
+            await tester.scrollUntilVisible(
+              find.text('Photos'),
+              240,
+              scrollable: scroll,
+            );
+            await _preview(
+              tester,
+              'release-photos-${platform.name}-${brightness.name}-$scale',
+            );
+            await tester.scrollUntilVisible(
+              find.text('Build & documentation details'),
+              240,
+              scrollable: scroll,
+            );
+            await tester.ensureVisible(
+              find.text('Build & documentation details'),
+            );
+            await tester.pumpAndSettle();
+            await tester.tap(find.text('Build & documentation details'));
+            await tester.pumpAndSettle();
+            expect(find.text('Release'), findsOneWidget);
+            expect(tester.takeException(), isNull);
+          },
+        );
+      }
+    }
+  }
   for (final brightness in Brightness.values) {
     for (final scale in [1.0, 2.0]) {
       testWidgets(
@@ -1168,6 +1375,92 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final brightness in Brightness.values) {
+      for (final scale in [1.0, 2.0]) {
+        testWidgets(
+          'photos categories disclose and cancel search $platform $brightness $scale',
+          (tester) async {
+            SharedPreferences.setMockInitialValues({});
+            const appearance = MethodChannel('teledrive/appearance');
+            tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+              appearance,
+              (_) async => false,
+            );
+            addTearDown(
+              () => tester.binding.defaultBinaryMessenger
+                  .setMockMethodCallHandler(appearance, null),
+            );
+            await _pump(
+              tester,
+              _tabPreview(SearchScope.photos, const PhotosScreen()),
+              platform: platform,
+              brightness: brightness,
+              width: 320,
+              scale: scale,
+              highContrast: scale == 2,
+              reduceEffects: scale == 2,
+            );
+            expect(find.byType(EditableText), findsNothing);
+            expect(find.text('All media'), findsOneWidget);
+            expect(find.text('Select'), findsNothing);
+            await tester.tap(find.text('Videos'));
+            await tester.pumpAndSettle();
+            expect(find.byType(PhotoTile), findsOneWidget);
+            await _preview(
+              tester,
+              'photos-categories-${platform.name}-${brightness.name}-$scale',
+            );
+            await tester.tap(find.byTooltip('Search photos and videos'));
+            await tester.pumpAndSettle();
+            expect(find.text('All media'), findsNothing);
+            expect(tester.testTextInput.isVisible, isTrue);
+            final editable = find.byType(EditableText);
+            await tester.enterText(editable, 'No matching video');
+            await tester.testTextInput.receiveAction(TextInputAction.search);
+            await tester.pumpAndSettle();
+            expect(tester.testTextInput.isVisible, isFalse);
+            expect(find.text('No matching photos'), findsOneWidget);
+            await _preview(
+              tester,
+              'photos-search-${platform.name}-${brightness.name}-$scale',
+            );
+            await tester.tap(find.byTooltip('Clear search'));
+            await tester.pumpAndSettle();
+            expect(tester.testTextInput.isVisible, isTrue);
+            expect(find.byType(PhotoTile), findsOneWidget);
+            expect(find.text('All media'), findsNothing);
+            // An empty submitted search retains the exit control.
+            await tester.testTextInput.receiveAction(TextInputAction.search);
+            await tester.pumpAndSettle();
+            expect(
+              find.byTooltip('Cancel search').hitTestable(),
+              findsOneWidget,
+            );
+            await tester.tap(find.byTooltip('Cancel search'));
+            await tester.pumpAndSettle();
+            expect(find.byType(EditableText), findsNothing);
+            expect(tester.testTextInput.isVisible, isFalse);
+            expect(find.text('All media'), findsOneWidget);
+            expect(find.byType(PhotoTile), findsOneWidget);
+            expect(
+              tester.widget<PhotoTile>(find.byType(PhotoTile)).file.kind,
+              FileKind.video,
+            );
+            // Cancelling a nonempty query clears it too, without changing category.
+            await tester.tap(find.byTooltip('Search photos and videos'));
+            await tester.pumpAndSettle();
+            await tester.enterText(editable, 'No matching video');
+            await tester.tap(find.byTooltip('Cancel search'));
+            await tester.pumpAndSettle();
+            expect(find.byType(PhotoTile), findsOneWidget);
+            expect(find.byType(EditableText), findsNothing);
+            expect(tester.takeException(), isNull);
+          },
+        );
+      }
+    }
+  }
   testWidgets(
     'photos filter changes the visible collection and restores all media',
     (tester) async {
