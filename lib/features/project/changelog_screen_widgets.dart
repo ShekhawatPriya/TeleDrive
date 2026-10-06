@@ -1,151 +1,271 @@
 part of 'changelog_screen.dart';
 
-class _ReleaseCard extends StatelessWidget {
-  const _ReleaseCard({required this.release, required this.isLatest});
-
+class _ReleaseCard extends StatefulWidget {
+  const _ReleaseCard({
+    super.key,
+    required this.release,
+    required this.isLatest,
+  });
   final GithubRelease release;
   final bool isLatest;
+  @override
+  State<_ReleaseCard> createState() => _ReleaseCardState();
+}
+
+class _ReleaseCardState extends State<_ReleaseCard> {
+  late bool expanded = widget.isLatest;
+  bool showDetails = false;
 
   @override
   Widget build(BuildContext context) {
+    final release = widget.release;
+    final notes = ReleaseNotes(release.body);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final published = release.publishedAt;
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(28),
-        border: theme.platform == TargetPlatform.iOS
-            ? null
-            : Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
+    final ios = theme.platform == TargetPlatform.iOS;
+    final heading = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            if (release.tagName.isNotEmpty &&
+                release.title.isNotEmpty &&
+                release.title != release.tagName)
+              Text(
+                release.tagName,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            if (widget.isLatest)
+              Text(
+                'Latest published',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            if (release.isPrerelease)
+              Text(
+                'Pre-release',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: scheme.tertiary,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          release.title.isEmpty || release.title == release.tagName
+              ? 'Version ${release.tagName.replaceFirst(RegExp(r'^v'), '')}'
+              : release.title,
+          style:
+              (widget.isLatest
+                      ? theme.textTheme.headlineSmall
+                      : theme.textTheme.titleLarge)
+                  ?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        if (release.publishedAt != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            DateFormat.yMMMd().format(release.publishedAt!.toLocal()),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ],
+    );
+    final disclosureIcon = Icon(
+      expanded
+          ? (ios ? CupertinoIcons.chevron_up : Icons.expand_less)
+          : (ios ? CupertinoIcons.chevron_down : Icons.expand_more),
+      size: 20,
+      color: scheme.onSurfaceVariant,
+    );
+    final disclosure = MediaQuery.textScalerOf(context).scale(1) >= 1.5
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _TagChip(label: release.tagName, highlighted: isLatest),
-              if (isLatest) ...[
-                const SizedBox(width: 8),
-                _StatusChip(label: 'Latest', color: scheme.primary),
-              ],
-              if (release.isPrerelease) ...[
-                const SizedBox(width: 8),
-                _StatusChip(label: 'Pre-release', color: scheme.tertiary),
-              ],
-              if (published != null)
-                Text(
-                  DateFormat.yMMMd().format(published.toLocal()),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
+              Align(alignment: Alignment.centerRight, child: disclosureIcon),
+              const SizedBox(height: 8),
+              heading,
+            ],
+          )
+        : Row(
+            children: [
+              Expanded(child: heading),
+              const SizedBox(width: 12),
+              disclosureIcon,
+            ],
+          );
+    return Container(
+      decoration: BoxDecoration(
+        color: widget.isLatest ? scheme.surfaceContainerLow : scheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.isLatest)
+            Padding(padding: const EdgeInsets.all(20), child: heading)
+          else if (ios)
+            CupertinoButton(
+              padding: const EdgeInsets.all(20),
+              onPressed: () => setState(() => expanded = !expanded),
+              child: Semantics(expanded: expanded, child: disclosure),
+            )
+          else
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => setState(() => expanded = !expanded),
+                child: Semantics(
+                  expanded: expanded,
+                  button: true,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: disclosure,
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            release.displayTitle,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          if (release.body.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            _MarkdownBody(text: release.body),
-          ],
-          if (release.htmlUrl.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: const Size(0, 48),
-                ),
-                onPressed: () => _open(release.htmlUrl),
-                icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                label: const Text('View on GitHub'),
               ),
             ),
-          ],
+          if (expanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (notes.sections.isEmpty)
+                    Text(
+                      notes.comparisonLinks.isEmpty
+                          ? 'No detailed notes were published for this release.'
+                          : 'This release includes a code comparison. Detailed app changes were not published.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        height: 1.5,
+                      ),
+                    ),
+                  for (final section in notes.sections.where(
+                    (s) => !s.isTechnical,
+                  )) ...[
+                    const Divider(height: 24),
+                    if (section.title.isNotEmpty) ...[
+                      Text(
+                        section.title,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    _MarkdownBody(text: section.body),
+                  ],
+                  if (notes.sections.any((s) => s.isTechnical)) ...[
+                    const Divider(height: 24),
+                    if (ios)
+                      CupertinoButton(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        alignment: Alignment.centerLeft,
+                        onPressed: () =>
+                            setState(() => showDetails = !showDetails),
+                        child: Semantics(
+                          expanded: showDetails,
+                          child: Text(
+                            showDetails
+                                ? 'Hide release details'
+                                : 'Build & documentation details',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: scheme.primary,
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                          onPressed: () =>
+                              setState(() => showDetails = !showDetails),
+                          child: Semantics(
+                            expanded: showDetails,
+                            child: Text(
+                              showDetails
+                                  ? 'Hide release details'
+                                  : 'Build & documentation details',
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (showDetails)
+                      for (final section in notes.sections.where(
+                        (s) => s.isTechnical,
+                      )) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          section.title,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        _MarkdownBody(text: section.body),
+                      ],
+                  ],
+                  if (notes.comparisonLinks.isNotEmpty ||
+                      release.htmlUrl.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      children: [
+                        for (final url in notes.comparisonLinks)
+                          _ReleaseLink(label: 'Compare changes', url: url),
+                        if (release.htmlUrl.isNotEmpty)
+                          _ReleaseLink(
+                            label: 'Release on GitHub',
+                            url: release.htmlUrl,
+                          ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
         ],
       ),
     );
   }
+}
 
-  Future<void> _open(String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+class _ReleaseLink extends StatelessWidget {
+  const _ReleaseLink({required this.label, required this.url});
+  final String label, url;
+  @override
+  Widget build(BuildContext context) {
+    void open() {
+      final uri = Uri.tryParse(url);
+      if (uri != null && (uri.scheme == 'https' || uri.scheme == 'http')) {
+        launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
     }
-  }
-}
 
-class _TagChip extends StatelessWidget {
-  const _TagChip({required this.label, required this.highlighted});
-
-  final String label;
-  final bool highlighted;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final bg = highlighted
-        ? scheme.primaryContainer
-        : scheme.surfaceContainerHigh;
-    final fg = highlighted
-        ? scheme.onPrimaryContainer
-        : scheme.onSurfaceVariant;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: fg,
-          fontWeight: FontWeight.w700,
-          fontFamily: 'JetBrains Mono',
+    if (Theme.of(context).platform == TargetPlatform.iOS) {
+      return CupertinoButton(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        onPressed: open,
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.primary,
+          ),
         ),
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
-        ),
-      ),
-    );
+      );
+    }
+    return TextButton(onPressed: open, child: Text(label));
   }
 }
 

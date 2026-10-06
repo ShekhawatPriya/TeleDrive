@@ -15,8 +15,8 @@ class _ProjectHeader extends StatelessWidget {
         children: [
           Image.asset(
             'assets/icon/app_icon.png',
-            width: 88,
-            height: 88,
+            width: 72,
+            height: 72,
             excludeFromSemantics: true,
           ),
           const SizedBox(height: AppSpacing.md),
@@ -34,7 +34,7 @@ class _ProjectHeader extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'A little more space. A lot more possibility.',
+            'Your files, photos, and videos.\nConnected through Telegram.',
             textAlign: TextAlign.center,
             style: theme.textTheme.titleMedium?.copyWith(
               color: scheme.onSurfaceVariant,
@@ -43,18 +43,10 @@ class _ProjectHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: scheme.secondaryContainer,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              'Version ${AppConfig.appVersion}',
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: scheme.onSecondaryContainer,
-                fontWeight: FontWeight.w600,
-              ),
+          Text(
+            'Installed version ${AppConfig.appVersion}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
             ),
           ),
         ],

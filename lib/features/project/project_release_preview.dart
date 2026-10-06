@@ -16,11 +16,13 @@ class _ProjectReleasePreview extends StatelessWidget {
     final ios = theme.platform == TargetPlatform.iOS;
     final title = release == null
         ? state.isLoading
-              ? 'Loading release notes…'
+              ? 'Checking for releases…'
               : state.error != null
               ? 'Release notes unavailable'
               : 'No published releases yet'
-        : release.displayTitle;
+        : release.tagName.isEmpty
+        ? release.displayTitle
+        : 'Version ${release.tagName.replaceFirst(RegExp(r'^v'), '')}';
     final published = release?.publishedAt;
     return Container(
       padding: const EdgeInsets.all(20),
@@ -32,8 +34,8 @@ class _ProjectReleasePreview extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'What’s New',
-            style: text.bodySmall?.copyWith(
+            'WHAT’S NEW',
+            style: text.labelMedium?.copyWith(
               color: scheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,
             ),
@@ -46,15 +48,19 @@ class _ProjectReleasePreview extends StatelessWidget {
           if (published != null) ...[
             const SizedBox(height: 4),
             Text(
-              '${DateFormat.yMMMd().format(published.toLocal())}${release!.isPrerelease ? ' · Pre-release' : ''}',
+              'Latest published · ${DateFormat.yMMMd().format(published.toLocal())}${release!.isPrerelease ? ' · Pre-release' : ''}',
               style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
           const SizedBox(height: 12),
           Text(
             release != null
-                ? _summary(release)
-                : state.error ??
+                ? (ReleaseNotes(release.body).sections.isEmpty
+                      ? 'View the published release and earlier notes.'
+                      : ReleaseNotes(release.body).preview)
+                : (state.error != null
+                          ? 'Check your connection and try again.'
+                          : null) ??
                       (state.isLoading
                           ? 'Fetching published releases from GitHub.'
                           : 'Published GitHub releases will appear here.'),
@@ -74,7 +80,7 @@ class _ProjectReleasePreview extends StatelessWidget {
               child: Text(
                 state.error != null && release == null
                     ? 'Try Again'
-                    : 'View Release History',
+                    : 'Explore What’s New',
                 style: text.bodyMedium?.copyWith(
                   color: scheme.primary,
                   fontWeight: FontWeight.w600,
@@ -91,37 +97,12 @@ class _ProjectReleasePreview extends StatelessWidget {
                 child: Text(
                   state.error != null && release == null
                       ? 'Try again'
-                      : 'View release history',
+                      : 'Explore What’s New',
                 ),
               ),
             ),
         ],
       ),
     );
-  }
-
-  String _summary(GithubRelease release) {
-    final lines = release.body
-        .split('\n')
-        .map((line) => line.trim())
-        .where(
-          (line) =>
-              line.isNotEmpty &&
-              !line.startsWith('#') &&
-              !line.contains('https://') &&
-              !line.contains('http://'),
-        )
-        .take(2)
-        .map(
-          (line) => line
-              .replaceFirst(RegExp(r'^[-*+]\s+'), '')
-              .replaceAll('**', '')
-              .replaceAll('`', ''),
-        )
-        .toList();
-    if (lines.isNotEmpty) return lines.join('\n');
-    return release.body.contains('/compare/')
-        ? 'The full changelog for this release is available on GitHub.'
-        : 'Open the release history for published notes and downloads.';
   }
 }
