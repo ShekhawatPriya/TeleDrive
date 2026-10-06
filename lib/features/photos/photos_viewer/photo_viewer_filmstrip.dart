@@ -8,10 +8,12 @@ class PhotoViewerFilmstrip extends StatefulWidget {
     required this.files,
     required this.index,
     required this.onSelected,
+    this.onScrubbingChanged,
   });
   final List<DriveFile> files;
   final int index;
   final ValueChanged<int> onSelected;
+  final ValueChanged<bool>? onScrubbingChanged;
   @override
   State<PhotoViewerFilmstrip> createState() => _PhotoViewerFilmstripState();
 }
@@ -56,8 +58,10 @@ class _PhotoViewerFilmstripState extends State<PhotoViewerFilmstrip> {
       builder: (context, constraints) => NotificationListener<ScrollNotification>(
         onNotification: (notification) {
           if (notification is ScrollStartNotification &&
-              notification.dragDetails != null)
+              notification.dragDetails != null) {
             _scrubbing = true;
+            widget.onScrubbingChanged?.call(true);
+          }
           if (_scrubbing && notification is ScrollUpdateNotification) {
             final i = (notification.metrics.pixels / 44).round().clamp(
               0,
@@ -65,7 +69,10 @@ class _PhotoViewerFilmstripState extends State<PhotoViewerFilmstrip> {
             );
             if (i != widget.index) widget.onSelected(i);
           }
-          if (notification is ScrollEndNotification) _scrubbing = false;
+          if (notification is ScrollEndNotification && _scrubbing) {
+            _scrubbing = false;
+            widget.onScrubbingChanged?.call(false);
+          }
           return false;
         },
         child: ListView.builder(

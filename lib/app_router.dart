@@ -16,6 +16,7 @@ import 'features/drive/folder_screen.dart';
 import 'features/drive/starred_screen.dart';
 import 'features/file_viewer/file_viewer_screen.dart';
 import 'features/photos/photos_filter.dart';
+import 'features/photos/photos_viewer/photo_viewer_session.dart';
 import 'features/photos/photos_screen.dart';
 import 'features/photos/photos_viewer/photo_viewer_screen.dart';
 import 'features/profile/archive_screen.dart';
@@ -245,9 +246,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/photos/view/:id',
-        builder: (_, state) => PhotoViewerScreen(
-          startId: state.pathParameters['id']!,
-          filter: PhotosFilterX.fromQuery(state.uri.queryParameters['filter']),
+        pageBuilder: (_, state) => CustomTransitionPage<void>(
+          key: state.pageKey,
+          opaque: false,
+          barrierDismissible: false,
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+          transitionsBuilder: (_, __, ___, child) => child,
+          child: PhotoViewerScreen(
+            startId: state.pathParameters['id']!,
+            filter: PhotosFilterX.fromQuery(
+              state.uri.queryParameters['filter'],
+            ),
+            query: state.uri.queryParameters['q'] ?? '',
+            session: state.extra is PhotoViewerSession
+                ? state.extra as PhotoViewerSession
+                : null,
+          ),
         ),
       ),
       GoRoute(

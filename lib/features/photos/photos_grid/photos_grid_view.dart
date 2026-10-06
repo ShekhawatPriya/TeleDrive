@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/physics.dart';
@@ -7,7 +8,7 @@ import 'dart:ui' as ui;
 
 import '../../../models/drive_models.dart';
 import 'photo_date_grouping.dart';
-import '../components/photo_library_cover.dart';
+import 'justified_photo_layout.dart';
 import 'photo_grid_density.dart';
 import 'photo_grid_section.dart';
 import 'photo_pan_selector.dart';
@@ -15,7 +16,12 @@ import 'photo_pan_selector.dart';
 class PhotosGridView extends StatefulWidget {
   const PhotosGridView({
     required this.files,
-    this.showCover = true,
+    this.showCover = false,
+    this.leadingSlivers = const [],
+    this.trailingSlivers = const [],
+    this.onRefresh,
+    this.onSelectionRange,
+    this.onSelectionStart,
     required this.density,
     required this.onLoadMore,
     required this.loadingMore,
@@ -30,6 +36,10 @@ class PhotosGridView extends StatefulWidget {
 
   final List<DriveFile> files;
   final bool showCover;
+  final List<Widget> leadingSlivers, trailingSlivers;
+  final Future<void> Function()? onRefresh;
+  final void Function(String start, String end)? onSelectionRange;
+  final VoidCallback? onSelectionStart;
   final PhotoGridDensity density;
   final VoidCallback onLoadMore;
   final bool loadingMore;
@@ -41,10 +51,10 @@ class PhotosGridView extends StatefulWidget {
   final void Function(String fileId) onTilePanSelect;
 
   @override
-  State<PhotosGridView> createState() => _PhotosGridViewState();
+  State<PhotosGridView> createState() => PhotosGridViewState();
 }
 
-class _PhotosGridViewState extends State<PhotosGridView>
+class PhotosGridViewState extends State<PhotosGridView>
     with TickerProviderStateMixin {
   final _scroll = ScrollController();
   final _viewportKey = GlobalKey();
@@ -227,37 +237,64 @@ class _PhotosGridViewState extends State<PhotosGridView>
   late List<PhotoDateSection> _sections = groupByDate(widget.files);
   DateTime _groupedDay = DateUtils.dateOnly(DateTime.now());
   final Map<String, GlobalKey> _tileKeys = <String, GlobalKey>{};
-  final _random = Random();
-  final List<String> _highlightIds = [];
-  int _highlightIndex = 0;
+  Rect? sourceRect(String id) {
+    final tile = _tileKeys[id]?.currentContext?.findRenderObject();
+    if (tile is! RenderBox || !tile.attached) return null;
+    final rect = tile.localToGlobal(Offset.zero) & tile.size;
+    final viewport = context.findRenderObject();
+    if (viewport is! RenderBox) return null;
+    final visible = viewport.localToGlobal(Offset.zero) & viewport.size;
+    return visible.overlaps(rect) ? rect : null;
+  }
 
-  void _updateHighlights() {
-    final photos = widget.files
-        .where((file) => file.kind == FileKind.image && !file.isOptimistic)
-        .toList();
-    final ids = photos.map((file) => file.id).toSet();
-    _highlightIds.removeWhere((id) => !ids.contains(id));
-    final remaining =
-        photos.where((file) => !_highlightIds.contains(file.id)).toList()
-          ..shuffle(_random);
-    _highlightIds.addAll(
-      remaining.take(5 - _highlightIds.length).map((file) => file.id),
+  Future<Rect?> revealFile(String id) async {
+    if (!mounted || !_scroll.hasClients) return null;
+    if (sourceRect(id) case final Rect rect) return rect;
+    final sectionIndex = _sections.indexWhere(
+      (s) => s.files.any((f) => f.id == id),
     );
-    if (_highlightIds.length > 1 && _highlightIds.first == photos.first.id) {
-      final other = _highlightIds[1];
-      _highlightIds[1] = _highlightIds.first;
-      _highlightIds[0] = other;
+    if (sectionIndex < 0) return null;
+    final section = _sections[sectionIndex];
+    final render = _sectionKeys[section.label]?.currentContext
+        ?.findRenderObject();
+    if (render == null || !render.attached) return null;
+    final viewport = RenderAbstractViewport.maybeOf(render);
+    if (viewport == null) return null;
+    final width = (context.findRenderObject() as RenderBox).size.width - 40;
+    final layout = layoutPhotos(
+      section.files,
+      width: width,
+      columns: _layoutColumns.round(),
+      gap: Theme.of(context).platform == TargetPlatform.iOS ? 4 : 6,
+      square: widget.density.style == PhotoGridStyle.square,
+    );
+    final i = section.files.indexWhere((f) => f.id == id);
+    final target =
+        viewport.getOffsetToReveal(render, 0).offset +
+        layout.rects[i].center.dy;
+    _scroll.jumpTo(
+      (target - _scroll.position.viewportDimension * .4).clamp(
+        _scroll.position.minScrollExtent,
+        _scroll.position.maxScrollExtent,
+      ),
+    );
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return null;
+    final tile = _tileKeys[id]?.currentContext;
+    if (tile != null && tile.mounted) {
+      await Scrollable.ensureVisible(
+        tile,
+        alignment: .4,
+        duration: Duration.zero,
+      );
+      await WidgetsBinding.instance.endOfFrame;
     }
-    _highlightIndex = _highlightIndex.clamp(
-      0,
-      max(0, _highlightIds.length - 1),
-    );
+    return mounted ? sourceRect(id) : null;
   }
 
   @override
   void initState() {
     super.initState();
-    _updateHighlights();
     _layoutColumns = widget.density.columns.toDouble();
     _densityAnimation = AnimationController.unbounded(
       vsync: this,
@@ -282,7 +319,6 @@ class _PhotosGridViewState extends State<PhotosGridView>
     }
     final today = DateUtils.dateOnly(DateTime.now());
     if (!listEquals(oldWidget.files, widget.files) || today != _groupedDay) {
-      _updateHighlights();
       _anchorId = null;
       _anchorSection = null;
       _clearSnapshot();
@@ -300,9 +336,13 @@ class _PhotosGridViewState extends State<PhotosGridView>
       onUpdate: _pinchUpdate,
       onEnd: _pinchEnd,
       child: PhotoPanSelector(
-        enabled: widget.selectMode,
+        enabled: widget.selectMode && !_pinching,
         tileKeys: _tileKeys,
         onTilePan: widget.onTilePanSelect,
+        onRange: widget.onSelectionRange,
+        onStart: widget.onSelectionStart,
+        orderedIds: widget.files.map((f) => f.id).toList(),
+        scrollController: _scroll,
         child: NotificationListener<ScrollNotification>(
           onNotification: (n) {
             if (n is ScrollStartNotification &&
@@ -333,62 +373,10 @@ class _PhotosGridViewState extends State<PhotosGridView>
                     parent: AlwaysScrollableScrollPhysics(),
                   ),
             slivers: [
-              if (widget.showCover &&
-                  !widget.selectMode &&
-                  _highlightIds.isNotEmpty)
-                SliverToBoxAdapter(
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        height:
-                            264 +
-                            (MediaQuery.textScalerOf(context).scale(24) - 24) *
-                                2,
-                        child: PageView.builder(
-                          key: const ValueKey('photo-highlights'),
-                          itemCount: _highlightIds.length,
-                          onPageChanged: (index) =>
-                              setState(() => _highlightIndex = index),
-                          itemBuilder: (_, index) {
-                            final file = widget.files.firstWhere(
-                              (file) => file.id == _highlightIds[index],
-                            );
-                            return PhotoLibraryCover(
-                              file: file,
-                              onTap: () => widget.onTileTap(file.id),
-                            );
-                          },
-                        ),
-                      ),
-                      if (_highlightIds.length > 1)
-                        Semantics(
-                          label:
-                              'Highlight ${_highlightIndex + 1} of ${_highlightIds.length}',
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              for (var i = 0; i < _highlightIds.length; i++)
-                                Container(
-                                  width: i == _highlightIndex ? 16 : 6,
-                                  height: 6,
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(3),
-                                    color: i == _highlightIndex
-                                        ? Theme.of(context).colorScheme.primary
-                                        : Theme.of(
-                                            context,
-                                          ).colorScheme.outlineVariant,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
+              ...widget.leadingSlivers,
+              if (widget.onRefresh != null &&
+                  Theme.of(context).platform == TargetPlatform.iOS)
+                CupertinoSliverRefreshControl(onRefresh: widget.onRefresh),
               for (final section in _sections)
                 PhotoGridSection(
                   key: _sectionKeys.putIfAbsent(
@@ -397,6 +385,7 @@ class _PhotosGridViewState extends State<PhotosGridView>
                   ),
                   section: section,
                   columns: _layoutColumns,
+                  square: widget.density.style == PhotoGridStyle.square,
                   selectMode: widget.selectMode,
                   selectedIds: widget.selectedIds,
                   tileKeys: _tileKeys,
@@ -411,6 +400,7 @@ class _PhotosGridViewState extends State<PhotosGridView>
                     child: Center(child: CircularProgressIndicator.adaptive()),
                   ),
                 ),
+              ...widget.trailingSlivers,
               const SliverToBoxAdapter(child: SizedBox(height: 120)),
             ],
           ),

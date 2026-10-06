@@ -15,10 +15,12 @@ class PhotoGridSection extends StatefulWidget {
     required this.onTileTap,
     required this.onTileLongPress,
     this.onTileSelect,
+    this.square = false,
     super.key,
   });
   final PhotoDateSection section;
   final double columns;
+  final bool square;
   final bool selectMode;
   final Set<String> selectedIds;
   final Map<String, GlobalKey> tileKeys;
@@ -43,6 +45,7 @@ class PhotoGridSectionState extends State<PhotoGridSection> {
       width: _width!,
       columns: columns,
       gap: _gap!,
+      square: widget.square,
     ),
   );
   double? extentAt(double columns) {
@@ -65,7 +68,8 @@ class PhotoGridSectionState extends State<PhotoGridSection> {
   @override
   void didUpdateWidget(PhotoGridSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!listEquals(oldWidget.section.files, widget.section.files)) {
+    if (!listEquals(oldWidget.section.files, widget.section.files) ||
+        oldWidget.square != widget.square) {
       _layouts.clear();
       _indices = {
         for (var i = 0; i < widget.section.files.length; i++)

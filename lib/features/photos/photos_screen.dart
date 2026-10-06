@@ -3,7 +3,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/utils/safe_navigation.dart';
+import 'package:go_router/go_router.dart';
+import '../../widgets/search_keyboard.dart';
+import '../../widgets/account_button.dart';
+import '../../widgets/ios_more_menu.dart';
+import 'photos_viewer/photo_viewer_session.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/teledrive_app_bar.dart';
 import '../drive/components/drive_item_actions.dart';
@@ -14,6 +18,8 @@ import '../search/search_controller.dart';
 import 'components/photo_context_menu.dart';
 import 'components/photo_preview_overlay.dart';
 import 'components/photos_selection_bar.dart';
+import 'components/photos_library_controls.dart';
+import 'components/photos_menu_builder.dart';
 import 'photos_grid/photo_grid_density.dart';
 import 'photos_filter.dart';
 import 'photos_grid/photos_grid_view.dart';
@@ -28,8 +34,28 @@ class PhotosScreen extends ConsumerStatefulWidget {
 class _PhotosScreenState extends ConsumerState<PhotosScreen>
     with SelectionModeMixin<PhotosScreen> {
   PhotosFilter _filter = PhotosFilter.all;
+  bool _viewerOpen = false;
+  final _gridKey = GlobalKey<PhotosGridViewState>();
+  Set<String> _rangeBase = {};
+  bool _rangeSelect = true;
+
+  int _handledSelectRequests = 0;
+
+  List<IosMenuSection> _menus(BuildContext context) => buildPhotosMenuSections(
+    context,
+    density: ref.read(photoGridDensityProvider),
+    onSelect: () => enterSelect(),
+  );
+
   @override
   Widget build(BuildContext context) {
+    final requests = ref.watch(photosTabCommandsProvider).selectRequests;
+    if (requests != _handledSelectRequests) {
+      _handledSelectRequests = requests;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) enterSelect();
+      });
+    }
     final selectState = ref.read(selectionModeStateProvider);
     if (selectState.photosSelectMode != selectMode) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -48,6 +74,7 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
         : all.where((f) => f.name.toLowerCase().contains(query)).toList();
     final allCount = files.length;
     final theme = Theme.of(context);
+    final ios = theme.platform == TargetPlatform.iOS;
 
     final modalRoute = ModalRoute.of(context);
     final isCurrent = modalRoute?.isCurrent ?? true;
@@ -81,122 +108,162 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
                   selectionMode: true,
                 ),
               ),
-            if (!selectMode)
+            if (!selectMode && !ios)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (theme.platform == TargetPlatform.iOS &&
-                        MediaQuery.textScalerOf(context).scale(14) <= 22)
-                      SizedBox(
-                        width: double.infinity,
-                        child: CupertinoSlidingSegmentedControl<PhotosFilter>(
-                          groupValue: _filter,
-                          backgroundColor: theme.colorScheme.surfaceContainer,
-                          thumbColor: theme.colorScheme.surfaceContainerLow,
-                          children: {
-                            for (final filter in PhotosFilter.values)
-                              filter: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
-                                  horizontal: 8,
-                                ),
-                                child: Text(
-                                  filter == PhotosFilter.all
-                                      ? 'All media'
-                                      : filter.label,
-                                  style: theme.textTheme.labelLarge,
-                                ),
-                              ),
-                          },
-                          onValueChanged: (filter) {
-                            if (filter != null)
-                              setState(() => _filter = filter);
-                          },
-                        ),
-                      )
-                    else
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        children: [
-                          for (final filter in PhotosFilter.values)
-                            ChoiceChip(
-                              label: Text(
-                                filter == PhotosFilter.all
-                                    ? 'All media'
-                                    : filter.label,
-                              ),
-                              selected: _filter == filter,
-                              showCheckmark: false,
-                              onSelected: (_) =>
-                                  setState(() => _filter = filter),
-                            ),
-                        ],
-                      ),
-                    const SizedBox(height: 8),
-                    Text(
-                      query.isNotEmpty
-                          ? '$allCount matches in loaded photos'
-                          : '$allCount items in your loaded library',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ],
+                child: PhotosLibraryControls(
+                  filter: _filter,
+                  onFilterChanged: (filter) => setState(() => _filter = filter),
                 ),
               ),
             Expanded(
-              child: RefreshIndicator(
+              child: _refreshHost(
+                ios: ios,
                 onRefresh: () => drive.refresh(force: true),
-                child: files.isNotEmpty
-                    ? PhotosGridView(
-                        files: files,
-                        showCover: query.isEmpty,
-                        density: density,
-                        loadingMore: drive.state.loadingMoreMedia,
-                        selectMode: selectMode,
-                        selectedIds: selectedFileIds,
-                        onTileTap: _onTileTap,
-                        onTileLongPress: _onTileLongPress,
-                        onTileSelect: (id) => enterSelect(fileId: id),
-                        onTilePanSelect: _onTilePanSelect,
-                        onLoadMore: () =>
-                            ref.read(driveControllerProvider).loadMoreMedia(),
-                      )
-                    : CustomScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        slivers: [
-                          SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: drive.state.loading
-                                ? const Center(
-                                    child: CircularProgressIndicator.adaptive(),
-                                  )
-                                : drive.state.error != null
-                                ? EmptyState(
-                                    icon: Icons.cloud_off_outlined,
-                                    title: 'Could not load your photos',
-                                    body: drive.state.error!,
-                                    action: TextButton(
-                                      onPressed: () =>
-                                          drive.refresh(force: true),
-                                      child: const Text('Try again'),
-                                    ),
-                                  )
-                                : EmptyState(
-                                    icon: query.isEmpty
-                                        ? Icons.photo_library_outlined
-                                        : Icons.search_off,
-                                    title: query.isEmpty
-                                        ? 'No photos yet'
-                                        : 'No matching photos',
-                                    body: query.isEmpty
-                                        ? 'Photos and videos appear here after upload.'
-                                        : 'Try a different name. Search covers photos loaded on this device.',
-                                  ),
+                child: TickerMode(
+                  enabled: !_viewerOpen,
+                  child: PhotosGridView(
+                    key: _gridKey,
+                    files: files,
+                    density: density,
+                    loadingMore: drive.state.loadingMoreMedia,
+                    selectMode: selectMode,
+                    selectedIds: selectedFileIds,
+                    onTileTap: _onTileTap,
+                    onTileLongPress: _onTileLongPress,
+                    onTileSelect: (id) => enterSelect(fileId: id),
+                    onTilePanSelect: _onTilePanSelect,
+                    onSelectionStart: () =>
+                        _rangeBase = Set.of(selectedFileIds),
+                    onSelectionRange: (start, end) {
+                      final ids = files.map((f) => f.id).toList();
+                      final a = ids.indexOf(start), b = ids.indexOf(end);
+                      if (a < 0 || b < 0) return;
+                      _rangeSelect = !_rangeBase.contains(start);
+                      final selectable = files
+                          .where((file) => !file.isOptimistic)
+                          .map((file) => file.id)
+                          .toSet();
+                      final range = ids
+                          .sublist(a < b ? a : b, (a > b ? a : b) + 1)
+                          .where(selectable.contains);
+                      setState(() {
+                        selectedFileIds.clear();
+                        selectedFileIds.addAll(_rangeBase);
+                        if (_rangeSelect) {
+                          selectedFileIds.addAll(range);
+                        } else {
+                          selectedFileIds.removeAll(range);
+                        }
+                      });
+                    },
+                    onRefresh: () => drive.refresh(force: true),
+                    onLoadMore: () {
+                      if (drive.state.mediaError == null) drive.loadMoreMedia();
+                    },
+                    leadingSlivers: [
+                      if (ios && !selectMode) ...[
+                        CupertinoSliverNavigationBar(
+                          backgroundColor: theme.colorScheme.surface,
+                          brightness: theme.brightness,
+                          automaticallyImplyLeading: false,
+                          largeTitle: const Text('Photos'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IosMoreButton(sectionsBuilder: _menus),
+                              const AccountButton(avatarSize: 32),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                            child: PhotosLibraryControls(
+                              filter: _filter,
+                              onFilterChanged: (filter) =>
+                                  setState(() => _filter = filter),
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (files.isEmpty)
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: drive.state.loading
+                              ? const Center(
+                                  child: CircularProgressIndicator.adaptive(),
+                                )
+                              : EmptyState(
+                                  icon: drive.state.error != null
+                                      ? Icons.cloud_off_outlined
+                                      : Icons.photo_library_outlined,
+                                  title: drive.state.error != null
+                                      ? 'Could not load your photos'
+                                      : query.isNotEmpty
+                                      ? 'No matching photos'
+                                      : _filter == PhotosFilter.videos
+                                      ? 'No videos yet'
+                                      : 'No photos yet',
+                                  body:
+                                      drive.state.error ??
+                                      (query.isNotEmpty
+                                          ? 'Try a different name. Search covers media loaded on this device.'
+                                          : 'Photos and videos appear here after upload.'),
+                                  action: drive.state.error == null
+                                      ? null
+                                      : TextButton(
+                                          onPressed: () =>
+                                              drive.refresh(force: true),
+                                          child: const Text('Try again'),
+                                        ),
+                                ),
+                        ),
+                    ],
+                    trailingSlivers: [
+                      if (drive.state.mediaError != null)
+                        SliverToBoxAdapter(
+                          child: Column(
+                            children: [
+                              Text(drive.state.mediaError!),
+                              TextButton(
+                                onPressed: drive.loadMoreMedia,
+                                child: const Text('Retry loading more'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (files.isNotEmpty)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                            child: Text(
+                              query.isEmpty
+                                  ? '$allCount items in your loaded library'
+                                  : '$allCount matches in loaded photos',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ),
+                        ),
+                      if (files.isNotEmpty && drive.state.error != null)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              children: [
+                                Text(drive.state.error!),
+                                TextButton(
+                                  onPressed: () => drive.refresh(force: true),
+                                  child: const Text('Try again'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ),
             if (selectMode && theme.platform == TargetPlatform.iOS)
@@ -216,12 +283,39 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
     );
   }
 
+  Widget _refreshHost({
+    required bool ios,
+    required Future<void> Function() onRefresh,
+    required Widget child,
+  }) => ios ? child : RefreshIndicator(onRefresh: onRefresh, child: child);
+
   void _onTileTap(String fileId) {
     if (selectMode) {
       toggleFileSelection(fileId);
       return;
     }
-    context.safePush('/photos/view/$fileId?filter=${_filter.queryValue}');
+    final query = ref.read(searchQueryProvider(SearchScope.photos)).query;
+    final session = PhotoViewerSession(
+      filter: _filter,
+      query: query,
+      currentId: fileId,
+      generation: ref.read(driveControllerProvider).accountGeneration,
+      sourceRect: (id) => _gridKey.currentState?.sourceRect(id),
+      revealSource: (id) async => _gridKey.currentState?.revealFile(id),
+    );
+    final location = Uri(
+      path: '/photos/view/$fileId',
+      queryParameters: {
+        'filter': _filter.queryValue,
+        if (query.isNotEmpty) 'q': query,
+      },
+    ).toString();
+    if (_viewerOpen) return;
+    dismissSearchKeyboard();
+    setState(() => _viewerOpen = true);
+    context.push<void>(location, extra: session).whenComplete(() {
+      if (mounted) setState(() => _viewerOpen = false);
+    });
   }
 
   void _onTileLongPress(String fileId, GlobalKey key) {

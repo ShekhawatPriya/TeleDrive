@@ -54,7 +54,7 @@ class PhotoTile extends StatelessWidget {
         durationPainter?.dispose();
         return DriveItemContextMenu(
           file: file,
-          enabled: !selectMode,
+          enabled: !selectMode && TickerMode.valuesOf(context).enabled,
           onOpen: onTap,
           onSelect: onSelect ?? onLongPress,
           child: Semantics(
@@ -89,11 +89,19 @@ class PhotoTile extends StatelessWidget {
                           : EdgeInsets.zero,
                       color: selected ? selectedWash : Colors.transparent,
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(
+                          Theme.of(context).platform == TargetPlatform.iOS
+                              ? 4
+                              : 14,
+                        ),
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            _thumb(selectedWash),
+                            _thumb(
+                              selectedWash,
+                              constraints.maxWidth *
+                                  MediaQuery.devicePixelRatioOf(context),
+                            ),
                             if (isVideoFile(file))
                               _videoBadge(showDuration: showDuration),
                             if (Theme.of(context).platform !=
@@ -115,7 +123,7 @@ class PhotoTile extends StatelessWidget {
                               const Positioned(
                                 right: 8,
                                 top: 8,
-                                child: StarredBadge(size: 24),
+                                child: StarredBadge(size: 16),
                               ),
                             if (Theme.of(context).platform ==
                                     TargetPlatform.iOS &&
@@ -137,8 +145,17 @@ class PhotoTile extends StatelessWidget {
     );
   }
 
-  Widget _thumb(Color selectedWash) {
-    final thumb = MediaThumb(file: file, fit: BoxFit.cover, radius: 0);
+  Widget _thumb(Color selectedWash, double pixels) {
+    final thumb = MediaThumb(
+      file: file,
+      fit: BoxFit.cover,
+      radius: 0,
+      decodeWidth: pixels <= 320
+          ? 320
+          : pixels <= 640
+          ? 640
+          : 960,
+    );
     if (!selected) return thumb;
     return ColorFiltered(
       colorFilter: ColorFilter.mode(selectedWash, BlendMode.srcATop),

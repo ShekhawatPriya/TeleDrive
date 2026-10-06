@@ -167,7 +167,9 @@ class _MainShellState extends ConsumerState<MainShell>
     final isSelectMode = selectState.isSelectModeForTab(routeIndex);
     return Column(
       children: [
-        if (!isSelectMode)
+        if (!isSelectMode &&
+            !(routeIndex == 1 &&
+                Theme.of(context).platform == TargetPlatform.iOS))
           TeleDriveTopBar(
             scope: _scopeFor(routeIndex),
             menuSections: (ctx) => _menuSectionsFor(ctx, routeIndex),
@@ -217,6 +219,7 @@ class _MainShellState extends ConsumerState<MainShell>
       1 => buildPhotosMenuSections(
         context,
         density: ref.read(photoGridDensityProvider),
+        onSelect: () => ref.read(photosTabCommandsProvider).requestSelectMode(),
       ),
       2 => [...buildLayoutMenuSection(ref), ...buildSortMenuSection(ref)],
       _ => [

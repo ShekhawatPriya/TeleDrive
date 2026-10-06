@@ -1,83 +1,141 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
-/// Wraps the photos grid with a pan-to-select gesture.  Activates only when
-/// [enabled] is true (i.e. selection mode is on).  As the pointer crosses
-/// tiles tagged with [GlobalObjectKey], [onTilePan] is invoked once per
-/// unique id so the host can add them to the selection.  Deliberately uses a
-/// horizontal-leaning [PanGestureRecognizer] so that mostly-vertical drags
-/// still bubble up to the underlying scroll view.
+/// Horizontal intent starts selection; subsequent motion can move in any axis.
+/// A vertical initial drag continues to scroll the library normally.
 class PhotoPanSelector extends StatefulWidget {
   const PhotoPanSelector({
     required this.enabled,
     required this.tileKeys,
     required this.onTilePan,
     required this.child,
+    this.onRange,
+    this.onStart,
+    this.orderedIds = const [],
+    this.scrollController,
     super.key,
   });
-
   final bool enabled;
+  final VoidCallback? onStart;
   final Map<String, GlobalKey> tileKeys;
   final ValueChanged<String> onTilePan;
+  final void Function(String start, String end)? onRange;
+  final List<String> orderedIds;
+  final ScrollController? scrollController;
   final Widget child;
-
   @override
   State<PhotoPanSelector> createState() => _PhotoPanSelectorState();
 }
 
-class _PhotoPanSelectorState extends State<PhotoPanSelector> {
-  final Set<String> _hitInThisDrag = {};
-  bool _dragging = false;
-
-  void _handleStart(DragStartDetails details) {
-    _hitInThisDrag.clear();
-    _dragging = true;
-    _hitTest(details.globalPosition);
+class _PhotoPanSelectorState extends State<PhotoPanSelector>
+    with SingleTickerProviderStateMixin {
+  String? _start, _last;
+  Offset? _pointer;
+  late final Ticker _ticker;
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker(_tick);
   }
 
-  void _handleUpdate(DragUpdateDetails details) {
-    if (!_dragging) return;
-    _hitTest(details.globalPosition);
-  }
-
-  void _handleEnd(_) {
-    _dragging = false;
-    _hitInThisDrag.clear();
-  }
-
-  void _hitTest(Offset globalPosition) {
-    widget.tileKeys.forEach((id, key) {
-      if (_hitInThisDrag.contains(id)) return;
-      final renderBox = key.currentContext?.findRenderObject();
-      if (renderBox is! RenderBox) return;
-      final topLeft = renderBox.localToGlobal(Offset.zero);
-      final rect = topLeft & renderBox.size;
-      if (rect.contains(globalPosition)) {
-        _hitInThisDrag.add(id);
-        widget.onTilePan(id);
-      }
+  Duration _lastTick = Duration.zero;
+  void _tick(Duration elapsed) {
+    final dt = (elapsed - _lastTick).inMicroseconds / 1000000;
+    _lastTick = elapsed;
+    final scroll = widget.scrollController;
+    final box = context.findRenderObject();
+    if (_pointer == null ||
+        scroll == null ||
+        !scroll.hasClients ||
+        box is! RenderBox)
+      return;
+    final y = box.globalToLocal(_pointer!).dy;
+    final velocity = y < 64
+        ? -((64 - y) / 64).clamp(0, 1) * 600
+        : y > box.size.height - 64
+        ? ((y - box.size.height + 64) / 64).clamp(0, 1) * 600
+        : 0.0;
+    if (velocity == 0) return;
+    scroll.jumpTo(
+      (scroll.offset + velocity * dt.clamp(0, .05)).clamp(
+        scroll.position.minScrollExtent,
+        scroll.position.maxScrollExtent,
+      ),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _hit();
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (!widget.enabled) return widget.child;
-
-    return RawGestureDetector(
-      behavior: HitTestBehavior.translucent,
-      gestures: <Type, GestureRecognizerFactory>{
-        HorizontalDragGestureRecognizer:
-            GestureRecognizerFactoryWithHandlers<
-              HorizontalDragGestureRecognizer
-            >(() => HorizontalDragGestureRecognizer(), (instance) {
-              instance
-                ..onStart = _handleStart
-                ..onUpdate = _handleUpdate
-                ..onEnd = _handleEnd
-                ..onCancel = () => _handleEnd(null);
-            }),
-      },
-      child: widget.child,
-    );
+  void _hit() {
+    if (_pointer == null) return;
+    // Visit instantiated tile keys rather than the loaded collection.
+    for (final entry in widget.tileKeys.entries) {
+      final id = entry.key;
+      final box = entry.value.currentContext?.findRenderObject();
+      if (box is! RenderBox || !box.attached) continue;
+      if (!(box.localToGlobal(Offset.zero) & box.size).contains(_pointer!))
+        continue;
+      _start ??= id;
+      if (_last == id) return;
+      _last = id;
+      if (widget.onRange != null) {
+        widget.onRange!(_start!, id);
+      } else {
+        widget.onTilePan(id);
+      }
+      return;
+    }
   }
+
+  void _end() {
+    _ticker.stop();
+    _pointer = null;
+    _start = null;
+    _last = null;
+  }
+
+  @override
+  void didUpdateWidget(PhotoPanSelector old) {
+    super.didUpdateWidget(old);
+    if (!widget.enabled) _end();
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => !widget.enabled
+      ? widget.child
+      : RawGestureDetector(
+          behavior: HitTestBehavior.translucent,
+          gestures: {
+            HorizontalDragGestureRecognizer:
+                GestureRecognizerFactoryWithHandlers<
+                  HorizontalDragGestureRecognizer
+                >(() => HorizontalDragGestureRecognizer(), (g) {
+                  g
+                    ..onStart = (d) {
+                      widget.onStart?.call();
+                      _pointer = d.globalPosition;
+                      _lastTick = Duration.zero;
+                      _hit();
+                      _ticker.start();
+                    }
+                    ..onUpdate = (d) {
+                      _pointer = d.globalPosition;
+                      _hit();
+                    }
+                    ..onEnd = (_) {
+                      _end();
+                    }
+                    ..onCancel = _end;
+                }),
+          },
+          child: widget.child,
+        );
 }

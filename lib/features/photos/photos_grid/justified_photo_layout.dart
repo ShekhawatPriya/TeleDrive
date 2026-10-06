@@ -22,18 +22,93 @@ PhotoLayout layoutPhotos(
   required double width,
   required int columns,
   required double gap,
+  bool square = false,
 }) {
   final rects = <Rect>[];
   if (files.isEmpty || width <= 0) return PhotoLayout(rects, 0);
   final baseHeight = (width - gap * (columns - 1)) / columns;
+  if (square || columns >= 4) {
+    for (var i = 0; i < files.length; i++) {
+      rects.add(
+        Rect.fromLTWH(
+          (i % columns) * (baseHeight + gap),
+          (i ~/ columns) * (baseHeight + gap),
+          baseHeight,
+          baseHeight,
+        ),
+      );
+    }
+    return PhotoLayout(rects, rects.last.bottom);
+  }
+  double aspect(DriveFile file) {
+    final w = file.widthPx ?? 0, h = file.heightPx ?? 0;
+    return w > 0 && h > 0 ? (w / h).clamp(.65, 1.9) : 1;
+  }
+
   var start = 0, rowIndex = 0;
   var y = 0.0;
   while (start < files.length) {
     // Identity-seeded emphasis is distributed throughout each date group.
     // Incomplete final rows never decide which photo deserves more space.
     final seed = files[start].id.codeUnits.fold(0, (a, b) => a * 31 + b);
-    final featured = columns <= 3 && rowIndex % 4 == (seed.abs() % 3);
-    final target = baseHeight * (featured ? 1.35 : 1.0);
+    final featured = rowIndex % 4 == (seed.abs() % 3);
+    // A completed three-item block never changes when another page arrives.
+    // Give the first image more area without changing its source proportions.
+    if (featured && files.length - start >= 3) {
+      final a = aspect(files[start]);
+      final b = aspect(files[start + 1]);
+      final c = aspect(files[start + 2]);
+      if (a >= 1.2) {
+        final featuredHeight = (width / a).clamp(
+          baseHeight * 1.1,
+          baseHeight * 1.9,
+        );
+        final rowHeight = (width - gap) / (b + c);
+        rects.add(Rect.fromLTWH(0, y, width, featuredHeight));
+        rects.add(
+          Rect.fromLTWH(0, y + featuredHeight + gap, rowHeight * b, rowHeight),
+        );
+        rects.add(
+          Rect.fromLTWH(
+            rowHeight * b + gap,
+            y + featuredHeight + gap,
+            rowHeight * c,
+            rowHeight,
+          ),
+        );
+        y += featuredHeight + rowHeight + gap * 2;
+        start += 3;
+        rowIndex++;
+        continue;
+      }
+      final stacked = 1 / b + 1 / c;
+      final leftWidth =
+          (a * ((width - gap) * stacked + gap) / (1 + a * stacked)).clamp(
+            width * .36,
+            width * .66,
+          );
+      final rightWidth = width - gap - leftWidth;
+      final height = (leftWidth / a).clamp(baseHeight * 1.4, baseHeight * 2.6);
+      final topHeight = ((height - gap) * c / (b + c)).clamp(
+        44.0,
+        height - gap - 44,
+      );
+      rects.add(Rect.fromLTWH(0, y, leftWidth, height));
+      rects.add(Rect.fromLTWH(leftWidth + gap, y, rightWidth, topHeight));
+      rects.add(
+        Rect.fromLTWH(
+          leftWidth + gap,
+          y + topHeight + gap,
+          rightWidth,
+          height - topHeight - gap,
+        ),
+      );
+      y += height + gap;
+      start += 3;
+      rowIndex++;
+      continue;
+    }
+    final target = baseHeight;
     final ratios = <double>[];
     var sum = 0.0;
     while (start + ratios.length < files.length) {
@@ -42,7 +117,6 @@ PhotoLayout layoutPhotos(
       var ratio = w > 0 && h > 0
           ? (w / h).clamp(math.max(.65, 44 / baseHeight), 1.9).toDouble()
           : 1.0;
-      if (featured && ratios.isEmpty) ratio = math.max(ratio, 1.65);
       final before = ratios.isEmpty
           ? double.infinity
           : (width - gap * (ratios.length - 1)) / sum;

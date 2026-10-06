@@ -16,6 +16,10 @@ final driveTabCommandsProvider = ChangeNotifierProvider<DriveTabCommands>(
   (_) => DriveTabCommands(),
 );
 
+final photosTabCommandsProvider = ChangeNotifierProvider<DriveTabCommands>(
+  (_) => DriveTabCommands(),
+);
+
 class SelectionModeState extends ChangeNotifier {
   bool _driveSelectMode = false;
   bool _photosSelectMode = false;

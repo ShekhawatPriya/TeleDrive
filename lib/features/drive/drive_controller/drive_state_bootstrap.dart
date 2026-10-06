@@ -43,6 +43,7 @@ extension _DriveStateBootstrap on DriveController {
     state = state.copyWith(
       mediaFiles: updatedMedia,
       mediaCursor: snapshot.mediaCursor,
+      mediaError: null,
       loading: false,
       clearError: true,
     );
@@ -54,7 +55,7 @@ extension _DriveStateBootstrap on DriveController {
   Future<void> _loadMoreMedia() async {
     final generation = _accountGeneration;
     if (state.mediaCursor == null || state.loadingMoreMedia) return;
-    state = state.copyWith(loadingMoreMedia: true);
+    state = state.copyWith(loadingMoreMedia: true, mediaError: null);
     _notifyListeners();
     try {
       final page = await _repo.listFiles(
@@ -75,7 +76,10 @@ extension _DriveStateBootstrap on DriveController {
       );
     } catch (_) {
       if (!_isCurrentAccount(generation)) return;
-      state = state.copyWith(loadingMoreMedia: false);
+      state = state.copyWith(
+        loadingMoreMedia: false,
+        mediaError: 'Could not load more photos.',
+      );
     }
     _notifyListeners();
   }

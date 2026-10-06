@@ -12,7 +12,9 @@ local upload thumbnails retain Flutter's immediate image-cache path.
 - Visible work precedes the 200-point nearby window. Admit at most four loads,
   at most one nearby prefetch, and at most one original-photo fallback.
   Originals are never prefetched. Decode remains bounded by the existing
-  per-widget decode width (320 for grid thumbnails, 960 for the library cover).
+  per-widget decode width (320/640/960 buckets for Photos tiles, chosen for
+  their rendered size). The covered library suspends thumbnail work while its
+  viewer is open, retaining its geometry and decoded images for the return.
 - Promote queued work when it becomes visible. When new visible demand exceeds
   free capacity, cancel running nearby work. Release work when the final tile
   stops needing it, a route/tab becomes inactive, or the app leaves the

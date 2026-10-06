@@ -27,6 +27,8 @@ import UserNotifications
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     let messenger = engineBridge.applicationRegistrar.messenger()
+    engineBridge.applicationRegistrar.register(
+      PhotoVideoFactory(messenger: messenger), withId: "teledrive/photo-video")
     accessibilityPreferences = AccessibilityPreferences(messenger: messenger)
     engineBridge.applicationRegistrar.register(
       GlassButtonFactory(messenger: messenger), withId: "teledrive/glass-button")
@@ -38,6 +40,8 @@ import UserNotifications
       SelectionToolbarFactory(messenger: messenger), withId: "teledrive/selection-toolbar")
     engineBridge.applicationRegistrar.register(
       NativeSearchFactory(messenger: messenger), withId: "teledrive/search")
+    engineBridge.applicationRegistrar.register(
+      PhotosLibraryControlsFactory(messenger: messenger), withId: "teledrive/photos-controls")
     FlutterMethodChannel(name: "teledrive/appearance", binaryMessenger: messenger)
       .setMethodCallHandler { call, result in
         if call.method == "chooseUploadSource" { self.uploadSourceChooser.show(call.arguments, result: result) }
@@ -46,7 +50,9 @@ import UserNotifications
             .flatMap { $0.windows }.forEach { $0.endEditing(true) }
           result(nil)
         }
+        else if call.method == "supportsPhotoVideo" { result(true) }
         else if call.method == "supportsNativeSearch" { result(true) }
+        else if call.method == "supportsPhotosControls" { result(true) }
         else if call.method == "supportsContextMenus" { result(true) }
         else if call.method == "supportsSelectionToolbar" { result(true) }
         else if call.method == "supportsNativeTabs" { result(true) }

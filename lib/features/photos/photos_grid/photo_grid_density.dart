@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+enum PhotoGridStyle { mosaic, square }
+
 class PhotoGridDensity extends ChangeNotifier {
   PhotoGridDensity({this.min = 2, this.max = 5, int initial = 3})
     : _columns = initial.clamp(min, max) {
@@ -13,6 +15,8 @@ class PhotoGridDensity extends ChangeNotifier {
   final int min;
   final int max;
   int _columns;
+  PhotoGridStyle _style = PhotoGridStyle.mosaic;
+  PhotoGridStyle get style => _style;
   bool _disposed = false;
   int _revision = 0;
 
@@ -29,6 +33,8 @@ class PhotoGridDensity extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     if (_disposed || revision != _revision) return;
     final stored = prefs.getInt(_key);
+    final style = prefs.getString('${_key}_style');
+    if (style == 'square') _style = PhotoGridStyle.square;
     if (stored != null &&
         stored >= min &&
         stored <= max &&
@@ -36,6 +42,16 @@ class PhotoGridDensity extends ChangeNotifier {
       _columns = stored;
       notifyListeners();
     }
+    if (style == 'square') notifyListeners();
+  }
+
+  Future<void> setStyle(PhotoGridStyle value) async {
+    if (_style == value) return;
+    _revision++;
+    _style = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('${_key}_style', value.name);
   }
 
   Future<void> set(int next) async {
