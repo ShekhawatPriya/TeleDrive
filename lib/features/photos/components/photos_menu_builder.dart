@@ -9,6 +9,7 @@ import '../photos_grid/photo_grid_density.dart';
 List<IosMenuSection> buildPhotosMenuSections(
   BuildContext context, {
   required PhotoGridDensity density,
+  VoidCallback? onSelect,
 }) {
   // `density.columns` is inverted relative to "size": higher columns mean
   // smaller tiles. We surface the user-facing labels so the menu reads
@@ -17,6 +18,27 @@ List<IosMenuSection> buildPhotosMenuSections(
   final atLargest = density.columns <= density.min; // largest tiles
 
   return [
+    if (onSelect != null)
+      IosMenuSection([
+        IosMenuItem(
+          label: 'Select',
+          leadingIcon: Icons.check_circle_outline,
+          onTap: onSelect,
+        ),
+      ]),
+    IosMenuSection([
+      for (final style in PhotoGridStyle.values)
+        IosMenuItem(
+          label: style == PhotoGridStyle.mosaic
+              ? 'Featured mosaic'
+              : 'Square grid',
+          leadingIcon: style == PhotoGridStyle.mosaic
+              ? Icons.dashboard_outlined
+              : Icons.grid_on,
+          checked: density.style == style,
+          onTap: () => density.setStyle(style),
+        ),
+    ]),
     IosMenuSection([
       IosMenuItem(
         label: 'Smaller tiles',

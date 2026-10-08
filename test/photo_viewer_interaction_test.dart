@@ -40,6 +40,8 @@ final files = List.generate(
 class Drive extends ChangeNotifier implements DriveController {
   List<DriveFile> items = [...files];
   @override
+  int get accountGeneration => 0;
+  @override
   List<DriveFile> photoFiles(String filter) => items;
   @override
   Future<void> markAccessed(String id) async {}

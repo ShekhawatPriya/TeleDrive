@@ -147,6 +147,13 @@ class _PreviewState extends State<_Preview> {
                     ]),
                     IosMenuSection([
                       IosMenuItem(
+                        label: 'Revoke link',
+                        leadingIcon: Icons.link_off_outlined,
+                        destructive: true,
+                        onTap: () =>
+                            setState(() => message = 'Revoked fixture link'),
+                      ),
+                      IosMenuItem(
                         label: 'Select',
                         onTap: () => setState(() {
                           select = true;

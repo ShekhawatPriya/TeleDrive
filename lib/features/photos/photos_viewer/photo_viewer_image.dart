@@ -3,6 +3,8 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
+import '../../../core/media/photo_media_loader.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,10 +20,12 @@ class PhotoViewerImage extends ConsumerStatefulWidget {
     required this.onTap,
     this.onDimensions,
     this.onZoomChanged,
+    this.active = false,
     super.key,
   });
 
   final DriveFile file;
+  final bool active;
   final VoidCallback onTap;
   final ValueChanged<Size>? onDimensions;
   final ValueChanged<bool>? onZoomChanged;
@@ -32,6 +36,66 @@ class PhotoViewerImage extends ConsumerStatefulWidget {
 
 class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
   final _zoomController = PhotoViewController();
+  CancelToken? _originalCancel, _localCancel;
+  Timer? _originalDelay;
+  ImageProvider? _originalProvider;
+  String? _originalError;
+  double? _upgradeRelativeScale;
+  Offset? _upgradePosition;
+
+  void _prepareOriginal() {
+    if (!widget.active ||
+        _originalProvider != null ||
+        _originalError != null ||
+        _originalCancel != null ||
+        !(widget.file.originalRefAvailable || widget.file.isClientManaged))
+      return;
+    _originalDelay?.cancel();
+    _originalDelay = Timer(const Duration(milliseconds: 180), () async {
+      if (!mounted || !widget.active) return;
+      final sourceKey = _sourceKey;
+      final token = CancelToken();
+      _originalCancel = token;
+      try {
+        final original = await ref
+            .read(photoMediaLoaderProvider)
+            .original(widget.file, token);
+        if (!mounted ||
+            token.isCancelled ||
+            sourceKey != _sourceKey ||
+            !widget.active)
+          return;
+        final viewport = _viewport, size = _decodedSize;
+        if (viewport != null && size != null && _zoomController.scale != null) {
+          _upgradeRelativeScale =
+              _zoomController.scale! /
+              math.min(
+                viewport.width / size.width,
+                viewport.height / size.height,
+              );
+          _upgradePosition = _zoomController.position;
+        }
+        final provider = ResizeImage(
+          FileImage(original),
+          width: 4096,
+          height: 4096,
+          policy: ResizeImagePolicy.fit,
+          allowUpscaling: false,
+        );
+        _attachProvider(provider);
+        setState(() {
+          _originalProvider = provider;
+          _originalError = null;
+        });
+      } catch (_) {
+        if (mounted && !token.isCancelled && sourceKey == _sourceKey)
+          setState(() => _originalError = 'Full resolution unavailable');
+      } finally {
+        if (identical(_originalCancel, token)) _originalCancel = null;
+      }
+    });
+  }
+
   StreamSubscription<PhotoViewControllerValue>? _zoomSubscription;
   Size? _decodedSize;
   Size? _viewport;
@@ -70,6 +134,7 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
     );
     _sourceKey = _sourceKeyFor(widget.file);
     _setupImageListener();
+    _prepareOriginal();
   }
 
   @override
@@ -77,6 +142,12 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
     super.didUpdateWidget(oldWidget);
     final nextKey = _sourceKeyFor(widget.file);
     if (_sourceKey != nextKey) {
+      _originalCancel?.cancel();
+      _originalCancel = null;
+      _originalDelay?.cancel();
+      _originalProvider = null;
+      _originalError = null;
+      _localCancel?.cancel();
       _sourceKey = nextKey;
       _decodedSize = null;
       _localKey = null;
@@ -84,10 +155,23 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
       _failedUrls.clear();
       _setupImageListener();
     }
+    if (!widget.active) {
+      _originalDelay?.cancel();
+      _originalCancel?.cancel();
+      _originalCancel = null;
+      _localCancel?.cancel();
+      _localKey = null;
+      _localFuture = null;
+    } else if (!oldWidget.active || _sourceKeyFor(oldWidget.file) != nextKey) {
+      _prepareOriginal();
+    }
   }
 
   @override
   void dispose() {
+    _originalDelay?.cancel();
+    _originalCancel?.cancel();
+    _localCancel?.cancel();
     _zoomSubscription?.cancel();
     _zoomController.dispose();
     _cleanImageListener();
@@ -131,6 +215,17 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted && sourceKey == _sourceKey) {
             widget.onDimensions?.call(dimensions);
+            final relative = _upgradeRelativeScale, viewport = _viewport;
+            if (relative != null && viewport != null) {
+              _upgradeRelativeScale = null;
+              _zoomController.scale =
+                  relative *
+                  math.min(
+                    viewport.width / dimensions.width,
+                    viewport.height / dimensions.height,
+                  );
+              _zoomController.position = _upgradePosition ?? Offset.zero;
+            }
             _reportZoom();
           }
         });
@@ -159,7 +254,7 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
     final variants = MediaSourceResolver.imageTelegramVariants(
       file,
       MediaImageUse.fullImage,
-    );
+    ).where((variant) => variant != 'original').toList();
     if (variants.isEmpty) return null;
     final key =
         '${file.id}:${variants.join(',')}:${file.previewVersion ?? 0}:'
@@ -173,12 +268,20 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
 
   Future<File?> _downloadLocal(DriveFile file) async {
     final sourceKey = _sourceKey;
+    final cancel = CancelToken();
+    _localCancel = cancel;
     final local = await MediaSourceResolver.downloadFirstTelegramImage(
       ref,
       file,
       MediaImageUse.fullImage,
+      cancelToken: cancel,
+      allowOriginal: false,
     );
-    if (local != null && mounted && sourceKey == _sourceKey) {
+    if (local != null &&
+        mounted &&
+        !cancel.isCancelled &&
+        _originalProvider == null &&
+        sourceKey == _sourceKey) {
       _attachProvider(FileImage(local));
       setState(() {});
     }
@@ -188,6 +291,7 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
   @override
   Widget build(BuildContext context) {
     final file = widget.file;
+    if (_originalProvider != null) return _photoView(_originalProvider!);
     final urls = MediaSourceResolver.imageUrls(
       file,
       MediaImageUse.fullImage,
@@ -220,6 +324,19 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
           },
         );
       }
+      if (widget.active &&
+          _originalError == null &&
+          (file.originalRefAvailable || file.isClientManaged)) {
+        return const Center(
+          child: SizedBox(
+            width: 32,
+            height: 32,
+            child: CircularProgressIndicator.adaptive(
+              semanticsLabel: 'Preparing photo',
+            ),
+          ),
+        );
+      }
       return _fallback(context);
     }
 
@@ -242,13 +359,12 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
         return PhotoView(
           controller: _zoomController,
           imageProvider: imageProvider,
-          heroAttributes: PhotoViewHeroAttributes(
-            tag: 'photo-${widget.file.id}',
-          ),
+
           minScale: PhotoViewComputedScale.contained,
           maxScale: PhotoViewComputedScale.covered * 4,
           initialScale: PhotoViewComputedScale.contained,
-          backgroundDecoration: const BoxDecoration(color: Colors.black),
+          backgroundDecoration: const BoxDecoration(color: Colors.transparent),
+          gaplessPlayback: true,
           onTapUp: (_, __, ___) => widget.onTap(),
           loadingBuilder: (_, __) => const Center(
             child: SizedBox(
@@ -263,6 +379,18 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
           errorBuilder: (_, err, _) {
             if (url != null) return _urlError(url, err);
             _debug('Local photo decode failed', err);
+            if (identical(imageProvider, _originalProvider)) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted || !identical(imageProvider, _originalProvider))
+                  return;
+                setState(() {
+                  _originalProvider = null;
+                  _originalError = 'Full resolution unavailable';
+                  _setupImageListener();
+                });
+              });
+              return const SizedBox.shrink();
+            }
             return _fallback(context);
           },
         );
@@ -299,24 +427,41 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
       '${file.id}|${file.previewUrl}|${file.thumbnailUrl}|'
       '${file.previewRefAvailable}|${file.thumbnailRefAvailable}|'
       '${file.originalRefAvailable}|${file.previewVersion}|'
-      '${file.thumbnailVersion}|${file.uploadStatus}';
+      '${file.thumbnailVersion}|${file.uploadStatus}|${file.modifiedAt}|${file.size}';
 
   void _debug(String message, Object err) {
     if (!kDebugMode) return;
     debugPrint('$message: $err');
   }
 
-  Widget _fallback(BuildContext context) {
-    return GestureDetector(
-      onTap: widget.onTap,
-      behavior: HitTestBehavior.opaque,
-      child: const Center(
-        child: Icon(
+  Widget _fallback(BuildContext context) => Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(
           Icons.broken_image_outlined,
           color: Colors.white54,
-          size: 64,
+          size: 48,
         ),
-      ),
-    );
-  }
+        const SizedBox(height: 12),
+        Text(
+          _originalError ?? 'Could not load this photo.',
+          style: const TextStyle(color: Colors.white),
+        ),
+        TextButton(
+          onPressed: () {
+            setState(() {
+              _failedUrls.clear();
+              _localKey = null;
+              _localFuture = null;
+              _originalProvider = null;
+              _setupImageListener();
+            });
+            _prepareOriginal();
+          },
+          child: const Text('Try again'),
+        ),
+      ],
+    ),
+  );
 }

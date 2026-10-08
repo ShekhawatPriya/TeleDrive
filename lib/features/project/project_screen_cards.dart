@@ -149,72 +149,76 @@ class _AboutCard extends StatelessWidget {
 
     const points = <(IconData, String, String)>[
       (
-        Icons.all_inclusive_rounded,
-        'Unlimited by design',
-        'Files live in your own Telegram account, so storage scales with you, '
-            'not a paid tier.',
+        Icons.folder_outlined,
+        'Your Telegram library',
+        'Keep files, photos, and videos together in your Telegram account.',
       ),
       (
         Icons.lock_outline_rounded,
-        'Yours, privately',
-        'No middle-man servers hold your data. TeleDrive talks to Telegram '
-            'directly on your behalf.',
+        'Direct file transfers',
+        'Original files transfer directly between this device and Telegram. '
+            'The service keeps your library metadata.',
       ),
       (
-        Icons.auto_awesome_outlined,
-        'Where it is heading',
-        'Smarter organisation, shared spaces, and faster transfers are on the '
-            'roadmap. The changelog tracks every step.',
+        Icons.star_outline_rounded,
+        'Find, organise, share',
+        'Browse folders, star favourites, share files, and switch between '
+            'your saved accounts.',
       ),
     ];
 
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.2)),
-      ),
-      padding: const EdgeInsets.all(AppSpacing.md),
+    Widget point(int i) {
+      final icon = Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: scheme.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(points[i].$1, color: scheme.primary, size: 20),
+      );
+      final copy = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            points[i].$2,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            points[i].$3,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+              height: 1.4,
+            ),
+          ),
+        ],
+      );
+      if (MediaQuery.textScalerOf(context).scale(1) >= 1.5) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [icon, const SizedBox(height: 12), copy],
+        );
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          icon,
+          const SizedBox(width: AppSpacing.md),
+          Expanded(child: copy),
+        ],
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (var i = 0; i < points.length; i++) ...[
-            if (i > 0) const SizedBox(height: AppSpacing.md),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: scheme.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(points[i].$1, color: scheme.primary, size: 20),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        points[i].$2,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        points[i].$3,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            if (i > 0) const SizedBox(height: 24),
+            point(i),
           ],
         ],
       ),

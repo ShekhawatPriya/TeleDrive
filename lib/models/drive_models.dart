@@ -28,6 +28,7 @@ class DriveState {
     this.error,
     this.mediaCursor,
     this.loadingMoreMedia = false,
+    this.mediaError,
     this.deleteProgress,
     this.activeFolderId,
     this.trashRevision = 0,
@@ -52,6 +53,7 @@ class DriveState {
   final String? error;
   final String? mediaCursor;
   final bool loadingMoreMedia;
+  final String? mediaError;
   final ({int completed, int failed, int total})? deleteProgress;
   final String? activeFolderId;
   final int trashRevision;
@@ -68,6 +70,7 @@ class DriveState {
     String? error,
     Object? mediaCursor = _unset,
     bool? loadingMoreMedia,
+    Object? mediaError = _unset,
     ({int completed, int failed, int total})? deleteProgress,
     bool clearError = false,
     bool clearDeleteProgress = false,
@@ -88,6 +91,9 @@ class DriveState {
           ? this.mediaCursor
           : mediaCursor as String?,
       loadingMoreMedia: loadingMoreMedia ?? this.loadingMoreMedia,
+      mediaError: mediaError == _unset
+          ? this.mediaError
+          : mediaError as String?,
       deleteProgress: clearDeleteProgress
           ? null
           : deleteProgress ?? this.deleteProgress,

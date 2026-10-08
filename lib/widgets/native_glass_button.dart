@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -36,6 +37,7 @@ class _NativeGlassButtonState extends State<NativeGlassButton> {
   MethodChannel? _channel;
   bool _available = false;
   bool _checked = false;
+  Map<String, Object>? _lastConfiguration;
   Map<String, Object> get _configuration => {
     'label': widget.label,
     'symbol': widget.symbol,
@@ -80,8 +82,12 @@ class _NativeGlassButtonState extends State<NativeGlassButton> {
   }
 
   void _update() {
+    if (_channel == null) return;
+    final configuration = _configuration;
+    if (mapEquals(configuration, _lastConfiguration)) return;
+    _lastConfiguration = configuration;
     _channel
-        ?.invokeMethod<void>('update', _configuration)
+        ?.invokeMethod<void>('update', configuration)
         .catchError((Object _) {});
   }
 
@@ -101,6 +107,7 @@ class _NativeGlassButtonState extends State<NativeGlassButton> {
             creationParamsCodec: const StandardMessageCodec(),
             creationParams: _configuration,
             onPlatformViewCreated: (id) {
+              _lastConfiguration = null;
               _channel = MethodChannel('teledrive/glass-button/$id');
               _channel!.setMethodCallHandler((call) async {
                 if (call.method == 'tap') widget.onPressed?.call();

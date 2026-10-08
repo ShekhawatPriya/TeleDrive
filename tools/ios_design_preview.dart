@@ -1,4 +1,5 @@
 import 'package:flutter_m_fsdk/features/upload/upload_source_picker.dart';
+import 'package:flutter_m_fsdk/widgets/ios/ios_accessibility.dart';
 import 'package:flutter_m_fsdk/widgets/drive_search_field.dart';
 import 'package:flutter_m_fsdk/widgets/search_keyboard.dart';
 import 'package:flutter_m_fsdk/features/search/search_controller.dart';
@@ -77,6 +78,7 @@ class PreviewApp extends ConsumerWidget {
     theme: buildTheme(AppBrand.scheme(Brightness.light)),
     darkTheme: buildTheme(AppBrand.scheme(Brightness.dark)),
     themeMode: ref.watch(themeControllerProvider).mode,
+    builder: (context, child) => IosAccessibility(child: child!),
   );
 }
 

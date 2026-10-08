@@ -5,6 +5,8 @@ import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/network/api_client.dart';
+import '../../core/utils/stable_hash.dart';
+import '../../core/config/app_config.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../core/utils/jwt.dart';
 import '../../models/account_vault.dart';
@@ -205,6 +207,27 @@ class AuthRepository {
     return user;
   }
 
+  /// Refresh one saved identity without changing the shared API token or
+  /// persisting it as the active user. The backend checks the current main
+  /// Telegram photo ID and downloads bytes only if that ID changed.
+  Future<AuthUser> fetchAccountProfile(SavedAccount account) async {
+    final res = await api.dio.get(
+      '/me',
+      queryParameters: {'refresh_telegram': true},
+      options: Options(headers: {'Authorization': 'Bearer ${account.token}'}),
+    );
+    final parsed = AuthUser.fromMeJson(
+      Map<String, dynamic>.from(res.data as Map),
+    );
+    if (parsed.userId != account.userId ||
+        (parsed.telegramId != 0 && parsed.telegramId != account.telegramId)) {
+      throw const FormatException(
+        'Profile response belongs to another account.',
+      );
+    }
+    return _withLoadablePhotoUrl(parsed, tokenOverride: account.token);
+  }
+
   Future<void> saveToken(String token) async {
     api.setToken(token);
     await storage.saveToken(token);
@@ -223,16 +246,20 @@ class AuthRepository {
           : source;
     }
     try {
+      final dir = await this._profilePhotoDir();
+      final uri = Uri.tryParse(source);
+      final params = Map<String, String>.from(uri?.queryParameters ?? {})
+        ..remove('token');
+      final identity =
+          uri?.replace(queryParameters: params).toString() ?? source;
+      final file = File(
+        '${dir.path}${Platform.pathSeparator}${user.userId}_${user.telegramId}_${stableHash(identity)}.jpg',
+      );
+      if (await file.exists()) return file.path;
       final bytes = source.startsWith('data:image')
           ? _decodeDataImage(source)
           : await _downloadProfilePhoto(source);
       if (bytes == null || bytes.isEmpty) return null;
-      final dir = await this._profilePhotoDir();
-      await this._deleteCachedProfilePhotoFiles(user.userId);
-      final stamp = DateTime.now().millisecondsSinceEpoch;
-      final file = File(
-        '${dir.path}${Platform.pathSeparator}${user.userId}_${user.telegramId}_$stamp.jpg',
-      );
       await file.writeAsBytes(bytes, flush: true);
       return file.path;
     } catch (_) {

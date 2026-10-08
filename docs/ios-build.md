@@ -40,7 +40,7 @@ and friends have shifted between 1.8.x releases.
 - macOS with **Xcode 26+** (`xcode-select --install` for command-line tools)
 - **CocoaPods** (`sudo gem install cocoapods` or via Homebrew) — the project
   uses Swift Package Manager for SPM-ready plugins and CocoaPods for the rest
-- **Flutter 3.44.x** on the stable channel (`flutter --version` should match
+- **Flutter 3.44.1** (`flutter --version` should match
   the version pinned by CI/the Windows dev machine)
 - A `.env.local` at the repo root (same file the Android build uses), since
   it is bundled as a Flutter asset
@@ -147,6 +147,9 @@ Run through `docs/tdlib-real-device-verification.md`. iOS-specific additions:
   check `ios/Runner/AppDelegate.swift` compiles and is the `@main` class;
   never register channels via `window?.rootViewController` (crashes under
   the UIScene template).
+- **Menu subtitle availability error**: keep the iOS 16 guard on
+  `UIAction.subtitle` even though the glass button uses iOS 26 APIs. The
+  containing bridge still compiles against the app's iOS 15 deployment target.
 - **Linker errors for `td_*` symbols**: the TDLibFramework product is
   missing from Runner → General → Frameworks; re-add the package product to
   the Runner target.

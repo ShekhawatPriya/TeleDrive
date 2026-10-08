@@ -30,33 +30,43 @@ class ChangelogService {
 
   final Dio _dio;
 
-  Future<List<GithubRelease>> fetchReleases({int perPage = 30}) async {
+  Future<List<GithubRelease>> fetchReleases({int perPage = 100}) async {
     final url = AppConfig.githubReleasesApiUrl;
     if (url.isEmpty) return const [];
 
-    final token = AppConfig.githubToken;
-    final Response<dynamic> response;
-    try {
-      response = await _dio.getUri<dynamic>(
-        Uri.parse(url).replace(queryParameters: {'per_page': '$perPage'}),
-        options: Options(
-          responseType: ResponseType.plain,
-          followRedirects: true,
-          headers: {
-            'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28',
-            if (token.isNotEmpty) 'Authorization': 'Bearer $token',
-          },
-        ),
-      );
-    } on DioException catch (e) {
-      throw ChangelogFetchException(_describeDioError(e));
-    } catch (_) {
-      throw ChangelogFetchException('Network error');
-    }
+    final releases = <GithubRelease>[];
+    for (var page = 1; ; page++) {
+      final Response<dynamic> response;
+      try {
+        response = await _dio.getUri<dynamic>(
+          Uri.parse(url).replace(
+            queryParameters: {
+              'per_page': '${perPage.clamp(1, 100)}',
+              'page': '$page',
+            },
+          ),
+          options: Options(
+            responseType: ResponseType.plain,
+            followRedirects: true,
+            headers: {
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+            },
+          ),
+        );
+      } on DioException catch (e) {
+        throw ChangelogFetchException(_describeDioError(e));
+      } catch (_) {
+        throw ChangelogFetchException('Network error');
+      }
 
-    final decoded = _decodeBody(response.data);
-    return GithubRelease.parseList(decoded);
+      final decoded = _decodeBody(response.data);
+      if (decoded is! List) {
+        throw ChangelogFetchException('GitHub returned invalid release data');
+      }
+      releases.addAll(GithubRelease.parseList(decoded));
+      if (decoded.length < perPage.clamp(1, 100)) return releases;
+    }
   }
 
   Object? _decodeBody(Object? raw) {

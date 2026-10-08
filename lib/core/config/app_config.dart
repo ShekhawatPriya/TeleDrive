@@ -15,7 +15,7 @@ class AppConfig {
   // GitHub repository that hosts the source code AND the published Releases
   // (APK + latest.json) that drive both the Changelog and the in-app updater.
   static const _fallbackGithubOwner = 'ShekhawatPriya';
-  static const _fallbackGithubRepo = 'TG-Cloud-Drive';
+  static const _fallbackGithubRepo = 'TeleDrive';
   static String get _fallbackUpdateManifestUrl =>
       'https://github.com/$githubOwner/$githubRepo/releases/latest/download/latest.json';
 

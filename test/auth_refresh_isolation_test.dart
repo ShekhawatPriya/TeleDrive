@@ -50,6 +50,16 @@ class _Repository extends AuthRepository {
   }
 
   @override
+  Future<AuthUser> fetchAccountProfile(SavedAccount account) async {
+    final user = snapshot != null
+        ? (await snapshot!.future).user
+        : account.toAuthUser();
+    return photo == null
+        ? user
+        : user.copyWith(photoUrl: 'https://backend.example.test/photo.jpg');
+  }
+
+  @override
   Future<String?> cacheProfilePhoto(AuthUser user) async {
     photoCalls++;
     return photo?.future;

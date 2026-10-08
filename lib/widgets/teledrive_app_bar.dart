@@ -89,8 +89,10 @@ class TeleDriveTopBar extends StatelessWidget {
                 const AccountButton(avatarSize: 44),
               ],
             ),
-            const SizedBox(height: 16),
-            DriveSearchField(key: ValueKey(scope), scope: scope),
+            if (scope != SearchScope.photos) ...[
+              const SizedBox(height: 16),
+              DriveSearchField(key: ValueKey(scope), scope: scope),
+            ],
           ],
         ),
       ),

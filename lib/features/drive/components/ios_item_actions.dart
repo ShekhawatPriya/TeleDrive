@@ -115,7 +115,7 @@ class IosItemActions extends StatelessWidget {
 
 IconData _actionIcon(SheetActionItem action) => switch (action.id) {
   'share' => CupertinoIcons.square_arrow_up,
-  'revoke_share' => CupertinoIcons.person_crop_circle_badge_minus,
+  'revoke_share' => Icons.link_off_outlined,
   'download' => CupertinoIcons.arrow_down_to_line,
   'rename' => CupertinoIcons.pencil,
   'move' => CupertinoIcons.folder,

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/navigation/root_navigator.dart';
+import 'core/navigation/recovery_page.dart';
 import 'features/app_update/app_update_screen.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/community_onboarding_screen.dart';
@@ -16,6 +17,7 @@ import 'features/drive/folder_screen.dart';
 import 'features/drive/starred_screen.dart';
 import 'features/file_viewer/file_viewer_screen.dart';
 import 'features/photos/photos_filter.dart';
+import 'features/photos/photos_viewer/photo_viewer_session.dart';
 import 'features/photos/photos_screen.dart';
 import 'features/photos/photos_viewer/photo_viewer_screen.dart';
 import 'features/profile/archive_screen.dart';
@@ -215,18 +217,27 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/settings/trash',
-        pageBuilder: (context, state) =>
-            MaterialPage(key: state.pageKey, child: const TrashScreen()),
+        pageBuilder: (context, state) => recoveryPage(
+          context: context,
+          key: state.pageKey,
+          child: const TrashScreen(),
+        ),
       ),
       GoRoute(
         path: '/settings/archive',
-        pageBuilder: (context, state) =>
-            MaterialPage(key: state.pageKey, child: const ArchiveScreen()),
+        pageBuilder: (context, state) => recoveryPage(
+          context: context,
+          key: state.pageKey,
+          child: const ArchiveScreen(),
+        ),
       ),
       GoRoute(
         path: '/settings/locked',
-        pageBuilder: (context, state) =>
-            MaterialPage(key: state.pageKey, child: const LockedScreen()),
+        pageBuilder: (context, state) => recoveryPage(
+          context: context,
+          key: state.pageKey,
+          child: const LockedScreen(),
+        ),
       ),
       GoRoute(
         path: '/folder/:id',
@@ -245,9 +256,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/photos/view/:id',
-        builder: (_, state) => PhotoViewerScreen(
-          startId: state.pathParameters['id']!,
-          filter: PhotosFilterX.fromQuery(state.uri.queryParameters['filter']),
+        pageBuilder: (_, state) => CustomTransitionPage<void>(
+          key: state.pageKey,
+          opaque: false,
+          barrierDismissible: false,
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+          transitionsBuilder: (_, __, ___, child) => child,
+          child: PhotoViewerScreen(
+            startId: state.pathParameters['id']!,
+            filter: PhotosFilterX.fromQuery(
+              state.uri.queryParameters['filter'],
+            ),
+            query: state.uri.queryParameters['q'] ?? '',
+            session: state.extra is PhotoViewerSession
+                ? state.extra as PhotoViewerSession
+                : null,
+          ),
         ),
       ),
       GoRoute(

@@ -10,10 +10,16 @@ class DriveSearchField extends ConsumerStatefulWidget {
   const DriveSearchField({
     required this.scope,
     this.selectionMode = false,
+    this.autofocus = false,
+    this.onCancel,
     super.key,
   });
   final SearchScope scope;
   final bool selectionMode;
+  final bool autofocus;
+
+  /// A disclosed search stays open until its owner handles Cancel.
+  final VoidCallback? onCancel;
   @override
   ConsumerState<DriveSearchField> createState() => _DriveSearchFieldState();
 }
@@ -25,6 +31,7 @@ class _DriveSearchFieldState extends ConsumerState<DriveSearchField>
   late final AnimationController _split;
   MethodChannel? _native;
   bool _available = false, _checked = false, _active = false;
+  bool _nativeResolved = false;
   bool _reducedMotion = false;
 
   String get _hint => widget.selectionMode
@@ -46,14 +53,16 @@ class _DriveSearchFieldState extends ConsumerState<DriveSearchField>
     _split = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 320),
+      value: widget.onCancel != null ? 1 : 0,
     );
+    _active = widget.onCancel != null;
     _focus.addListener(_focusChanged);
   }
 
   void _focusChanged() {
     if (_focus.hasFocus)
       _setActive(true);
-    else if (_text.text.isEmpty)
+    else if (_text.text.isEmpty && widget.onCancel == null)
       _setActive(false);
   }
 
@@ -75,7 +84,10 @@ class _DriveSearchFieldState extends ConsumerState<DriveSearchField>
     _focus.unfocus();
     _native?.invokeMethod<void>('dismiss').catchError((Object _) {});
     dismissSearchKeyboard();
-    if (cancel || _text.text.isEmpty) _setActive(false);
+    if (widget.onCancel == null && (cancel || _text.text.isEmpty)) {
+      _setActive(false);
+    }
+    if (cancel) widget.onCancel?.call();
   }
 
   void _changed(String value) {
@@ -100,17 +112,23 @@ class _DriveSearchFieldState extends ConsumerState<DriveSearchField>
   }
 
   Future<void> _checkNative() async {
+    var supported = false;
     try {
-      final supported =
+      supported =
           await const MethodChannel(
             'teledrive/appearance',
           ).invokeMethod<bool>('supportsNativeSearch') ??
           false;
-      if (mounted) setState(() => _available = supported);
     } on PlatformException {
       /* Flutter fallback. */
     } on MissingPluginException {
       /* Portable test host. */
+    }
+    if (mounted) {
+      setState(() {
+        _available = supported;
+        _nativeResolved = true;
+      });
     }
   }
 
@@ -118,6 +136,8 @@ class _DriveSearchFieldState extends ConsumerState<DriveSearchField>
     'text': _text.text,
     'placeholder': _hint,
     'active': _active,
+    'autofocus': widget.autofocus,
+    'keepCancelVisible': widget.onCancel != null,
     'dark': Theme.of(context).brightness == Brightness.dark,
     'textScale': MediaQuery.textScalerOf(context).scale(17) / 17,
     'reduceMotion': _reducedMotion,
@@ -166,7 +186,12 @@ class _DriveSearchFieldState extends ConsumerState<DriveSearchField>
       onTapOutside: (_) => _dismiss(),
       child: SizedBox(
         height: height,
-        child: _available
+        // An autofocused Flutter field must not briefly own the keyboard before
+        // UIKit attaches: disposing that text-input client can hide UIKit's
+        // keyboard on the next frame, especially when reopening search.
+        child: ios && widget.autofocus && !_nativeResolved
+            ? const SizedBox.shrink()
+            : _available
             ? UiKitView(
                 viewType: 'teledrive/search',
                 creationParams: _configuration,
@@ -179,7 +204,9 @@ class _DriveSearchFieldState extends ConsumerState<DriveSearchField>
                       case 'began':
                         _setActive(true);
                       case 'ended':
-                        if (_text.text.isEmpty) _setActive(false);
+                        if (_text.text.isEmpty && widget.onCancel == null) {
+                          _setActive(false);
+                        }
                       case 'changed':
                         _text.text = call.arguments as String;
                         _changed(_text.text);
@@ -216,6 +243,7 @@ class _DriveSearchFieldState extends ConsumerState<DriveSearchField>
                           top: 0,
                           bottom: 0,
                           child: TextField(
+                            autofocus: widget.autofocus,
                             controller: _text,
                             focusNode: _focus,
                             textInputAction: TextInputAction.search,

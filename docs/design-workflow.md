@@ -1,5 +1,9 @@
 # TeleDrive frontend design direction
 
+Current Photos behavior is in [Gallery layout](gallery-and-profile-refresh.md)
+and [Photo viewer design](photo-viewer-design.md). These supersede the historical
+cover-led gallery and viewer descriptions below.
+
 Current contracts for the September 20 fixes are in
 [Mobile UX refinements](mobile-ux-refinements.md). They supersede the historical
 search, gallery and Account presentation described below.
@@ -20,7 +24,7 @@ The interface now gives content different levels of emphasis: larger recent prev
 | Secondary app bars | Centered titles by theme unless a screen overrides it | Leading titles by theme unless overridden |
 | Viewer controls | Frosted dark floating toolbar | Opaque dark floating toolbar |
 
-`AdaptiveSurface` is a Flutter approximation of frosted glass, not Apple's native Liquid Glass rendering engine. Glass is restricted to controls, with opaque fallbacks for high contrast, accessible navigation, and reduced animation. Flutter does not expose the independent iOS Reduce Transparency setting here; a native bridge is not implemented. Content cards stay opaque. Transitions retain the existing platform route behavior.
+`AdaptiveSurface` is a Flutter approximation of frosted glass, not Apple's native Liquid Glass rendering engine. Glass is restricted to controls, with opaque fallbacks for high contrast and the independently bridged iOS Reduce Transparency setting. Native UIKit controls and the current iPad sidebar are described in [iOS design](ios-design.md). Content cards stay opaque. Transitions retain the existing platform route behavior.
 
 ## Screen-by-screen review
 
@@ -54,9 +58,9 @@ Every routed page and the settings subpages were inspected in source. **Rendered
 | Cache & Storage | Existing space summary retained; group/switch refinement | Source review; cache regression tests |
 | Privacy & Security settings | Shared header/group/switch refinement | Source review; app-settings regression tests |
 | Notifications settings | Shared header/group/switch refinement | Source review; app-settings regression tests |
-| Archive / Locked | Collection context above recoverable items; existing restore/selection retained | Source review |
-| Trash | Recovery-focused introduction; destructive controls retained | Source review |
-| Project / Changelog | Android product hero, real maker artwork, content-sized social-link flow and editorial sections; iOS About composition and release timeline retained | Rendered Android light/dark and 320px/200% text; source review |
+| Archive / Locked | Shared Drive rows, native iOS hold and selection controls; Android Material treatment retained | Source review |
+| Trash | Shared native iOS recovery browser, lazy rows and confirmed destructive controls | Source review |
+| Project / Changelog | Purpose-grouped About content, compact live update preview, and expandable release history with author-defined categories; see ios-design.md | Rendered Android light/dark and 320px/200% text; source review |
 | App update | Existing status layouts retained; motion honors accessibility | Source review |
 | Privacy / Terms | Existing sections retained; page transition honors reduced motion | Source review |
 | Upload sheet, progress, selection, action menus | Existing actions retained; shell positions progress/FAB above the floating dock | Source review; selection/navigation regression tests |

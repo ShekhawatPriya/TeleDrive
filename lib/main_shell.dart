@@ -25,6 +25,7 @@ import 'widgets/main_tab_menu_sections.dart';
 import 'widgets/floating_pill_navigation_bar.dart';
 import 'widgets/teledrive_app_bar.dart';
 import 'widgets/search_keyboard.dart';
+import 'widgets/ios/ios_sidebar.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({required this.navigationShell, super.key});
@@ -107,26 +108,32 @@ class _MainShellState extends ConsumerState<MainShell>
               ? Row(
                   children: [
                     if (!hideNavigation)
-                      NavigationRail(
-                        selectedIndex: index,
-                        onDestinationSelected: _handleDestinationSelected,
-                        labelType: NavigationRailLabelType.all,
-                        leading: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 24),
-                          child: Icon(
-                            Icons.cloud_outlined,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                        destinations: [
-                          for (final item in driveDestinations)
-                            NavigationRailDestination(
-                              icon: Icon(item.icon),
-                              selectedIcon: Icon(item.selected),
-                              label: Text(item.label),
+                      if (Theme.of(context).platform == TargetPlatform.iOS)
+                        IosSidebar(
+                          selectedIndex: index,
+                          onSelected: _handleDestinationSelected,
+                        )
+                      else
+                        NavigationRail(
+                          selectedIndex: index,
+                          onDestinationSelected: _handleDestinationSelected,
+                          labelType: NavigationRailLabelType.all,
+                          leading: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            child: Icon(
+                              Icons.cloud_outlined,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
-                        ],
-                      ),
+                          ),
+                          destinations: [
+                            for (final item in driveDestinations)
+                              NavigationRailDestination(
+                                icon: Icon(item.icon),
+                                selectedIcon: Icon(item.selected),
+                                label: Text(item.label),
+                              ),
+                          ],
+                        ),
                     if (!hideNavigation) const VerticalDivider(width: 1),
                     Expanded(child: content),
                   ],
@@ -160,7 +167,9 @@ class _MainShellState extends ConsumerState<MainShell>
     final isSelectMode = selectState.isSelectModeForTab(routeIndex);
     return Column(
       children: [
-        if (!isSelectMode)
+        if (!isSelectMode &&
+            !(routeIndex == 1 &&
+                Theme.of(context).platform == TargetPlatform.iOS))
           TeleDriveTopBar(
             scope: _scopeFor(routeIndex),
             menuSections: (ctx) => _menuSectionsFor(ctx, routeIndex),
@@ -210,8 +219,20 @@ class _MainShellState extends ConsumerState<MainShell>
       1 => buildPhotosMenuSections(
         context,
         density: ref.read(photoGridDensityProvider),
+        onSelect: () => ref.read(photosTabCommandsProvider).requestSelectMode(),
       ),
-      2 => [...buildLayoutMenuSection(ref), ...buildSortMenuSection(ref)],
+      2 => [
+        IosMenuSection([
+          IosMenuItem(
+            label: 'Select',
+            leadingIcon: Icons.check_circle_outline,
+            onTap: () =>
+                ref.read(starredTabCommandsProvider).requestSelectMode(),
+          ),
+        ]),
+        ...buildLayoutMenuSection(ref),
+        ...buildSortMenuSection(ref),
+      ],
       _ => [
         IosMenuSection([
           IosMenuItem(

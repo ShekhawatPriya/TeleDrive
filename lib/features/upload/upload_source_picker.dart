@@ -9,17 +9,15 @@ Future<String?> chooseUploadSource(BuildContext context) async {
   try {
     return await const MethodChannel(
       'teledrive/appearance',
-    ).invokeMethod<String>(
-      'chooseUploadSource',
-      rect == null
-          ? null
-          : {
-              'x': rect.left,
-              'y': rect.top,
-              'width': rect.width,
-              'height': rect.height,
-            },
-    );
+    ).invokeMethod<String>('chooseUploadSource', {
+      'dark': CupertinoTheme.brightnessOf(context) == Brightness.dark,
+      if (rect != null) ...{
+        'x': rect.left,
+        'y': rect.top,
+        'width': rect.width,
+        'height': rect.height,
+      },
+    });
   } on MissingPluginException {
     // Portable tests and hosts without the bridge retain a Cupertino fallback.
   } on PlatformException {

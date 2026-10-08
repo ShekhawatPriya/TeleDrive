@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A12020261006000200000001 /* PhotosLibraryControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12020261006000200000002 /* PhotosLibraryControlsView.swift */; };
+        A12020261006000100000001 /* PhotoVideoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12020261006000100000002 /* PhotoVideoView.swift */; };
 		A12020260920000100000001 /* NativeSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12020260920000100000002 /* NativeSearchView.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
@@ -55,6 +57,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A12020261006000200000002 /* PhotosLibraryControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosLibraryControlsView.swift; sourceTree = "<group>"; };
+        A12020261006000100000002 /* PhotoVideoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoVideoView.swift; sourceTree = "<group>"; };
 		A12020260920000100000002 /* NativeSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSearchView.swift; sourceTree = "<group>"; };
 		1391718BB92111D8DDA334E2 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
@@ -189,6 +193,8 @@
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				A12020260920000100000002 /* NativeSearchView.swift */,
+				A12020261006000200000002 /* PhotosLibraryControlsView.swift */,
+                A12020261006000100000002 /* PhotoVideoView.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				DD1B000000000000000000C1 /* Tdlib */,
@@ -442,6 +448,8 @@
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				A12020260920000100000001 /* NativeSearchView.swift in Sources */,
+				A12020261006000200000001 /* PhotosLibraryControlsView.swift in Sources */,
+                A12020261006000100000001 /* PhotoVideoView.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 				DD1B000000000000000000B1 /* TdlibJsonClient.swift in Sources */,

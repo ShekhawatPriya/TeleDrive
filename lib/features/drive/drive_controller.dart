@@ -52,6 +52,7 @@ class DriveController extends ChangeNotifier {
   final AuthController _auth;
   DriveState state = const DriveState();
   int _accountGeneration = 0;
+  int get accountGeneration => _accountGeneration;
   bool _disposed = false;
   bool _isCurrentAccount(int generation) =>
       !_disposed && generation == _accountGeneration;

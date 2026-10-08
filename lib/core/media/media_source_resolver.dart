@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:dio/dio.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -51,8 +52,9 @@ class MediaSourceResolver {
   static Future<File?> downloadTelegramVariant(
     WidgetRef ref,
     DriveFile file,
-    String variant,
-  ) async {
+    String variant, {
+    CancelToken? cancelToken,
+  }) async {
     try {
       return await ref
           .read(telegramMediaAccessServiceProvider)
@@ -60,6 +62,7 @@ class MediaSourceResolver {
             file,
             variant: variant,
             timeout: timeoutForVariant(variant),
+            cancelToken: cancelToken,
           );
     } on TelegramClientException catch (err) {
       _debugFailure(file, variant, err);
@@ -73,10 +76,19 @@ class MediaSourceResolver {
   static Future<File?> downloadFirstTelegramImage(
     WidgetRef ref,
     DriveFile file,
-    MediaImageUse use,
-  ) async {
+    MediaImageUse use, {
+    CancelToken? cancelToken,
+    bool allowOriginal = true,
+  }) async {
     for (final variant in imageTelegramVariants(file, use)) {
-      final local = await downloadTelegramVariant(ref, file, variant);
+      if (variant == 'original' && !allowOriginal) continue;
+      if (cancelToken?.isCancelled ?? false) return null;
+      final local = await downloadTelegramVariant(
+        ref,
+        file,
+        variant,
+        cancelToken: cancelToken,
+      );
       if (local != null) return local;
     }
     return null;

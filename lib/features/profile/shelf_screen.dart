@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -13,6 +14,9 @@ import '../../widgets/media_thumb.dart';
 import '../drive/components/drive_dialogs.dart';
 import '../drive/components/selection_mode_mixin.dart';
 import '../drive/drive_controller.dart';
+import '../auth/auth_controller.dart';
+import '../../widgets/ios_more_menu.dart';
+import 'components/recovery_browser.dart';
 
 enum ShelfKind { archive, locked }
 
@@ -35,8 +39,33 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    ref.listenManual(
+      authControllerProvider.select(
+        (auth) => (auth.user?.userId, auth.user?.telegramId, auth.token),
+      ),
+      (previous, next) {
+        if (previous == next || !mounted) return;
+        _loadFuture = null;
+        exitSelect();
+        setState(() {
+          _files = const [];
+          _loading = true;
+          _error = null;
+        });
+        unawaited(_load());
+      },
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _load();
+    });
   }
+
+  Object get _accountScope {
+    final auth = ref.read(authControllerProvider);
+    return (auth.user?.userId, auth.user?.telegramId, auth.token);
+  }
+
+  bool _current(Object scope) => mounted && scope == _accountScope;
 
   Future<void> _load({bool showSpinner = true}) {
     final inFlight = _loadFuture;
@@ -52,6 +81,7 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
   }
 
   Future<void> _loadShelf({required bool showSpinner}) async {
+    final scope = _accountScope;
     if (showSpinner) {
       setState(() {
         _loading = true;
@@ -65,13 +95,13 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
       final files = widget.kind == ShelfKind.archive
           ? await repo.listArchiveFiles()
           : await repo.listLockedFiles();
-      if (!mounted) return;
+      if (!_current(scope)) return;
       setState(() {
         _files = files;
         _loading = false;
       });
     } catch (err) {
-      if (!mounted) return;
+      if (!_current(scope)) return;
       final fallback = widget.kind == ShelfKind.archive
           ? 'Could not load Archive.'
           : 'Could not load Locked.';
@@ -111,6 +141,7 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
       widget.kind == ShelfKind.archive ? 'Unarchive' : 'Unlock';
 
   Future<void> _restoreOne(String id) async {
+    final scope = _accountScope;
     final controller = ref.read(driveControllerProvider);
     final match = _files.where((f) => f.id == id).toList();
     final origin = match.isEmpty ? null : match.first.parentId;
@@ -122,23 +153,25 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
         await controller.unlockFile(id, originFolderId: origin);
       }
     } catch (_) {
-      if (mounted) await _load(showSpinner: false);
+      if (_current(scope)) await _load(showSpinner: false);
     }
   }
 
   Future<void> _trashOne(String id) async {
+    final scope = _accountScope;
     final ok = await confirmDelete(context, 1, trashEnabled: true);
-    if (!ok || !mounted) return;
+    if (!ok || !_current(scope)) return;
     final controller = ref.read(driveControllerProvider);
     setState(() => _files = _files.where((f) => f.id != id).toList());
     try {
       await controller.deleteItems(fileIds: [id]);
     } catch (_) {
-      if (mounted) await _load(showSpinner: false);
+      if (_current(scope)) await _load(showSpinner: false);
     }
   }
 
   Future<void> _bulkRestore() async {
+    final scope = _accountScope;
     final controller = ref.read(driveControllerProvider);
     final idSet = selectedFileIds.toSet();
     final files = _files.where((f) => idSet.contains(f.id)).toList();
@@ -148,6 +181,7 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
     );
     try {
       for (final file in files) {
+        if (!_current(scope)) return;
         if (widget.kind == ShelfKind.archive) {
           await controller.unarchiveFile(
             file.id,
@@ -158,13 +192,14 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
         }
       }
     } catch (_) {
-      if (mounted) await _load(showSpinner: false);
+      if (_current(scope)) await _load(showSpinner: false);
     }
   }
 
   Future<void> _bulkTrash() async {
+    final scope = _accountScope;
     final ok = await confirmDelete(context, selectedCount, trashEnabled: true);
-    if (!ok || !mounted) return;
+    if (!ok || !_current(scope)) return;
     final controller = ref.read(driveControllerProvider);
     final ids = selectedFileIds.toList();
     final idSet = ids.toSet();
@@ -175,7 +210,7 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
     try {
       await controller.deleteItems(fileIds: ids);
     } catch (_) {
-      if (mounted) await _load(showSpinner: false);
+      if (_current(scope)) await _load(showSpinner: false);
     }
   }
 
@@ -187,16 +222,54 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<DriveController>(driveControllerProvider, (previous, next) {
-      if (previous == null) return;
-      if (_shelfRevision(previous.state) == _shelfRevision(next.state)) return;
-      unawaited(_load(showSpinner: false));
-    });
+    ref.listen<int>(
+      driveControllerProvider.select((drive) => _shelfRevision(drive.state)),
+      (previous, next) {
+        if (previous != next) unawaited(_load(showSpinner: false));
+      },
+    );
 
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final empty = !_loading && _error == null && _files.isEmpty;
 
+    if (theme.platform == TargetPlatform.iOS) {
+      return RecoveryBrowser(
+        title: _title,
+        description: _footerCaption,
+        emptyBody: _emptyBody,
+        files: _files,
+        loading: _loading,
+        error: _error,
+        selectMode: selectMode,
+        selectedFiles: selectedFileIds,
+        selectedFolders: selectedFolderIds,
+        onRefresh: _load,
+        onSelect: enterSelect,
+        onDone: exitSelect,
+        onSelectAll: () => selectAllItems(_files),
+        onClear: clearSelection,
+        onFileSelect: (id) =>
+            selectMode ? toggleFileSelection(id) : enterSelect(fileId: id),
+        onFolderSelect: (_) {},
+        fileMenu: _fileMenu,
+        folderMenu: (_) => [],
+        actions: [
+          (
+            label: _restoreTooltip,
+            icon: widget.kind == ShelfKind.archive
+                ? CupertinoIcons.archivebox
+                : CupertinoIcons.lock_open,
+            onPressed: _bulkRestore,
+          ),
+          (
+            label: 'Move to Trash',
+            icon: CupertinoIcons.trash,
+            onPressed: _bulkTrash,
+          ),
+        ],
+      );
+    }
     return Scaffold(
       appBar: selectMode
           ? _buildSelectionAppBar(context)
@@ -213,6 +286,39 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
         child: _buildBody(context, theme, scheme, empty),
       ),
     );
+  }
+
+  List<IosMenuSection> _fileMenu(DriveFile file) {
+    if (!_files.any((item) => item.id == file.id)) return [];
+    final scope = _accountScope;
+    void guarded(VoidCallback action) {
+      if (_current(scope)) action();
+    }
+
+    return [
+      IosMenuSection([
+        IosMenuItem(
+          label: _restoreTooltip,
+          leadingIcon: widget.kind == ShelfKind.archive
+              ? CupertinoIcons.archivebox
+              : CupertinoIcons.lock_open,
+          onTap: () => guarded(() => _restoreOne(file.id)),
+        ),
+        IosMenuItem(
+          label: 'Select',
+          leadingIcon: CupertinoIcons.check_mark_circled,
+          onTap: () => guarded(() => enterSelect(fileId: file.id)),
+        ),
+      ]),
+      IosMenuSection([
+        IosMenuItem(
+          label: 'Move to Trash',
+          leadingIcon: CupertinoIcons.trash,
+          destructive: true,
+          onTap: () => guarded(() => _trashOne(file.id)),
+        ),
+      ]),
+    ];
   }
 
   PreferredSizeWidget _buildSelectionAppBar(BuildContext context) {

@@ -9,47 +9,15 @@ class _ProjectHeader extends StatelessWidget {
     final scheme = theme.colorScheme;
     final largeText = MediaQuery.textScalerOf(context).scale(1) >= 1.5;
 
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.45),
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Column(
         children: [
-          Container(
-            width: 88,
-            height: 88,
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: scheme.shadow.withValues(alpha: 0.12),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Image.asset(
-                'assets/icon/app_icon.png',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: scheme.primaryContainer,
-                  child: Icon(
-                    Icons.cloud_rounded,
-                    color: scheme.onPrimaryContainer,
-                    size: 36,
-                  ),
-                ),
-              ),
-            ),
+          Image.asset(
+            'assets/icon/app_icon.png',
+            width: 72,
+            height: 72,
+            excludeFromSemantics: true,
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
@@ -66,7 +34,7 @@ class _ProjectHeader extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'A little more space. A lot more possibility.',
+            'Your files, photos, and videos.\nConnected through Telegram.',
             textAlign: TextAlign.center,
             style: theme.textTheme.titleMedium?.copyWith(
               color: scheme.onSurfaceVariant,
@@ -75,18 +43,10 @@ class _ProjectHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: scheme.secondaryContainer,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              'Version ${AppConfig.appVersion}',
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: scheme.onSecondaryContainer,
-                fontWeight: FontWeight.w600,
-              ),
+          Text(
+            'Installed version ${AppConfig.appVersion}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
             ),
           ),
         ],

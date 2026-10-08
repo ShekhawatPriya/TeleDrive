@@ -154,7 +154,7 @@ class _TabButton extends StatelessWidget {
           children: [
             Icon(
               ios
-                  ? _iosIcon(item.label, selected)
+                  ? iosDestinationIcon(item.label, selected)
                   : (selected ? item.selected : item.icon),
               size: 24,
               color: color,
@@ -194,12 +194,12 @@ class _TabButton extends StatelessWidget {
   }
 }
 
-IconData _iosIcon(String label, bool selected) => switch (label) {
+IconData iosDestinationIcon(String label, bool selected) => switch (label) {
   'Drive' => selected ? CupertinoIcons.folder_fill : CupertinoIcons.folder,
   'Photos' =>
     selected
         ? CupertinoIcons.photo_fill_on_rectangle_fill
         : CupertinoIcons.photo_on_rectangle,
   'Starred' => selected ? CupertinoIcons.star_fill : CupertinoIcons.star,
-  _ => CupertinoIcons.link,
+  _ => selected ? CupertinoIcons.person_2_fill : CupertinoIcons.person_2,
 };

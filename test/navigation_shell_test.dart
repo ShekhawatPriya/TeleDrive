@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_m_fsdk/features/drive/components/drive_fab.dart';
 import 'package:flutter_m_fsdk/features/drive/components/folder_editor.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +22,8 @@ import 'package:flutter_m_fsdk/features/upload/upload_models.dart';
 import 'package:flutter_m_fsdk/models/drive_models.dart';
 import 'package:flutter_m_fsdk/models/auth_user.dart';
 import 'package:flutter_m_fsdk/widgets/floating_pill_navigation_bar.dart';
+import 'package:flutter_m_fsdk/widgets/ios/ios_sidebar.dart';
+import 'package:flutter_m_fsdk/core/theme/app_theme.dart';
 
 class _Auth extends ChangeNotifier implements AuthController {
   @override
@@ -200,7 +203,16 @@ class _EditorState extends State<_Editor> {
 
 void main() {
   setUpAll(() async {
-    for (final family in ['Inter', 'Roboto']) {
+    for (final family in [
+      'Inter',
+      'Roboto',
+      'CupertinoSystemText',
+      'CupertinoSystemDisplay',
+      '.SF Pro Text',
+      '.SF Pro Display',
+      '.SF UI Text',
+      '.SF UI Display',
+    ]) {
       await (FontLoader(
         family,
       )..addFont(rootBundle.load('assets/fonts/Inter-Variable.ttf'))).load();
@@ -534,4 +546,58 @@ void main() {
     expect(router.routeInformationProvider.value.uri.path, '/photos');
     expect(tester.takeException(), isNull);
   });
+
+  for (final brightness in Brightness.values) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets(
+        'iPad sidebar preserves routes and selection $brightness $scale',
+        (tester) async {
+          debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+          final theme = buildTheme(AppBrand.scheme(brightness));
+          debugDefaultTargetPlatformOverride = null;
+          tester.view.physicalSize = const Size(1024, 768);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          final router = _router();
+          addTearDown(router.dispose);
+          await tester.pumpWidget(
+            _scope(
+              MaterialApp.router(
+                debugShowCheckedModeBanner: false,
+                theme: theme,
+                routerConfig: router,
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: TextScaler.linear(scale),
+                    highContrast: scale == 2,
+                  ),
+                  child: RepaintBoundary(
+                    key: const ValueKey('preview'),
+                    child: child!,
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(find.byType(IosSidebar), findsOneWidget);
+          expect(find.byType(NavigationRail), findsNothing);
+          final photos = find.descendant(
+            of: find.byType(IosSidebar),
+            matching: find.text('Photos'),
+          );
+          await tester.tap(photos);
+          await tester.pumpAndSettle();
+          expect(router.routeInformationProvider.value.uri.path, '/photos');
+          expect(
+            tester.widget<IosSidebar>(find.byType(IosSidebar)).selectedIndex,
+            1,
+          );
+          await capture(tester, 'ipad-sidebar-${brightness.name}-$scale');
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
 }

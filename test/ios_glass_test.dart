@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_m_fsdk/widgets/adaptive_surface.dart';
+import 'package:flutter_m_fsdk/widgets/ios/ios_accessibility.dart';
 
 void main() {
   testWidgets('iOS navigation transmits color while sheets remain opaque', (
@@ -11,6 +12,7 @@ void main() {
     Future<List<int>> sample(
       Color background, {
       bool highContrast = false,
+      bool reduceTransparency = false,
       GlassRole role = GlassRole.navigation,
     }) async {
       await tester.pumpWidget(
@@ -21,23 +23,26 @@ void main() {
               highContrast: highContrast,
               disableAnimations: true,
             ),
-            child: RepaintBoundary(
-              key: const ValueKey('sample'),
-              child: SizedBox.expand(
-                child: Stack(
-                  children: [
-                    Positioned.fill(child: ColoredBox(color: background)),
-                    Center(
-                      child: SizedBox(
-                        width: 260,
-                        height: 80,
-                        child: AdaptiveSurface(
-                          role: role,
-                          child: const SizedBox.expand(),
+            child: IosAccessibilityPreferences(
+              reduceTransparency: reduceTransparency,
+              child: RepaintBoundary(
+                key: const ValueKey('sample'),
+                child: SizedBox.expand(
+                  child: Stack(
+                    children: [
+                      Positioned.fill(child: ColoredBox(color: background)),
+                      Center(
+                        child: SizedBox(
+                          width: 260,
+                          height: 80,
+                          child: AdaptiveSurface(
+                            role: role,
+                            child: const SizedBox.expand(),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -76,6 +81,12 @@ void main() {
     final solidCool = await sample(Colors.blue, highContrast: true);
     expect(solidWarm, solidCool);
     expect(find.byType(BackdropFilter), findsNothing);
+    final reducedWarm = await sample(Colors.red, reduceTransparency: true);
+    final reducedCool = await sample(Colors.blue, reduceTransparency: true);
+    expect(reducedWarm, reducedCool);
+    expect(find.byType(BackdropFilter), findsNothing);
+    await sample(Colors.red);
+    expect(find.byType(BackdropFilter), findsOneWidget);
   });
   testWidgets('Android navigation remains opaque without backdrop blur', (
     tester,

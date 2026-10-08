@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+enum PhotoGridStyle { mosaic, square }
+
 class PhotoGridDensity extends ChangeNotifier {
   PhotoGridDensity({this.min = 2, this.max = 5, int initial = 3})
     : _columns = initial.clamp(min, max) {
@@ -13,6 +15,8 @@ class PhotoGridDensity extends ChangeNotifier {
   final int min;
   final int max;
   int _columns;
+  PhotoGridStyle _style = PhotoGridStyle.mosaic;
+  PhotoGridStyle get style => _style;
   bool _disposed = false;
   int _revision = 0;
 
@@ -29,6 +33,8 @@ class PhotoGridDensity extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     if (_disposed || revision != _revision) return;
     final stored = prefs.getInt(_key);
+    final style = prefs.getString('${_key}_style');
+    if (style == 'square') _style = PhotoGridStyle.square;
     if (stored != null &&
         stored >= min &&
         stored <= max &&
@@ -36,6 +42,16 @@ class PhotoGridDensity extends ChangeNotifier {
       _columns = stored;
       notifyListeners();
     }
+    if (style == 'square') notifyListeners();
+  }
+
+  Future<void> setStyle(PhotoGridStyle value) async {
+    if (_style == value) return;
+    _revision++;
+    _style = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('${_key}_style', value.name);
   }
 
   Future<void> set(int next) async {
@@ -59,41 +75,60 @@ final photoGridDensityProvider = ChangeNotifierProvider<PhotoGridDensity>((
   return density;
 });
 
+/// Pointer observation leaves one-finger scrolling out of the scale arena.
+/// A regular ScaleGestureRecognizer can win a vertical drag before a second
+/// finger arrives, which makes gallery flings feel as though they get stuck.
 class PhotoGridPinchDetector extends StatefulWidget {
   const PhotoGridPinchDetector({
-    required this.density,
+    required this.onStart,
+    required this.onUpdate,
+    required this.onEnd,
     required this.child,
     super.key,
   });
-
-  final PhotoGridDensity density;
+  final ValueChanged<Offset> onStart;
+  final ValueChanged<double> onUpdate;
+  final VoidCallback onEnd;
   final Widget child;
-
   @override
   State<PhotoGridPinchDetector> createState() => _PhotoGridPinchDetectorState();
 }
 
 class _PhotoGridPinchDetectorState extends State<PhotoGridPinchDetector> {
-  bool _committed = false;
+  final _pointers = <int, Offset>{};
+  double? _initialDistance;
+  void _down(PointerDownEvent event) {
+    _pointers[event.pointer] = event.position;
+    if (_pointers.length == 2) {
+      final points = _pointers.values.toList();
+      _initialDistance = (points[0] - points[1]).distance;
+      widget.onStart((points[0] + points[1]) / 2);
+    }
+  }
+
+  void _move(PointerMoveEvent event) {
+    if (!_pointers.containsKey(event.pointer)) return;
+    _pointers[event.pointer] = event.position;
+    final initial = _initialDistance;
+    if (initial == null || initial <= 0 || _pointers.length < 2) return;
+    final points = _pointers.values.take(2).toList();
+    widget.onUpdate((points[0] - points[1]).distance / initial);
+  }
+
+  void _up(PointerEvent event) {
+    _pointers.remove(event.pointer);
+    if (_pointers.length < 2 && _initialDistance != null) {
+      _initialDistance = null;
+      widget.onEnd();
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.deferToChild,
-      onScaleStart: (_) => _committed = false,
-      onScaleUpdate: (details) {
-        if (details.pointerCount < 2 || _committed) return;
-        final delta = details.scale - 1;
-        if (delta > 0.35) {
-          widget.density.zoomIn();
-          _committed = true;
-        } else if (delta < -0.35) {
-          widget.density.zoomOut();
-          _committed = true;
-        }
-      },
-      onScaleEnd: (_) => _committed = false,
-      child: widget.child,
-    );
-  }
+  Widget build(BuildContext context) => Listener(
+    onPointerDown: _down,
+    onPointerMove: _move,
+    onPointerUp: _up,
+    onPointerCancel: _up,
+    child: widget.child,
+  );
 }

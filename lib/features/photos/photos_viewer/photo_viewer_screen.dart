@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../models/drive_models.dart';
+import '../../../core/utils/file_type_detector.dart';
+import 'photo_viewer_session.dart';
 import '../../../widgets/empty_state.dart';
 import '../../../widgets/ios_more_menu.dart';
 import '../../drive/components/drive_item_actions.dart';
@@ -22,11 +24,15 @@ class PhotoViewerScreen extends ConsumerStatefulWidget {
   const PhotoViewerScreen({
     required this.startId,
     required this.filter,
+    this.query = '',
+    this.session,
     super.key,
   });
 
   final String startId;
   final PhotosFilter filter;
+  final String query;
+  final PhotoViewerSession? session;
 
   @override
   ConsumerState<PhotoViewerScreen> createState() => _PhotoViewerScreenState();
@@ -34,20 +40,64 @@ class PhotoViewerScreen extends ConsumerStatefulWidget {
 
 class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
   bool _chromeVisible = true;
+  bool _nativeFullscreen = false;
+  final Set<String> _nativeVideos = {};
   bool _downloading = false;
+  bool _initialResolving = false;
+  bool _initialFailed = false;
+  DriveFile? _linkedFile;
   final _stageKey = GlobalKey<PhotoViewerStageState>();
-  String? _currentId;
+  late final PhotoViewerSession _session;
+  bool _transitioning = true, _scrubbing = false, _exitQueued = false;
   final Map<String, double> _aspectRatios = {};
   final Map<String, bool> _zoomed = {};
-  int? _currentIndex;
 
   @override
   void initState() {
     super.initState();
+    _session =
+        widget.session ??
+        PhotoViewerSession(
+          filter: widget.filter,
+          query: widget.query,
+          currentId: widget.startId,
+          generation: ref.read(driveControllerProvider).accountGeneration,
+        );
+    if (widget.session == null &&
+        !ref
+            .read(driveControllerProvider)
+            .photoFiles('all')
+            .any((f) => f.id == widget.startId)) {
+      _initialResolving = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _resolveInitial());
+    }
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.edgeToEdge,
       overlays: [SystemUiOverlay.top],
     );
+  }
+
+  void _leaveViewer() {
+    if (!mounted) return;
+    final router = GoRouter.maybeOf(context);
+    if (router == null) {
+      Navigator.maybePop(context);
+    } else if (router.canPop()) {
+      router.pop();
+    } else {
+      router.go('/photos');
+    }
+  }
+
+  Future<void> _resolveInitial() async {
+    final drive = ref.read(driveControllerProvider);
+    final file = await drive.ensureFileLoaded(widget.startId);
+    if (!mounted || drive.accountGeneration != _session.generation) return;
+    setState(() {
+      _linkedFile = file != null && widget.filter.accepts(file) ? file : null;
+      _initialFailed = _linkedFile == null;
+      _initialResolving = false;
+    });
   }
 
   @override
@@ -56,37 +106,82 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
     super.dispose();
   }
 
-  List<DriveFile> _resolveFiles() {
-    final drive = ref.read(driveControllerProvider);
-    return drive.photoFiles('all').where(widget.filter.accepts).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
     final sharing = ref.watch(
       shareFlowStateProvider.select((state) => state.busy),
     );
     final drive = ref.watch(driveControllerProvider);
-    final files = drive.photoFiles('all').where(widget.filter.accepts).toList();
+    final valid =
+        ref.read(driveControllerProvider).accountGeneration ==
+        _session.generation;
+    if (valid && _initialResolving) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator.adaptive()),
+      );
+    }
+    if (valid && _initialFailed) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          title: const Text('Photo unavailable'),
+          leading: IconButton(
+            tooltip: 'Back',
+            onPressed: _leaveViewer,
+            icon: const Icon(Icons.arrow_back),
+          ),
+        ),
+        body: Center(
+          child: TextButton(
+            onPressed: () {
+              setState(() => _initialResolving = true);
+              _resolveInitial();
+            },
+            child: const Text('Try again'),
+          ),
+        ),
+      );
+    }
+    final loaded = drive.photoFiles('all');
+    final linked = _linkedFile == null ? null : drive.file(_linkedFile!.id);
+    final files = valid
+        ? _session.reconcile([
+            ...loaded,
+            if (linked != null && !loaded.any((f) => f.id == linked.id)) linked,
+          ])
+        : <DriveFile>[];
     if (files.isEmpty) {
+      if (!_exitQueued) {
+        _exitQueued = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _leaveViewer();
+        });
+      }
       return _emptyScaffold(context, 'No media to display.');
     }
-    final retainedIndex = files.indexWhere((f) => f.id == _currentId);
-    final initialIndex =
-        (retainedIndex >= 0 ? retainedIndex : _currentIndex) ??
-        () {
-          final idx = files.indexWhere((f) => f.id == widget.startId);
-          return idx < 0 ? 0 : idx;
-        }();
-    final index = initialIndex.clamp(0, files.length - 1);
+    final index = _session.index;
     final current = files[index];
-    _currentId = current.id;
+    final currentRoute = ModalRoute.of(context)?.isCurrent ?? true;
+    final playbackActive =
+        currentRoute && !sharing && !_transitioning && !_scrubbing;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
       body: PhotoViewerStage(
         key: _stageKey,
+        sourceRect: _session.sourceRect?.call(current.id),
+        prepareDismiss: () async =>
+            _session.revealSource?.call(_session.currentId),
+        onDismissed: () {
+          if (mounted) _leaveViewer();
+        },
+        onInteractionChanged: (value) {
+          if (mounted) setState(() => _transitioning = value);
+        },
+        gesturesEnabled: !sharing && currentRoute,
+        nativeVideo: _nativeVideos.contains(current.id) && isVideoFile(current),
         mediaZoomed: _zoomed[current.id] ?? false,
         mediaAspectRatio:
             _aspectRatios[current.id] ??
@@ -104,6 +199,22 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
         media: PhotoViewerPager(
           files: files,
           initialIndex: index,
+          active: playbackActive,
+          onNativeChanged: (id, value) {
+            if (mounted)
+              setState(() {
+                if (value) {
+                  _nativeVideos.add(id);
+                } else {
+                  _nativeVideos.remove(id);
+                }
+              });
+          },
+          onFullscreen: (value) {
+            if (mounted) setState(() => _nativeFullscreen = value);
+          },
+          onNativeDrag: (phase, point, velocity) =>
+              _stageKey.currentState?.nativeDrag(phase, point, velocity),
           onZoomChanged: (id, zoomed) {
             if (mounted && _zoomed[id] != zoomed) {
               setState(() => _zoomed[id] = zoomed);
@@ -117,8 +228,7 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
           },
           onPageChanged: (i) {
             setState(() {
-              _currentIndex = i;
-              _currentId = files[i].id;
+              _session.select(i);
             });
             final id = files[i].id;
             ref.read(driveControllerProvider).markAccessed(id);
@@ -128,12 +238,12 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
               setState(() => _chromeVisible = !_chromeVisible);
           },
         ),
-        header: sharing
+        header: sharing || _nativeFullscreen
             ? const SizedBox.shrink()
             : PhotoViewerTopBar(
                 file: current,
                 visible: _chromeVisible,
-                onBack: () => context.pop(),
+                onBack: () => _stageKey.currentState?.dismiss(),
                 onStar: () =>
                     ref.read(driveControllerProvider).toggleStar(current.id),
                 onInfo: () => _openInfo(context, current),
@@ -141,11 +251,16 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
                 onMore: () => _openMore(context, current),
                 menuSections: (_) {
                   final owner = ref.read(authControllerProvider).user;
+                  final latest =
+                      ref
+                          .read(driveControllerProvider)
+                          .file(_session.currentId) ??
+                      current;
                   return [
                     for (final destructive in [false, true])
                       IosMenuSection([
                         for (final action in DriveItemActions.fileActions(
-                          current,
+                          latest,
                         ).where((a) => a.destructive == destructive))
                           IosMenuItem(
                             label: action.label,
@@ -161,7 +276,10 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
                               DriveItemActions.performFileAction(
                                 context,
                                 ref,
-                                current,
+                                ref
+                                        .read(driveControllerProvider)
+                                        .file(latest.id) ??
+                                    latest,
                                 action.id,
                               );
                             },
@@ -170,7 +288,7 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
                   ];
                 },
               ),
-        footer: sharing
+        footer: sharing || _nativeFullscreen
             ? const SizedBox.shrink()
             : AnimatedOpacity(
                 duration: MediaQuery.disableAnimationsOf(context)
@@ -195,10 +313,13 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
                               PhotoViewerFilmstrip(
                                 files: files,
                                 index: index,
+                                onScrubbingChanged: (value) {
+                                  if (mounted)
+                                    setState(() => _scrubbing = value);
+                                },
                                 onSelected: (i) {
                                   setState(() {
-                                    _currentIndex = i;
-                                    _currentId = files[i].id;
+                                    _session.select(i);
                                   });
                                   drive.markAccessed(files[i].id);
                                 },
@@ -254,7 +375,13 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
         context,
         ref,
         file,
-        returnTo: '/photos/view/${file.id}',
+        returnTo: Uri(
+          path: '/photos/view/${file.id}',
+          queryParameters: {
+            'filter': _session.filter.queryValue,
+            if (_session.query.isNotEmpty) 'q': _session.query,
+          },
+        ).toString(),
       );
     } finally {
       if (mounted) setState(() => _downloading = false);
@@ -262,19 +389,18 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
   }
 
   Future<void> _openMore(BuildContext context, DriveFile file) async {
-    final wasFiles = _resolveFiles();
     await DriveItemActions.openFile(context, ref, file);
-    if (!mounted) return;
-    final remaining = _resolveFiles();
-    if (remaining.length < wasFiles.length && context.mounted) {
-      context.pop();
-    }
   }
 
   Widget _emptyScaffold(BuildContext context, String message) {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Back',
+          onPressed: _leaveViewer,
+          icon: const Icon(Icons.arrow_back),
+        ),
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,

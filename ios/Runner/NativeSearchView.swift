@@ -21,6 +21,8 @@ final class NativeSearchView: NSObject, FlutterPlatformView, UITextFieldDelegate
   private let fieldGlass = UIVisualEffectView(effect: nil)
   private let cancelGlass = UIVisualEffectView(effect: nil)
   private var active = false
+  private var keepCancelVisible = false
+  private var pendingFocus = false
   private var reduceMotion = false
   private var highContrast = false
   private var lastSize = CGSize.zero
@@ -58,8 +60,18 @@ final class NativeSearchView: NSObject, FlutterPlatformView, UITextFieldDelegate
         self.lastSize = self.root.bounds.size
         self.layoutShapes()
       }
+      if self.pendingFocus, self.root.window != nil, self.field.bounds.width > 0 {
+        self.pendingFocus = false
+        // Flutter attaches platform views before their first usable layout.
+        // Start editing after that layout has reached UIKit's run loop.
+        DispatchQueue.main.async { [weak self] in
+          guard let self = self, self.root.window != nil else { return }
+          self.field.becomeFirstResponder()
+        }
+      }
     }
     root.onDetach = { [weak self] in self?.field.resignFirstResponder() }
+    root.onAttach = { [weak self] in self?.root.setNeedsLayout() }
     NotificationCenter.default.addObserver(self, selector: #selector(dismiss), name: UIApplication.willResignActiveNotification, object: nil)
     NotificationCenter.default.addObserver(self, selector: #selector(appearanceChanged), name: UIAccessibility.reduceTransparencyStatusDidChangeNotification, object: nil)
     NotificationCenter.default.addObserver(self, selector: #selector(appearanceChanged), name: UIAccessibility.darkerSystemColorsStatusDidChangeNotification, object: nil)
@@ -69,6 +81,7 @@ final class NativeSearchView: NSObject, FlutterPlatformView, UITextFieldDelegate
       else if call.method == "dismiss" { self.dismiss(); result(nil) }
       else { result(FlutterMethodNotImplemented) }
     }
+    pendingFocus = (arguments as? [String: Any])?["autofocus"] as? Bool ?? false
     update(arguments)
     layoutShapes()
     cancelGlass.isHidden = !active
@@ -89,7 +102,8 @@ final class NativeSearchView: NSObject, FlutterPlatformView, UITextFieldDelegate
     reduceMotion = args["reduceMotion"] as? Bool ?? false
     highContrast = args["highContrast"] as? Bool ?? false
     configureMaterials()
-    setActive(args["active"] as? Bool ?? false)
+    keepCancelVisible = args["keepCancelVisible"] as? Bool ?? false
+    setActive(keepCancelVisible || (args["active"] as? Bool ?? false))
   }
 
   @objc private func appearanceChanged() { configureMaterials() }
@@ -166,7 +180,7 @@ final class NativeSearchView: NSObject, FlutterPlatformView, UITextFieldDelegate
     channel.invokeMethod("began", arguments: nil)
   }
   func textFieldDidEndEditing(_ textField: UITextField) {
-    if (field.text ?? "").isEmpty { setActive(false) }
+    if !keepCancelVisible && (field.text ?? "").isEmpty { setActive(false) }
     channel.invokeMethod("ended", arguments: nil)
   }
   func textFieldShouldReturn(_ textField: UITextField) -> Bool {
@@ -187,8 +201,12 @@ final class NativeSearchView: NSObject, FlutterPlatformView, UITextFieldDelegate
 private final class SearchLayoutView: UIView {
   var onLayout: (() -> Void)?
   var onDetach: (() -> Void)?
+  var onAttach: (() -> Void)?
   override func layoutSubviews() { super.layoutSubviews(); onLayout?() }
-  override func didMoveToWindow() { super.didMoveToWindow(); if window == nil { onDetach?() } }
+  override func didMoveToWindow() {
+    super.didMoveToWindow()
+    if window == nil { onDetach?() } else { onAttach?() }
+  }
 }
 
 /// Native source chooser, including an anchored iPad popover. The selected
@@ -204,6 +222,9 @@ final class UploadSourceChooser: NSObject, UIAdaptivePresentationControllerDeleg
     presenter.view.endEditing(true)
     pending = result
     let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+    if let args = arguments as? [String: Any], let dark = args["dark"] as? Bool {
+      alert.overrideUserInterfaceStyle = dark ? .dark : .light
+    }
     func add(_ title: String, _ value: String?, _ style: UIAlertAction.Style = .default) {
       alert.addAction(UIAlertAction(title: title, style: style) { [weak self, weak alert] _ in
         guard let self = self else { return }

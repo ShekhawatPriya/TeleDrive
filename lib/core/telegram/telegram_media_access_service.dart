@@ -40,6 +40,7 @@ class TelegramMediaAccessService {
   final AuthController _auth;
   Object? _identity;
   int _generation = 0;
+  int get generation => _generation;
   bool _disposed = false;
   Future<void>? _configuration;
   Future<void> _configurationTail = Future<void>.value();

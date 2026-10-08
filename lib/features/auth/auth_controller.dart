@@ -86,6 +86,9 @@ class AuthController extends ChangeNotifier {
   AuthUser? user;
   String? token;
   bool loading = true;
+  int _sessionEpoch = 0;
+  Future<void>? _profileRefresh;
+  Future<void>? _savedProfileRefresh;
   bool switchingAccount = false;
   bool? telegramConnected;
   BackendFeatureFlags featureFlags = const BackendFeatureFlags();
@@ -203,6 +206,12 @@ class AuthController extends ChangeNotifier {
   Future<void> logout() => _logout();
 
   Future<void> disconnectTelegram() => _disconnectTelegram();
+
+  void _invalidateProfileRefreshes() {
+    _sessionEpoch++;
+    _profileRefresh = null;
+    _savedProfileRefresh = null;
+  }
 
   void _emitChange() {
     if (!_disposed) notifyListeners();

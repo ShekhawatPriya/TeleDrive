@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -75,17 +76,50 @@ class _MySharesScreenState extends ConsumerState<MySharesScreen>
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
-              child: CollectionIntro(
-                title: query.isEmpty
-                    ? 'A link brings it together.'
-                    : 'Search results',
-                description: query.isEmpty
-                    ? 'Manage access and see how your files are being shared.'
-                    : 'Shared links matching your search.',
-                icon: Icons.link_rounded,
-                detail:
-                    '$shareCount ${query.isEmpty ? 'shared links' : 'matches'}',
-              ),
+              child: Theme.of(context).platform == TargetPlatform.iOS
+                  ? Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            query.isEmpty
+                                ? 'Manage access and see link activity.'
+                                : 'Shared links matching your search.',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                  height: 1.5,
+                                ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '$shareCount ${query.isEmpty ? (shareCount == 1 ? 'shared link' : 'shared links') : 'matches'}',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : CollectionIntro(
+                      title: query.isEmpty
+                          ? 'A link brings it together.'
+                          : 'Search results',
+                      description: query.isEmpty
+                          ? 'Manage access and see how your files are being shared.'
+                          : 'Shared links matching your search.',
+                      icon: Theme.of(context).platform == TargetPlatform.iOS
+                          ? CupertinoIcons.link
+                          : Icons.link_rounded,
+                      detail:
+                          '$shareCount ${query.isEmpty ? 'shared links' : 'matches'}',
+                    ),
             ),
             ..._buildBody(controller, filtered, query, grid),
           ],

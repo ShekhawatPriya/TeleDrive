@@ -114,7 +114,7 @@ class _AccountBottomSheetState extends ConsumerState<AccountBottomSheet>
     final accountLabel =
         activeAccount?.username != null && activeAccount!.username!.isNotEmpty
         ? '@${activeAccount.username}'
-        : 'ID ${activeAccount?.telegramId ?? 0}';
+        : 'Telegram account';
 
     if (Theme.of(context).platform == TargetPlatform.iOS) {
       return _buildIosAccount(
