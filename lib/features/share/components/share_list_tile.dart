@@ -2,10 +2,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../widgets/ios/ios_browse.dart';
 import '../../../widgets/ios_more_menu.dart';
 import 'share_item_menu.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/safe_navigation.dart';
+import '../../../core/utils/file_type_detector.dart';
 import '../../../models/share_models.dart';
 
 class ShareListTile extends ConsumerWidget {
@@ -17,56 +19,46 @@ class ShareListTile extends ConsumerWidget {
     final scheme = theme.colorScheme;
     if (theme.platform == TargetPlatform.iOS) {
       final more = IosMoreButton(
-        size: 44,
-        visualSize: 34,
+        plain: true,
+        size: 48,
         tooltip: 'Actions for ${share.displayName}',
         sectionsBuilder: (_) => ShareItemMenu.sections(context, ref, share),
       );
+      final large = MediaQuery.textScalerOf(context).scale(1) >= 1.5;
       final copy = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             share.displayName,
-            maxLines: MediaQuery.textScalerOf(context).scale(1) >= 1.5
-                ? null
-                : 2,
-            style: theme.textTheme.bodyLarge,
+            maxLines: large ? null : 2,
+            overflow: large ? null : TextOverflow.ellipsis,
+            style: IosBrowse.body(context),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             '${share.fileCount} ${share.fileCount == 1 ? 'file' : 'files'} · ${share.permission.label}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
+            style: IosBrowse.footnote(context),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Wrap(
-            spacing: 12,
+            spacing: 10,
             runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               _ShareStatus(share: share),
               Text(
-                '${share.viewCount} views',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-              Text(
-                '${share.downloadCount} downloads',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
+                '${share.viewCount} views · ${share.downloadCount} downloads',
+                style: IosBrowse.footnote(context),
               ),
             ],
           ),
         ],
       );
-      final large = MediaQuery.textScalerOf(context).scale(1) >= 1.5;
       return ShareItemMenu(
         share: share,
         trailingClearance: 48,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: IosBrowse.gutter),
           child: Material(
             color: Colors.transparent,
             child: Column(
@@ -93,7 +85,10 @@ class ShareListTile extends ConsumerWidget {
                         : Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _Thumb(share: share),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: _Thumb(share: share),
+                              ),
                               const SizedBox(width: 12),
                               Expanded(child: copy),
                               const SizedBox(width: 4),
@@ -105,8 +100,8 @@ class ShareListTile extends ConsumerWidget {
                 Divider(
                   height: .5,
                   thickness: .5,
-                  indent: large ? 0 : 52,
-                  color: scheme.outlineVariant.withValues(alpha: .45),
+                  indent: large ? 0 : 56,
+                  color: IosBrowse.separator(context),
                 ),
               ],
             ),
@@ -195,6 +190,7 @@ class ShareCardTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    if (theme.platform == TargetPlatform.iOS) return _iosTile(context, ref);
     return ShareItemMenu(
       share: share,
       trailingClearance: 48,
@@ -261,6 +257,79 @@ class ShareCardTile extends ConsumerWidget {
       ),
     );
   }
+
+  /// iOS: the cover with its caption directly on the page, like Drive's
+  /// grid tiles; link state sits under the name rather than over the image.
+  Widget _iosTile(BuildContext context, WidgetRef ref) {
+    final radius = BorderRadius.circular(18);
+    return ShareItemMenu(
+      share: share,
+      trailingClearance: 48,
+      child: IosPressable(
+        onTap: () => context.safePush('/shared/${share.id}'),
+        semanticLabel: share.displayName,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRSuperellipse(
+                    borderRadius: radius,
+                    child: ColoredBox(
+                      color: IosBrowse.fill(context),
+                      child: _Thumb(share: share, expand: true),
+                    ),
+                  ),
+                  IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: ShapeDecoration(
+                        shape: RoundedSuperellipseBorder(
+                          borderRadius: radius,
+                          side: BorderSide(
+                            color: IosBrowse.hairline(context),
+                            width: .5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: IosMoreButton(
+                      size: 44,
+                      visualSize: 34,
+                      tooltip: 'Actions for ${share.displayName}',
+                      sectionsBuilder: (_) =>
+                          ShareItemMenu.sections(context, ref, share),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              share.displayName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: IosBrowse.subheadline(context, weight: FontWeight.w600),
+            ),
+            const SizedBox(height: 3),
+            _ShareStatus(share: share),
+            const SizedBox(height: 1),
+            Text(
+              '${share.viewCount} views · ${share.downloadCount} downloads',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: IosBrowse.footnote(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ShareStatus extends StatelessWidget {
@@ -270,15 +339,36 @@ class _ShareStatus extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     if (Theme.of(context).platform == TargetPlatform.iOS) {
-      return Text(
-        share.isRevoked
-            ? 'Revoked'
-            : share.isExpired
-            ? 'Expired'
-            : 'Active link',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: share.isActive ? scheme.primary : scheme.onSurfaceVariant,
-        ),
+      // A coloured dot plus a word, so state never relies on colour alone.
+      final dot = share.isActive
+          ? CupertinoColors.systemGreen
+          : share.isExpired && !share.isRevoked
+          ? CupertinoColors.systemOrange
+          : CupertinoColors.systemGrey;
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: dot.resolveFrom(context),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            share.isRevoked
+                ? 'Revoked'
+                : share.isExpired
+                ? 'Expired'
+                : 'Active link',
+            style: IosBrowse.footnote(
+              context,
+              color: share.isActive ? scheme.onSurface : null,
+            ).copyWith(fontWeight: FontWeight.w500),
+          ),
+        ],
       );
     }
     return Container(
@@ -316,6 +406,7 @@ class _Thumb extends StatelessWidget {
     final url = share.coverThumbnailUrl;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    if (theme.platform == TargetPlatform.iOS) return _ios(context, url, scheme);
 
     final isFolder = share.isFolder;
     final placeholder = Container(
@@ -367,6 +458,68 @@ class _Thumb extends StatelessWidget {
         fit: BoxFit.cover,
         placeholder: (_, __) => placeholder,
         errorWidget: (_, __, ___) => placeholder,
+      ),
+    );
+  }
+
+  Widget _ios(BuildContext context, String? url, ColorScheme scheme) {
+    final name = share.displayName;
+    final Widget glyph = share.isFolder
+        ? Center(
+            child: Icon(
+              CupertinoIcons.folder_fill,
+              size: expand ? 52 : 24,
+              color: scheme.primary,
+            ),
+          )
+        : IosFileGlyph(
+            kind: detectFileKind(name, null),
+            extension: extensionOf(name),
+          );
+    if (expand) {
+      return share.isFolder || url == null || url.isEmpty
+          ? glyph
+          : CachedNetworkImage(
+              imageUrl: url,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => glyph,
+              errorWidget: (_, __, ___) => glyph,
+            );
+    }
+    final radius = BorderRadius.circular(10);
+    return SizedBox.square(
+      dimension: 44,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipRSuperellipse(
+            borderRadius: radius,
+            child: ColoredBox(
+              color: IosBrowse.fill(context),
+              child: share.isFolder || url == null || url.isEmpty
+                  ? glyph
+                  : CachedNetworkImage(
+                      imageUrl: url,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => glyph,
+                      errorWidget: (_, __, ___) => glyph,
+                    ),
+            ),
+          ),
+          IgnorePointer(
+            child: DecoratedBox(
+              decoration: ShapeDecoration(
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: radius,
+                  side: BorderSide(
+                    color: IosBrowse.hairline(context),
+                    width: .5,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

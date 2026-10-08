@@ -7,6 +7,7 @@ import '../core/theme/app_theme.dart';
 import '../core/utils/file_type_detector.dart';
 import '../models/drive_models.dart';
 import 'file_list_tile.dart';
+import 'ios/ios_browse.dart';
 import 'media_thumb.dart';
 import 'selection_indicator.dart';
 import 'uploading_shimmer.dart';
@@ -80,7 +81,16 @@ class FileCardTile extends StatelessWidget {
                             : const BorderRadius.vertical(
                                 top: Radius.circular(24),
                               ),
-                        child: MediaThumb(file: file, fit: BoxFit.cover),
+                        child: MediaThumb(
+                          file: file,
+                          fit: BoxFit.cover,
+                          fallback: theme.platform == TargetPlatform.iOS
+                              ? IosFileGlyph(
+                                  kind: file.kind,
+                                  extension: extensionOf(file.name),
+                                )
+                              : null,
+                        ),
                       ),
                     ),
                   ),
@@ -151,7 +161,10 @@ class FileCardTile extends StatelessWidget {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 4, 0),
+                // iOS captions sit flush with the thumbnail, as in Recents.
+                padding: theme.platform == TargetPlatform.iOS
+                    ? const EdgeInsets.only(left: 2)
+                    : const EdgeInsets.fromLTRB(12, 0, 4, 0),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final height = constraints.maxHeight;

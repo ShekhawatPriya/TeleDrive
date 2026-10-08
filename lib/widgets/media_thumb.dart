@@ -20,6 +20,7 @@ class MediaThumb extends ConsumerStatefulWidget {
     this.radius = 18,
     this.showBackground = true,
     this.decodeWidth = 320,
+    this.fallback,
     super.key,
   });
 
@@ -28,6 +29,9 @@ class MediaThumb extends ConsumerStatefulWidget {
   final double radius;
   final bool showBackground;
   final int decodeWidth;
+
+  /// Shown instead of the generic symbol when the file has no preview.
+  final Widget? fallback;
 
   @override
   ConsumerState<MediaThumb> createState() => _MediaThumbState();
@@ -295,7 +299,10 @@ class _MediaThumbState extends ConsumerState<MediaThumb> {
     },
   );
 
-  Widget _fallback(BuildContext context) => LayoutBuilder(
+  Widget _fallback(BuildContext context) =>
+      widget.fallback ?? _defaultFallback(context);
+
+  Widget _defaultFallback(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       final minDim = math.min(constraints.maxWidth, constraints.maxHeight);
       final iconSize = (minDim.isInfinite || minDim <= 0) ? 40.0 : minDim;

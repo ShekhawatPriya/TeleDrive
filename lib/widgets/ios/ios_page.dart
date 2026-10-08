@@ -297,7 +297,12 @@ class IosRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final large = MediaQuery.textScalerOf(context).scale(17) > 24;
-    final tint = color ?? scheme.primary;
+    // System tints are dynamic; resolve them so dark mode gets UIKit's
+    // dark variants rather than the light values stored on the constant.
+    final tint = CupertinoDynamicColor.resolve(
+      color ?? scheme.primary,
+      context,
+    );
     return CupertinoListTile.notched(
       backgroundColor: scheme.surfaceContainerLow,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

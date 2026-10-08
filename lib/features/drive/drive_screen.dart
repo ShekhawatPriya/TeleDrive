@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,10 +6,13 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/safe_navigation.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/ios/ios_browse.dart';
+import '../../widgets/ios/ios_tab_header.dart';
 import '../../widgets/skeletons.dart';
 import '../../widgets/teledrive_app_bar.dart';
 import '../search/search_controller.dart';
 import '../search/drive_search_controller.dart';
+import 'components/browse_tab_menu.dart';
 import 'components/drive_header_widgets.dart';
 import 'components/drive_item_actions.dart';
 import 'components/drive_list_slivers.dart';
@@ -149,7 +153,9 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
     final grid = prefs.layout == LayoutMode.grid;
 
     if (selectMode) {
+      final ios = Theme.of(context).platform == TargetPlatform.iOS;
       return Scaffold(
+        backgroundColor: ios ? IosBrowse.canvas(context) : null,
         body: SafeArea(
           child: Column(
             children: [
@@ -179,7 +185,18 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                   child: CustomScrollView(
                     slivers: [
                       if (folders.isNotEmpty)
-                        const DriveSectionHeader('Folders', bottomPadding: 0),
+                        ios
+                            ? const SliverToBoxAdapter(
+                                child: IosSectionTitle(
+                                  'Folders',
+                                  top: 12,
+                                  bottom: 4,
+                                ),
+                              )
+                            : const DriveSectionHeader(
+                                'Folders',
+                                bottomPadding: 0,
+                              ),
                       DriveFolderSliver(
                         folders: folders,
                         selectMode: true,
@@ -190,7 +207,14 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                             DriveItemActions.openFolder(context, ref, folder),
                       ),
                       if (files.isNotEmpty)
-                        const DriveSectionHeader('Files', bottomPadding: 0),
+                        ios
+                            ? const SliverToBoxAdapter(
+                                child: IosSectionTitle('Files', bottom: 4),
+                              )
+                            : const DriveSectionHeader(
+                                'Files',
+                                bottomPadding: 0,
+                              ),
                       DriveFilesSliver(
                         files: files,
                         grid: grid,
@@ -220,6 +244,23 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
             ],
           ),
         ),
+      );
+    }
+
+    if (Theme.of(context).platform == TargetPlatform.iOS) {
+      return _buildIos(
+        context,
+        search: search,
+        query: query,
+        folders: folders,
+        files: files,
+        recent: recent,
+        loaded: loaded,
+        loading: loading,
+        hasMore: hasMore,
+        loadingMore: loadingMore,
+        error: error,
+        grid: grid,
       );
     }
 
@@ -352,6 +393,159 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
     );
   }
 
+  /// iOS: a collapsing large title with scoped search, then spaces,
+  /// recents, folders and files on the plain browsing canvas.
+  Widget _buildIos(
+    BuildContext context, {
+    required DriveSearchController search,
+    required String query,
+    required List<DriveFolder> folders,
+    required List<DriveFile> files,
+    required List<DriveFile> recent,
+    required bool loaded,
+    required bool loading,
+    required bool hasMore,
+    required bool loadingMore,
+    required String? error,
+    required bool grid,
+  }) {
+    final browsing = query.isEmpty;
+    final settled = browsing ? loaded : search.loaded;
+    return Scaffold(
+      backgroundColor: IosBrowse.canvas(context),
+      body: IosBrowseCanvas(
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (!browsing &&
+                notification.metrics.extentAfter < 200 &&
+                search.error == null) {
+              search.loadMore();
+            }
+            if (browsing &&
+                notification.metrics.pixels >=
+                    notification.metrics.maxScrollExtent - 200 &&
+                hasMore &&
+                !loadingMore) {
+              ref.read(driveControllerProvider).loadMoreFolder(null);
+            }
+            return false;
+          },
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            slivers: [
+              IosTabHeader(
+                scope: SearchScope.drive,
+                menuSections: (ctx) =>
+                    buildBrowseTabMenuSections(ctx, ref, SearchScope.drive),
+              ),
+              CupertinoSliverRefreshControl(
+                onRefresh: browsing
+                    ? ref.read(driveControllerProvider).refresh
+                    : search.refresh,
+              ),
+              if (error != null) _ErrorBanner(error),
+              if (search.error != null && !browsing)
+                SliverToBoxAdapter(
+                  child: IosContentUnavailable(
+                    icon: CupertinoIcons.exclamationmark_circle,
+                    title: 'Search Unavailable',
+                    body: search.error!,
+                    actionLabel: 'Try Again',
+                    onAction: search.loadMore,
+                  ),
+                ),
+              if (browsing)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: DriveQuickActions(
+                      onTrashTap: () => context.safePush('/settings/trash'),
+                      onArchiveTap: () => context.safePush('/settings/archive'),
+                      onLockedTap: () => context.safePush('/settings/locked'),
+                    ),
+                  ),
+                ),
+              if (!loaded && loading && browsing)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(child: CupertinoActivityIndicator()),
+                ),
+              if (recent.isNotEmpty && browsing) ...[
+                const SliverToBoxAdapter(child: IosSectionTitle('Recents')),
+                SliverToBoxAdapter(
+                  child: DriveRecentsStrip(
+                    files: recent,
+                    onSelect: (f) => enterSelect(fileId: f.id),
+                    onFileTap: (f) => openDriveFile(context, ref, f),
+                  ),
+                ),
+              ],
+              if (settled &&
+                  !search.loading &&
+                  search.error == null &&
+                  folders.isEmpty &&
+                  files.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: browsing
+                      ? const IosContentUnavailable(
+                          icon: CupertinoIcons.folder,
+                          title: 'Your Drive is empty',
+                          body:
+                              'Upload files or create a folder to get started.',
+                        )
+                      : IosContentUnavailable(
+                          icon: CupertinoIcons.search,
+                          title: 'No Results',
+                          body:
+                              'Nothing matches “${ref.read(searchQueryProvider(SearchScope.drive)).raw.trim()}”. Try a different file or folder name.',
+                        ),
+                ),
+              if (folders.isNotEmpty)
+                const SliverToBoxAdapter(
+                  child: IosSectionTitle('Folders', bottom: 0),
+                ),
+              if (folders.isNotEmpty && !browsing)
+                const SliverToBoxAdapter(child: _PartialFoldersBanner()),
+              DriveFolderSliver(
+                folders: folders,
+                selectMode: false,
+                selectedFolderIds: selectedFolderIds,
+                onFolderTap: _onFolderTap,
+                onFolderLongPress: (id) => enterSelect(folderId: id),
+                onFolderMore: (folder) =>
+                    DriveItemActions.openFolder(context, ref, folder),
+              ),
+              if (files.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: IosSectionTitle('Files', bottom: grid ? 0 : 6),
+                ),
+              DriveFilesSliver(
+                files: files,
+                grid: grid,
+                selectMode: false,
+                selectedFileIds: selectedFileIds,
+                onFileTap: _onFileTap,
+                onFileLongPress: (id) => enterSelect(fileId: id),
+                onFileMore: (file) =>
+                    DriveItemActions.openFile(context, ref, file),
+                bottomPadding: loadingMore || search.loading ? 0 : 140,
+              ),
+              if ((loadingMore && browsing) || (search.loading && !browsing))
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(0, 20, 0, 140),
+                    child: CupertinoActivityIndicator(),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _onFileTap(DriveFile file) {
     if (selectMode) {
       toggleFileSelection(file.id);
@@ -375,18 +569,28 @@ class _ErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final ios = Theme.of(context).platform == TargetPlatform.iOS;
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: ios
+            ? const EdgeInsets.fromLTRB(20, 4, 20, 8)
+            : const EdgeInsets.all(AppSpacing.md),
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
+          decoration: ShapeDecoration(
             color: scheme.errorContainer,
-            borderRadius: AppRadii.mdR,
+            shape: RoundedSuperellipseBorder(
+              borderRadius: ios ? BorderRadius.circular(18) : AppRadii.mdR,
+            ),
           ),
           child: Row(
             children: [
-              Icon(Icons.error_outline, color: scheme.onErrorContainer),
+              Icon(
+                ios
+                    ? CupertinoIcons.exclamationmark_circle_fill
+                    : Icons.error_outline,
+                color: scheme.onErrorContainer,
+              ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
@@ -413,18 +617,23 @@ class _PartialFoldersBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final ios = Theme.of(context).platform == TargetPlatform.iOS;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        0,
-        AppSpacing.md,
-        AppSpacing.xs,
-      ),
+      padding: ios
+          ? const EdgeInsets.fromLTRB(20, 4, 20, 0)
+          : const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              0,
+              AppSpacing.md,
+              AppSpacing.xs,
+            ),
       child: Text(
-        'Folders matched in your loaded sections — open a folder to discover more.',
+        ios
+            ? 'Matches from folders opened on this device.'
+            : 'Folders matched in your loaded sections — open a folder to discover more.',
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
           color: scheme.onSurfaceVariant,
-          fontStyle: FontStyle.italic,
+          fontStyle: ios ? null : FontStyle.italic,
         ),
       ),
     );

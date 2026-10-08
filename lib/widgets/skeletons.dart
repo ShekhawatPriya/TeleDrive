@@ -13,7 +13,9 @@ class SkeletonList extends StatelessWidget {
     final base = scheme.surfaceContainerHighest;
     final highlight = scheme.surfaceContainer;
     return Shimmer.fromColors(
-      enabled: !MediaQuery.disableAnimationsOf(context) && !MediaQuery.accessibleNavigationOf(context),
+      enabled:
+          !MediaQuery.disableAnimationsOf(context) &&
+          !MediaQuery.accessibleNavigationOf(context),
       baseColor: base,
       highlightColor: highlight,
       child: ListView.separated(

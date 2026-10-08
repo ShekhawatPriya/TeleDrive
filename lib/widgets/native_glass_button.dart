@@ -1,10 +1,15 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// UIKit owns glass rendering, accessibility and SF Symbols on supported iOS.
 /// Older OS versions and other platforms retain a fully functional control.
+final _eager = <Factory<OneSequenceGestureRecognizer>>{
+  Factory<OneSequenceGestureRecognizer>(EagerGestureRecognizer.new),
+};
+
 class NativeGlassButton extends StatefulWidget {
   const NativeGlassButton({
     super.key,
@@ -18,8 +23,12 @@ class NativeGlassButton extends StatefulWidget {
     this.visualSize,
     this.size = 48,
     this.symbolSize = 19,
+    this.symbolWeight = 'semibold',
+    this.plain = false,
+    this.tint,
     this.menuBuilder,
     this.onMenuAction,
+    this.claimsTouches = false,
   });
   final String label, symbol;
   final IconData icon;
@@ -27,8 +36,21 @@ class NativeGlassButton extends StatefulWidget {
   final bool white, prominent;
   final double? width, visualSize;
   final double size, symbolSize;
+
+  /// UIKit symbol weight: `regular`, `medium` or `semibold`.
+  final String symbolWeight;
+
+  /// A bare glyph without the glass capsule, for per-row overflow controls.
+  /// [tint] colors the glyph; UIKit's secondary label is used when omitted.
+  final bool plain;
+  final Color? tint;
   final List<Map<String, Object?>> Function()? menuBuilder;
   final ValueChanged<String>? onMenuAction;
+
+  /// Hand touches to UIKit immediately. Set this inside a scroll view, where
+  /// the platform view would otherwise wait for the scroll gesture to give
+  /// up before UIKit sees the tap.
+  final bool claimsTouches;
   @override
   State<NativeGlassButton> createState() => _NativeGlassButtonState();
 }
@@ -42,6 +64,9 @@ class _NativeGlassButtonState extends State<NativeGlassButton> {
     'label': widget.label,
     'symbol': widget.symbol,
     'symbolSize': widget.symbolSize,
+    'symbolWeight': widget.symbolWeight,
+    'plain': widget.plain,
+    if (widget.tint != null) 'tint': widget.tint!.toARGB32(),
     'enabled': widget.onPressed != null,
     'white': widget.white,
     'prominent': widget.prominent,
@@ -104,6 +129,7 @@ class _NativeGlassButtonState extends State<NativeGlassButton> {
     child: _available
         ? UiKitView(
             viewType: 'teledrive/glass-button',
+            gestureRecognizers: widget.claimsTouches ? _eager : const {},
             creationParamsCodec: const StandardMessageCodec(),
             creationParams: _configuration,
             onPlatformViewCreated: (id) {
@@ -130,14 +156,16 @@ class _NativeGlassButtonState extends State<NativeGlassButton> {
                 width: widget.width ?? widget.visualSize ?? widget.size,
                 height: widget.visualSize ?? widget.size,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: widget.prominent
-                      ? CupertinoColors.activeBlue.resolveFrom(context)
-                      : widget.white
-                      ? const Color(0xCC252529)
-                      : Theme.of(context).colorScheme.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(100),
-                ),
+                decoration: widget.plain
+                    ? null
+                    : BoxDecoration(
+                        color: widget.prominent
+                            ? CupertinoColors.activeBlue.resolveFrom(context)
+                            : widget.white
+                            ? const Color(0xCC252529)
+                            : Theme.of(context).colorScheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(100),
+                      ),
                 child: widget.symbol.isEmpty
                     ? Text(
                         widget.label,
@@ -149,7 +177,10 @@ class _NativeGlassButtonState extends State<NativeGlassButton> {
                         color:
                             (widget.white || widget.prominent
                                     ? Colors.white
-                                    : Theme.of(context).colorScheme.onSurface)
+                                    : widget.tint ??
+                                          Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface)
                                 .withValues(
                                   alpha: widget.onPressed == null ? .3 : 1,
                                 ),

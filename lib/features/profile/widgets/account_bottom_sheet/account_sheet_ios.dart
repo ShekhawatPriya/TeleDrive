@@ -81,7 +81,7 @@ extension _IosAccountSheet on _AccountBottomSheetState {
                 IosRow(
                   title: 'Switch Account',
                   icon: CupertinoIcons.person_2_fill,
-                  color: CupertinoColors.systemGrey,
+                  color: IosTint.neutral,
                   trailing: Icon(
                     _isExpanded
                         ? CupertinoIcons.chevron_up
@@ -148,7 +148,7 @@ extension _IosAccountSheet on _AccountBottomSheetState {
             IosRow(
               title: 'Photo Backup',
               icon: CupertinoIcons.cloud_upload_fill,
-              color: CupertinoColors.systemBlue,
+              color: IosTint.photoBackup,
               subtitle: backupOn ? 'Backup is on' : 'Backup is off',
               trailing: CupertinoSwitch(
                 value: backupOn,
@@ -158,7 +158,7 @@ extension _IosAccountSheet on _AccountBottomSheetState {
             IosRow(
               title: 'Telegram Drive',
               icon: CupertinoIcons.tray_2_fill,
-              color: CupertinoColors.systemIndigo,
+              color: IosTint.telegramDrive,
               value: formatFileSize(summary.totalBytes),
               onTap: () => _openIosDestination('/profile?scrollToStorage=true'),
             ),
@@ -170,13 +170,13 @@ extension _IosAccountSheet on _AccountBottomSheetState {
               title: 'Free Up Space',
               subtitle: 'Remove backed-up copies from this iPhone',
               icon: CupertinoIcons.device_phone_portrait,
-              color: CupertinoColors.systemGreen,
+              color: IosTint.freeUpSpace,
               onTap: () => _openIosDestination('/profile/free-up-space'),
             ),
             IosRow(
               title: 'Settings',
               icon: CupertinoIcons.gear,
-              color: CupertinoColors.systemGrey,
+              color: IosTint.neutral,
               onTap: () => Navigator.of(context).push(
                 CupertinoPageRoute<void>(
                   builder: (_) => const SettingsScreen(),
@@ -187,7 +187,7 @@ extension _IosAccountSheet on _AccountBottomSheetState {
               title: 'My Data',
               subtitle: 'Storage, privacy and export',
               icon: CupertinoIcons.hand_raised_fill,
-              color: CupertinoColors.systemBlue,
+              color: IosTint.privacy,
               onTap: () => _openIosDestination('/profile/my-data'),
             ),
           ],
@@ -197,7 +197,7 @@ extension _IosAccountSheet on _AccountBottomSheetState {
             IosRow(
               title: 'Help & Feedback',
               icon: CupertinoIcons.question_circle_fill,
-              color: CupertinoColors.systemOrange,
+              color: IosTint.help,
               onTap: () => _showHelpFeedbackDialog(context),
             ),
           ],

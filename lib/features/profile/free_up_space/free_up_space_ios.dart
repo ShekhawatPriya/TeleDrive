@@ -94,7 +94,7 @@ extension _IosFreeUpSpace on _FreeUpSpaceScreenState {
             'Limited Photos access: only the items you have allowed are included in this check.',
           ),
         IosGroup(
-          title: 'VERIFIED BACKUPS',
+          title: 'Verified Backups',
           footer: _FreeUpBreakdownCard._relativeTime(state.lastScanAt),
           children: [
             IosRow(
@@ -102,19 +102,19 @@ extension _IosFreeUpSpace on _FreeUpSpaceScreenState {
               subtitle: '${state.photoCount} items',
               value: formatFileSize(state.photoBytes),
               icon: CupertinoIcons.photo_fill,
-              color: CupertinoColors.systemPink,
+              color: IosTint.photos,
             ),
             IosRow(
               title: 'Videos',
               subtitle: '${state.videoCount} items',
               value: formatFileSize(state.videoBytes),
               icon: CupertinoIcons.videocam_fill,
-              color: CupertinoColors.systemOrange,
+              color: IosTint.videos,
             ),
           ],
         ),
         const IosGroup(
-          title: 'WHAT HAPPENS NEXT',
+          title: 'What Happens Next',
           children: [
             IosRow(
               title: 'Only local copies are removed',
@@ -127,12 +127,12 @@ extension _IosFreeUpSpace on _FreeUpSpaceScreenState {
               subtitle:
                   'iOS asks you to confirm removal from Photos. Cancel to keep everything on this iPhone.',
               icon: CupertinoIcons.hand_raised_fill,
-              color: CupertinoColors.systemGreen,
+              color: IosTint.privacy,
             ),
           ],
         ),
         IosGroup(
-          title: 'ITEMS KEPT ON THIS IPHONE',
+          title: 'Items Kept on This iPhone',
           children: [
             IosRow(
               title: 'Not backed up',

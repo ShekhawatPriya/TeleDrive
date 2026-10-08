@@ -8,6 +8,7 @@ import '../core/utils/file_type_detector.dart';
 import '../core/theme/app_theme.dart';
 import '../models/drive_models.dart';
 import 'google_drive_icon.dart';
+import 'ios/ios_browse.dart';
 import 'media_thumb.dart';
 import 'selection_indicator.dart';
 import 'uploading_shimmer.dart';
@@ -81,7 +82,7 @@ class FileListTile extends StatelessWidget {
                       child: theme.platform == TargetPlatform.iOS
                           ? Icon(
                               isShared
-                                  ? CupertinoIcons.folder_badge_person_crop
+                                  ? CupertinoIcons.folder_fill_badge_person_crop
                                   : CupertinoIcons.folder_fill,
                               size: 36,
                               color: scheme.primary,
@@ -94,11 +95,31 @@ class FileListTile extends StatelessWidget {
                   : MediaThumb(
                       file: file!,
                       fit: BoxFit.cover,
-                      radius: ios ? 6 : AppRadii.sm,
+                      radius: ios ? 8 : AppRadii.sm,
                       showBackground: false,
+                      fallback: ios
+                          ? IosFileGlyph(
+                              kind: file!.kind,
+                              extension: extensionOf(file!.name),
+                            )
+                          : null,
                     ),
             ),
           ),
+          if (ios && !isFolder)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: IosBrowse.hairline(context),
+                      width: .5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           if (ios && starred && !isFailed && !isUploading)
             Positioned(
               right: 0,
@@ -119,7 +140,8 @@ class FileListTile extends StatelessWidget {
                 ),
               ),
             ),
-          if (ios && isShared && !isOptimistic)
+          // A shared folder's own symbol already carries the person badge.
+          if (ios && isShared && !isOptimistic && !isFolder)
             Positioned(
               right: 0,
               bottom: starred ? 22 : 0,

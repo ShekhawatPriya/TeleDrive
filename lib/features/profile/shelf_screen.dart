@@ -236,7 +236,11 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen>
     if (theme.platform == TargetPlatform.iOS) {
       return RecoveryBrowser(
         title: _title,
+        icon: widget.kind == ShelfKind.archive
+            ? CupertinoIcons.archivebox
+            : CupertinoIcons.lock,
         description: _footerCaption,
+        emptyTitle: _emptyTitle,
         emptyBody: _emptyBody,
         files: _files,
         loading: _loading,

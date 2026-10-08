@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:go_router/go_router.dart';
 import '../../widgets/search_keyboard.dart';
-import '../../widgets/account_button.dart';
+import '../../widgets/ios/ios_browse.dart';
+import '../../widgets/ios/ios_tab_header.dart';
 import '../../widgets/ios_more_menu.dart';
 import 'photos_viewer/photo_viewer_session.dart';
 import '../../widgets/empty_state.dart';
@@ -88,6 +88,9 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
         }
       },
       child: Scaffold(
+        // Same canvas as the other iOS tabs, so the header and library read
+        // as one surface.
+        backgroundColor: ios ? IosBrowse.canvas(context) : null,
         body: Column(
           children: [
             if (selectMode)
@@ -163,17 +166,11 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
                     },
                     leadingSlivers: [
                       if (ios && !selectMode) ...[
-                        CupertinoSliverNavigationBar(
-                          backgroundColor: theme.colorScheme.surface,
-                          brightness: theme.brightness,
-                          automaticallyImplyLeading: false,
-                          largeTitle: const Text('Photos'),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IosMoreButton(sectionsBuilder: _menus),
-                              const AccountButton(avatarSize: 32),
-                            ],
+                        IosLargeTitleHeader(
+                          title: 'Photos',
+                          trailing: IosHeaderActions(
+                            menuSections: _menus,
+                            tooltip: 'Photos options',
                           ),
                         ),
                         SliverToBoxAdapter(

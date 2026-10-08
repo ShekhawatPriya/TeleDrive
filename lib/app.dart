@@ -23,9 +23,11 @@ class TeleDriveApp extends ConsumerWidget {
       darkTheme: buildTheme(AppBrand.scheme(Brightness.dark)),
       highContrastTheme: buildTheme(
         AppBrand.scheme(Brightness.light, highContrast: true),
+        highContrast: true,
       ),
       highContrastDarkTheme: buildTheme(
         AppBrand.scheme(Brightness.dark, highContrast: true),
+        highContrast: true,
       ),
       themeMode: theme.mode,
       routerConfig: router,

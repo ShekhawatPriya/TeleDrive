@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +14,7 @@ class DriveSearchField extends ConsumerStatefulWidget {
     this.selectionMode = false,
     this.autofocus = false,
     this.onCancel,
+    this.inScrollingHeader = false,
     super.key,
   });
   final SearchScope scope;
@@ -20,6 +23,11 @@ class DriveSearchField extends ConsumerStatefulWidget {
 
   /// A disclosed search stays open until its owner handles Cancel.
   final VoidCallback? onCancel;
+
+  /// Set by the iOS browsing large-title header, where the field scrolls with
+  /// content on the plain canvas: touches go to UIKit at once instead of
+  /// waiting for the scroll gesture, and the fallback uses the system fill.
+  final bool inScrollingHeader;
   @override
   ConsumerState<DriveSearchField> createState() => _DriveSearchFieldState();
 }
@@ -194,6 +202,13 @@ class _DriveSearchFieldState extends ConsumerState<DriveSearchField>
             : _available
             ? UiKitView(
                 viewType: 'teledrive/search',
+                gestureRecognizers: widget.inScrollingHeader
+                    ? {
+                        Factory<OneSequenceGestureRecognizer>(
+                          EagerGestureRecognizer.new,
+                        ),
+                      }
+                    : const {},
                 creationParams: _configuration,
                 creationParamsCodec: const StandardMessageCodec(),
                 onPlatformViewCreated: (id) {
@@ -228,7 +243,11 @@ class _DriveSearchFieldState extends ConsumerState<DriveSearchField>
                     final gap = ios ? 12.0 : 8.0;
                     final fieldWidth =
                         constraints.maxWidth - (cancelSize + gap) * progress;
-                    final fill = theme.colorScheme.surfaceContainerHigh;
+                    final fill = ios && widget.inScrollingHeader
+                        ? CupertinoColors.tertiarySystemFill.resolveFrom(
+                            context,
+                          )
+                        : theme.colorScheme.surfaceContainerHigh;
                     final border = OutlineInputBorder(
                       borderRadius: BorderRadius.circular(height / 2),
                       borderSide: MediaQuery.highContrastOf(context)

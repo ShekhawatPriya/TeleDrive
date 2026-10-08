@@ -9,6 +9,22 @@ Apple references:
 - [UIKit's new design](https://developer.apple.com/videos/play/wwdc2025/284/)
 - [UIButton menus](https://developer.apple.com/documentation/uikit/uibutton/menu)
 
+## Color system
+
+UIKit controls (tab bar, toolbars, search field, glass buttons, menus) are tinted
+with `.systemBlue` and `.systemRed`. `iosPalette` uses the same values for Flutter
+content (`#007AFF`/`#0A84FF`, Increase Contrast `#0040DD`/`#409CFF`), so native
+chrome and Flutter content share one accent. Filled buttons keep white labels in both themes. Every
+`ColorScheme` role is overridden on iOS, so seeded Material tones (blue-grey
+outlines, tinted toasts, tonal elevation) do not appear; `surfaceTint` is
+transparent. High-contrast themes pass `highContrast: true` through `buildTheme`.
+
+Settings-style icon tiles take their colour from `IosTint`, one system colour per
+destination or media kind (for example Photo Backup is indigo and Telegram
+Drive is blue wherever they appear). `IosRow` resolves these dynamic colours,
+so dark mode receives UIKit's dark variants. `IosGroup` headings use title case,
+not uppercase. `test/ios_palette_test.dart` checks UIKit parity and contrast floors.
+
 ## Native controls
 
 `NativeTabBar` embeds UIKit's `UITabBar`, including SF Symbols, the system glass
@@ -350,8 +366,13 @@ verified in this pass.
 Photos now opens directly into a dated library with a collapsing Cupertino
 header, visible All media / Photos / Videos categories, and a compact leading
 Search button that expands into a field and X. The entire row is a retained
-UIKit view: native segmented selection, sibling glass surfaces in one glass
-container, and a reversible UIKit spring that forms/separates the close surface.
+UIKit view: a system `UISegmentedControl` (its own iOS 26 track and glass
+selection lens), sibling glass search/close surfaces in one glass container, and
+a single UIKit spring that is retargeted from the on-screen state on every
+toggle, so rapid open/close never restarts, reverses or skips the motion. The
+categories fade out quickly as the field takes the row and back in once the
+pill has room. The header (large title, overflow capsule, account) is the
+shared `IosLargeTitleHeader` on the same `systemBackground` canvas as Drive.
 Native accessibility settings select opaque surfaces or remove motion. Select
 is in the three-dot menu with view options. Comfortable densities use stable featured
 mosaics, with a persisted square-grid alternative. The viewer has coordinated
@@ -469,3 +490,69 @@ copy so explanatory text can use the full content width.
 
 See [Gallery density and profile refresh](gallery-and-profile-refresh.md) for
 current motion, layout and main Telegram photo refresh contracts.
+
+## Browsing redesign: Drive, folders, Starred, Shared and recovery spaces
+
+This section supersedes the earlier browsing descriptions above for the Drive
+home, folder pages, Starred, Shared, Archive, Locked and Trash on iOS. Android is
+unchanged. Primitives live in `lib/widgets/ios/ios_browse.dart` and
+`lib/widgets/ios/ios_tab_header.dart`.
+
+- **Canvas.** Browsing pages use `systemBackground` (white/black), as Files and
+  Photos do; tiles use `secondarySystemBackground`. Settings-style pages keep
+  the grouped background. System blue remains the only interface accent.
+- **Header.** Each tab owns a `CupertinoSliverNavigationBar` large title (Drive,
+  Starred, Shared) that collapses into the bar on scroll; the shell no longer
+  draws a fixed iOS header. The overflow glass button and avatar stay pinned.
+  Scoped search sits under the title and tucks away while browsing, but stays
+  pinned while a query is shown. The bar is opaque because item rows host UIKit
+  hold views a Flutter blur cannot sample; its hairline appears only once content
+  scrolls beneath it. The large title shares the 20-point content gutter.
+  Header platform views (search, glass back/overflow) set `claimsTouches` so a
+  tap is not held until the scroll gesture resolves.
+- **Overflow controls.** Header overflow is one 44-point native glass capsule
+  with a 17-point medium `ellipsis`, as in the Files app (`IosHeaderActions`,
+  beside a 40-point account avatar; the glass back button is also 44). Per-row
+  overflow (files, folders, Shared and recovery rows) is a bare ellipsis with no
+  capsule, `IosMoreButton(plain: true)` in a 48-point target, matching the
+  Flutter ellipsis on Drive rows while keeping the native menu. A glass capsule
+  appears on rows only where the control floats over a cover image (Shared grid).
+- **Drive home.** Search, then Archive/Locked/Trash as three equal tiles (a
+  tinted system-blue symbol over the secondary surface, name below; rows at large
+  text), then Recents, Folders and Files with 22-point bold section titles. There
+  is no "Your spaces" heading. Recents is an image-first rail: square thumbnails
+  with captions on the page, 2.5 tiles visible, wider two-line tiles at large text
+  and actions from the native hold. Folder tiles keep the pale-blue/black-outline
+  treatment at 128 points, with names bottom-aligned above their metadata.
+- **Files without a preview** use `IosFileGlyph`: the kind's system tint on a soft
+  fill with a filled symbol (PDF red, documents blue, sheets green, video orange,
+  audio purple, others grey) and the extension on larger tiles. Shared folders use
+  the filled person-badge folder symbol without an extra link badge.
+- **Folder pages** use the same large title with glass back and overflow, ancestor
+  breadcrumbs only (the title names the current folder) and the Drive tiles.
+- **Starred** drops the boxed introduction and reuses Drive's Folders tiles and
+  Files rows/grid under the same titles.
+- **Shared** groups links into Active and Expired or Revoked sections with counts.
+  Rows use a 44-point thumbnail tile, the item identity, permission, and a status
+  dot plus word (green active, orange expired, grey revoked) with view/download
+  counts. Grid tiles put captions under the cover.
+- **Archive, Locked and Trash** use the large title with glass back and overflow,
+  an introduction carrying the same tinted symbol as the Drive tile, a quiet item
+  count and the Drive rows. Empty and failed loads use the content-unavailable
+  pattern (`IosContentUnavailable`); a failed load never shows a zero count.
+- **Empty and search states** use a secondary symbol, a short title and one line
+  of guidance; Drive search shows "No Results" with the query.
+
+References: Apple's large-title navigation and ContentUnavailableView; Photos
+Utilities and Reminders tiles; Uber's Suggestions tiles and Activity
+(upcoming/past) grouping; Blinkit and App Store rails for compact, image-first
+recents. These informed composition only; no brand styling is copied.
+
+Verification: `test/ios_browse_design_test.dart` renders every surface populated
+and empty in both themes, grid layouts, search with no results, collapse on
+scroll, and 320 points at 200% text with high contrast (previews under
+`build/modernization/ios-browse-*` with `--dart-define=WRITE_UI_PREVIEWS=true`).
+`tools/ios_browse_preview.dart` runs the real shell with fixtures on a simulator.
+With the current Xcode, `flutter build ios --simulator` fails at
+`lipo -verify_arch`; generate config with `--config-only`, then build with
+`xcodebuild ... -sdk iphonesimulator ARCHS=arm64 ONLY_ACTIVE_ARCH=YES`.
