@@ -245,6 +245,8 @@ class _TrashScreenState extends ConsumerState<TrashScreen>
     if (theme.platform == TargetPlatform.iOS) {
       return RecoveryBrowser(
         title: 'Trash',
+        icon: CupertinoIcons.trash,
+        emptyTitle: 'Trash is empty',
         description:
             'Restore items to their original location, or delete them forever. Items stay in Telegram until permanently deleted.',
         emptyBody:

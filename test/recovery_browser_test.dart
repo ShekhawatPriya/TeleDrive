@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -532,7 +533,9 @@ void main() {
       tester,
       RecoveryBrowser(
         title: 'Archive',
+        icon: CupertinoIcons.archivebox,
         description: 'Archived files',
+        emptyTitle: 'Archive is empty',
         emptyBody: 'No files',
         files: const [],
         loading: false,
@@ -555,6 +558,7 @@ void main() {
       ),
     );
     expect(find.text('0 items'), findsNothing);
+    expect(find.text('Archive is empty'), findsNothing);
     expect(find.text('Could not load Archive.'), findsOneWidget);
     await tester.tap(find.text('Try Again'));
     await tester.pumpAndSettle();
@@ -575,7 +579,8 @@ void main() {
     old.complete([_photo]);
     await tester.pumpAndSettle();
     expect(find.text(_photo.name), findsNothing);
-    expect(find.text('0 items'), findsOneWidget);
+    // The new account's empty shelf, not a stale count or the old file.
+    expect(find.text('Archive is empty'), findsOneWidget);
   });
   testWidgets('Starred file and folder holds share Drive selection contract', (
     tester,
