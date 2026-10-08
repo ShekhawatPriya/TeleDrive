@@ -39,3 +39,14 @@ checkmark; scoped search stays available. Select All includes only eligible load
 files/folders in the visible scope. The profile avatar is visually larger than
 the 34-point overflow surface, whose hit target remains 44 points. See
 [iOS item menus and selection](ios-design.md#native-item-menus-and-selection).
+
+## iOS browsing redesign
+
+On iOS the order is unchanged, with new geometry: a collapsing large-title header
+(title "Drive") with search beneath it, then Archive/Locked/Trash as three equal
+tiles with no section heading, then Recents, Folders and Files under 22-point bold
+titles. Recents becomes a compact image-first rail, and folder tiles shrink to
+128 points. The documented search, keyboard and upload-control contracts are
+unchanged. Android keeps the layout described above. See
+[iOS browsing redesign](ios-design.md#browsing-redesign-drive-folders-starred-shared-and-recovery-spaces).
+
