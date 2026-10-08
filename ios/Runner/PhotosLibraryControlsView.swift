@@ -21,7 +21,7 @@ final class PhotosLibraryControlsView: NSObject, FlutterPlatformView, UITextFiel
   private let search = UIButton(type: .system)
   private let cancel = UIButton(type: .system)
   private let field = UISearchTextField()
-  private let segments = PhotosGlassCategories(items: ["All media", "Photos", "Videos"])
+  private let segments = PhotosCategories(items: ["All media", "Photos", "Videos"])
   private let categoryScroll = PhotosCategoryScrollView()
   private let channel: FlutterMethodChannel
   private var expanded = false
@@ -30,8 +30,10 @@ final class PhotosLibraryControlsView: NSObject, FlutterPlatformView, UITextFiel
   private var opaque = false
   private var scale: CGFloat = 1
   private var lastSize = CGSize.zero
-  private var animator: UIViewPropertyAnimator?
-  private var animatorEndpoint = false
+  // Every toggle retargets the same spring from the views' current
+  // presentation, so rapid taps never restart, reverse or skip the motion.
+  private var animating = false
+  private var transitionToken = 0
   private var disposed = false
 
   init(frame: CGRect, id: Int64, arguments: Any?, messenger: FlutterBinaryMessenger) {
@@ -112,8 +114,7 @@ final class PhotosLibraryControlsView: NSObject, FlutterPlatformView, UITextFiel
 
   private func dispose() {
     disposed = true
-    animator?.stopAnimation(true)
-    animator = nil
+    settleAnimation()
     field.resignFirstResponder()
     NotificationCenter.default.removeObserver(self)
     channel.setMethodCallHandler(nil)
@@ -165,7 +166,9 @@ final class PhotosLibraryControlsView: NSObject, FlutterPlatformView, UITextFiel
       effect.spacing = 8
       container.effect = effect
       for glass in [searchGlass, cancelGlass] { glass.effect = material() }
-      categoriesGlass.effect = expanded ? nil : material()
+      // The category control is a system UISegmentedControl, which renders its
+      // own Liquid Glass track and selection lens; this view only clips it.
+      categoriesGlass.effect = nil
       for glass in [searchGlass, cancelGlass, categoriesGlass] { glass.backgroundColor = .clear }
     } else {
       container.effect = nil
@@ -174,7 +177,6 @@ final class PhotosLibraryControlsView: NSObject, FlutterPlatformView, UITextFiel
         glass.backgroundColor = .secondarySystemBackground
       }
     }
-    segments.refreshMaterial(opaque: opaque)
     for glass in [searchGlass, cancelGlass, categoriesGlass] {
       glass.layer.borderWidth = highContrast || UIAccessibility.isDarkerSystemColorsEnabled ? 1 : 0
       glass.layer.borderColor = UIColor.label.resolvedColor(with: root.traitCollection).cgColor
@@ -228,18 +230,12 @@ final class PhotosLibraryControlsView: NSObject, FlutterPlatformView, UITextFiel
     categoryScroll.isHidden = !scrolling
     segments.frame = CGRect(x: 0, y: 0, width: width, height: side)
     segments.alpha = searching ? 0 : 1
-    segments.allowsDragSelection = !scrolling
     categoryScroll.contentSize = segments.bounds.size
     search.alpha = 1
     field.alpha = searching ? 1 : 0
     cancel.alpha = searching ? 1 : 0
     categoryScroll.alpha = searching ? 0 : 1
-    if #available(iOS 26.0, *), !opaque {
-      categoriesGlass.effect = searching ? nil : material()
-      categoriesGlass.alpha = 1
-    } else {
-      categoriesGlass.alpha = searching ? 0 : 1
-    }
+    categoriesGlass.alpha = opaque && searching ? 0 : 1
   }
 
   private func updateOwnership() {
@@ -248,8 +244,8 @@ final class PhotosLibraryControlsView: NSObject, FlutterPlatformView, UITextFiel
     searchGlass.contentView.accessibilityElements = expanded ? [field] : [search]
     cancelGlass.contentView.accessibilityElements = expanded ? [cancel] : []
     search.isHidden = false
-    field.isHidden = !expanded && animator == nil
-    categoriesGlass.isHidden = expanded && animator == nil
+    field.isHidden = !expanded && !animating
+    categoriesGlass.isHidden = expanded && !animating
     // The same glyph also restores keyboard focus when the field is expanded.
     search.isUserInteractionEnabled = true
     search.isAccessibilityElement = !expanded
@@ -263,7 +259,7 @@ final class PhotosLibraryControlsView: NSObject, FlutterPlatformView, UITextFiel
     categoriesGlass.isUserInteractionEnabled = !expanded
     categoriesGlass.accessibilityElementsHidden = expanded
     segments.setAccessibilityActive(!expanded)
-    cancelGlass.isHidden = !expanded && animator == nil
+    cancelGlass.isHidden = !expanded && !animating
   }
 
   private func transition(to searching: Bool) {
@@ -276,32 +272,40 @@ final class PhotosLibraryControlsView: NSObject, FlutterPlatformView, UITextFiel
       updateOwnership()
       return
     }
-    if let animator = animator {
-      // Reverse the running UIKit spring instead of rebuilding either control
-      // or starting a second transition over its current presentation.
-      animator.isReversed = searching != animatorEndpoint
-      updateOwnership()
-      return
+    transitionToken += 1
+    let token = transitionToken
+    animating = true
+    updateOwnership()
+    // The categories leave quickly as the field takes their row and return
+    // once the pill has room, instead of riding the spring across the cancel
+    // button. A later animation on the same property replaces this one.
+    let fade = { self.segments.alpha = searching ? 0 : 1; self.categoryScroll.alpha = searching ? 0 : 1 }
+    defer {
+      UIView.animate(
+        withDuration: searching ? 0.14 : 0.26, delay: searching ? 0 : 0.12,
+        options: [.beginFromCurrentState, .allowUserInteraction, .curveEaseOut], animations: fade)
     }
-    cancelGlass.isHidden = false
-    let spring = UISpringTimingParameters(dampingRatio: 0.86)
-    let next = UIViewPropertyAnimator(duration: 0.5, timingParameters: spring)
-    animator = next
-    animatorEndpoint = searching
-    next.addAnimations { [weak self] in self?.layoutSurfaces(searching: searching) }
-    next.addCompletion { [weak self] _ in
-      guard let self = self, !self.disposed else { return }
-      self.animator = nil
-      self.layoutSurfaces(searching: self.expanded)
+    // beginFromCurrentState retargets from what is on screen and carries the
+    // spring's velocity into the new direction, so an interrupted open flows
+    // straight back into a close rather than snapping to either end.
+    UIView.animate(
+      withDuration: 0.55, delay: 0, usingSpringWithDamping: 0.82, initialSpringVelocity: 0,
+      options: [.beginFromCurrentState, .allowUserInteraction, .allowAnimatedContent]
+    ) {
+      self.layoutSurfaces(searching: searching)
+    } completion: { [weak self] _ in
+      guard let self = self, !self.disposed, token == self.transitionToken else { return }
+      self.animating = false
       self.updateOwnership()
     }
-    updateOwnership()
-    next.startAnimation()
   }
 
   private func settleAnimation() {
-    animator?.stopAnimation(true)
-    animator = nil
+    transitionToken += 1
+    animating = false
+    for view in [searchGlass, categoriesGlass, cancelGlass, search, field, cancel, segments, categoryScroll] as [UIView] {
+      view.layer.removeAllAnimations()
+    }
   }
 
   private func revealSelection(animated: Bool) {
@@ -345,147 +349,36 @@ private final class PhotosCategoryScrollView: UIScrollView {
   override func touchesShouldCancel(in view: UIView) -> Bool { true }
 }
 
-/// UIKit's standard segmented control supplies its own grey fill. Keeping
-/// system buttons over an actual glass lens avoids that second opaque backing.
-/// All material rendering, touch events and spring animation remain in UIKit.
-private final class PhotosGlassCategories: UIControl, UIGestureRecognizerDelegate {
-  private let lens = UIVisualEffectView(effect: nil)
-  private var buttons: [UIButton] = []
-  private var widths: [CGFloat] = []
-  private var selection = 0
-  private var dragging = false
-  private var selectionPan: UIPanGestureRecognizer!
-  var allowsDragSelection = true {
-    didSet { selectionPan?.isEnabled = allowsDragSelection }
-  }
+/// The system segmented control: on iOS 26 UIKit draws its Liquid Glass track
+/// and selection lens and owns touch tracking, dragging and the selection
+/// spring. Only text attributes and per-segment widths are configured.
+private final class PhotosCategories: UISegmentedControl {
   var reduceMotion = false
   var highContrast = false
   var font = UIFont.systemFont(ofSize: 15, weight: .medium) {
-    didSet { updateSelection(animated: false); setNeedsLayout() }
-  }
-  var selectedSegmentIndex: Int {
-    get { selection }
-    set {
-      guard buttons.indices.contains(newValue) else { return }
-      selection = newValue
-      updateSelection(animated: false)
-    }
+    didSet { applyFont() }
   }
 
   init(items: [String]) {
-    super.init(frame: .zero)
-    addSubview(lens)
-    lens.isUserInteractionEnabled = false
-    lens.layer.cornerCurve = .continuous
-    lens.clipsToBounds = true
-    for (index, title) in items.enumerated() {
-      let button = UIButton(type: .system)
-      button.setTitle(title, for: .normal)
-      button.titleLabel?.font = font
-      button.tintColor = .label
-      button.tag = index
-      button.addTarget(self, action: #selector(tapped(_:)), for: .touchUpInside)
-      buttons.append(button)
-      widths.append(44)
-      addSubview(button)
-    }
-    let pan = UIPanGestureRecognizer(target: self, action: #selector(panned(_:)))
-    selectionPan = pan
-    pan.delegate = self
-    addGestureRecognizer(pan)
-    isAccessibilityElement = false
-    accessibilityElements = buttons
-    updateSelection(animated: false)
+    super.init(items: items)
+    selectedSegmentIndex = 0
+    applyFont()
   }
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-  func setWidth(_ width: CGFloat, forSegmentAt index: Int) { widths[index] = width; setNeedsLayout() }
-  func widthForSegment(at index: Int) -> CGFloat { widths[index] }
+  private func applyFont() {
+    setTitleTextAttributes([.font: font, .foregroundColor: UIColor.label], for: .normal)
+    setTitleTextAttributes([
+      .font: UIFont.systemFont(ofSize: font.pointSize, weight: .semibold),
+      .foregroundColor: UIColor.label,
+    ], for: .selected)
+  }
+
+  /// UIKit draws the track and selection lens; nothing to refresh.
+  func refreshMaterial(opaque: Bool) {}
 
   func setAccessibilityActive(_ active: Bool) {
     accessibilityElementsHidden = !active
-    accessibilityElements = active ? buttons : []
-    for button in buttons {
-      button.isAccessibilityElement = active
-      button.accessibilityElementsHidden = !active
-    }
-  }
-
-  func refreshMaterial(opaque: Bool) {
-    if #available(iOS 26.0, *), !opaque {
-      let effect = UIGlassEffect(style: .regular)
-      effect.isInteractive = true
-      effect.tintColor = UIColor.label.withAlphaComponent(0.10)
-      lens.effect = effect
-      lens.backgroundColor = .clear
-    } else {
-      lens.effect = nil
-      lens.backgroundColor = .tertiarySystemFill
-    }
-    lens.layer.borderWidth = highContrast || UIAccessibility.isDarkerSystemColorsEnabled ? 1 : 0
-    lens.layer.borderColor = UIColor.label.resolvedColor(with: traitCollection).cgColor
-  }
-
-  override func layoutSubviews() {
-    super.layoutSubviews()
-    guard bounds.width > 0, bounds.height > 4 else { return }
-    var x: CGFloat = 0
-    for (index, button) in buttons.enumerated() {
-      button.frame = CGRect(x: x, y: 0, width: widths[index], height: bounds.height)
-      x += widths[index]
-    }
-    lens.layer.cornerRadius = max(0, (bounds.height - 4) / 2)
-    if !dragging { lens.frame = buttons[selection].frame.insetBy(dx: 2, dy: 2) }
-  }
-
-  private func updateSelection(animated: Bool) {
-    for (index, button) in buttons.enumerated() {
-      button.titleLabel?.font = UIFont.systemFont(ofSize: font.pointSize, weight: index == selection ? .semibold : .medium)
-      button.accessibilityTraits = index == selection ? [.button, .selected] : [.button]
-    }
-    guard buttons[selection].bounds.width > 4, buttons[selection].bounds.height > 4 else { return }
-    let changes = { self.lens.frame = self.buttons[self.selection].frame.insetBy(dx: 2, dy: 2) }
-    if animated && !reduceMotion && !UIAccessibility.isReduceMotionEnabled {
-      UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.86,
-        initialSpringVelocity: 0, options: [.beginFromCurrentState, .allowUserInteraction], animations: changes)
-    } else { UIView.performWithoutAnimation(changes) }
-  }
-
-  @objc private func tapped(_ sender: UIButton) {
-    selection = sender.tag
-    updateSelection(animated: true)
-    sendActions(for: .valueChanged)
-  }
-
-  override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-    guard gestureRecognizer === selectionPan else { return super.gestureRecognizerShouldBegin(gestureRecognizer) }
-    guard allowsDragSelection, let pan = gestureRecognizer as? UIPanGestureRecognizer else { return false }
-    let velocity = pan.velocity(in: self)
-    return abs(velocity.x) > abs(velocity.y)
-  }
-
-  @objc private func panned(_ pan: UIPanGestureRecognizer) {
-    let x = pan.location(in: self).x
-    switch pan.state {
-    case .began, .changed:
-      if !dragging {
-        let current = lens.layer.presentation()?.frame ?? lens.frame
-        lens.layer.removeAllAnimations()
-        lens.frame = current
-        dragging = true
-      }
-      var frame = lens.frame
-      frame.origin.x = min(max(2, x - frame.width / 2), max(2, bounds.width - frame.width - 2))
-      lens.frame = frame
-    case .ended:
-      dragging = false
-      selection = buttons.indices.min(by: { abs(buttons[$0].center.x - x) < abs(buttons[$1].center.x - x) }) ?? selection
-      updateSelection(animated: true)
-      sendActions(for: .valueChanged)
-    case .cancelled, .failed:
-      dragging = false
-      updateSelection(animated: true)
-    default: break
-    }
+    isUserInteractionEnabled = active
   }
 }
