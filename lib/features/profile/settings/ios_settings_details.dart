@@ -15,7 +15,7 @@ Widget _iosUploads(BuildContext context, WidgetRef ref, String threshold) {
     children: [
       const IosSettingsIntro(
         icon: CupertinoIcons.arrow_up_doc_fill,
-        color: CupertinoColors.systemBlue,
+        color: CupertinoColors.systemIndigo,
         title: 'Uploads',
         description:
             'Choose how TeleDrive uploads your files and uses mobile data.',
@@ -341,7 +341,7 @@ Widget _iosPrivacy(BuildContext context, WidgetRef ref) {
     children: [
       const IosSettingsIntro(
         icon: CupertinoIcons.hand_raised_fill,
-        color: CupertinoColors.systemBlue,
+        color: CupertinoColors.systemIndigo,
         title: 'Privacy & Security',
         description:
             'Manage deleted files, public links, and the data kept on this iPhone.',

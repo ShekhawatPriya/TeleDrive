@@ -162,7 +162,7 @@ The interface includes large-text layouts, semantic labels, reduced-motion handl
 
 You need a reachable TeleDrive backend and a Telegram account. This checkout is the mobile client; it does not start or deploy the backend.
 
-For downloadable builds, check the **assets and installation notes** on the [GitHub Releases page](https://github.com/ShekhawatPriya/TG-Cloud-Drive/releases). Some releases contain source only. An iOS development build is not a general-purpose installation package or an App Store listing.
+For downloadable builds, check the **assets and installation notes** on the [GitHub Releases page](https://github.com/ShekhawatPriya/TeleDrive/releases). Some releases contain source only. An iOS development build is not a general-purpose installation package or an App Store listing.
 
 ### Development requirements
 
@@ -183,8 +183,8 @@ Newer native iOS controls depend on OS availability and use Flutter fallbacks wh
 PowerShell, from the directory where you keep your projects:
 
 ```powershell
-git clone https://github.com/ShekhawatPriya/TG-Cloud-Drive.git
-Set-Location TG-Cloud-Drive
+git clone https://github.com/ShekhawatPriya/TeleDrive.git
+Set-Location TeleDrive
 
 if (-not (Test-Path .env.local)) {
     Copy-Item .env.example .env.local

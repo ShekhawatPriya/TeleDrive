@@ -46,7 +46,7 @@ final class NativeSearchView: NSObject, FlutterPlatformView, UITextFieldDelegate
     field.borderStyle = .none
     field.backgroundColor = .clear
     field.clearButtonMode = .whileEditing
-    field.tintColor = .systemBlue
+    field.tintColor = .teleAccent
     field.accessibilityIdentifier = "drive-search-field"
     field.addTarget(self, action: #selector(changed), for: .editingChanged)
     cancel.setImage(UIImage(systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)), for: .normal)

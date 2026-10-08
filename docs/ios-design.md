@@ -469,3 +469,12 @@ copy so explanatory text can use the full content width.
 
 See [Gallery density and profile refresh](gallery-and-profile-refresh.md) for
 current motion, layout and main Telegram photo refresh contracts.
+
+## Accent and neutrals
+
+TeleDrive uses one accent, deep indigo (`AppAccent`: `#4553CF` light,
+`#9AA3FF` dark), for the selected tab, primary actions, links and the search
+caret. Native UIKit tints use the matching `UIColor.teleAccent`; keep both in
+sync. Glyphs that identify a kind of item (folders, Archive/Locked/Trash) use
+`iosGraphite` instead of the accent, and folder tiles sit on neutral surfaces.
+Page and grouped surfaces are neutral grey (`#F5F5F7`) rather than blue-tinted.

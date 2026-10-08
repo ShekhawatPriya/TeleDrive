@@ -132,7 +132,7 @@ class _ServerConnectionSettingsScreenState
       children: [
         IosSettingsIntro(
           icon: CupertinoIcons.antenna_radiowaves_left_right,
-          color: CupertinoColors.systemBlue,
+          color: CupertinoColors.systemIndigo,
           title: visual.label,
           description: AppConfig.backendPinned
               ? 'Connect to your TeleDrive server from any of your devices.'

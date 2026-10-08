@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 
 /// Organizational destinations remain reachable without leading with Trash.
 class DriveQuickActions extends StatelessWidget {
@@ -70,9 +71,7 @@ class DriveQuickActions extends StatelessWidget {
               final icon = Icon(
                 item.icon,
                 size: 28,
-                color: ios
-                    ? CupertinoColors.systemBlue.resolveFrom(context)
-                    : scheme.primary,
+                color: ios ? iosGraphite(scheme) : scheme.primary,
               );
               final label = Text(
                 item.label,

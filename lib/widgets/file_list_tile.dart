@@ -84,7 +84,7 @@ class FileListTile extends StatelessWidget {
                                   ? CupertinoIcons.folder_badge_person_crop
                                   : CupertinoIcons.folder_fill,
                               size: 36,
-                              color: scheme.primary,
+                              color: iosGraphite(scheme),
                             )
                           : GoogleDriveIcon.folder(
                               isShared: isShared,

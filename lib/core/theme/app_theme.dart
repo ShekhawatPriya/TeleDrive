@@ -13,6 +13,7 @@ import 'ios_palette.dart';
 
 // Re-export tokens so existing imports of `app_theme.dart` keep compiling.
 export 'tokens/app_color.dart';
+export 'ios_palette.dart' show iosGraphite;
 export 'tokens/app_elevation.dart';
 export 'tokens/app_motion.dart';
 export 'tokens/app_shape.dart';

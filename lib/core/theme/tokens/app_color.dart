@@ -13,9 +13,15 @@ import 'app_elevation.dart';
 /// natively (success, warning, info badge tones), plus a small set of
 /// deprecated literal accents kept for legacy call sites that haven't been
 /// migrated to M3 roles yet.
+/// The one accent colour. Tuned for 4.5:1 text contrast on its surface.
+abstract final class AppAccent {
+  static const Color light = Color(0xFF4553CF);
+  static const Color dark = Color(0xFF9AA3FF);
+}
+
 class AppBrand {
-  /// Google Blue — the seed for both light and dark color schemes.
-  static const Color seed = Color(0xFF245BDD);
+  /// Deep indigo, the seed for both light and dark color schemes.
+  static const Color seed = AppAccent.light;
 
   static ColorScheme scheme(
     Brightness brightness, {
@@ -28,18 +34,18 @@ class AppBrand {
       contrastLevel: highContrast ? 1 : 0,
       dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
     ).copyWith(
-      surface: dark ? const Color(0xFF101216) : const Color(0xFFF6F7FA),
+      surface: dark ? const Color(0xFF101216) : const Color(0xFFF5F5F7),
       surfaceContainerLowest: dark ? const Color(0xFF0B0D10) : Colors.white,
       surfaceContainerLow: dark ? const Color(0xFF191C22) : Colors.white,
       surfaceContainer: dark
           ? const Color(0xFF20242C)
-          : const Color(0xFFEEF0F5),
+          : const Color(0xFFEFEFF2),
       surfaceContainerHigh: dark
           ? const Color(0xFF282D36)
-          : const Color(0xFFE7EAF1),
+          : const Color(0xFFE6E6EA),
       surfaceContainerHighest: dark
           ? const Color(0xFF323844)
-          : const Color(0xFFE0E4ED),
+          : const Color(0xFFDDDDE2),
     );
   }
 }

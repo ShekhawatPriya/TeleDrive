@@ -13,7 +13,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-REPO="ShekhawatPriya/TG-Cloud-Drive"
+REPO="ShekhawatPriya/TeleDrive"
 KEYSTORE="android/app/upload-keystore.jks"
 KEY_PROPS="android/key.properties"
 ENV_FILE=".env.local"

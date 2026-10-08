@@ -201,7 +201,7 @@ final class GlassButtonView: NSObject, FlutterPlatformView {
         configuration.background.backgroundInsets = NSDirectionalEdgeInsets(top: inset, leading: inset, bottom: inset, trailing: inset)
       }
       if prominent {
-        configuration.baseBackgroundColor = .systemBlue
+        configuration.baseBackgroundColor = .teleAccent
         configuration.baseForegroundColor = .white
         configuration.imageColorTransformer = UIConfigurationColorTransformer { _ in .white }
       }
@@ -285,7 +285,7 @@ final class NativeTabBarView: NSObject, FlutterPlatformView, UITabBarDelegate {
     guard lastArguments?.isEqual(snapshot) != true else { return }
     lastArguments = snapshot
     root.overrideUserInterfaceStyle = (args["dark"] as? Bool ?? false) ? .dark : .light
-    bar.tintColor = .systemBlue
+    bar.tintColor = .teleAccent
     selectedIndex = args["selectedIndex"] as? Int ?? 0
     // Wait for a real platform-view frame before creating the selection lens.
     // Loading/provider rebuilds must not restart its selection animation.
@@ -525,7 +525,7 @@ private final class ContextPreviewController: UIViewController {
     imageView.isHidden = true
     let icon = UIImageView(image: UIImage(systemName: symbol))
     icon.contentMode = .scaleAspectFit
-    icon.tintColor = .systemBlue
+    icon.tintColor = .teleAccent
     icon.heightAnchor.constraint(equalToConstant: 48).isActive = true
     let nameLabel = UILabel()
     nameLabel.text = name
@@ -743,4 +743,13 @@ final class SelectionToolbarView: NSObject, FlutterPlatformView {
     bar.setItems(items, animated: false)
   }
   deinit { channel.setMethodCallHandler(nil) }
+}
+
+extension UIColor {
+  /// The single TeleDrive accent; keep in sync with `AppAccent` in Dart.
+  static let teleAccent = UIColor { traits in
+    traits.userInterfaceStyle == .dark
+      ? UIColor(red: 0x9A / 255, green: 0xA3 / 255, blue: 0xFF / 255, alpha: 1)
+      : UIColor(red: 0x45 / 255, green: 0x53 / 255, blue: 0xCF / 255, alpha: 1)
+  }
 }

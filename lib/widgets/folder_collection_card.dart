@@ -4,6 +4,7 @@ import '../models/drive_models.dart';
 import 'starred_badge.dart';
 import 'item_status_indicators.dart';
 import '../core/utils/file_type_detector.dart';
+import '../core/theme/app_theme.dart';
 
 class FolderCollectionCard extends StatelessWidget {
   const FolderCollectionCard({
@@ -23,15 +24,13 @@ class FolderCollectionCard extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final ios = theme.platform == TargetPlatform.iOS;
-    final folderInk = ios
-        ? CupertinoColors.systemBlue.resolveFrom(context)
-        : scheme.primary;
+    final folderInk = ios ? iosGraphite(scheme) : scheme.primary;
     final count = folder.recursiveFileCount;
     return Material(
       color: ios
           ? (theme.brightness == Brightness.dark
                 ? scheme.surfaceContainerLowest
-                : scheme.primaryContainer)
+                : Colors.white)
           : scheme.surfaceContainerLow,
       shape: RoundedSuperellipseBorder(
         borderRadius: BorderRadius.circular(22),
