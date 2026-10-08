@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,7 +8,10 @@ import '../../widgets/empty_state.dart';
 import '../../widgets/adaptive_surface.dart';
 import '../../widgets/file_card_tile.dart';
 import '../../widgets/file_list_tile.dart';
+import '../../widgets/ios/ios_browse.dart';
+import '../../widgets/ios/ios_tab_header.dart';
 import '../../widgets/skeletons.dart';
+import 'components/browse_tab_menu.dart';
 import 'components/drive_item_actions.dart';
 import 'components/drive_item_context_menu.dart';
 import 'components/selection_mode_mixin.dart';
@@ -17,6 +21,7 @@ import 'components/drive_list_slivers.dart';
 import 'drive_controller.dart';
 import 'view_preferences_controller.dart';
 import '../search/search_controller.dart';
+import '../../models/drive_models.dart';
 
 class StarredScreen extends ConsumerStatefulWidget {
   const StarredScreen({super.key});
@@ -106,6 +111,17 @@ class _StarredScreenState extends ConsumerState<StarredScreen>
       onMove: () => bulkMove(context),
       onDelete: () => bulkDelete(context),
     );
+    if (Theme.of(context).platform == TargetPlatform.iOS) {
+      return _buildIos(
+        context,
+        snapshot: snapshot,
+        query: query,
+        folders: starredFolders,
+        files: starredFiles,
+        grid: !selectMode && prefs.layout == LayoutMode.grid,
+        selection: selection,
+      );
+    }
     return Scaffold(
       body: Column(
         children: [
@@ -359,6 +375,168 @@ class _StarredScreenState extends ConsumerState<StarredScreen>
                 ),
                 if (selectMode &&
                     Theme.of(context).platform == TargetPlatform.iOS)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: selection(actionsOnly: true),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// iOS: the same section titles, folder tiles and file rows as Drive, so
+  /// starred items look and behave exactly as they do in their folders.
+  Widget _buildIos(
+    BuildContext context, {
+    required DriveStarredSnapshot snapshot,
+    required String query,
+    required List<DriveFolder> folders,
+    required List<DriveFile> files,
+    required bool grid,
+    required Widget Function({bool actionsOnly}) selection,
+  }) {
+    final drive = ref.read(driveControllerProvider);
+    final empty = folders.isEmpty && files.isEmpty;
+    final loadingMore = snapshot.loadingMore;
+    return Scaffold(
+      backgroundColor: IosBrowse.canvas(context),
+      body: Column(
+        children: [
+          if (selectMode) selection(),
+          Expanded(
+            child: Stack(
+              children: [
+                IosBrowseCanvas(
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (n) {
+                      // Typed searches filter the loaded cache locally.
+                      if (query.isEmpty &&
+                          snapshot.hasMore &&
+                          !loadingMore &&
+                          n.metrics.pixels >= n.metrics.maxScrollExtent - 200) {
+                        drive.loadMoreStarred();
+                      }
+                      return false;
+                    },
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      slivers: [
+                        if (!selectMode) ...[
+                          IosTabHeader(
+                            scope: SearchScope.starred,
+                            menuSections: (ctx) => buildBrowseTabMenuSections(
+                              ctx,
+                              ref,
+                              SearchScope.starred,
+                            ),
+                          ),
+                          CupertinoSliverRefreshControl(
+                            onRefresh: () =>
+                                drive.ensureStarredLoaded(force: true),
+                          ),
+                        ],
+                        if (!snapshot.loaded && snapshot.loading)
+                          const SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(child: CupertinoActivityIndicator()),
+                          )
+                        else if (snapshot.error != null && empty)
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: IosContentUnavailable(
+                              icon: CupertinoIcons.exclamationmark_circle,
+                              title: 'Could not load starred items',
+                              body: snapshot.error,
+                              actionLabel: 'Try Again',
+                              onAction: () =>
+                                  drive.ensureStarredLoaded(force: true),
+                            ),
+                          )
+                        else if (snapshot.loaded && empty)
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: query.isEmpty
+                                ? const IosContentUnavailable(
+                                    icon: CupertinoIcons.star,
+                                    title: 'Nothing starred',
+                                    body:
+                                        'Star files and folders to keep them within reach.',
+                                  )
+                                : IosContentUnavailable(
+                                    icon: CupertinoIcons.search,
+                                    title: 'No Results',
+                                    body:
+                                        'No starred item matches “${ref.read(searchQueryProvider(SearchScope.starred)).raw.trim()}”.',
+                                  ),
+                          ),
+                        if (folders.isNotEmpty) ...[
+                          SliverToBoxAdapter(
+                            child: IosSectionTitle(
+                              'Folders',
+                              top: selectMode ? 16 : 12,
+                              bottom: 0,
+                            ),
+                          ),
+                          DriveFolderSliver(
+                            folders: folders,
+                            selectMode: selectMode,
+                            selectedFolderIds: selectedFolderIds,
+                            onFolderTap: (folder) => selectMode
+                                ? toggleFolderSelection(folder.id)
+                                : context.safePush('/folder/${folder.id}'),
+                            onFolderLongPress: (id) =>
+                                enterSelect(folderId: id),
+                            onFolderMore: (folder) =>
+                                DriveItemActions.openFolder(
+                                  context,
+                                  ref,
+                                  folder,
+                                ),
+                          ),
+                        ],
+                        if (files.isNotEmpty) ...[
+                          SliverToBoxAdapter(
+                            child: IosSectionTitle(
+                              'Files',
+                              top: folders.isEmpty
+                                  ? (selectMode ? 16 : 12)
+                                  : 28,
+                              bottom: grid ? 0 : 6,
+                            ),
+                          ),
+                          DriveFilesSliver(
+                            files: files,
+                            grid: grid,
+                            selectMode: selectMode,
+                            selectedFileIds: selectedFileIds,
+                            onFileTap: (file) => selectMode
+                                ? toggleFileSelection(file.id)
+                                : openDriveFile(context, ref, file),
+                            onFileLongPress: (id) => enterSelect(fileId: id),
+                            onFileMore: (file) =>
+                                DriveItemActions.openFile(context, ref, file),
+                            bottomPadding: loadingMore ? 0 : 160,
+                          ),
+                        ],
+                        if (loadingMore)
+                          const SliverToBoxAdapter(
+                            child: Padding(
+                              padding: EdgeInsets.fromLTRB(0, 20, 0, 160),
+                              child: CupertinoActivityIndicator(),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (selectMode)
                   Positioned(
                     left: 0,
                     right: 0,

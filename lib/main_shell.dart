@@ -8,7 +8,7 @@ import 'core/theme/app_theme.dart';
 import 'features/app_update/app_update_controller.dart';
 import 'features/app_update/app_update_models.dart';
 import 'features/auth/auth_controller.dart';
-import 'features/drive/components/drive_menu_builder.dart';
+import 'features/drive/components/browse_tab_menu.dart';
 import 'features/drive/drive_controller.dart';
 import 'features/drive/drive_tab_commands.dart';
 import 'features/photos/components/photos_menu_builder.dart';
@@ -21,7 +21,6 @@ import 'features/share/share_flow.dart';
 import 'features/upload/ui/components/bottom_action_system.dart';
 import 'features/upload/ui/upload_panel_host.dart';
 import 'widgets/ios_more_menu.dart';
-import 'widgets/main_tab_menu_sections.dart';
 import 'widgets/floating_pill_navigation_bar.dart';
 import 'widgets/teledrive_app_bar.dart';
 import 'widgets/search_keyboard.dart';
@@ -167,9 +166,9 @@ class _MainShellState extends ConsumerState<MainShell>
     final isSelectMode = selectState.isSelectModeForTab(routeIndex);
     return Column(
       children: [
-        if (!isSelectMode &&
-            !(routeIndex == 1 &&
-                Theme.of(context).platform == TargetPlatform.iOS))
+        // iOS tabs own a collapsing large-title header inside their scroll
+        // views; Android keeps the shell's top bar.
+        if (!isSelectMode && Theme.of(context).platform != TargetPlatform.iOS)
           TeleDriveTopBar(
             scope: _scopeFor(routeIndex),
             menuSections: (ctx) => _menuSectionsFor(ctx, routeIndex),
@@ -208,42 +207,13 @@ class _MainShellState extends ConsumerState<MainShell>
   };
 
   List<IosMenuSection> _menuSectionsFor(BuildContext context, int index) {
-    return switch (index) {
-      0 => buildDriveMenuSections(
-        context,
-        ref,
-        folderId: null,
-        includeLayoutSection: true,
-        onSelect: () => ref.read(driveTabCommandsProvider).requestSelectMode(),
-      ),
-      1 => buildPhotosMenuSections(
-        context,
-        density: ref.read(photoGridDensityProvider),
-        onSelect: () => ref.read(photosTabCommandsProvider).requestSelectMode(),
-      ),
-      2 => [
-        IosMenuSection([
-          IosMenuItem(
-            label: 'Select',
-            leadingIcon: Icons.check_circle_outline,
-            onTap: () =>
-                ref.read(starredTabCommandsProvider).requestSelectMode(),
-          ),
-        ]),
-        ...buildLayoutMenuSection(ref),
-        ...buildSortMenuSection(ref),
-      ],
-      _ => [
-        IosMenuSection([
-          IosMenuItem(
-            label: 'Refresh',
-            leadingIcon: Icons.refresh_rounded,
-            onTap: () =>
-                ref.read(shareControllerProvider).refresh(silent: true),
-          ),
-        ]),
-        ...buildLayoutMenuSection(ref),
-      ],
-    };
+    return index == 1
+        ? buildPhotosMenuSections(
+            context,
+            density: ref.read(photoGridDensityProvider),
+            onSelect: () =>
+                ref.read(photosTabCommandsProvider).requestSelectMode(),
+          )
+        : buildBrowseTabMenuSections(context, ref, _scopeFor(index));
   }
 }

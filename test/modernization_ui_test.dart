@@ -8,6 +8,7 @@ import 'package:flutter_m_fsdk/features/project/github_release_models.dart';
 import 'package:flutter_m_fsdk/features/profile/gallery_backup_controller.dart';
 import 'package:flutter_m_fsdk/features/project/project_screen.dart';
 import 'package:flutter_m_fsdk/features/project/changelog_controller.dart';
+import 'package:flutter_m_fsdk/widgets/ios/ios_browse.dart';
 import 'package:flutter_m_fsdk/widgets/file_card_tile.dart';
 import 'package:flutter_m_fsdk/features/drive/components/drive_action_sheet.dart';
 import 'package:flutter_m_fsdk/features/profile/my_data_screen.dart';
@@ -225,9 +226,8 @@ Widget _tabPreview(SearchScope scope, Widget screen) => Scaffold(
   body: Column(
     children: [
       Builder(
-        builder: (context) =>
-            scope == SearchScope.photos &&
-                Theme.of(context).platform == TargetPlatform.iOS
+        // iOS tabs render their own collapsing large-title header.
+        builder: (context) => Theme.of(context).platform == TargetPlatform.iOS
             ? const SizedBox.shrink()
             : TeleDriveTopBar(scope: scope),
       ),
@@ -580,11 +580,10 @@ void main() {
             final header = tester.widget<CupertinoSliverNavigationBar>(
               find.byType(CupertinoSliverNavigationBar),
             );
+            // Photos shares the other tabs' systemBackground canvas.
             expect(
               header.backgroundColor,
-              Theme.of(
-                tester.element(find.byType(PhotosScreen)),
-              ).colorScheme.surface,
+              IosBrowse.canvas(tester.element(find.byType(PhotosScreen))),
             );
           }
           await _preview(
@@ -745,13 +744,13 @@ void main() {
     await _pump(tester, const PhotosScreen());
     expect(find.byType(PhotoLibraryCover), findsNothing);
     expect(find.byType(PhotoTile), findsWidgets);
-    await tester.tap(find.byTooltip('More'));
+    await tester.tap(find.byTooltip('Photos options'));
     await tester.pumpAndSettle();
     expect(find.text('Featured mosaic'), findsOneWidget);
     await tester.tap(find.text('Square grid'));
     await tester.pumpAndSettle();
     expect(find.text('Select'), findsNothing);
-    await tester.tap(find.byTooltip('More'));
+    await tester.tap(find.byTooltip('Photos options'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Select'));
     await tester.pumpAndSettle();

@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../../../widgets/ios/ios_browse.dart';
+
 /// Organizational destinations remain reachable without leading with Trash.
 class DriveQuickActions extends StatelessWidget {
   const DriveQuickActions({
@@ -18,6 +20,23 @@ class DriveQuickActions extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final ios = theme.platform == TargetPlatform.iOS;
+    if (ios) {
+      return _IosSpaces(
+        items: [
+          (
+            label: 'Archive',
+            icon: CupertinoIcons.archivebox_fill,
+            action: onArchiveTap,
+          ),
+          (
+            label: 'Locked',
+            icon: CupertinoIcons.lock_fill,
+            action: onLockedTap,
+          ),
+          (label: 'Trash', icon: CupertinoIcons.trash_fill, action: onTrashTap),
+        ],
+      );
+    }
     final items = [
       (
         label: 'Archive',
@@ -157,4 +176,113 @@ class DriveSectionHeader extends StatelessWidget {
       ),
     ),
   );
+}
+
+typedef _Space = ({String label, IconData icon, VoidCallback? action});
+
+/// Archive, Locked and Trash as equal tiles: a tinted symbol over the
+/// secondary surface with the name beneath it. At large text sizes the
+/// spaces become rows so names never truncate.
+class _IosSpaces extends StatelessWidget {
+  const _IosSpaces({required this.items});
+  final List<_Space> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final stacked = MediaQuery.textScalerOf(context).scale(15) > 22;
+    final fill = IosBrowse.fill(context);
+    final label = IosBrowse.subheadline(context, weight: FontWeight.w600);
+    if (stacked) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: IosBrowse.gutter),
+        child: ClipRSuperellipse(
+          borderRadius: BorderRadius.circular(22),
+          child: ColoredBox(
+            color: fill,
+            child: Column(
+              children: [
+                for (var i = 0; i < items.length; i++) ...[
+                  if (i > 0)
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(start: 64),
+                      child: Divider(
+                        height: .5,
+                        thickness: .5,
+                        color: IosBrowse.separator(context),
+                      ),
+                    ),
+                  IosPressable(
+                    onTap: items[i].action,
+                    semanticLabel: items[i].label,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        children: [
+                          IosSymbolBadge(items[i].icon),
+                          const SizedBox(width: 14),
+                          Expanded(child: Text(items[i].label, style: label)),
+                          Icon(
+                            CupertinoIcons.chevron_right,
+                            size: 16,
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: IosBrowse.gutter),
+      child: Row(
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) const SizedBox(width: 10),
+            Expanded(
+              child: IosPressable(
+                onTap: items[i].action,
+                semanticLabel: items[i].label,
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 88),
+                  padding: const EdgeInsets.fromLTRB(14, 14, 12, 12),
+                  decoration: ShapeDecoration(
+                    color: fill,
+                    shape: RoundedSuperellipseBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      side: MediaQuery.highContrastOf(context)
+                          ? BorderSide(
+                              color: Theme.of(context).colorScheme.outline,
+                            )
+                          : BorderSide.none,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      IosSymbolBadge(items[i].icon, size: 34),
+                      const SizedBox(height: 12),
+                      Text(
+                        items[i].label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: label,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
