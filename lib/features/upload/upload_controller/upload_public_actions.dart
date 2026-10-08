@@ -135,9 +135,36 @@ extension _UploadPublicActions on UploadController {
 
   Future<void> _cancelItem(String localId) async {
     final item = _findItem(localId);
-    if (item == null || _isTerminalStatus(item.status)) return;
+    if (item == null ||
+        _isTerminalStatus(item.status) ||
+        item.cancelRequested) {
+      return;
+    }
     _setItem(localId, status: UploadStatus.cancelling, cancelRequested: true);
-    unawaited(_telegram.cancelTransfer(item.uploadClientId));
+    unawaited(
+      Future.wait([
+        _telegram.cancelTransfer(item.uploadClientId),
+        _telegram.cancelTransfer('${item.uploadClientId}:thumbnail'),
+        _telegram.cancelTransfer('${item.uploadClientId}:preview'),
+      ]),
+    );
+
+    // An in-flight original can beat cancellation and return a final message.
+    // Its worker must persist and commit that result before cancelling backend
+    // metadata or deleting the input; it also retains the account-switch block.
+    if (_runningLocalIds.contains(localId)) return;
+    await _finishCancelledUpload(item);
+    _syncOptimistic();
+    _pumpQueue();
+  }
+
+  Future<void> _finishCancelledUpload(UploadItem startedItem) async {
+    final item = _findItem(startedItem.localId);
+    if (item == null ||
+        item.uploadClientId != startedItem.uploadClientId ||
+        item.status != UploadStatus.cancelling) {
+      return;
+    }
 
     if (item.batchId != null) {
       final endpoint = item.uploadJobId == null
@@ -148,13 +175,15 @@ extension _UploadPublicActions on UploadController {
           .catchError((_) => Response(requestOptions: RequestOptions()));
     }
 
-    _runningLocalIds.remove(localId);
-    _setItem(localId, status: UploadStatus.cancelled);
+    final current = _findItem(item.localId);
+    if (current?.uploadClientId != item.uploadClientId ||
+        current?.status != UploadStatus.cancelling) {
+      return;
+    }
+    _setItem(item.localId, status: UploadStatus.cancelled);
     if (item.deleteLocalOnComplete) {
       unawaited(_safeDeleteLocalFile(item.path));
     }
-    _syncOptimistic();
-    _pumpQueue();
   }
 
   Future<void> _cancelUpload() async {

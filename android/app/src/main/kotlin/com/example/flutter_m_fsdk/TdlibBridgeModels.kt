@@ -16,6 +16,11 @@ internal data class Transfer(
     val transferId: String,
     @Volatile var fileId: Int? = null,
     @Volatile var cancelled: Boolean = false,
+    val cancellation: CompletableFuture<Unit> = CompletableFuture(),
+    @Volatile var cancelPendingUpload: (() -> Unit)? = null,
+    val uploadChatId: Long? = null,
+    val deletedMessageIds: MutableSet<Long> = mutableSetOf(),
+    @Volatile var onUploadDeleted: (() -> Unit)? = null,
 )
 
 internal data class DownloadWaiter(

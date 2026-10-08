@@ -164,10 +164,16 @@ final class TdlibTransfer {
     let transferId: String
     var fileId: Int?
     var cancelled = false
+    let cancellation = Promise<String>()
+    var cancelPendingUpload: (() -> Void)?
+    let uploadChatId: Int64?
+    var deletedMessageIds = Set<Int64>()
+    var onUploadDeleted: (() -> Void)?
 
-    init(transferId: String, fileId: Int? = nil) {
+    init(transferId: String, fileId: Int? = nil, uploadChatId: Int64? = nil) {
         self.transferId = transferId
         self.fileId = fileId
+        self.uploadChatId = uploadChatId
     }
 }
 

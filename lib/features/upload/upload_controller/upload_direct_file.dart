@@ -10,6 +10,7 @@ extension _UploadDirectFile on UploadController {
     required int telegramUserId,
   }) async {
     for (final item in batchItems) {
+      if (!_isCurrentUpload(item)) continue;
       final latest = _findItem(item.localId);
       if (latest == null || latest.cancelRequested) continue;
       final intent = files
@@ -71,6 +72,7 @@ extension _UploadDirectFile on UploadController {
             'estimated_total_bytes': latest.size,
           },
         );
+        if (!_isCurrentUpload(latest)) continue;
         final scope = _backupScope();
         if (scope != null && latest.backupFingerprint != null) {
           await _backupAssetStore.mark(
@@ -79,6 +81,7 @@ extension _UploadDirectFile on UploadController {
             GalleryBackupAssetStatus.uploading,
           );
         }
+        if (!_isCurrentUpload(latest)) continue;
         final result = await _telegram.uploadOriginal(
           filePath: latest.path,
           filename: latest.name,
@@ -175,6 +178,9 @@ extension _UploadDirectFile on UploadController {
           unawaited(_safeDeleteLocalFile(latest.path));
         }
       } catch (err) {
+        // Public cancellation owns this terminal state. In particular, a late
+        // file-started response must not turn a cancelled item into a failure.
+        if (!uploadedToTelegram && !_isCurrentUpload(latest)) continue;
         await _api.dio
             .post(
               '/client-uploads/$batchId/file-failed',

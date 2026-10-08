@@ -53,6 +53,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _password = TextEditingController();
   Country _selectedCountry = findCountryByDialCode('+91');
   int? _attemptId;
+  String? _attemptToken;
   bool _loading = false;
   String? _error;
   bool _obscurePassword = true;
@@ -67,6 +68,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
+    _attemptId = null;
+    _attemptToken = null;
     _phone.dispose();
     _code.dispose();
     _password.dispose();

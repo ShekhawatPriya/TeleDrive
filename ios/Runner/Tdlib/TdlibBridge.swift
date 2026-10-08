@@ -486,6 +486,8 @@ final class TdlibBridge: NSObject {
             handleSendSucceeded(json)
         case "updateMessageSendFailed":
             handleSendFailed(json)
+        case "updateDeleteMessages":
+            handleDeletedMessages(json)
         case "updateFile":
             if let file = json["file"] as? [String: Any] {
                 handleUpdatedFile(file)
@@ -660,7 +662,7 @@ final class TdlibBridge: NSObject {
 
     // Order admission and cancellation under the same lock. Calling send()
     // here would recursively acquire NSLock and deadlock.
-    func sendDownloadIfActive(_ transferId: String, _ request: [String: Any]) -> Promise<[String: Any]> {
+    func sendTransferIfActive(_ transferId: String, _ request: [String: Any], expectedTransfer: TdlibTransfer? = nil) -> Promise<[String: Any]> {
         var payload = request
         let extra = UUID().uuidString
         payload["@extra"] = extra
@@ -668,6 +670,7 @@ final class TdlibBridge: NSObject {
         let promise = Promise<[String: Any]>()
         let admitted = withLock {
             guard let transfer = transfers[transferId], !transfer.cancelled else { return false }
+            if let expected = expectedTransfer, transfer !== expected { return false }
             pending[extra] = promise
             TdlibJsonClient.send(clientId, encoded)
             return true

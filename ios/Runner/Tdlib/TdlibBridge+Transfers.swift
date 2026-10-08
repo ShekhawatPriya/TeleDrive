@@ -14,7 +14,7 @@ extension TdlibBridge {
         let filename = TdlibArgs.string(args, "filename") ?? (filePath as NSString).lastPathComponent
         let mimeType = TdlibArgs.string(args, "mimeType")
         let sizeBytes = TdlibArgs.int64(args, "sizeBytes")
-        let transfer = TdlibTransfer(transferId: transferId)
+        let transfer = TdlibTransfer(transferId: transferId, uploadChatId: chatId)
         withLock { transfers[transferId] = transfer }
         emitProgress(transferId, "uploading", 0, sizeBytes, nil)
 
@@ -34,27 +34,36 @@ extension TdlibBridge {
             "input_message_content": inputContent,
         ]
 
-        let operation = waitForConnectionReady(timeoutMs: 45000)
+        let ready = Promise<String>()
+        let settleReadiness: (Result<String, Error>) -> Void = { result in
+            switch result {
+            case .success(let state): ready.complete(state)
+            case .failure(let error): ready.fail(error)
+            }
+        }
+        waitForConnectionReady(timeoutMs: 45000).onComplete(settleReadiness)
+        transfer.cancellation.onComplete(settleReadiness)
+        let operation = ready
             .then { _ in
-                self.send(request)
+                self.sendTransferIfActive(transferId, request, expectedTransfer: transfer)
             }
             .then { message -> Promise<[String: Any]> in
-                if let file = TdlibBridge.extractFile(message),
-                   let fileId = TdlibJson.int(file["id"]), fileId > 0 {
-                    self.withLock { transfer.fileId = fileId }
+                self.withLock {
+                    if let file = TdlibBridge.extractFile(message),
+                       let fileId = TdlibJson.int(file["id"]), fileId > 0 {
+                        transfer.fileId = fileId
+                    }
                 }
                 if TdlibBridge.isFinalMessage(message) {
                     return Promise.value(message)
                 }
                 let oldId = TdlibJson.int64(message["id"]) ?? 0
                 self.emitProgress(transferId, "waitingForFinalMessage", 0, sizeBytes, nil)
-                return self.waitForFinalMessage("\(chatId):\(oldId)", transferId, sizeBytes)
+                return self.waitForCancellableFinalMessage(chatId, oldId, transfer, sizeBytes)
             }
             .map { finalMessage -> [String: Any] in
-                let cancelled = self.withLock { transfer.cancelled }
-                if cancelled {
-                    throw TdlibError("tdlib_cancelled", "Transfer was cancelled.")
-                }
+                // Final success can beat cancellation. Return it for Flutter's
+                // durable commit queue instead of orphaning the original.
                 let ref = TdlibBridge.messageRef(
                     finalMessage,
                     fallbackFilename: filename,
@@ -62,15 +71,148 @@ extension TdlibBridge {
                     fallbackSize: sizeBytes
                 )
                 self.emitProgress(transferId, "completed", sizeBytes ?? 0, sizeBytes, nil)
-                self.withLock { _ = self.transfers.removeValue(forKey: transferId) }
                 return ref
             }
-        operation.onComplete { result in
-            if case .failure = result {
-                self.withLock { _ = self.transfers.removeValue(forKey: transferId) }
+        operation.onComplete { _ in
+            self.withLock {
+                transfer.cancelPendingUpload = nil
+                transfer.onUploadDeleted = nil
+                if self.transfers[transferId] === transfer {
+                    self.transfers.removeValue(forKey: transferId)
+                }
             }
         }
         return operation
+    }
+
+    private func waitForCancellableFinalMessage(
+        _ chatId: Int64, _ messageId: Int64, _ transfer: TdlibTransfer, _ sizeBytes: Int64?
+    ) -> Promise<[String: Any]> {
+        let key = "\(chatId):\(messageId)"
+        let finalMessage = waitForFinalMessage(key, transfer.transferId, sizeBytes)
+        let result = Promise<[String: Any]>()
+        var deletionRequested = false
+        var deletionSucceeded: Bool?
+        var verificationStarted = false
+        var settled = false
+        var finalOutcome: Result<[String: Any], Error>?
+        let completeOutcome: (Result<[String: Any], Error>) -> Void = { outcome in
+            switch outcome {
+            case .success(let message): result.complete(message)
+            case .failure(let error): result.fail(error)
+            }
+        }
+        let completeCancelled = {
+            let cancelled = TdlibError("tdlib_cancelled", "Transfer was cancelled.")
+            _ = self.removeSendWaiter(key, ifSame: finalMessage)
+            finalMessage.fail(cancelled)
+            result.fail(cancelled)
+        }
+        func maybeFinish() {
+            var cancelled = false
+            var complete: Result<[String: Any], Error>?
+            var verify: [String: Any]?
+            self.withLock {
+                if settled { return }
+                cancelled = transfer.deletedMessageIds.contains(messageId)
+                if case .success(let message)? = finalOutcome,
+                   let finalId = TdlibJson.int64(message["id"]) {
+                    cancelled = cancelled || transfer.deletedMessageIds.contains(finalId)
+                }
+                if cancelled {
+                    settled = true
+                } else if let outcome = finalOutcome {
+                    if case .failure = outcome {
+                        settled = true
+                        complete = outcome
+                    } else if !deletionRequested || deletionSucceeded == false {
+                        settled = true
+                        complete = outcome
+                    } else if deletionSucceeded == true && !verificationStarted,
+                              case .success(let message) = outcome {
+                        verificationStarted = true
+                        verify = message
+                    }
+                }
+            }
+            if cancelled { completeCancelled() }
+            if let complete = complete { completeOutcome(complete) }
+            if let message = verify {
+                let finalId = TdlibJson.int64(message["id"]) ?? 0
+                let finishVerification: (Error?) -> Void = { error in
+                    let completion: (Bool, Bool) = self.withLock {
+                        if settled { return (false, false) }
+                        settled = true
+                        return (true, transfer.deletedMessageIds.contains(messageId) || transfer.deletedMessageIds.contains(finalId))
+                    }
+                    if !completion.0 { return }
+                    var missing = completion.1
+                    if let tdlibError = error as? TdlibError, tdlibError.code == "tdlib_404" {
+                        missing = true
+                    }
+                    if missing { completeCancelled() } else { completeOutcome(.success(message)) }
+                }
+                self.send([
+                    "@type": "getMessage",
+                    "chat_id": NSNumber(value: chatId),
+                    "message_id": NSNumber(value: finalId),
+                ]).onComplete { checked in
+                    if case .failure(let error) = checked { finishVerification(error) }
+                    else { finishVerification(nil) }
+                }
+                self.scheduleTimeout(afterMs: 5000) { finishVerification(nil) }
+            }
+        }
+        withLock { transfer.onUploadDeleted = { maybeFinish() } }
+        finalMessage.onComplete { outcome in
+            self.withLock { finalOutcome = outcome }
+            maybeFinish()
+        }
+        let cancelPendingUpload = {
+            let shouldDelete = self.withLock {
+                if deletionRequested || settled { return false }
+                deletionRequested = true
+                return true
+            }
+            if !shouldDelete { return }
+            // Cancelling a sendMessage upload uses the temporary message id;
+            // the pinned TDLib API has no cancelUploadFile method.
+            self.send([
+                "@type": "deleteMessages",
+                "chat_id": NSNumber(value: chatId),
+                "message_ids": [NSNumber(value: messageId)],
+                "revoke": true,
+            ]).onComplete { deletion in
+                let deleted: Bool
+                if case .success = deletion { deleted = true } else { deleted = false }
+                self.withLock { deletionSucceeded = deleted }
+                maybeFinish()
+            }
+        }
+        let cancelled = withLock {
+            transfer.cancelPendingUpload = cancelPendingUpload
+            return transfer.cancelled
+        }
+        if cancelled { cancelPendingUpload() }
+        maybeFinish()
+        return result
+    }
+
+    func handleDeletedMessages(_ update: [String: Any]) {
+        guard TdlibJson.bool(update["is_permanent"]) == true,
+              TdlibJson.bool(update["from_cache"]) != true,
+              let chatId = TdlibJson.int64(update["chat_id"]),
+              let values = update["message_ids"] as? [Any] else { return }
+        let ids = values.compactMap { TdlibJson.int64($0) }
+        let callbacks: [() -> Void] = withLock {
+            transfers.values.filter { $0.uploadChatId == chatId }.compactMap { transfer in
+                for id in ids where transfer.deletedMessageIds.count < 256 {
+                    transfer.deletedMessageIds.insert(id)
+                }
+                return transfer.onUploadDeleted
+            }
+        }
+        callbacks.forEach { $0() }
     }
 
     /// Waits for updateMessageSendSucceeded/Failed keyed by "<chatId>:<oldMessageId>",
@@ -311,7 +453,7 @@ extension TdlibBridge {
         guard active else {
             return Promise.error(TdlibError("tdlib_cancelled", "Transfer was cancelled."))
         }
-        let request = sendDownloadIfActive(transferId, [
+        let request = sendTransferIfActive(transferId, [
             "@type": "downloadFile",
             "file_id": fileId,
             "priority": 32,
@@ -370,7 +512,7 @@ extension TdlibBridge {
         let matches: [(transferId: String, isDownload: Bool)] = withLock {
             let isDownload = downloads[fileId] != nil
             return transfers.values
-                .filter { $0.fileId == fileId }
+                .filter { $0.fileId == fileId && !$0.cancelled }
                 .map { ($0.transferId, isDownload) }
         }
         for match in matches {
@@ -480,11 +622,14 @@ extension TdlibBridge {
     func cancelTransfer(_ args: [String: Any]) throws -> [String: Any] {
         let transferId = try TdlibArgs.requireString(args, "transferId")
         let currentClientId = currentClientIdForCancel
-        let transferFileId: Int? = withLock {
+        let cancelled: (TdlibTransfer?, Int?) = withLock {
             let transfer = transfers[transferId]
+            if transfer?.uploadChatId == nil { transfers.removeValue(forKey: transferId) }
             transfer?.cancelled = true
-            return transfer?.fileId
+            return (transfer, transfer?.fileId)
         }
+        cancelled.0?.cancellation.fail(TdlibError("tdlib_cancelled", "Transfer was cancelled."))
+        let transferFileId = cancelled.1
         var removedWaiter: TdlibDownloadWaiter?
         if let fileId = transferFileId {
             removedWaiter = removeDownloadWaiter(fileId, transferId: transferId)
@@ -494,10 +639,8 @@ extension TdlibBridge {
             }
         }
         removedWaiter?.promise.fail(TdlibError("tdlib_cancelled", "Transfer was cancelled."))
-        if currentClientId != 0, let fileId = transferFileId {
-            sendNoWait(["@type": "cancelUploadFile", "file_id": fileId])
-        }
-        withLock { _ = transfers.removeValue(forKey: transferId) }
+        let cancelPendingUpload = withLock { cancelled.0?.cancelPendingUpload }
+        cancelPendingUpload?()
         emitProgress(transferId, "cancelled", 0, nil, nil)
         return ["cancelled": true]
     }

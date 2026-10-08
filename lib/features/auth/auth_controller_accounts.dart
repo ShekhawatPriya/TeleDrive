@@ -1,12 +1,15 @@
 part of 'auth_controller.dart';
 
 extension _AuthControllerAccounts on AuthController {
-  Future<AccountVault> _loadVaultWithLegacyMigration() async {
+  Future<AccountVault> _loadVaultWithLegacyMigration(int generation) async {
     var loaded = await _repo.storedVault();
-    loaded = _markLocallyExpired(loaded);
+    _requireGeneration(generation);
+    loaded = await _markLocallyExpired(loaded);
+    _requireGeneration(generation);
     if (loaded.accounts.isNotEmpty) return loaded;
 
     final legacyToken = await _repo.storedToken();
+    _requireGeneration(generation);
     if (legacyToken == null || legacyToken.isEmpty) return loaded;
     if (_repo.isExpired(legacyToken)) return loaded;
 
@@ -14,13 +17,14 @@ extension _AuthControllerAccounts on AuthController {
       legacyToken,
       includeDrive: true,
     );
+    _requireGeneration(generation);
     final migrated = _accountFromBootstrap(legacyToken, bootstrap);
     loaded = const AccountVault.empty().upsert(migrated, makeActive: true);
-    await _repo.saveVault(loaded);
+    await _saveVault(loaded);
     return loaded;
   }
 
-  AccountVault _markLocallyExpired(AccountVault current) {
+  Future<AccountVault> _markLocallyExpired(AccountVault current) async {
     var updated = current;
     for (final account in current.accounts) {
       if (_repo.isExpired(account.token) &&
@@ -29,7 +33,7 @@ extension _AuthControllerAccounts on AuthController {
       }
     }
     if (!_sameVault(updated, current)) {
-      _repo.saveVault(updated);
+      await _saveVault(updated);
     }
     return updated;
   }
@@ -45,7 +49,7 @@ extension _AuthControllerAccounts on AuthController {
     return true;
   }
 
-  Future<void> _restoreBestAccount() async {
+  Future<void> _restoreBestAccount(int generation) async {
     final active = vault.activeAccount;
     final candidates = <SavedAccount>[
       if (active != null) active,
@@ -53,12 +57,13 @@ extension _AuthControllerAccounts on AuthController {
     ];
 
     for (final account in candidates) {
+      _requireGeneration(generation);
       if (account.tokenStatus != TokenStatus.valid) {
         continue;
       }
       if (_repo.isExpired(account.token)) {
         vault = vault.markTokenStatus(account.userId, TokenStatus.expired);
-        await _repo.saveVault(vault);
+        await _saveVault();
         continue;
       }
       try {
@@ -66,9 +71,10 @@ extension _AuthControllerAccounts on AuthController {
           account.token,
           includeDrive: true,
         );
+        _requireGeneration(generation);
         if (!_bootstrapMatchesAccount(account, bootstrap)) {
           vault = vault.markTokenStatus(account.userId, TokenStatus.needsLogin);
-          await _repo.saveVault(vault);
+          await _saveVault();
           continue;
         }
         await _commitActiveAccount(
@@ -76,12 +82,14 @@ extension _AuthControllerAccounts on AuthController {
           bootstrap,
           existing: account,
           cachePhoto: false,
+          generation: generation,
         );
         return;
       } on DioException catch (err) {
+        _requireGeneration(generation);
         if (err.response?.statusCode == 401) {
           vault = vault.markTokenStatus(account.userId, TokenStatus.needsLogin);
-          await _repo.saveVault(vault);
+          await _saveVault();
           continue;
         }
         if (err.response == null) {
@@ -99,6 +107,7 @@ extension _AuthControllerAccounts on AuthController {
       }
     }
 
+    _requireGeneration(generation);
     _repo.setApiToken(null);
     _clearSessionState(clearVault: false);
   }
@@ -115,27 +124,29 @@ extension _AuthControllerAccounts on AuthController {
 
   Future<void> _refreshOtherProfiles() async {
     final epoch = _sessionEpoch;
+    final generation = _authGeneration;
     // Sequential, at most four requests. Do not activate another TDLib session
     // or download unchanged avatars while transfers use the active identity.
     for (final account in [...vault.accounts]) {
       if (account.userId == activeAccount?.userId ||
           account.tokenStatus != TokenStatus.valid ||
-          _repo.isExpired(account.token))
+          _repo.isExpired(account.token)) {
         continue;
+      }
       try {
         final profile = await _repo.fetchAccountProfile(account);
-        if (!_profileRequestIsCurrent(account, epoch)) return;
+        if (!_profileRequestIsCurrent(account, epoch, generation)) return;
         final local = await _profileLocalPhoto(account, profile);
-        if (!_profileRequestIsCurrent(account, epoch)) return;
+        if (!_profileRequestIsCurrent(account, epoch, generation)) return;
         final latest = vault.accountByUserId(account.userId)!;
         vault = vault.upsert(_updatedProfile(latest, profile, local));
-        await _repo.saveVault(vault);
+        await _saveVault();
         _emitChange();
       } on DioException catch (err) {
-        if (_profileRequestIsCurrent(account, epoch) &&
+        if (_profileRequestIsCurrent(account, epoch, generation) &&
             err.response?.statusCode == 401) {
           vault = vault.markTokenStatus(account.userId, TokenStatus.needsLogin);
-          await _repo.saveVault(vault);
+          await _saveVault();
           _emitChange();
         }
       } catch (_) {}
@@ -147,6 +158,7 @@ extension _AuthControllerAccounts on AuthController {
     AuthBootstrapResult bootstrap, {
     SavedAccount? existing,
     bool cachePhoto = true,
+    required int generation,
   }) async {
     _invalidateProfileRefreshes();
     // A returning session must not wait for an extra avatar download. The
@@ -156,6 +168,7 @@ extension _AuthControllerAccounts on AuthController {
         ? await _repo.cacheProfilePhoto(bootstrap.user) ??
               _trustedLocalPhotoPath(existing)
         : existing?.localPhotoPath;
+    _requireGeneration(generation);
     final account = _accountFromBootstrap(
       nextToken,
       bootstrap,
@@ -165,11 +178,13 @@ extension _AuthControllerAccounts on AuthController {
     vault = vault
         .upsert(account, makeActive: true)
         .touchActive(account.userId, DateTime.now());
-    await _repo.saveVault(vault);
+    await _saveVault();
+    _requireGeneration(generation);
     _repo.setApiToken(nextToken);
     token = nextToken;
     user = bootstrap.user;
-    await _repo.saveActiveUser(bootstrap.user);
+    await _persistAuth(() => _repo.saveActiveUser(bootstrap.user));
+    _requireGeneration(generation);
     telegramConnected = bootstrap.telegramConnected;
     communityJoinStatus = bootstrap.communityJoinStatus;
     communityJoinError = bootstrap.communityJoinError;
@@ -183,6 +198,7 @@ extension _AuthControllerAccounts on AuthController {
   }
 
   Future<void> _retryPendingDirectCommitsForActiveAccount() async {
+    final generation = _authGeneration;
     final activeUser = user;
     if (activeUser == null) return;
     final telegramId = activeUser.telegramId != 0
@@ -194,6 +210,7 @@ extension _AuthControllerAccounts on AuthController {
         backendUserId: activeUser.userId,
         telegramUserId: telegramId,
       );
+      if (generation != _authGeneration) return;
       if (before == 0) {
         pendingDirectCommitCount = 0;
         pendingDirectCommitError = null;
@@ -209,24 +226,29 @@ extension _AuthControllerAccounts on AuthController {
         backendUserId: activeUser.userId,
         telegramUserId: telegramId,
       );
+      if (generation != _authGeneration) return;
       debugPrint(
         'TDLIB_E2E_PENDING_COMMIT_RETRY_RESULT '
         'attempted=${result.attempted} committed=${result.committed} '
         'failed=${result.failed}',
       );
-      pendingDirectCommitCount = await _pendingCommits.pendingCount(
+      final remaining = await _pendingCommits.pendingCount(
         backendUserId: activeUser.userId,
         telegramUserId: telegramId,
       );
+      if (generation != _authGeneration) return;
+      pendingDirectCommitCount = remaining;
       pendingDirectCommitError = result.lastError;
       if (result.committed > 0) {
         try {
           final refreshed = await _repo.bootstrap(includeDrive: true);
+          if (generation != _authGeneration) return;
           pendingDriveBootstrap = refreshed.drive;
         } catch (_) {}
       }
       _emitChange();
     } catch (err) {
+      if (generation != _authGeneration) return;
       pendingDirectCommitError = _repo.api.errorMessage(
         err,
         'Pending Telegram commit retry failed.',

@@ -109,6 +109,8 @@ void main() {
 
   test('server rejection still marks the account for login', () async {
     final startup = auth.bootstrap();
+    // Wait until the bootstrap consumer has reached the controlled response.
+    await Future<void>.delayed(Duration.zero);
     final request = RequestOptions(path: '/frontend/bootstrap');
     repo.response.completeError(
       DioException(
