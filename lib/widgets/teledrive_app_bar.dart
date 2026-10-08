@@ -83,7 +83,6 @@ class TeleDriveTopBar extends StatelessWidget {
                   IosMoreButton(
                     sectionsBuilder: menuSections!,
                     size: 44,
-                    visualSize: 34,
                     alignToScreenEdge: true,
                   ),
                 const AccountButton(avatarSize: 44),

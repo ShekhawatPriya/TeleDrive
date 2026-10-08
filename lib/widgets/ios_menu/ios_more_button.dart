@@ -21,6 +21,8 @@ class IosMoreButton extends StatefulWidget {
     this.size = 48,
     this.visualSize,
     this.alignToScreenEdge = false,
+    this.claimsTouches = false,
+    this.plain = false,
     super.key,
   });
 
@@ -30,6 +32,13 @@ class IosMoreButton extends StatefulWidget {
   final double size;
   final double? visualSize;
   final bool alignToScreenEdge;
+
+  /// See [NativeGlassButton.claimsTouches].
+  final bool claimsTouches;
+
+  /// Row overflow: the same bare ellipsis the Drive rows draw, with the native
+  /// menu. Header and toolbar controls keep the default glass capsule.
+  final bool plain;
 
   @override
   State<IosMoreButton> createState() => _IosMoreButtonState();
@@ -53,7 +62,16 @@ class _IosMoreButtonState extends State<IosMoreButton> {
               icon: CupertinoIcons.ellipsis,
               size: widget.size,
               visualSize: widget.visualSize,
+              // Files-style: a quiet medium glyph in a 44-point capsule rather
+              // than a heavy 19-point semibold one in a smaller pill.
+              symbolSize: 17,
+              symbolWeight: 'medium',
+              plain: widget.plain,
+              tint: widget.plain
+                  ? Theme.of(context).colorScheme.onSurfaceVariant
+                  : null,
               onPressed: _open,
+              claimsTouches: widget.claimsTouches,
               menuBuilder: () {
                 final payload = NativeMenuPayload(
                   widget.sectionsBuilder(context),

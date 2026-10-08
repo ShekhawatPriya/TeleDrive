@@ -161,7 +161,10 @@ final class GlassButtonView: NSObject, FlutterPlatformView {
     button.accessibilityLabel = label
     button.isEnabled = args["enabled"] as? Bool ?? true
     button.overrideUserInterfaceStyle = (args["dark"] as? Bool ?? false) ? .dark : .light
-    button.tintColor = (args["white"] as? Bool ?? false) ? .white : .label
+    let plain = args["plain"] as? Bool ?? false
+    button.tintColor = plain
+      ? Self.color(argb: args["tint"] as? Int) ?? .secondaryLabel
+      : (args["white"] as? Bool ?? false) ? .white : .label
     let hasMenu = args["hasMenu"] as? Bool ?? false
     button.showsMenuAsPrimaryAction = hasMenu
     if hasMenu {
@@ -194,9 +197,12 @@ final class GlassButtonView: NSObject, FlutterPlatformView {
       }])
     } else { button.menu = nil }
     if #available(iOS 26.0, *) {
-      var configuration: UIButton.Configuration = prominent ? .prominentGlass() : .glass()
+      // `plain` is a bare glyph with no glass, used for per-row overflow so
+      // rows match the Flutter ellipsis on Drive rows.
+      var configuration: UIButton.Configuration = plain ? .plain() : prominent ? .prominentGlass() : .glass()
       configuration.cornerStyle = .capsule
-      if let visual = args["visualSize"] as? Double, visual < 44 {
+      if plain { configuration.contentInsets = .zero }
+      if let visual = args["visualSize"] as? Double, visual < 44, !plain {
         let inset = (44 - visual) / 2
         configuration.background.backgroundInsets = NSDirectionalEdgeInsets(top: inset, leading: inset, bottom: inset, trailing: inset)
       }
@@ -212,12 +218,25 @@ final class GlassButtonView: NSObject, FlutterPlatformView {
         return updated
       }
       if symbol.isEmpty { configuration.title = label }
-      else { configuration.image = nativeActionImage(symbol, configuration: UIImage.SymbolConfiguration(pointSize: CGFloat(args["symbolSize"] as? Double ?? 19), weight: .semibold)) }
+      else { configuration.image = nativeActionImage(symbol, configuration: UIImage.SymbolConfiguration(pointSize: CGFloat(args["symbolSize"] as? Double ?? 19), weight: Self.weight(args["symbolWeight"] as? String))) }
       button.configuration = configuration
     } else {
       if symbol.isEmpty { button.setTitle(label, for: .normal) }
       else { button.setImage(nativeActionImage(symbol), for: .normal) }
     }
+  }
+  private static func weight(_ name: String?) -> UIImage.SymbolWeight {
+    switch name {
+    case "regular": return .regular
+    case "medium": return .medium
+    default: return .semibold
+    }
+  }
+  private static func color(argb: Int?) -> UIColor? {
+    guard let argb = argb else { return nil }
+    return UIColor(
+      red: CGFloat((argb >> 16) & 0xFF) / 255, green: CGFloat((argb >> 8) & 0xFF) / 255,
+      blue: CGFloat(argb & 0xFF) / 255, alpha: CGFloat((argb >> 24) & 0xFF) / 255)
   }
   @objc private func tapped() { if !button.showsMenuAsPrimaryAction { channel.invokeMethod("tap", arguments: nil) } }
   deinit { channel.setMethodCallHandler(nil) }
