@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/theme/ios_palette.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../widgets/ios/ios_page.dart';
 import 'storage_summary_controller.dart';
@@ -59,48 +60,48 @@ class IosStoragePage extends StatelessWidget {
               'Showing your last loaded storage usage. Pull down to refresh.',
             ),
           IosGroup(
-            title: 'IN TELEGRAM',
+            title: 'In Telegram',
             children: [
               IosRow(
                 title: 'Photos',
                 subtitle: '${data.imageCount} items',
                 value: formatFileSize(data.imageBytes),
                 icon: CupertinoIcons.photo_fill,
-                color: CupertinoColors.systemPink,
+                color: IosTint.photos,
               ),
               IosRow(
                 title: 'Videos',
                 subtitle: '${data.videoCount} items',
                 value: formatFileSize(data.videoBytes),
                 icon: CupertinoIcons.videocam_fill,
-                color: CupertinoColors.systemOrange,
+                color: IosTint.videos,
               ),
               IosRow(
                 title: 'Documents',
                 subtitle: '${data.documentCount} items',
                 value: formatFileSize(data.documentBytes),
                 icon: CupertinoIcons.doc_fill,
-                color: CupertinoColors.systemBlue,
+                color: IosTint.documents,
               ),
               IosRow(
                 title: 'Audio',
                 subtitle: '${data.audioCount} items',
                 value: formatFileSize(data.audioBytes),
                 icon: CupertinoIcons.music_note,
-                color: CupertinoColors.systemPurple,
+                color: IosTint.audio,
               ),
               IosRow(
                 title: 'Other files',
                 subtitle: '${data.otherCount} items',
                 value: formatFileSize(data.otherBytes),
                 icon: CupertinoIcons.archivebox_fill,
-                color: CupertinoColors.systemGrey,
+                color: IosTint.other,
               ),
             ],
           ),
         ],
         IosGroup(
-          title: 'ON THIS IPHONE',
+          title: 'On This iPhone',
           footer:
               'Local cache helps your files open faster. Clearing it leaves your Telegram files in place.',
           children: [
@@ -110,7 +111,7 @@ class IosStoragePage extends StatelessWidget {
                   ? 'Scanning'
                   : formatFileSize(cache.totalSize),
               icon: CupertinoIcons.cube_box_fill,
-              color: CupertinoColors.systemGrey,
+              color: IosTint.storage,
               onTap: () => Navigator.of(context).push(
                 CupertinoPageRoute<void>(
                   builder: (_) => const CacheStorageSettingsScreen(),
@@ -120,7 +121,7 @@ class IosStoragePage extends StatelessWidget {
             IosRow(
               title: 'Free Up Space',
               icon: CupertinoIcons.device_phone_portrait,
-              color: CupertinoColors.systemGreen,
+              color: IosTint.freeUpSpace,
               onTap: () => context.push('/profile/free-up-space'),
             ),
           ],

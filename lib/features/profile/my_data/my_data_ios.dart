@@ -30,7 +30,7 @@ extension _IosMyData on _MyDataScreenState {
           'Manage the information stored with TeleDrive and the copies kept on this iPhone.',
         ),
         IosGroup(
-          title: 'ACCOUNT',
+          title: 'Account',
           children: [
             IosRow(
               title: auth.user?.displayName ?? 'Telegram account',
@@ -38,25 +38,26 @@ extension _IosMyData on _MyDataScreenState {
                   ? null
                   : '@${auth.user!.username}',
               icon: CupertinoIcons.person_fill,
-              color: CupertinoColors.systemGrey,
+              color: IosTint.neutral,
             ),
             IosRow(
               title: 'Telegram Session',
               value: connected ? 'Connected' : 'Not connected',
               icon: CupertinoIcons.lock_shield_fill,
-              color: CupertinoColors.systemGreen,
+              color: IosTint.session,
             ),
             IosRow(
               title: 'Telegram Drive',
               subtitle: '${summary.totalFiles} files',
               value: formatFileSize(summary.totalBytes),
               icon: CupertinoIcons.tray_2_fill,
+              color: IosTint.telegramDrive,
               onTap: () => context.safePush('/profile'),
             ),
           ],
         ),
         IosGroup(
-          title: 'WHERE YOUR DATA LIVES',
+          title: 'Where Your Data Lives',
           children: const [
             IosRow(
               title: 'Files in Telegram',
@@ -79,7 +80,7 @@ extension _IosMyData on _MyDataScreenState {
           ],
         ),
         IosGroup(
-          title: 'MANAGE YOUR DATA',
+          title: 'Manage Your Data',
           children: [
             IosRow(
               title: 'Export Account Data',
@@ -103,13 +104,13 @@ extension _IosMyData on _MyDataScreenState {
             IosRow(
               title: 'Free Up Space',
               icon: CupertinoIcons.device_phone_portrait,
-              color: CupertinoColors.systemGreen,
+              color: IosTint.freeUpSpace,
               onTap: () => context.safePush('/profile/free-up-space'),
             ),
           ],
         ),
         IosGroup(
-          title: 'LEARN MORE',
+          title: 'Learn More',
           children: [
             IosRow(
               title: 'Telegram Privacy Policy',

@@ -92,7 +92,7 @@ Widget _buildIosProject(BuildContext context, ChangelogState changelog) {
       ),
       const SizedBox(height: 32),
       IosGroup(
-        title: 'PROJECT & POLICIES',
+        title: 'Project & Policies',
         children: [
           IosRow(
             title: 'Source code',

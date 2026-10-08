@@ -19,12 +19,13 @@ export 'tokens/app_shape.dart';
 export 'tokens/app_spacing.dart';
 export 'tokens/app_state.dart';
 export 'tokens/app_typography.dart' show AppTextThemeExt, buildAppTextTheme;
+export 'ios_palette.dart' show IosTint;
 
 /// Builds the app theme from a [ColorScheme]. Pass a seeded scheme directly
 /// from [AppBrand.scheme] for consistent light, dark and high-contrast roles.
-ThemeData buildTheme(ColorScheme scheme) {
+ThemeData buildTheme(ColorScheme scheme, {bool highContrast = false}) {
   final ios = defaultTargetPlatform == TargetPlatform.iOS;
-  if (ios) scheme = iosPalette(scheme);
+  if (ios) scheme = iosPalette(scheme, highContrast: highContrast);
   final textTheme = buildAppTextTheme(scheme);
 
   return ThemeData(

@@ -172,8 +172,10 @@ class _FolderEditorState extends State<FolderEditor> {
             if (!ios) const SizedBox(height: 24),
             if (ios) ...[
               Text(
-                'FOLDER NAME',
-                style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 1),
+                'Folder Name',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 8),
             ],

@@ -34,7 +34,7 @@ class _ProjectReleasePreview extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'WHAT’S NEW',
+            'What’s New',
             style: text.labelMedium?.copyWith(
               color: scheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,

@@ -31,19 +31,19 @@ Widget _iosSettings(BuildContext context, WidgetRef ref) {
           IosRow(
             title: 'Uploads',
             icon: CupertinoIcons.arrow_up_doc_fill,
-            color: CupertinoColors.systemBlue,
+            color: IosTint.uploads,
             onTap: () => open(const UploadSettingsScreen()),
           ),
           IosRow(
             title: 'Photo Backup',
             icon: CupertinoIcons.cloud_upload_fill,
-            color: CupertinoColors.systemIndigo,
+            color: IosTint.photoBackup,
             onTap: () => open(const BackupSettingsScreen()),
           ),
           IosRow(
             title: 'Cache & Storage',
             icon: CupertinoIcons.cube_box_fill,
-            color: CupertinoColors.systemOrange,
+            color: IosTint.storage,
             value: cache.isLoading ? 'Scanning' : _formatBytes(cache.totalSize),
             onTap: () => open(const CacheStorageSettingsScreen()),
           ),
@@ -54,13 +54,13 @@ Widget _iosSettings(BuildContext context, WidgetRef ref) {
           IosRow(
             title: 'Privacy & Security',
             icon: CupertinoIcons.hand_raised_fill,
-            color: CupertinoColors.systemBlue,
+            color: IosTint.privacy,
             onTap: () => open(const PrivacySecuritySettingsScreen()),
           ),
           IosRow(
             title: 'Notifications',
             icon: CupertinoIcons.bell_fill,
-            color: CupertinoColors.systemRed,
+            color: IosTint.notifications,
             onTap: () => open(const NotificationsSettingsScreen()),
           ),
         ],
@@ -74,7 +74,7 @@ Widget _iosSettings(BuildContext context, WidgetRef ref) {
           IosRow(
             title: 'About TeleDrive',
             icon: CupertinoIcons.info_circle_fill,
-            color: CupertinoColors.systemGrey,
+            color: IosTint.neutral,
             onTap: () => context.push('/settings/project'),
           ),
         ],
