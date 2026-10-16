@@ -80,7 +80,9 @@ extension _IosAccountSheet on _AccountBottomSheetState {
                 IosRow(
                   leading: _buildAvatarWidget(saved, size: 40),
                   title: saved.displayName,
-                  subtitle: saved.username == null
+                  subtitle: saved.userId != account.userId && saved.needsSignIn
+                      ? 'Signed out · Tap to sign in again'
+                      : saved.username == null
                       ? 'ID ${saved.telegramId}'
                       : '@${saved.username}',
                   onTap: saved.userId == account.userId

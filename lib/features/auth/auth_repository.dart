@@ -32,6 +32,32 @@ class AuthRepository {
   Future<void> saveVault(AccountVault vault) => storage.saveAccountVault(vault);
 
   bool isExpired(String token) => isJwtExpired(token);
+  bool isDueForRenewal(String token) => isJwtDueForRenewal(token);
+
+  /// Exchanges [account]'s still-valid token for a fresh one without
+  /// changing the shared API token. Returns null when the server predates
+  /// token renewal.
+  Future<String?> renewToken(SavedAccount account) async {
+    try {
+      final res = await api.dio.post(
+        '/telegram/auth/renew',
+        options: Options(headers: {'Authorization': 'Bearer ${account.token}'}),
+      );
+      final token = (res.data as Map)['token'];
+      if (token is! String || isJwtExpired(token)) return null;
+      if ('${decodeJwtPayload(token)?['sub']}' != '${account.userId}') {
+        throw const FormatException(
+          'Renewed token belongs to another account.',
+        );
+      }
+      return token;
+    } on DioException catch (err) {
+      final status = err.response?.statusCode;
+      if (status == 404 || status == 405) return null;
+      rethrow;
+    }
+  }
+
   AuthUser? decode(String token) => decodeJwtUser(token);
 
   AuthUser? userFromAuthPayload(Map<String, dynamic> data) {

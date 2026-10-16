@@ -141,9 +141,9 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
   ) async {
     if (account.userId == state.activeUserId) return;
     if (checkUploadsBlocked(context)) return;
-    if (account.tokenStatus != TokenStatus.valid) {
+    if (account.needsSignIn) {
       showAppPremiumToast(
-        message: 'Log in again to use ${account.displayName}.',
+        message: 'Sign in again to use ${account.displayName}.',
         icon: Icons.lock_clock_outlined,
       );
       await reauthenticateAccount(context, account);

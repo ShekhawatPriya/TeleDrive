@@ -119,8 +119,10 @@ extension _AccountSheetSwitcher on _AccountBottomSheetState {
                                             ),
                                       ),
                                       Text(
-                                        account.username != null &&
-                                                account.username!.isNotEmpty
+                                        !isActive && account.needsSignIn
+                                            ? 'Signed out · Tap to sign in again'
+                                            : account.username != null &&
+                                                  account.username!.isNotEmpty
                                             ? '@${account.username}'
                                             : 'ID ${account.telegramId}',
                                         style: theme.textTheme.bodyMedium
