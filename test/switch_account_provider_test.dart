@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_m_fsdk/features/profile/widgets/switch_account_provider.dart';
 import 'package:flutter_m_fsdk/features/auth/auth_controller.dart';
 import 'package:flutter_m_fsdk/features/upload/upload_controller.dart';
@@ -44,6 +45,7 @@ class MockUploadController extends ChangeNotifier implements UploadController {
 }
 
 void main() {
+  addAccountNavigationTests();
   testWidgets(
     'checkUploadsBlocked blocks account switch when active uploads exist',
     (tester) async {
@@ -145,4 +147,74 @@ void main() {
 class FakeBuildContext extends Fake implements BuildContext {
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+/// Regression: on iOS Account is a page, not a sheet. Adding an account must
+/// leave sign-in on screen instead of popping it straight back to Drive.
+void addAccountNavigationTests() {
+  for (final sheet in [false, true]) {
+    testWidgets('Add Account opens sign-in from ${sheet ? 'a sheet' : 'a page'}', (
+      tester,
+    ) async {
+      final container = ProviderContainer(
+        overrides: [
+          authControllerProvider.overrideWith((ref) => MockAuthController()),
+          uploadControllerProvider.overrideWith(
+            (ref) => MockUploadController(mockHasBlockingUploads: false),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final notifier = container.read(switchAccountProvider.notifier);
+      Widget addButton() => Builder(
+        builder: (context) => TextButton(
+          onPressed: () => notifier.addAnotherAccount(context),
+          child: const Text('Add Account'),
+        ),
+      );
+      final router = GoRouter(
+        initialLocation: '/drive',
+        routes: [
+          GoRoute(
+            path: '/drive',
+            builder: (_, __) => Scaffold(
+              body: Builder(
+                builder: (context) => TextButton(
+                  onPressed: sheet
+                      ? () => showModalBottomSheet<void>(
+                          context: context,
+                          builder: (_) => addButton(),
+                        )
+                      : () => context.push('/account'),
+                  child: const Text('Open account'),
+                ),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/account',
+            builder: (_, __) => Scaffold(body: Center(child: addButton())),
+          ),
+          GoRoute(
+            path: '/login',
+            builder: (context, state) => PopScope(
+              canPop: false,
+              onPopInvokedWithResult: (didPop, _) {
+                if (!didPop) context.go('/drive');
+              },
+              child: Scaffold(body: Text('Sign in ${state.uri.query}')),
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.tap(find.text('Open account'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add Account'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Sign in mode=addAccount'), findsOneWidget);
+      expect(find.text('Open account'), findsNothing);
+    });
+  }
 }

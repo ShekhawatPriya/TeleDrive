@@ -222,15 +222,11 @@ extension _AccountSheetCards on _AccountBottomSheetState {
                               .scanNow(reason: 'profile_toggle');
                         }
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              backupOn
-                                  ? 'Backup turned off. Queued backup items are paused; uploaded history is kept.'
-                                  : 'Backup enabled. Scanning now.',
-                            ),
-                            duration: const Duration(seconds: 2),
-                          ),
+                        AppMessenger.of(context).show(
+                          backupOn
+                              ? 'Backup turned off. Queued backup items are paused; uploaded history is kept.'
+                              : 'Backup enabled. Scanning now.',
+                          duration: const Duration(seconds: 2),
                         );
                       },
                       style: FilledButton.styleFrom(
