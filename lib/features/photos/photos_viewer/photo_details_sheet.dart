@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
+import '../../../widgets/item_status.dart';
 
 /// Metadata is intentionally limited to facts supplied by the Drive model.
 /// Created/modified timestamps are not represented as EXIF capture dates.
@@ -101,8 +102,11 @@ class PhotoDetailsSheet extends StatelessWidget {
                       style: valueStyle,
                     ),
                   const SizedBox(height: 6),
-                  Text(
-                    file.name,
+                  ItemStatusLine(
+                    starred: file.starred,
+                    shared: file.shared,
+                    maxLines: null,
+                    text: file.name,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),

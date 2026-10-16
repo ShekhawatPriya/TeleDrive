@@ -5,7 +5,8 @@ import '../../../core/theme/app_theme.dart';
 class CommunityPromiseList extends StatelessWidget {
   const CommunityPromiseList({super.key});
 
-  static const _items = [
+  /// The promises, shared with the iOS composition.
+  static const items = [
     (
       Icons.groups_2_outlined,
       'Join the official DevsDoCode community for support, updates, and announcements.',
@@ -57,19 +58,19 @@ class CommunityPromiseList extends StatelessWidget {
             padding: const EdgeInsets.all(AppSpacing.md),
             child: Column(
               children: [
-                for (var i = 0; i < _items.length; i++) ...[
+                for (var i = 0; i < items.length; i++) ...[
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(
-                        _items[i].$1,
+                        items[i].$1,
                         color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
                         size: 18,
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Text(
-                          _items[i].$2,
+                          items[i].$2,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: scheme.onSurfaceVariant,
                             height: 1.35,
@@ -78,7 +79,7 @@ class CommunityPromiseList extends StatelessWidget {
                       ),
                     ],
                   ),
-                  if (i < _items.length - 1)
+                  if (i < items.length - 1)
                     const SizedBox(height: AppSpacing.md),
                 ],
               ],

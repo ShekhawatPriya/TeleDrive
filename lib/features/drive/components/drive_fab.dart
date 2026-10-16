@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import '../../../widgets/adaptive_surface.dart';
+import '../../../widgets/ios_menu/ios_menu_models.dart';
+import '../../../widgets/ios_menu/native_menu_payload.dart';
+import '../../../widgets/native_glass_button.dart';
 import '../../../widgets/sheet/adaptive_sheet.dart';
 import '../../../widgets/sheet/ios_action_group.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,38 +14,68 @@ import '../../upload/upload_controller.dart';
 import '../../upload/upload_source_picker.dart';
 import '../drive_controller.dart';
 import 'drive_dialogs.dart';
+import '../../../widgets/app_message.dart';
 
-/// Floating action button shown on the home and folder screens.  Opens a
-/// modal bottom sheet with Upload File / Take Photo / Create Folder options.
-class DriveFab extends ConsumerWidget {
+/// Floating add control shown on the home and folder screens. On iOS a
+/// native glass button opens a UIKit menu straight from the control (Choose
+/// from Photos / Choose Files / Take Photo / New Folder), as the Files app
+/// does; widget tests and hosts without the bridge open the grouped sheet.
+/// Android keeps its FAB and bottom sheet.
+class DriveFab extends ConsumerStatefulWidget {
   const DriveFab({this.parentId, super.key});
   final String? parentId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DriveFab> createState() => _DriveFabState();
+}
+
+class _DriveFabState extends ConsumerState<DriveFab> {
+  Map<String, VoidCallback> _menuActions = {};
+
+  String? get parentId => widget.parentId;
+
+  @override
+  Widget build(BuildContext context) {
     if (Theme.of(context).platform == TargetPlatform.iOS) {
       return Semantics(
-        button: true,
         label: 'Add files or create a folder',
-        child: AdaptiveSurface(
-          radius: 30,
-          child: CupertinoButton(
-            padding: const EdgeInsets.all(16),
-            onPressed: () => _open(context, ref),
-            child: const Icon(CupertinoIcons.plus, size: 28),
-          ),
+        child: NativeGlassButton(
+          label: 'Add',
+          symbol: 'plus',
+          icon: CupertinoIcons.plus,
+          size: 60,
+          symbolSize: 24,
+          onPressed: _open,
+          menuBuilder: () {
+            final payload = NativeMenuPayload([
+              IosMenuSection([
+                IosMenuItem(
+                  label: 'Choose from Photos',
+                  onTap: () => _run('photos'),
+                ),
+                IosMenuItem(label: 'Choose Files', onTap: () => _run('files')),
+                IosMenuItem(label: 'Take Photo', onTap: () => _run('photo')),
+              ]),
+              IosMenuSection([
+                IosMenuItem(label: 'New Folder', onTap: () => _run('folder')),
+              ]),
+            ]);
+            _menuActions = payload.actions;
+            return payload.sections;
+          },
+          onMenuAction: (id) => _menuActions[id]?.call(),
         ),
       );
     }
     return FloatingActionButton(
       heroTag: null,
       tooltip: 'Add files or create a folder',
-      onPressed: () => _open(context, ref),
+      onPressed: _open,
       child: const Icon(Icons.add),
     );
   }
 
-  Future<void> _open(BuildContext context, WidgetRef ref) async {
+  Future<void> _open() async {
     ModalRoute<dynamic>? sheetRoute;
     final action = await showAdaptiveSheet<String>(
       context: context,
@@ -53,44 +85,42 @@ class DriveFab extends ConsumerWidget {
       },
     );
     await sheetRoute?.completed;
-    if (!context.mounted) return;
+    if (!mounted || action == null) return;
     if (action == 'upload') {
       final source = Theme.of(context).platform == TargetPlatform.iOS
           ? await chooseUploadSource(context)
           : 'files';
-      if (!context.mounted || source == null) return;
-      if (source == 'photos') {
-        await ref
-            .read(uploadControllerProvider)
-            .pickPhotos(folderId: parentId, context: context);
-        return;
-      }
-      await ref
-          .read(uploadControllerProvider)
-          .pickFiles(folderId: parentId, context: context);
-    } else if (action == 'photos') {
-      await ref
-          .read(uploadControllerProvider)
-          .pickPhotos(folderId: parentId, context: context);
-    } else if (action == 'photo') {
-      await ref
-          .read(uploadControllerProvider)
-          .pickPhoto(folderId: parentId, context: context);
-    } else if (action == 'folder') {
-      final name = await promptFolderName(context);
-      if (name != null && context.mounted) {
+      if (!mounted || source == null) return;
+      await _run(source == 'photos' ? 'photos' : 'files');
+      return;
+    }
+    await _run(action);
+  }
+
+  Future<void> _run(String action) async {
+    if (!mounted) return;
+    UploadController upload() => ref.read(uploadControllerProvider);
+    switch (action) {
+      case 'photos':
+        await upload().pickPhotos(folderId: parentId, context: context);
+      case 'files':
+        await upload().pickFiles(folderId: parentId, context: context);
+      case 'photo':
+        await upload().pickPhoto(folderId: parentId, context: context);
+      case 'folder':
+        final name = await promptFolderName(context);
+        if (name == null || !mounted) return;
         try {
           await ref.read(driveControllerProvider).createFolder(name, parentId);
         } catch (_) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Could not create folder. Please try again.'),
-              ),
+          if (mounted) {
+            showAppMessage(
+              context,
+              'Could not create folder. Please try again.',
+              error: true,
             );
           }
         }
-      }
     }
   }
 }

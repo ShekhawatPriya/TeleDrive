@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/utils/safe_navigation.dart';
 import '../../../models/account_vault.dart';
 import '../../../models/auth_user.dart';
 import '../../../widgets/premium_toast.dart';
+import '../../../widgets/search_keyboard.dart';
 import '../../auth/auth_controller.dart';
 import '../../auth/tdlib_session_controller.dart';
 import '../../drive/drive_controller.dart';
@@ -106,9 +106,21 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
       );
       return;
     }
-    Navigator.of(context, rootNavigator: true).maybePop();
     final returnTo = Uri.encodeComponent('/drive');
-    context.safePush('/login?mode=addAccount&returnTo=$returnTo');
+    _openAccountLogin(context, '/login?mode=addAccount&returnTo=$returnTo');
+  }
+
+  /// Opens sign-in from the account surface. Android's account sheet is
+  /// dismissed first, synchronously; the iOS Account page is a real page and
+  /// stays beneath sign-in. An unawaited `maybePop` here used to resolve after
+  /// the push and pop the sign-in route itself, whose account-mode cancel
+  /// handler then returned to Drive.
+  void _openAccountLogin(BuildContext context, String location) {
+    final router = GoRouter.of(context);
+    final route = ModalRoute.of(context);
+    if (route is PopupRoute && route.isCurrent) Navigator.of(context).pop();
+    dismissSearchKeyboard();
+    router.push(location);
   }
 
   Future<void> reauthenticateAccount(
@@ -116,9 +128,9 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
     SavedAccount account,
   ) async {
     if (checkUploadsBlocked(context)) return;
-    Navigator.of(context, rootNavigator: true).maybePop();
     final returnTo = Uri.encodeComponent('/drive');
-    context.safePush(
+    _openAccountLogin(
+      context,
       '/login?mode=reauthenticateAccount&targetUserId=${account.userId}&returnTo=$returnTo',
     );
   }
@@ -129,9 +141,9 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
   ) async {
     if (account.userId == state.activeUserId) return;
     if (checkUploadsBlocked(context)) return;
-    if (account.tokenStatus != TokenStatus.valid) {
+    if (account.needsSignIn) {
       showAppPremiumToast(
-        message: 'Log in again to use ${account.displayName}.',
+        message: 'Sign in again to use ${account.displayName}.',
         icon: Icons.lock_clock_outlined,
       );
       await reauthenticateAccount(context, account);
@@ -262,14 +274,31 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
   }
 
   Future<void> _showUploadInProgressDialog(BuildContext context) {
+    const message =
+        'An upload is currently in progress. Please wait for the upload to complete or cancel it before switching accounts or accessing account options.';
+    if (Theme.of(context).platform == TargetPlatform.iOS) {
+      return showCupertinoDialog<void>(
+        context: context,
+        useRootNavigator: true,
+        builder: (dialogContext) => CupertinoAlertDialog(
+          title: const Text('Upload in Progress'),
+          content: const Text(message),
+          actions: [
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
     return showDialog<void>(
       context: context,
       useRootNavigator: true,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Upload in Progress'),
-        content: const Text(
-          'An upload is currently in progress. Please wait for the upload to complete or cancel it before switching accounts or accessing account options.',
-        ),
+        content: const Text(message),
         actions: [
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(),

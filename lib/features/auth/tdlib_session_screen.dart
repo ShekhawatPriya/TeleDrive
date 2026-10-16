@@ -1,11 +1,14 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../widgets/ios/ios_page.dart';
+import '../../widgets/native_glass_button.dart';
 import '../../widgets/premium_toast.dart';
 import '../drive/drive_controller.dart';
 import '../drive/drive_tab_commands.dart';
@@ -14,11 +17,13 @@ import '../search/search_controller.dart';
 import '../share/share_controller.dart';
 import '../upload/upload_controller.dart';
 import 'auth_controller.dart';
+import 'components/login_controls.dart';
 import 'tdlib_auto_authorization_models.dart';
 import 'tdlib_session_controller.dart';
 
 part 'tdlib_session_screen_actions.dart';
 part 'tdlib_session_screen_controls.dart';
+part 'tdlib_session_screen_ios.dart';
 part 'tdlib_session_screen_view.dart';
 
 class TdlibSessionScreen extends ConsumerStatefulWidget {
@@ -58,12 +63,19 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
   TdlibSessionStatus? _lastObservedStatus;
   String? _error;
 
+  // Captured while mounted: Riverpod refuses `ref` inside dispose(), which
+  // used to throw there and skip cancelling the automation.
+  late AuthController _auth;
+  late TdlibSessionController _tdlib;
+
   void _setUiState(VoidCallback change) => setState(change);
 
   @override
   void initState() {
     super.initState();
     dismissPremiumToast();
+    _auth = ref.read(authControllerProvider);
+    _tdlib = ref.read(tdlibSessionControllerProvider);
     _tdlibSub = ref.listenManual<TdlibSessionController>(
       tdlibSessionControllerProvider,
       (previous, next) {
@@ -90,7 +102,7 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
     _uiRunId++;
     _tdlibSub?.close();
     _tdlibSub = null;
-    final auth = ref.read(authControllerProvider);
+    final auth = _auth;
     final candidateTelegramId = auth.pendingCandidateTelegramId;
     if (candidateTelegramId != null) {
       auth.clearEphemeralTelegramCloudPassword(
@@ -99,7 +111,7 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
     } else {
       auth.clearEphemeralTelegramCloudPassword();
     }
-    ref.read(tdlibSessionControllerProvider).cancelAutomation();
+    _tdlib.cancelAutomation();
     _phone.dispose();
     _code.dispose();
     _password.dispose();
@@ -163,6 +175,8 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(tdlibSessionControllerProvider);
+    _tdlib = controller;
+    _auth = ref.watch(authControllerProvider);
     final session = controller.state;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
@@ -174,31 +188,45 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
         await _cancelTdlibAuthorization();
       },
       child: Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            tooltip: 'Cancel setup',
-            icon: const Icon(Icons.close_rounded),
-            onPressed: () => _cancelTdlibAuthorization(),
-          ),
-          title: Text(_appBarTitle()),
-        ),
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.xl,
+        appBar: theme.platform == TargetPlatform.iOS
+            ? IosNavigationBar.preferred(
+                title: _appBarTitle(),
+                leading: NativeGlassButton(
+                  label: 'Cancel setup',
+                  symbol: 'xmark',
+                  icon: CupertinoIcons.xmark,
+                  size: 44,
+                  symbolSize: 16,
+                  onPressed: () => _cancelTdlibAuthorization(),
+                ),
+              )
+            : AppBar(
+                leading: IconButton(
+                  tooltip: 'Cancel setup',
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: () => _cancelTdlibAuthorization(),
+                ),
+                title: Text(_appBarTitle()),
               ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 460),
-                child: AnimatedSwitcher(
-                  duration: AppDurations.medium2,
-                  child: _buildAutoCard(session, theme, scheme),
+        body: theme.platform == TargetPlatform.iOS
+            ? _buildIosBody(session)
+            : SafeArea(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.xl,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 460),
+                      child: AnimatedSwitcher(
+                        duration: AppDurations.medium2,
+                        child: _buildAutoCard(session, theme, scheme),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-        ),
       ),
     );
   }

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/file_type_detector.dart';
 import 'free_up_space/free_up_space_controller.dart';
+import '../../widgets/app_message.dart';
 
 part 'free_up_space/free_up_space_ios.dart';
 part 'free_up_space/free_up_space_breakdown.dart';
@@ -38,9 +39,9 @@ class _FreeUpSpaceScreenState extends ConsumerState<FreeUpSpaceScreen> {
       final previousMessage = previous?.state.lastSuccessMessage;
       final message = next.state.lastSuccessMessage;
       if (message != null && message != previousMessage && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-        );
+        AppMessenger.of(
+          context,
+        ).show(message, behavior: SnackBarBehavior.floating);
         Future.microtask(next.clearTransientMessages);
       }
     });
@@ -148,11 +149,10 @@ class _FreeUpSpaceScreenState extends ConsumerState<FreeUpSpaceScreen> {
     final summary = await controller.freeUpSpace();
     if (!context.mounted || summary.deleted > 0 || summary.failed > 0) return;
     if (summary.userCancelled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nothing was deleted.'),
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppMessenger.of(context).show(
+        'Nothing was deleted.',
+        iosIcon: CupertinoIcons.info_circle,
+        behavior: SnackBarBehavior.floating,
       );
     }
   }

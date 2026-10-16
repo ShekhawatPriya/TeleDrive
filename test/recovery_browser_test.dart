@@ -254,6 +254,14 @@ void main() {
                 brightness: brightness,
                 scale: scale,
               );
+              // At large text the iOS hero card can fill the first screen.
+              if (find.byType(MediaThumb).evaluate().isEmpty) {
+                await tester.drag(
+                  find.byType(Scrollable).first,
+                  const Offset(0, -500),
+                );
+                await tester.pumpAndSettle();
+              }
               expect(find.byType(MediaThumb), findsWidgets);
               expect(tester.takeException(), isNull);
               await capture(

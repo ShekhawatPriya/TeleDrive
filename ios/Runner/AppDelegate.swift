@@ -166,9 +166,11 @@ final class GlassButtonView: NSObject, FlutterPlatformView {
       ? Self.color(argb: args["tint"] as? Int) ?? .secondaryLabel
       : (args["white"] as? Bool ?? false) ? .white : .label
     let hasMenu = args["hasMenu"] as? Bool ?? false
-    button.showsMenuAsPrimaryAction = hasMenu
+    // A long-press menu keeps tap as the primary action (Back with history).
+    let menuOnLongPress = args["menuOnLongPress"] as? Bool ?? false
+    button.showsMenuAsPrimaryAction = hasMenu && !menuOnLongPress
     if hasMenu {
-      button.menu = UIMenu(children: [UIDeferredMenuElement.uncached { [weak self] completion in
+      button.menu = UIMenu(title: args["menuTitle"] as? String ?? "", children: [UIDeferredMenuElement.uncached { [weak self] completion in
         guard let self = self else { completion([]); return }
         self.channel.invokeMethod("menuRequest", arguments: nil) { [weak self] result in
           guard let self = self, let sections = result as? [[String: Any]] else {
@@ -342,6 +344,8 @@ final class ItemContextMenuView: NSObject, FlutterPlatformView, UIContextMenuInt
   private var identity = ""
   private var title = ""
   private var subtitle = "", symbol = "doc", revision = ""
+  /// Header shown above the actions, e.g. "Starred · Shared".
+  private var menuTitle = ""
   private var visualPreview = false
   private var generation = 0
   private var interaction: UIContextMenuInteraction!
@@ -381,6 +385,7 @@ final class ItemContextMenuView: NSObject, FlutterPlatformView, UIContextMenuInt
     identity = next
     title = args["title"] as? String ?? ""
     subtitle = args["subtitle"] as? String ?? ""
+    menuTitle = args["menuTitle"] as? String ?? ""
     symbol = args["symbol"] as? String ?? "doc"
     visualPreview = args["visualPreview"] as? Bool ?? false
     revision = nextRevision
@@ -446,8 +451,9 @@ final class ItemContextMenuView: NSObject, FlutterPlatformView, UIContextMenuInt
       controller.loadPreview(result as? [String: String])
     }
     if sourceImage == nil { prepareSnapshot() }
+    let header = menuTitle
     return UIContextMenuConfiguration(identifier: itemID as NSString, previewProvider: { controller }) { [weak self] _ in
-      UIMenu(children: [UIDeferredMenuElement.uncached { completion in
+      UIMenu(title: header, children: [UIDeferredMenuElement.uncached { completion in
         guard let self = self else { completion([]); return }
         self.channel.invokeMethod("menuRequest", arguments: itemID) { [weak self] result in
           guard let self = self, self.identity == itemID,

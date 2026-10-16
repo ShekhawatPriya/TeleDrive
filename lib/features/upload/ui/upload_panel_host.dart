@@ -88,10 +88,16 @@ class _UploadPanelHostState extends State<UploadPanelHost>
                   constraints: const BoxConstraints(maxWidth: 600),
                   child: SlideTransition(
                     position: _animation.drive(
-                      Tween(
-                        begin: const Offset(0, 1),
-                        end: Offset.zero,
-                      ).chain(CurveTween(curve: Curves.easeOutCubic)),
+                      Tween(begin: const Offset(0, 1), end: Offset.zero).chain(
+                        CurveTween(
+                          curve:
+                              Theme.of(context).platform == TargetPlatform.iOS
+                              // Nearly critical, so the bottom edge never
+                              // lifts off the screen.
+                              ? const IosSpringCurve(damping: .95)
+                              : Curves.easeOutCubic,
+                        ),
+                      ),
                     ),
                     child:
                         NotificationListener<DraggableScrollableNotification>(

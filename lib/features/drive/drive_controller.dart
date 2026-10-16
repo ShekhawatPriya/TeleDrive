@@ -9,6 +9,7 @@ import '../../models/drive_models.dart';
 import '../auth/auth_controller.dart';
 import '../profile/app_settings_controller.dart';
 import 'drive_repository.dart';
+import '../../core/utils/app_haptics.dart';
 
 part 'drive_controller/drive_mutations.dart';
 part 'drive_controller/drive_delete_mutations.dart';
@@ -334,8 +335,10 @@ class DriveController extends ChangeNotifier {
     originFolderId: originFolderId,
   );
 
-  Future<void> toggleStar(String id, {bool folder = false}) =>
-      _toggleStar(id, folder: folder);
+  Future<void> toggleStar(String id, {bool folder = false}) {
+    AppHaptics.light();
+    return _toggleStar(id, folder: folder);
+  }
 
   Future<void> markAccessed(String id) => _markAccessed(id);
 

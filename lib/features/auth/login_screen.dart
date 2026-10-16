@@ -13,8 +13,12 @@ import '../../widgets/brand_mark.dart';
 import '../../widgets/adaptive_surface.dart';
 import 'country_data.dart';
 import 'country_picker.dart';
+import '../../models/account_vault.dart';
+import '../../widgets/ios/ios_page.dart';
+import '../../widgets/native_glass_button.dart';
 
 part 'login_screen_actions.dart';
+part 'login_screen_ios.dart';
 part 'login_screen_view.dart';
 
 enum LoginMode { normalLogin, addAccount, reauthenticateAccount }
@@ -60,10 +64,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _setUiState(VoidCallback change) => setState(change);
 
+  /// The saved account being signed in again, when this is a reauthentication.
+  SavedAccount? get _reauthAccount {
+    final id = widget.targetUserId;
+    if (widget.mode != LoginMode.reauthenticateAccount || id == null) {
+      return null;
+    }
+    return ref.read(authControllerProvider).vault.accountByUserId(id);
+  }
+
   @override
   void initState() {
     super.initState();
     dismissPremiumToast();
+    // Signing in again starts from the account's own number.
+    final saved = splitInternationalNumber(_reauthAccount?.phoneNumber);
+    if (saved != null) {
+      _selectedCountry = saved.$1;
+      _phone.text = saved.$2;
+    }
   }
 
   @override
@@ -74,6 +93,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _code.dispose();
     _password.dispose();
     super.dispose();
+  }
+
+  void _back() {
+    if (_step != _Step.phone) {
+      _setStep(_Step.phone);
+    } else {
+      context.go(_cancelDestination());
+    }
   }
 
   @override
@@ -87,120 +114,138 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (didPop || widget.mode == LoginMode.normalLogin) return;
         context.go(_cancelDestination());
       },
-      child: Scaffold(
-        body: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 24, 0),
-                child: Row(
+      child: theme.platform == TargetPlatform.iOS
+          ? _buildIos()
+          : Scaffold(
+              body: SafeArea(
+                child: Column(
                   children: [
-                    AdaptiveSurface(
-                      radius: 24,
-                      role: GlassRole.navigation,
-                      child: IconButton(
-                        tooltip: 'Back',
-                        icon: Icon(
-                          theme.platform == TargetPlatform.iOS
-                              ? CupertinoIcons.chevron_left
-                              : Icons.arrow_back_rounded,
-                          size: 21,
-                        ),
-                        onPressed: _loading
-                            ? null
-                            : () {
-                                if (_step != _Step.phone) {
-                                  _setStep(_Step.phone);
-                                } else {
-                                  context.go(_cancelDestination());
-                                }
-                              },
-                      ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 24, 0),
+                      child: theme.platform == TargetPlatform.iOS
+                          ? Align(
+                              alignment: Alignment.centerLeft,
+                              child: NativeGlassButton(
+                                label: 'Back',
+                                symbol: 'chevron.left',
+                                icon: CupertinoIcons.chevron_back,
+                                size: 44,
+                                symbolSize: 18,
+                                onPressed: _loading ? null : _back,
+                              ),
+                            )
+                          : Row(
+                              children: [
+                                AdaptiveSurface(
+                                  radius: 24,
+                                  role: GlassRole.navigation,
+                                  child: IconButton(
+                                    tooltip: 'Back',
+                                    icon: Icon(
+                                      theme.platform == TargetPlatform.iOS
+                                          ? CupertinoIcons.chevron_left
+                                          : Icons.arrow_back_rounded,
+                                      size: 21,
+                                    ),
+                                    onPressed: _loading
+                                        ? null
+                                        : () {
+                                            if (_step != _Step.phone) {
+                                              _setStep(_Step.phone);
+                                            } else {
+                                              context.go(_cancelDestination());
+                                            }
+                                          },
+                                  ),
+                                ),
+                                const Spacer(),
+                                const BrandMark(size: 24),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'TeleDrive',
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                     ),
-                    const Spacer(),
-                    const BrandMark(size: 24),
-                    const SizedBox(width: 8),
-                    Text(
-                      'TeleDrive',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) => SingleChildScrollView(
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          padding: const EdgeInsets.fromLTRB(28, 28, 28, 28),
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: 430,
+                                minHeight: (constraints.maxHeight - 56).clamp(
+                                  0,
+                                  double.infinity,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Align(
+                                    alignment:
+                                        theme.platform == TargetPlatform.iOS
+                                        ? Alignment.center
+                                        : Alignment.centerLeft,
+                                    child: LoginIdentity(step: _step.index),
+                                  ),
+                                  const SizedBox(height: 28),
+                                  _buildHeader(),
+                                  const SizedBox(height: 32),
+                                  AnimatedSwitcher(
+                                    duration:
+                                        MediaQuery.disableAnimationsOf(context)
+                                        ? Duration.zero
+                                        : const Duration(milliseconds: 180),
+                                    child: KeyedSubtree(
+                                      key: ValueKey(_step),
+                                      child: _buildFormCard(),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 28),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        theme.platform == TargetPlatform.iOS
+                                            ? CupertinoIcons.lock
+                                            : Icons.lock_outline_rounded,
+                                        size: 15,
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _step == _Step.phone
+                                              ? 'Use the number linked to your Telegram account. Your files stay in your Telegram storage.'
+                                              : _step == _Step.code
+                                              ? 'Keep Telegram open until you finish signing in.'
+                                              : 'This is your Telegram password, not your device passcode.',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(height: 1.5),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) => SingleChildScrollView(
-                    keyboardDismissBehavior:
-                        ScrollViewKeyboardDismissBehavior.onDrag,
-                    padding: const EdgeInsets.fromLTRB(28, 28, 28, 28),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: 430,
-                          minHeight: (constraints.maxHeight - 56).clamp(
-                            0,
-                            double.infinity,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: LoginIdentity(step: _step.index),
-                            ),
-                            const SizedBox(height: 28),
-                            _buildHeader(),
-                            const SizedBox(height: 32),
-                            AnimatedSwitcher(
-                              duration: MediaQuery.disableAnimationsOf(context)
-                                  ? Duration.zero
-                                  : const Duration(milliseconds: 180),
-                              child: KeyedSubtree(
-                                key: ValueKey(_step),
-                                child: _buildFormCard(),
-                              ),
-                            ),
-                            const SizedBox(height: 28),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  theme.platform == TargetPlatform.iOS
-                                      ? CupertinoIcons.lock
-                                      : Icons.lock_outline_rounded,
-                                  size: 15,
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    _step == _Step.phone
-                                        ? 'Use the number linked to your Telegram account. Your files stay in your Telegram storage.'
-                                        : _step == _Step.code
-                                        ? 'Keep Telegram open until you finish signing in.'
-                                        : 'This is your Telegram password, not your device passcode.',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      height: 1.5,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 }

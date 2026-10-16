@@ -18,6 +18,7 @@ class LoginTextField extends StatelessWidget {
     this.autofocus = false,
     this.enabled = true,
     this.code = false,
+    this.grouped = false,
     super.key,
   });
   final TextEditingController controller;
@@ -30,6 +31,9 @@ class LoginTextField extends StatelessWidget {
   final String? prefix;
   final Widget? suffix;
   final bool obscure, autofocus, enabled, code;
+
+  /// iOS: the field is a row inside an inset group that draws the surface.
+  final bool grouped;
 
   @override
   Widget build(BuildContext context) {
@@ -57,25 +61,33 @@ class LoginTextField extends StatelessWidget {
           autocorrect: false,
           onSubmitted: onSubmitted,
           style: style,
-          placeholder: code ? '000000' : label,
+          // Telegram chooses the code length, so the placeholder names the
+          // field instead of implying a digit count.
+          placeholder: code ? 'Code' : label,
           placeholderStyle: style?.copyWith(
+            letterSpacing: code ? 0 : null,
             color: scheme.onSurfaceVariant.withValues(alpha: .6),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+          padding: grouped
+              ? EdgeInsets.fromLTRB(prefix == null ? 16 : 12, 16, 16, 16)
+              : const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+          textAlign: code && grouped ? TextAlign.center : TextAlign.start,
           prefix: prefix == null
               ? null
               : Padding(
-                  padding: const EdgeInsets.only(left: 18),
+                  padding: EdgeInsets.only(left: grouped ? 16 : 18),
                   child: Text(
                     prefix!,
                     style: style?.copyWith(fontWeight: FontWeight.w600),
                   ),
                 ),
           suffix: suffix,
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(18),
-          ),
+          decoration: grouped
+              ? null
+              : BoxDecoration(
+                  color: scheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(18),
+                ),
         ),
       );
     }
@@ -146,13 +158,10 @@ class LoginPrimaryButton extends StatelessWidget {
             ),
           ),
         ),
-        if (!busy) ...[
+        // iOS buttons carry a plain label; Android keeps its arrow.
+        if (!busy && !ios) ...[
           const SizedBox(width: 12),
-          Icon(
-            ios ? CupertinoIcons.arrow_right : Icons.arrow_forward_rounded,
-            size: 20,
-            color: foreground,
-          ),
+          Icon(Icons.arrow_forward_rounded, size: 20, color: foreground),
         ],
       ],
     );
@@ -161,8 +170,8 @@ class LoginPrimaryButton extends StatelessWidget {
       child: ios
           ? CupertinoButton.filled(
               onPressed: busy ? null : onPressed,
-              borderRadius: BorderRadius.circular(20),
-              padding: const EdgeInsets.all(19),
+              borderRadius: BorderRadius.circular(100),
+              padding: const EdgeInsets.all(17),
               child: content,
             )
           : FilledButton(

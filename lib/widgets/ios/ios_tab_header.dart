@@ -7,6 +7,7 @@ import '../drive_search_field.dart';
 import '../ios_more_menu.dart';
 import '../native_glass_button.dart';
 import 'ios_browse.dart';
+import 'ios_page.dart';
 
 /// Gives browsing pages their canvas and lets [IosLargeTitleHeader] reveal
 /// its hairline only once content scrolls beneath it, as UIKit does.
@@ -24,9 +25,9 @@ class IosBrowseCanvas extends StatelessWidget {
   }
 }
 
-/// iOS large-title navigation for browsing pages. The title collapses into
-/// the bar on scroll; trailing controls stay pinned. The bar is opaque
-/// because item rows host UIKit hold views that a Flutter blur cannot sample.
+/// iOS large-title navigation for browsing pages, on the browsing canvas.
+/// See [IosLargeTitleBar]; the bar paints an opaque fill (never a blur, which
+/// could not sample the UIKit hold views in item rows) once content is beneath.
 class IosLargeTitleHeader extends StatelessWidget {
   const IosLargeTitleHeader({
     required this.title,
@@ -55,35 +56,16 @@ class IosLargeTitleHeader extends StatelessWidget {
   );
 
   @override
-  Widget build(BuildContext context) {
-    final canvas = IosBrowse.canvas(context);
-    return CupertinoSliverNavigationBar(
-      // UIKit's large title starts 16 points in; browsing content uses a
-      // 20-point gutter, so the title shares its leading edge.
-      largeTitle: Padding(
-        padding: const EdgeInsetsDirectional.only(start: 4),
-        child: Text(title),
-      ),
-      middle: Text(title),
-      alwaysShowMiddle: false,
-      automaticallyImplyLeading: false,
-      automaticallyImplyTitle: false,
-      leading: leading,
-      trailing: trailing,
-      transitionBetweenRoutes: false,
-      backgroundColor: canvas,
-      border: Border(
-        bottom: BorderSide(color: IosBrowse.separator(context), width: 0),
-      ),
-      padding: const EdgeInsetsDirectional.symmetric(horizontal: 16),
-      bottom: bottom,
-      bottomMode: bottom == null
-          ? null
-          : pinBottom
-          ? NavigationBarBottomMode.always
-          : NavigationBarBottomMode.automatic,
-    );
-  }
+  Widget build(BuildContext context) => IosLargeTitleBar(
+    title: title,
+    leading: leading,
+    trailing: trailing,
+    bottom: bottom,
+    pinBottom: pinBottom,
+    backgroundColor: IosBrowse.canvas(context),
+    // Browsing content uses a 20-point gutter; the title shares its edge.
+    titleInset: IosBrowse.gutter,
+  );
 }
 
 /// The trailing controls shared by every tab header: the overflow menu in a

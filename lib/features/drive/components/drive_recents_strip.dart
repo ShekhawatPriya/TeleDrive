@@ -11,6 +11,11 @@ import '../../../widgets/ios/ios_browse.dart';
 import '../../../widgets/media_thumb.dart';
 import '../drive_controller.dart';
 import 'drive_item_context_menu.dart';
+import '../../../widgets/app_message.dart';
+import '../../../widgets/file_name_text.dart';
+import '../../../widgets/item_status.dart';
+import '../../photos/photos_viewer/photo_viewer_session.dart';
+import '../../photos/photos_filter.dart';
 
 /// Horizontal recents strip shown on the drive home screen.
 class DriveRecentsStrip extends StatelessWidget {
@@ -283,29 +288,23 @@ class _IosRecentTile extends StatelessWidget {
                   ),
                 ),
               ),
-              if (file.starred && !file.isOptimistic)
-                const Positioned(
-                  top: 8,
-                  right: 8,
-                  child: StarredBadge(size: 24),
-                ),
             ],
           ),
         ),
         const SizedBox(height: 8),
-        Text(
+        FileNameText(
           file.name,
           maxLines: lines,
-          overflow: TextOverflow.ellipsis,
           style: IosBrowse.subheadline(context, weight: FontWeight.w600),
         ),
         const SizedBox(height: 2),
-        Text(
-          file.isOptimistic
+        ItemStatusLine(
+          starred: file.starred && !file.isOptimistic,
+          shared: file.shared && !file.isOptimistic,
+          text: file.isOptimistic
               ? formatUploadStatus(file)
               : '${formatLabel(file)} · ${formatFileSize(file.size)}',
           maxLines: lines,
-          overflow: TextOverflow.ellipsis,
           style: IosBrowse.footnote(context),
         ),
       ],
@@ -313,14 +312,55 @@ class _IosRecentTile extends StatelessWidget {
   }
 }
 
-/// Helper to push the file detail route and record recent access.
-void openDriveFile(BuildContext context, WidgetRef ref, DriveFile file) {
+/// Opens a file and records recent access.
+///
+/// On iOS, photos and videos open full screen in the Photos viewer, paging
+/// through the media of the list they came from ([siblings], or the item's
+/// folder), as Files and Photos do. Documents and Android use the detail
+/// route.
+void openDriveFile(
+  BuildContext context,
+  WidgetRef ref,
+  DriveFile file, {
+  List<DriveFile>? siblings,
+}) {
   if (file.isOptimistic) {
-    ScaffoldMessenger.of(
+    showAppMessage(
       context,
-    ).showSnackBar(SnackBar(content: Text(formatUploadStatus(file))));
+      formatUploadStatus(file),
+      iosIcon: CupertinoIcons.arrow_up_circle,
+    );
     return;
   }
-  ref.read(driveControllerProvider).markAccessed(file.id);
+  final drive = ref.read(driveControllerProvider);
+  drive.markAccessed(file.id);
+  if (Theme.of(context).platform == TargetPlatform.iOS && isMediaFile(file)) {
+    final ids = mediaScopeIds(
+      file,
+      siblings ?? drive.folderViewSnapshot(file.parentId).files,
+    );
+    context.safePush(
+      '/photos/view/${file.id}',
+      extra: PhotoViewerSession(
+        filter: PhotosFilter.all,
+        query: '',
+        currentId: file.id,
+        generation: drive.accountGeneration,
+        scopeIds: ids,
+      ),
+    );
+    return;
+  }
   context.safePush('/file/${file.id}');
+}
+
+/// The photos and videos the viewer pages through, in on-screen order. The
+/// opened item is always included, even if it is not in [pool].
+@visibleForTesting
+List<String> mediaScopeIds(DriveFile file, Iterable<DriveFile> pool) {
+  final ids = [
+    for (final f in pool)
+      if (isMediaFile(f) && !f.isOptimistic) f.id,
+  ];
+  return ids.contains(file.id) ? ids : [file.id];
 }

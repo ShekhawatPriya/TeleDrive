@@ -23,8 +23,12 @@ class IosMoreButton extends StatefulWidget {
     this.alignToScreenEdge = false,
     this.claimsTouches = false,
     this.plain = false,
+    this.menuTitle,
     super.key,
   });
+
+  /// Optional native menu header, e.g. the item's status.
+  final String? menuTitle;
 
   final IosMenuSectionsBuilder sectionsBuilder;
   final bool white;
@@ -72,6 +76,7 @@ class _IosMoreButtonState extends State<IosMoreButton> {
                   : null,
               onPressed: _open,
               claimsTouches: widget.claimsTouches,
+              menuTitle: widget.menuTitle,
               menuBuilder: () {
                 final payload = NativeMenuPayload(
                   widget.sectionsBuilder(context),

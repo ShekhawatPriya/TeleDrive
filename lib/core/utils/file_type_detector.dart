@@ -99,6 +99,10 @@ String formatFileSize(int bytes) {
   return '${size.toStringAsFixed(size >= 10 || unit == 0 ? 0 : 1)} ${units[unit]}';
 }
 
+/// iOS storage wording: empty totals read "Zero KB", as in iPhone Storage.
+String formatStorageSize(int bytes) =>
+    bytes <= 0 ? 'Zero KB' : formatFileSize(bytes);
+
 String formatDate(String iso) {
   final date = DateTime.tryParse(iso)?.toLocal();
   if (date == null) return '';

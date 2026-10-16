@@ -12,6 +12,7 @@ import 'components/create_share_sheet.dart';
 import 'components/share_choice_sheet.dart';
 import 'copy_share_controller.dart';
 import 'file_copy_share_service.dart';
+import '../../widgets/app_message.dart';
 
 typedef NativeFileShare = Future<void> Function(List<XFile> files, Rect origin);
 final nativeFileShareProvider = Provider<NativeFileShare>(
@@ -157,10 +158,10 @@ Future<void> openItemShare(
     await ref.read(nativeFileShareProvider)(copies, origin);
   } catch (_) {
     if (context.mounted && valid())
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open sharing. Please try again.'),
-        ),
+      showAppMessage(
+        context,
+        'Could not open sharing. Please try again.',
+        error: true,
       );
   } finally {
     job?.dispose();

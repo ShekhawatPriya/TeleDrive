@@ -18,9 +18,9 @@ extension _IosAccountSheet on _AccountBottomSheetState {
       children: [
         if (account != null) ...[
           Padding(
-            padding: const EdgeInsets.only(bottom: 20),
+            padding: const EdgeInsets.only(bottom: IosPageMetrics.groupSpacing),
             child: ClipRSuperellipse(
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(IosPageMetrics.groupRadius),
               child: ColoredBox(
                 color: scheme.surfaceContainerLow,
                 child: Padding(
@@ -70,75 +70,46 @@ extension _IosAccountSheet on _AccountBottomSheetState {
               ),
             ),
           ),
-          AnimatedSize(
-            duration: MediaQuery.disableAnimationsOf(context)
-                ? Duration.zero
-                : const Duration(milliseconds: 220),
-            curve: Curves.easeInOutCubic,
-            alignment: Alignment.topCenter,
-            child: IosGroup(
-              children: [
+          // Saved accounts are listed directly, as in Telegram's Settings,
+          // instead of behind an expanding row. The current account carries
+          // the checkmark; tapping another one switches to it.
+          IosGroup(
+            title: 'Accounts',
+            children: [
+              for (final saved in [account, ...others])
                 IosRow(
-                  title: 'Switch Account',
-                  icon: CupertinoIcons.person_2_fill,
-                  color: IosTint.neutral,
-                  trailing: Icon(
-                    _isExpanded
-                        ? CupertinoIcons.chevron_up
-                        : CupertinoIcons.chevron_down,
-                    size: 14,
-                  ),
-                  onTap: () {
-                    if (!_isExpanded &&
-                        ref
+                  leading: _buildAvatarWidget(saved, size: 40),
+                  title: saved.displayName,
+                  subtitle: saved.userId != account.userId && saved.needsSignIn
+                      ? 'Signed out · Tap to sign in again'
+                      : saved.username == null
+                      ? 'ID ${saved.telegramId}'
+                      : '@${saved.username}',
+                  onTap: saved.userId == account.userId
+                      ? null
+                      : () => ref
                             .read(switchAccountProvider.notifier)
-                            .checkUploadsBlocked(context))
-                      return;
-                    _toggleSwitchAccountCard();
-                  },
+                            .switchActiveAccount(context, saved),
+                  trailing: saved.userId == account.userId
+                      ? Icon(
+                          CupertinoIcons.checkmark_alt,
+                          color: scheme.primary,
+                          semanticLabel: 'Current account',
+                        )
+                      : ref.watch(switchAccountProvider).busyUserId ==
+                            saved.userId
+                      ? const CupertinoActivityIndicator()
+                      : null,
                 ),
-                if (_isExpanded) ...[
-                  for (final saved in [account, ...others])
-                    IosRow(
-                      leading: _buildAvatarWidget(saved, size: 40),
-                      title: saved.displayName,
-                      subtitle: saved.username == null
-                          ? 'ID ${saved.telegramId}'
-                          : '@${saved.username}',
-                      onTap: saved.userId == account.userId
-                          ? null
-                          : () => ref
-                                .read(switchAccountProvider.notifier)
-                                .switchActiveAccount(context, saved),
-                      trailing: saved.userId == account.userId
-                          ? CupertinoButton(
-                              padding: EdgeInsets.zero,
-                              onPressed: () => ref
-                                  .read(switchAccountProvider.notifier)
-                                  .removeAccount(context, saved),
-                              child: Text(
-                                'Remove',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: scheme.error,
-                                ),
-                              ),
-                            )
-                          : ref.watch(switchAccountProvider).busyUserId ==
-                                saved.userId
-                          ? const CupertinoActivityIndicator()
-                          : null,
-                    ),
-                  IosRow(
-                    title: 'Add Another Account',
-                    icon: CupertinoIcons.person_add_solid,
-                    onTap: () => ref
-                        .read(switchAccountProvider.notifier)
-                        .addAnotherAccount(context),
-                  ),
-                ],
-              ],
-            ),
+              IosRow(
+                title: 'Add Account',
+                icon: CupertinoIcons.person_add_solid,
+                color: IosTint.neutral,
+                onTap: () => ref
+                    .read(switchAccountProvider.notifier)
+                    .addAnotherAccount(context),
+              ),
+            ],
           ),
         ],
         IosGroup(
@@ -202,6 +173,19 @@ extension _IosAccountSheet on _AccountBottomSheetState {
             ),
           ],
         ),
+        if (account != null)
+          IosGroup(
+            children: [
+              IosRow(
+                title: 'Remove This Account',
+                destructive: true,
+                action: true,
+                onTap: () => ref
+                    .read(switchAccountProvider.notifier)
+                    .removeAccount(context, account),
+              ),
+            ],
+          ),
         _buildAccountFooter(context),
       ],
     );

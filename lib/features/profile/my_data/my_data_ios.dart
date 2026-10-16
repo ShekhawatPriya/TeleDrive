@@ -6,28 +6,18 @@ extension _IosMyData on _MyDataScreenState {
     AuthController auth,
     StorageSummary summary,
   ) {
-    final scheme = Theme.of(context).colorScheme;
     final connected = auth.telegramConnected == true;
     return IosPage(
       title: 'My Data',
+      compact: true,
       children: [
-        const SizedBox(height: 8),
-        Center(
-          child: Icon(
-            CupertinoIcons.hand_raised_fill,
-            size: 52,
-            color: scheme.primary,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Your files. Your account.',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 10),
-        const IosNote(
-          'Manage the information stored with TeleDrive and the copies kept on this iPhone.',
+        IosSettingsIntro(
+          icon: CupertinoIcons.hand_raised_fill,
+          color: IosTint.privacy,
+          title: 'My Data',
+          description:
+              'Review the information stored with TeleDrive and the copies kept on this iPhone.',
+          onLearnMore: () => context.safePush('/privacy'),
         ),
         IosGroup(
           title: 'Account',
@@ -56,25 +46,24 @@ extension _IosMyData on _MyDataScreenState {
             ),
           ],
         ),
-        IosGroup(
+        const IosGroup(
           title: 'Where Your Data Lives',
-          children: const [
+          footer:
+              'Private file contents move directly between this iPhone and Telegram. TeleDrive’s server keeps file details, folders, share settings and Telegram references.',
+          children: [
             IosRow(
-              title: 'Files in Telegram',
-              subtitle:
-                  'Private file bytes are transferred directly between this device and your Telegram account.',
+              title: 'File Contents',
+              value: 'Telegram',
               icon: CupertinoIcons.cloud_fill,
             ),
             IosRow(
-              title: 'Library information',
-              subtitle:
-                  'TeleDrive’s backend stores file metadata, folders, share settings and Telegram references.',
+              title: 'Library Details',
+              value: 'TeleDrive Server',
               icon: CupertinoIcons.folder_fill,
             ),
             IosRow(
-              title: 'Copies on this iPhone',
-              subtitle:
-                  'Downloads, thumbnails and previews use local storage. Manage them in Cache & Storage.',
+              title: 'Downloads & Previews',
+              value: 'This iPhone',
               icon: CupertinoIcons.device_phone_portrait,
             ),
           ],

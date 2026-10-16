@@ -18,6 +18,7 @@ import 'gallery_backup_controller.dart';
 import 'theme_controller.dart';
 import 'widgets/theme_picker_cards.dart';
 import 'widgets/ios_appearance_picker.dart';
+import '../../widgets/app_message.dart';
 
 part 'settings/ios_settings_page.dart';
 part 'settings/ios_settings_details.dart';

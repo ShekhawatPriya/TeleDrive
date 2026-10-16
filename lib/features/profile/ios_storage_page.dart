@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/ios_palette.dart';
 import '../../core/utils/file_type_detector.dart';
@@ -22,78 +21,87 @@ class IosStoragePage extends StatelessWidget {
   final Future<void> Function() onRefresh;
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final data = summary;
     return IosPage(
       title: 'Telegram Drive',
+      compact: true,
       onRefresh: onRefresh,
       onBack: () => context.canPop() ? context.pop() : context.go('/drive'),
       children: [
+        const IosSettingsIntro(
+          icon: CupertinoIcons.tray_2_fill,
+          color: IosTint.telegramDrive,
+          title: 'Telegram Drive',
+          description:
+              'See how your library uses your Telegram account and what TeleDrive keeps on this iPhone.',
+        ),
         if (data == null) ...[
           if (error == null)
-            const Center(child: CupertinoActivityIndicator())
+            const Padding(
+              padding: EdgeInsets.only(bottom: IosPageMetrics.groupSpacing),
+              child: CupertinoActivityIndicator(),
+            )
           else
-            IosNote(error!),
-          CupertinoButton(onPressed: onRefresh, child: const Text('Refresh')),
+            IosGroup(
+              footer: error,
+              children: [
+                IosRow(
+                  title: 'Try Again',
+                  action: true,
+                  trailing: const SizedBox.shrink(),
+                  onTap: onRefresh,
+                ),
+              ],
+            ),
         ] else ...[
-          const SizedBox(height: 12),
-          Icon(
-            CupertinoIcons.tray_2_fill,
-            size: 48,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            formatFileSize(data.totalBytes),
-            textAlign: TextAlign.center,
-            style: theme.textTheme.displaySmall,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${data.totalFiles} files · Unlimited storage',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 28),
           if (error != null)
             const IosNote(
               'Showing your last loaded storage usage. Pull down to refresh.',
             ),
+          IosGroup(
+            title: 'Summary',
+            footer: 'Telegram doesn’t limit how much you can store.',
+            children: [
+              _StorageBar(summary: data),
+              IosRow(title: 'Used', value: formatStorageSize(data.totalBytes)),
+              IosRow(title: 'Files', value: '${data.totalFiles}'),
+            ],
+          ),
           IosGroup(
             title: 'In Telegram',
             children: [
               IosRow(
                 title: 'Photos',
                 subtitle: '${data.imageCount} items',
-                value: formatFileSize(data.imageBytes),
+                value: formatStorageSize(data.imageBytes),
                 icon: CupertinoIcons.photo_fill,
                 color: IosTint.photos,
               ),
               IosRow(
                 title: 'Videos',
                 subtitle: '${data.videoCount} items',
-                value: formatFileSize(data.videoBytes),
+                value: formatStorageSize(data.videoBytes),
                 icon: CupertinoIcons.videocam_fill,
                 color: IosTint.videos,
               ),
               IosRow(
                 title: 'Documents',
                 subtitle: '${data.documentCount} items',
-                value: formatFileSize(data.documentBytes),
+                value: formatStorageSize(data.documentBytes),
                 icon: CupertinoIcons.doc_fill,
                 color: IosTint.documents,
               ),
               IosRow(
                 title: 'Audio',
                 subtitle: '${data.audioCount} items',
-                value: formatFileSize(data.audioBytes),
+                value: formatStorageSize(data.audioBytes),
                 icon: CupertinoIcons.music_note,
                 color: IosTint.audio,
               ),
               IosRow(
-                title: 'Other files',
+                title: 'Other Files',
                 subtitle: '${data.otherCount} items',
-                value: formatFileSize(data.otherBytes),
+                value: formatStorageSize(data.otherBytes),
                 icon: CupertinoIcons.archivebox_fill,
                 color: IosTint.other,
               ),
@@ -109,7 +117,7 @@ class IosStoragePage extends StatelessWidget {
               title: 'Local Cache',
               value: cache.isLoading
                   ? 'Scanning'
-                  : formatFileSize(cache.totalSize),
+                  : formatStorageSize(cache.totalSize),
               icon: CupertinoIcons.cube_box_fill,
               color: IosTint.storage,
               onTap: () => Navigator.of(context).push(
@@ -127,6 +135,103 @@ class IosStoragePage extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// iPhone Storage's segmented bar: one track split by media kind in the same
+/// tints as the rows below, with a legend. Real totals only; an empty library
+/// shows an empty track.
+class _StorageBar extends StatelessWidget {
+  const _StorageBar({required this.summary});
+  final StorageSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final segments = [
+      ('Photos', summary.imageBytes, IosTint.photos),
+      ('Videos', summary.videoBytes, IosTint.videos),
+      ('Documents', summary.documentBytes, IosTint.documents),
+      ('Audio', summary.audioBytes, IosTint.audio),
+      ('Other', summary.otherBytes, IosTint.other),
+    ].where((s) => s.$2 > 0).toList();
+    final total = segments.fold<int>(0, (sum, s) => sum + s.$2);
+    final track = CupertinoColors.tertiarySystemFill.resolveFrom(context);
+    final secondary = CupertinoColors.secondaryLabel.resolveFrom(context);
+    return Semantics(
+      label: total == 0
+          ? 'No storage used'
+          : segments
+                .map((s) => '${s.$1} ${formatStorageSize(s.$2)}')
+                .join(', '),
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox(
+                  height: 22,
+                  child: ColoredBox(
+                    color: track,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final (i, s) in segments.indexed) ...[
+                          if (i > 0) const SizedBox(width: 1.5),
+                          Expanded(
+                            // At least a sliver so tiny kinds stay visible.
+                            flex: (s.$2 / total * 1000).round().clamp(8, 1000),
+                            child: ColoredBox(
+                              color: CupertinoDynamicColor.resolve(
+                                s.$3,
+                                context,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              if (segments.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 14,
+                  runSpacing: 6,
+                  children: [
+                    for (final s in segments)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 9,
+                            height: 9,
+                            decoration: BoxDecoration(
+                              color: CupertinoDynamicColor.resolve(
+                                s.$3,
+                                context,
+                              ),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            s.$1,
+                            style: TextStyle(fontSize: 13, color: secondary),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

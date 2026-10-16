@@ -208,3 +208,19 @@ Country findCountryByDialCode(String dialCode) {
     orElse: () => countries.firstWhere((c) => c.code == 'IN'),
   );
 }
+
+/// Splits a stored international number such as `+919876543210` into its
+/// country (the longest matching dialling code) and the national number.
+(Country, String)? splitInternationalNumber(String? number) {
+  final digits = number?.replaceAll(RegExp(r'[^\d+]'), '') ?? '';
+  if (!digits.startsWith('+')) return null;
+  Country? best;
+  for (final country in countries) {
+    if (digits.startsWith(country.dialCode) &&
+        (best == null || country.dialCode.length > best.dialCode.length)) {
+      best = country;
+    }
+  }
+  if (best == null || digits.length <= best.dialCode.length) return null;
+  return (best, digits.substring(best.dialCode.length));
+}

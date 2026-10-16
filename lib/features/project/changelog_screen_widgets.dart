@@ -439,20 +439,25 @@ class _InlineTextState extends State<_InlineText> {
             }
           };
         _links.add(link);
-        spans.add(
-          TextSpan(
-            text:
-                match.group(4) ??
-                (uri?.path.contains('/compare/') == true
-                    ? 'View full changelog'
-                    : url),
-            recognizer: link,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-              decoration: TextDecoration.underline,
+        final label = match.group(4);
+        if (label != null) {
+          spans.add(
+            TextSpan(
+              text: label,
+              recognizer: link,
+              style: TextStyle(color: Theme.of(context).colorScheme.primary),
             ),
-          ),
-        );
+          );
+        } else {
+          // A bare URL reads as a compact tag (`#12`, `v1.0…v1.1`, or the
+          // host and path) instead of a wrapped, underlined address.
+          spans.add(
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: _LinkTag(url: url, onTap: link.onTap!),
+            ),
+          );
+        }
       }
       lastEnd = match.end;
     }
@@ -461,5 +466,58 @@ class _InlineTextState extends State<_InlineText> {
     }
 
     return Text.rich(TextSpan(style: baseStyle, children: spans));
+  }
+}
+
+class _LinkTag extends StatelessWidget {
+  const _LinkTag({required this.url, required this.onTap});
+  final String url;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final label = linkLabel(url);
+    final ios = Theme.of(context).platform == TargetPlatform.iOS;
+    return Semantics(
+      link: true,
+      label: label,
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          padding: const EdgeInsets.fromLTRB(7, 2, 8, 2),
+          decoration: ShapeDecoration(
+            color: scheme.primary.withValues(alpha: .12),
+            shape: const StadiumBorder(),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                ios ? CupertinoIcons.link : Icons.link_rounded,
+                size: 12,
+                color: scheme.primary,
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.primary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

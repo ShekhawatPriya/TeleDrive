@@ -62,29 +62,52 @@ extension _UploadControllerHelpers on UploadController {
     final totalBytes = large.fold<int>(0, (sum, item) => sum + item.size);
     final thresholdMbStr =
         '${(threshold / (1024 * 1024)).toStringAsFixed(0)} MB';
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          large.length == 1 ? 'Upload large file?' : 'Upload large files?',
-        ),
-        content: Text(
-          large.length == 1
-              ? '"${large.first.name}" is larger than $thresholdMbStr. It may take time, use mobile or Wi-Fi data, and consume upload resources.'
-              : '${large.length} selected files are larger than $thresholdMbStr (${formatFileSize(totalBytes)} total). They may take time, use data, and consume upload resources.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Continue upload'),
-          ),
-        ],
-      ),
-    );
+    final title = large.length == 1
+        ? 'Upload large file?'
+        : 'Upload large files?';
+    final message = large.length == 1
+        ? '"${large.first.name}" is larger than $thresholdMbStr. It may take time, use mobile or Wi-Fi data, and consume upload resources.'
+        : '${large.length} selected files are larger than $thresholdMbStr (${formatFileSize(totalBytes)} total). They may take time, use data, and consume upload resources.';
+    final result = Theme.of(context).platform == TargetPlatform.iOS
+        ? await showCupertinoDialog<bool>(
+            context: context,
+            builder: (ctx) => CupertinoAlertDialog(
+              title: Text(
+                large.length == 1
+                    ? 'Upload Large File?'
+                    : 'Upload Large Files?',
+              ),
+              content: Text(message),
+              actions: [
+                CupertinoDialogAction(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel'),
+                ),
+                CupertinoDialogAction(
+                  isDefaultAction: true,
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Upload'),
+                ),
+              ],
+            ),
+          )
+        : await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text(title),
+              content: Text(message),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Continue upload'),
+                ),
+              ],
+            ),
+          );
     return result == true;
   }
 
@@ -138,6 +161,10 @@ extension _UploadControllerHelpers on UploadController {
     if (!settled) return;
     _notifiedSessionId = sessionId;
     final failed = failedCount;
+    // Feedback only for uploads the user started, not background backup.
+    if (items.any((i) => i.backupFingerprint == null)) {
+      failed > 0 ? AppHaptics.error() : AppHaptics.success();
+    }
     if (failed > 0 && _settings.state.uploadFailedAlerts) {
       await _notifications.showUploadFailed(failed: failed);
     } else if (failed == 0 && _settings.state.uploadCompletedAlerts) {

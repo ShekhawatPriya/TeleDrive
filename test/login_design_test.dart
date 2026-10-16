@@ -142,29 +142,38 @@ void main() {
         await tester.tap(find.text('Continue'));
         await tester.pumpAndSettle();
         expect(repo.phone, '+919876543210');
-        expect(find.textContaining('Check your'), findsOneWidget);
+        expect(
+          find.textContaining(
+            platform == TargetPlatform.iOS ? 'Enter Code' : 'Check your',
+          ),
+          findsOneWidget,
+        );
         await capture(tester, 'login-code-$name');
         await tester.enterText(find.byType(EditableText), '123456');
         await tester.tap(find.text('Verify'));
         await tester.pumpAndSettle();
         expect(repo.code, '123456');
-        expect(find.byTooltip('Show password'), findsOneWidget);
+        final ios = platform == TargetPlatform.iOS;
+        final reveal = ios
+            ? find.byKey(const ValueKey('toggle-password-visibility'))
+            : find.byTooltip('Show password');
+        expect(reveal, findsOneWidget);
         await capture(tester, 'login-password-$name');
         await tester.enterText(find.byType(EditableText), 'fixture-password');
         expect(
           tester.widget<EditableText>(find.byType(EditableText)).obscureText,
           isTrue,
         );
-        await tester.tap(find.byTooltip('Show password'));
+        await tester.tap(reveal);
         await tester.pump();
         expect(
           tester.widget<EditableText>(find.byType(EditableText)).obscureText,
           isFalse,
         );
-        await tester.tap(find.text('Sign in'));
+        await tester.tap(find.text(ios ? 'Sign In' : 'Sign in'));
         await tester.pumpAndSettle();
         expect(repo.password, 'fixture-password');
-        await tester.tap(find.text('Start over'));
+        await tester.tap(find.text(ios ? 'Start Over' : 'Start over'));
         await tester.pumpAndSettle();
         expect(find.text('Continue'), findsOneWidget);
         expect(tester.takeException(), isNull);

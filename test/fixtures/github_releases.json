@@ -1,0 +1,52 @@
+[
+  {
+    "tag_name": "v3.2.0",
+    "name": "v3.2.0",
+    "body": "## Highlights\n\n- **iOS browsing:** Drive, Photos, Starred and Shared have collapsing large-title headers. Drive home has Archive/Locked/Trash tiles, an image-first Recents rail and compact folder tiles.\n- **Folders, Starred and Shared:** folder pages have a glass back button and breadcrumbs, Starred uses the Drive layout, and Shared groups links into Active and Expired or Revoked with status and counts.\n- **Recovery spaces:** Archive, Locked and Trash match the new design, with clear empty and error states.\n- **Theme:** the iOS palette now matches UIKit system colors, with one system-blue accent, consistent tints for each destination, and Increase Contrast support.\n- **Photos:** the categories use the native segmented control, and the search toggle animates without stutter.\n- **Controls:** row overflow menus are lighter, and header controls respond immediately inside scrolling content.\n\n## What's Changed\n* Release 3.2.0: iOS browsing redesign and UIKit-aligned palette by @SreejanPersonal in https://github.com/ShekhawatPriya/TeleDrive/pull/3\n\n\n**Full Changelog**: https://github.com/ShekhawatPriya/TeleDrive/compare/v3.1.3...v3.2.0\n",
+    "html_url": "https://github.com/ShekhawatPriya/TeleDrive/releases/tag/v3.2.0",
+    "published_at": "2026-10-08T22:03:27Z",
+    "prerelease": false,
+    "draft": false,
+    "assets": []
+  },
+  {
+    "tag_name": "v3.1.3",
+    "name": "v3.1.3",
+    "body": "## Highlights\n\n- **Photos and library:** refined library browsing, animated gallery density changes with smoother scrolling, and improved native video playback.\n- **Account:** saved Telegram profile photos refresh automatically, and the Telegram connection details are better organized.\n- **Browsing:** unified recovery states and shared-item interactions.\n- **About:** public release history is shown in About, with expandable release notes.\n- **iOS:** refined accessibility and native navigation.\n- **Security:** includes the authentication and transfer hardening from the previous mainline.\n\n**Full Changelog**: https://github.com/ShekhawatPriya/TeleDrive/compare/v3.1.2...v3.1.3\n\n\n## What's Changed\n* Release 3.1.3: account, gallery and library browsing refinements by @SreejanPersonal in https://github.com/ShekhawatPriya/TeleDrive/pull/1\n\n## New Contributors\n* @SreejanPersonal made their first contribution in https://github.com/ShekhawatPriya/TeleDrive/pull/1\n\n**Full Changelog**: https://github.com/ShekhawatPriya/TeleDrive/compare/v3.1.2...v3.1.3",
+    "html_url": "https://github.com/ShekhawatPriya/TeleDrive/releases/tag/v3.1.3",
+    "published_at": "2026-10-08T14:12:22Z",
+    "prerelease": false,
+    "draft": false,
+    "assets": []
+  },
+  {
+    "tag_name": "v3.1.2",
+    "name": "v3.1.2",
+    "body": "**Full Changelog**: https://github.com/ShekhawatPriya/TeleDrive/compare/v3.1.1...v3.1.2",
+    "html_url": "https://github.com/ShekhawatPriya/TeleDrive/releases/tag/v3.1.2",
+    "published_at": "2026-09-18T16:25:54Z",
+    "prerelease": false,
+    "draft": false,
+    "assets": []
+  },
+  {
+    "tag_name": "v3.1.1",
+    "name": "v3.1.1",
+    "body": "## Sharing\n- Choose Share a copy to send original files through the system share sheet, or Create link to retain public-link sharing.\n- See download progress, cancel preparation, and retry failures. Original filenames and file types are preserved, including multi-file selections.\n- Keep folder and mixed selections on link sharing, with separate revocation for existing links.\n- Prevent stale account selections, cancelled downloads, and incomplete originals from reaching the share sheet.\n\n## Photos\n- Drag the information panel freely, interrupt flings, and resize or close it with the persistent grip.\n- Preserve photo aspect ratio, zoom, and pan while opening and closing information.\n- Use consistent native iOS Share, Star, Info, and Delete controls with accessible targets.\n- Reduce repeated gallery grouping and avoid cache scans after photo decoding.\n\n## Accounts and interface\n- Show account confirmations only after device authorization completes.\n- Improve confirmation banner placement, wrapping, contrast, and reduced-motion behavior.\n- Clarify the iOS Revoke link action with the native trash symbol.\n\n## Documentation\n- Add guides for copy/link sharing and running TeleDrive on a physical phone.\n- Add photo-viewer, sharing, account-banner, and native iOS regression fixtures.\n\n## Release\nVersion 3.1.1, build 7. No local tests, builds, linters, or validation commands were run for this commit-and-release request. The existing tag-triggered GitHub workflow handles Android packaging and the update manifest. No iOS IPA is included.\n\n**Full Changelog**: https://github.com/ShekhawatPriya/TeleDrive/compare/v3.1.0...v3.1.1\n\n\n**Full Changelog**: https://github.com/ShekhawatPriya/TeleDrive/compare/v3.1.0...v3.1.1",
+    "html_url": "https://github.com/ShekhawatPriya/TeleDrive/releases/tag/v3.1.1",
+    "published_at": "2026-09-18T15:24:37Z",
+    "prerelease": false,
+    "draft": false,
+    "assets": []
+  },
+  {
+    "tag_name": "v3.1.0",
+    "name": "v3.1.0",
+    "body": "## Photos\n- Add horizontal photo swiping and a scrub-enabled thumbnail strip.\n- Reveal an expandable information panel by swiping up or tapping Info.\n- Keep share and delete at the edges with grouped iOS star and Info controls.\n- Remove the landscape letterbox gap when opening details.\n\n## Android and sharing\n- Refine Settings, appearance choices, narrow layouts and large text.\n- Improve shared/starred indicators and show login country flags.\n- Browse nested shared folders with explicit file types and metadata.\n\n## Release\nVersion 3.1.0, build 6. The GitHub release workflow publishes the Android APK and update manifest when packaging completes. iOS changes are included in source; no IPA is included.\n\n\n**Full Changelog**: https://github.com/ShekhawatPriya/TeleDrive/compare/v3.0.6...v3.1.0",
+    "html_url": "https://github.com/ShekhawatPriya/TeleDrive/releases/tag/v3.1.0",
+    "published_at": "2026-09-18T04:16:36Z",
+    "prerelease": false,
+    "draft": false,
+    "assets": []
+  }
+]

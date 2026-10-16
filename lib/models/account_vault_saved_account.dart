@@ -41,6 +41,10 @@ class SavedAccount {
   bool get hasUsableToken =>
       token.isNotEmpty && tokenStatus == TokenStatus.valid;
 
+  /// The server no longer accepts this account's token, so using it needs a
+  /// new Telegram sign-in.
+  bool get needsSignIn => !hasUsableToken || isJwtExpired(token);
+
   String? get resolvedPhotoUrl {
     final remote = photoUrl?.trim();
     if (remote != null && remote.isNotEmpty) return remote;

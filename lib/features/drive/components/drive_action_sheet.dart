@@ -76,6 +76,8 @@ class DriveActionSheet extends StatelessWidget {
         subtitle: subtitle,
         folder: folder,
         preview: leadingWidget,
+        starred: file?.starred ?? folder?.starred ?? false,
+        shared: file?.shared ?? folder?.shared ?? false,
         actions: actions,
       );
     }

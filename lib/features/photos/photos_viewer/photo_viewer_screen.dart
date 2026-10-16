@@ -143,7 +143,13 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
         ),
       );
     }
-    final loaded = drive.photoFiles('all');
+    final scope = _session.scopeIds;
+    final loaded = scope == null
+        ? drive.photoFiles('all')
+        : [
+            for (final id in scope)
+              if (drive.anyFile(id) case final file?) file,
+          ];
     final linked = _linkedFile == null ? null : drive.file(_linkedFile!.id);
     final files = valid
         ? _session.reconcile([

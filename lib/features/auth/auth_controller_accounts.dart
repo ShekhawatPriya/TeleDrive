@@ -115,12 +115,52 @@ extension _AuthControllerAccounts on AuthController {
   Future<void> _refreshSavedAccountSnapshots() {
     final pending = _savedProfileRefresh;
     if (pending != null) return pending;
-    final future = _refreshOtherProfiles();
+    final future = vault.accounts.any(_dueForRenewal)
+        ? _renewAgingTokens().then((_) => _refreshOtherProfiles())
+        : _refreshOtherProfiles();
     _savedProfileRefresh = future;
     return future.whenComplete(() {
       if (identical(_savedProfileRefresh, future)) _savedProfileRefresh = null;
     });
   }
+
+  /// Exchanges tokens that are a third of the way through their lifetime.
+  /// The server issues 30-day tokens and no refresh token, so before this a
+  /// saved account that was not opened for a month had to sign in to
+  /// Telegram again even though it was never signed out. Sequential, and it
+  /// never activates another account or its TDLib session.
+  Future<void> _renewAgingTokens() async {
+    final generation = _authGeneration;
+    for (final account in [...vault.accounts]) {
+      if (generation != _authGeneration) return;
+      if (!_dueForRenewal(account)) continue;
+      try {
+        final renewed = await _repo.renewToken(account);
+        // A server without renewal answers the same for every account.
+        if (renewed == null) return;
+        if (!_isCurrentAccount(generation, account)) continue;
+        final latest = vault.accountByUserId(account.userId)!;
+        vault = vault.upsert(latest.copyWith(token: renewed));
+        if (activeAccount?.userId == account.userId && token == account.token) {
+          token = renewed;
+          _repo.setApiToken(renewed);
+        }
+        await _saveVault();
+      } on DioException catch (err) {
+        if (err.response?.statusCode == 401 &&
+            _isCurrentAccount(generation, account)) {
+          vault = vault.markTokenStatus(account.userId, TokenStatus.needsLogin);
+          await _saveVault();
+          _emitChange();
+        }
+      } catch (_) {}
+    }
+  }
+
+  bool _dueForRenewal(SavedAccount account) =>
+      account.tokenStatus == TokenStatus.valid &&
+      !_repo.isExpired(account.token) &&
+      _repo.isDueForRenewal(account.token);
 
   Future<void> _refreshOtherProfiles() async {
     final epoch = _sessionEpoch;

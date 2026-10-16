@@ -17,6 +17,21 @@ bool isJwtExpired(String token) {
   }
 }
 
+/// Whether an unexpired token has used up [fraction] of its lifetime, from
+/// its `iat` to its `exp`, and should be exchanged for a fresh one.
+bool isJwtDueForRenewal(
+  String token, {
+  double fraction = 1 / 3,
+  DateTime? now,
+}) {
+  final payload = decodeJwtPayload(token);
+  final issued = payload?['iat'], expires = payload?['exp'];
+  if (issued is! num || expires is! num || expires <= issued) return false;
+  final at = (now ?? DateTime.now()).millisecondsSinceEpoch / 1000;
+  if (at >= expires) return false;
+  return (at - issued) / (expires - issued) >= fraction;
+}
+
 AuthUser? decodeJwtUser(String token) {
   try {
     final payload = decodeJwtPayload(token);

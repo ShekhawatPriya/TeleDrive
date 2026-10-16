@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
+import '../../../widgets/file_name_text.dart';
+import '../../../widgets/item_status.dart';
 import '../../../widgets/sheet/ios_action_group.dart';
 import 'drive_sheet_action.dart';
 
@@ -14,8 +16,11 @@ class IosItemActions extends StatelessWidget {
     this.subtitle,
     this.folder,
     this.preview,
+    this.starred = false,
+    this.shared = false,
     super.key,
   });
+  final bool starred, shared;
   final String title;
   final String? subtitle;
   final DriveFolder? folder;
@@ -70,21 +75,29 @@ class IosItemActions extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      FileNameText(
                         title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontSize: 17,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      if (details != null) ...[
+                      if (details != null || starred || shared) ...[
                         const SizedBox(height: 4),
-                        Text(
-                          details,
+                        // The same status line as rows and tiles, so the
+                        // sheet says whether the item is starred or shared.
+                        ItemStatusLine(
+                          starred: starred,
+                          shared: shared,
+                          maxLines: null,
+                          text: [
+                            if (details != null && details.isNotEmpty) details,
+                            if (details == null || details.isEmpty)
+                              itemStatusText(starred: starred, shared: shared),
+                          ].join(),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: scheme.onSurfaceVariant,
+                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
                       ],

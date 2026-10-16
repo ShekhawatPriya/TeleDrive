@@ -1,3 +1,4 @@
+import '../core/utils/jwt.dart';
 import 'auth_user.dart';
 
 part 'account_vault_saved_account.dart';

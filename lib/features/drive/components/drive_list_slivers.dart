@@ -8,6 +8,7 @@ import '../../../models/drive_models.dart';
 import '../../../widgets/file_card_tile.dart';
 import '../../../widgets/folder_collection_card.dart';
 import '../../../widgets/file_list_tile.dart';
+import '../../../widgets/ios/ios_browse.dart';
 import '../../upload/upload_controller.dart';
 import '../drive_controller.dart';
 import 'drive_item_context_menu.dart';
@@ -156,12 +157,14 @@ class DriveFilesSliver extends ConsumerWidget {
       return SliverPadding(
         padding: EdgeInsets.fromLTRB(20, 12, 20, bottomPadding),
         sliver: SliverGrid.builder(
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 260,
-            childAspectRatio: .72,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-          ),
+          gridDelegate: Theme.of(context).platform == TargetPlatform.iOS
+              ? IosBrowse.fileGrid(context)
+              : const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 260,
+                  childAspectRatio: .72,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                ),
           itemCount: files.length,
           itemBuilder: (_, i) {
             final file = files[i];

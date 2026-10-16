@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/drive_models.dart';
@@ -6,6 +6,7 @@ import '../../share/share_flow.dart';
 import '../drive_controller.dart';
 import '../../share/share_controller.dart';
 import 'drive_dialogs.dart';
+import '../../../widgets/app_message.dart';
 
 Future<void> openShareFile(
   BuildContext context,
@@ -30,12 +31,10 @@ Future<void> openShareSelection(
   for (final id in fileIds) {
     final file = drive.file(id);
     if (file == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Some selected files are no longer available. Select them again.',
-          ),
-        ),
+      showAppMessage(
+        context,
+        'Some selected files are no longer available. Select them again.',
+        error: true,
       );
       return;
     }
@@ -59,14 +58,10 @@ Future<void> revokeFileShares(
   try {
     await ref.read(shareControllerProvider).revokeForFile(file.id);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Share link revoked')));
+    showAppMessage(context, 'Share link revoked', iosIcon: CupertinoIcons.link);
   } catch (_) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Could not revoke share')));
+    showAppMessage(context, 'Could not revoke share', error: true);
   }
 }
 
@@ -86,13 +81,9 @@ Future<void> revokeFolderShares(
   try {
     await ref.read(shareControllerProvider).revokeForFolder(folder.id);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Share link revoked')));
+    showAppMessage(context, 'Share link revoked', iosIcon: CupertinoIcons.link);
   } catch (_) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Could not revoke share')));
+    showAppMessage(context, 'Could not revoke share', error: true);
   }
 }

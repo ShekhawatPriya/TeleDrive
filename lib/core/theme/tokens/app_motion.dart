@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/animation.dart';
+import 'package:flutter/foundation.dart';
 
 /// Material 3 motion duration tokens.
 ///
@@ -35,4 +38,37 @@ class AppEasing {
   static const Curve standardDecelerate = Curves.easeOut;
   static const Curve standardAccelerate = Curves.easeIn;
   static const Curve linear = Curves.linear;
+}
+
+/// UIKit-style spring (about 0.45 s response, slight overshoot), normalized
+/// so the motion settles at the end of the animation's duration. Used for
+/// entering motion on iOS, where native menus and sheets also spring.
+class IosSpringCurve extends Curve {
+  const IosSpringCurve({this.damping = .8, this.response = .42});
+
+  /// Damping ratio below 1 gives a small, quickly settling overshoot.
+  final double damping;
+
+  /// Period of the undamped spring as a fraction of the duration.
+  final double response;
+
+  @override
+  double transformInternal(double t) {
+    final omega = 2 * math.pi / response;
+    final decay = math.exp(-damping * omega * t);
+    final damped = omega * math.sqrt(1 - damping * damping);
+    return 1 -
+        decay *
+            (math.cos(damped * t) +
+                damping * omega / damped * math.sin(damped * t));
+  }
+}
+
+/// Entering curves by platform: springs on iOS, Material elsewhere.
+abstract final class AdaptiveEasing {
+  static const Curve iosSpring = IosSpringCurve();
+
+  static Curve enter(TargetPlatform platform) => platform == TargetPlatform.iOS
+      ? iosSpring
+      : AppEasing.emphasizedDecelerate;
 }

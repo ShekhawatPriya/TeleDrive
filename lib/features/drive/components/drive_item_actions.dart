@@ -15,6 +15,7 @@ import '../move_destination_sheet.dart';
 import 'drive_action_sheet.dart';
 import 'drive_dialogs.dart';
 import 'share_helpers.dart';
+import '../../../widgets/app_message.dart';
 
 /// Shared single-item action bottom sheets and bulk action helpers used by
 /// both the home and folder screens.  Keeps the screens free of routine
@@ -300,7 +301,7 @@ String _fileSubtitle(DriveFile file) {
     formatFileSize(file.size),
     if (formatDate(file.createdAt).isNotEmpty) formatDate(file.createdAt),
   ];
-  return parts.join(' • ');
+  return parts.join(' · ');
 }
 
 String _folderSubtitle(DriveFolder folder) {
@@ -314,13 +315,9 @@ String _folderSubtitle(DriveFolder folder) {
   if (folder.recursiveSize > 0) {
     parts.add(formatFileSize(folder.recursiveSize));
   }
-  return parts.join(' • ');
+  return parts.join(' · ');
 }
 
 void _showShelfSnackBar(BuildContext context, String message) {
-  final messenger = ScaffoldMessenger.maybeOf(context);
-  if (messenger == null) return;
-  messenger.showSnackBar(
-    SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
-  );
+  AppMessenger.of(context).show(message, duration: const Duration(seconds: 2));
 }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_filex/open_filex.dart';
@@ -10,6 +10,7 @@ import '../../models/drive_models.dart';
 import '../auth/auth_controller.dart';
 import '../auth/tdlib_session_controller.dart';
 import '../drive/drive_controller.dart';
+import '../../widgets/app_message.dart';
 
 /// Shared opening path for Drive and Photos, with an account boundary at every
 /// asynchronous handoff and complete-file promotion for HTTP downloads.
@@ -25,7 +26,7 @@ Future<void> openDriveFileExternally(
   bool active() =>
       context.mounted &&
       ref.read(authControllerProvider).user?.userId == user.userId;
-  final messenger = ScaffoldMessenger.of(context);
+  final messenger = AppMessenger.of(context);
   void reconnect() {
     if (active())
       context.go(
@@ -37,11 +38,10 @@ Future<void> openDriveFileExternally(
   }
 
   try {
-    messenger.showSnackBar(
-      const SnackBar(
-        content: Text('Preparing file…'),
-        duration: Duration(seconds: 1),
-      ),
+    messenger.show(
+      'Preparing file…',
+      iosIcon: CupertinoIcons.arrow_down_circle,
+      duration: const Duration(seconds: 1),
     );
     String path;
     if (file.isClientManaged) {
@@ -96,10 +96,9 @@ Future<void> openDriveFileExternally(
     if (result.type != ResultType.done) throw Exception(result.message);
   } catch (error) {
     if (active())
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(api.errorMessage(error, 'Could not open file.')),
-        ),
+      messenger.show(
+        api.errorMessage(error, 'Could not open file.'),
+        error: true,
       );
   }
 }

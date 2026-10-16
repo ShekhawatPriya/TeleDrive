@@ -122,10 +122,6 @@ class _ServerConnectionSettingsScreenState
   }
 
   Widget _buildIosServer(BackendResolver resolver) {
-    final visual = _statusVisual(
-      resolver.status,
-      Theme.of(context).colorScheme,
-    );
     return IosPage(
       title: 'Server Connection',
       compact: true,
@@ -133,7 +129,7 @@ class _ServerConnectionSettingsScreenState
         IosSettingsIntro(
           icon: CupertinoIcons.antenna_radiowaves_left_right,
           color: CupertinoColors.systemBlue,
-          title: visual.label,
+          title: 'Server Connection',
           description: AppConfig.backendPinned
               ? 'Connect to your TeleDrive server from any of your devices.'
               : 'Connect automatically on your network or choose a server address.',
@@ -141,6 +137,17 @@ class _ServerConnectionSettingsScreenState
         IosGroup(
           title: 'Connection',
           children: [
+            IosRow(
+              title: 'Status',
+              value: switch (resolver.status) {
+                BackendStatus.connected => 'Connected',
+                BackendStatus.resolving => 'Searching',
+                BackendStatus.unreachable => 'Unreachable',
+              },
+              trailing: resolver.status == BackendStatus.resolving
+                  ? const CupertinoActivityIndicator()
+                  : null,
+            ),
             IosRow(title: 'Source', subtitle: resolver.sourceLabel),
             IosRow(title: 'Server Address', subtitle: resolver.baseUrl),
             IosRow(
@@ -163,7 +170,8 @@ class _ServerConnectionSettingsScreenState
                 'Leave the address empty to find a server automatically on the same Wi-Fi network.',
             children: [
               Padding(
-                padding: const EdgeInsets.all(16),
+                // The field's own 12-point padding aligns text with row titles.
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                 child: CupertinoTextField(
                   controller: _addressController,
                   enabled: !_busy,

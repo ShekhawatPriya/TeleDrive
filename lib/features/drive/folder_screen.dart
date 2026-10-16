@@ -1,14 +1,18 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/safe_navigation.dart';
 import '../../models/drive_models.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/ios/ios_browse.dart';
+import '../../widgets/ios/ios_page.dart';
 import '../../widgets/ios/ios_tab_header.dart';
+import '../../widgets/ios_menu/native_menu_payload.dart';
 import '../../widgets/ios_more_menu.dart';
+import '../../widgets/native_glass_button.dart';
 import '../../widgets/skeletons.dart';
 
 import '../upload/ui/components/bottom_action_system.dart';
@@ -20,6 +24,7 @@ import 'components/selection_mode_mixin.dart';
 import 'drive_controller.dart';
 import 'view_preferences_controller.dart';
 import 'virtual_sections.dart';
+import '../../widgets/item_status.dart';
 
 class FolderScreen extends ConsumerStatefulWidget {
   const FolderScreen({required this.folderId, super.key});
@@ -291,6 +296,7 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
     required bool loadingMore,
   }) {
     final drive = ref.read(driveControllerProvider);
+    final folder = drive.folder(widget.folderId);
     Widget selection({bool actionsOnly = false}) => DriveSelectionBar(
       actionsOnly: actionsOnly,
       selectedCount: selectedCount,
@@ -325,12 +331,19 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
                       physics: const AlwaysScrollableScrollPhysics(),
                       slivers: [
                         if (!selectMode)
-                          IosLargeTitleHeader(
+                          IosInlineTitleBar(
                             title: title,
-                            leading: IosLargeTitleHeader.backButton(context),
+                            backgroundColor: IosBrowse.canvas(context),
+                            leading: _FolderBackButton(path: path),
                             trailing: IosMoreButton(
                               claimsTouches: true,
                               size: 44,
+                              menuTitle: folder == null
+                                  ? null
+                                  : itemStatusText(
+                                      starred: folder.starred,
+                                      shared: folder.shared,
+                                    ),
                               tooltip: '$title options',
                               sectionsBuilder: (ctx) => buildDriveMenuSections(
                                 ctx,
@@ -348,8 +361,6 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
                             silent: false,
                           ),
                         ),
-                        if (path.length > 1 && !selectMode)
-                          SliverToBoxAdapter(child: _Breadcrumbs(path: path)),
                         if (!loaded && loading)
                           const SliverFillRemaining(
                             hasScrollBody: false,
@@ -450,7 +461,7 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
       toggleFileSelection(file.id);
       return;
     }
-    openDriveFile(context, ref, file);
+    openDriveFile(context, ref, file, siblings: _sortedFiles);
   }
 
   void _onFolderTap(DriveFolder folder) {
@@ -459,6 +470,67 @@ class _FolderScreenState extends ConsumerState<FolderScreen>
       return;
     }
     context.safePush('/folder/${folder.id}');
+  }
+}
+
+/// Glass Back that, like UIKit's, lists the enclosing folders when held, so
+/// the folder's location is available without a breadcrumb row.
+class _FolderBackButton extends StatefulWidget {
+  const _FolderBackButton({required this.path});
+  final List<dynamic> path;
+
+  @override
+  State<_FolderBackButton> createState() => _FolderBackButtonState();
+}
+
+class _FolderBackButtonState extends State<_FolderBackButton> {
+  Map<String, VoidCallback> _actions = {};
+
+  @override
+  Widget build(BuildContext context) {
+    final ancestors = widget.path
+        .take(widget.path.length > 1 ? widget.path.length - 1 : 0)
+        .toList()
+        .reversed
+        .toList();
+    return NativeGlassButton(
+      label: 'Back',
+      symbol: 'chevron.left',
+      icon: CupertinoIcons.chevron_back,
+      size: 44,
+      symbolSize: 18,
+      claimsTouches: true,
+      onPressed: () => Navigator.of(context).maybePop(),
+      menuOnLongPress: true,
+      menuBuilder: () {
+        final payload = NativeMenuPayload([
+          IosMenuSection([
+            for (final folder in ancestors)
+              IosMenuItem(
+                label: folder.name as String,
+                onTap: () => context.safePush('/folder/${folder.id}'),
+              ),
+            IosMenuItem(
+              label: 'Drive',
+              onTap: () => GoRouter.of(context).go('/drive'),
+            ),
+          ]),
+        ]);
+        _actions = payload.actions;
+        return [
+          for (final section in payload.sections)
+            {
+              ...section,
+              'items': [
+                for (final item
+                    in section['items']! as List<Map<String, Object?>>)
+                  {...item, 'symbol': 'folder'},
+              ],
+            },
+        ];
+      },
+      onMenuAction: (id) => _actions[id]?.call(),
+    );
   }
 }
 

@@ -28,6 +28,8 @@ class NativeGlassButton extends StatefulWidget {
     this.tint,
     this.menuBuilder,
     this.onMenuAction,
+    this.menuOnLongPress = false,
+    this.menuTitle,
     this.claimsTouches = false,
   });
   final String label, symbol;
@@ -46,6 +48,12 @@ class NativeGlassButton extends StatefulWidget {
   final Color? tint;
   final List<Map<String, Object?>> Function()? menuBuilder;
   final ValueChanged<String>? onMenuAction;
+
+  /// Tap runs [onPressed]; holding opens the menu, as Back does in UIKit.
+  final bool menuOnLongPress;
+
+  /// Optional header above the menu's actions, e.g. "Starred · Shared".
+  final String? menuTitle;
 
   /// Hand touches to UIKit immediately. Set this inside a scroll view, where
   /// the platform view would otherwise wait for the scroll gesture to give
@@ -72,6 +80,8 @@ class _NativeGlassButtonState extends State<NativeGlassButton> {
     'prominent': widget.prominent,
     'visualSize': widget.visualSize ?? widget.size,
     'hasMenu': widget.menuBuilder != null,
+    'menuOnLongPress': widget.menuOnLongPress,
+    'menuTitle': widget.menuTitle ?? '',
     'dark': Theme.of(context).brightness == Brightness.dark || widget.white,
     'textScale': MediaQuery.textScalerOf(context).scale(17) / 17,
   };

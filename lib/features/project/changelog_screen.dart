@@ -14,6 +14,7 @@ import 'changelog_controller.dart';
 import 'github_release_models.dart';
 import 'release_notes.dart';
 
+part 'changelog_ios.dart';
 part 'changelog_screen_widgets.dart';
 
 class ChangelogScreen extends ConsumerStatefulWidget {
@@ -41,51 +42,7 @@ class _ChangelogScreenState extends ConsumerState<ChangelogScreen> {
     final state = ref.watch(changelogControllerProvider).state;
 
     if (Theme.of(context).platform == TargetPlatform.iOS) {
-      return IosPage(
-        title: 'What’s New',
-        compact: true,
-        horizontalPadding: 20,
-        onRefresh: _refresh,
-        children: [
-          ..._introduction(context, state),
-          if (state.isLoading && state.releases.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(32),
-              child: CupertinoActivityIndicator(),
-            )
-          else if (state.releases.isEmpty)
-            IosGroup(
-              children: [
-                IosRow(
-                  title: state.error == null
-                      ? 'No Releases Yet'
-                      : 'Could Not Load Releases',
-                  subtitle: state.error == null
-                      ? 'Published releases will appear here.'
-                      : 'Check your connection and try again.',
-                ),
-                IosRow(
-                  title: 'Refresh',
-                  action: true,
-                  trailing: const SizedBox.shrink(),
-                  onTap: _refresh,
-                ),
-              ],
-            )
-          else
-            for (var i = 0; i < state.releases.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _ReleaseCard(
-                  key: ValueKey(
-                    state.releases[i].htmlUrl + state.releases[i].tagName,
-                  ),
-                  release: state.releases[i],
-                  isLatest: i == 0,
-                ),
-              ),
-        ],
-      );
+      return _IosChangelog(state: state, onRefresh: _refresh);
     }
     return Scaffold(
       appBar: AppBar(

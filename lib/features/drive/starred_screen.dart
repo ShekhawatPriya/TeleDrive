@@ -258,12 +258,15 @@ class _StarredScreenState extends ConsumerState<StarredScreen>
                             sliver: grid
                                 ? SliverGrid.builder(
                                     gridDelegate:
-                                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                                          maxCrossAxisExtent: 260,
-                                          childAspectRatio: .72,
-                                          crossAxisSpacing: 10,
-                                          mainAxisSpacing: 10,
-                                        ),
+                                        Theme.of(context).platform ==
+                                            TargetPlatform.iOS
+                                        ? IosBrowse.fileGrid(context)
+                                        : const SliverGridDelegateWithMaxCrossAxisExtent(
+                                            maxCrossAxisExtent: 260,
+                                            childAspectRatio: .72,
+                                            crossAxisSpacing: 10,
+                                            mainAxisSpacing: 10,
+                                          ),
                                     itemCount: starredFiles.length,
                                     itemBuilder: (_, i) {
                                       final file = starredFiles[i];
@@ -271,8 +274,12 @@ class _StarredScreenState extends ConsumerState<StarredScreen>
                                         file: file,
                                         enabled: !selectMode,
                                         trailingClearance: 48,
-                                        onOpen: () =>
-                                            openDriveFile(context, ref, file),
+                                        onOpen: () => openDriveFile(
+                                          context,
+                                          ref,
+                                          file,
+                                          siblings: starredFiles,
+                                        ),
                                         onSelect: () =>
                                             enterSelect(fileId: file.id),
                                         child: FileCardTile(
@@ -299,6 +306,7 @@ class _StarredScreenState extends ConsumerState<StarredScreen>
                                                   context,
                                                   ref,
                                                   file,
+                                                  siblings: starredFiles,
                                                 ),
                                           onMore: () =>
                                               DriveItemActions.openFile(
@@ -318,8 +326,12 @@ class _StarredScreenState extends ConsumerState<StarredScreen>
                                         file: file,
                                         enabled: !selectMode,
                                         trailingClearance: 48,
-                                        onOpen: () =>
-                                            openDriveFile(context, ref, file),
+                                        onOpen: () => openDriveFile(
+                                          context,
+                                          ref,
+                                          file,
+                                          siblings: starredFiles,
+                                        ),
                                         onSelect: () =>
                                             enterSelect(fileId: file.id),
                                         child: FileListTile(
@@ -347,6 +359,7 @@ class _StarredScreenState extends ConsumerState<StarredScreen>
                                                   context,
                                                   ref,
                                                   file,
+                                                  siblings: starredFiles,
                                                 ),
                                           onStar: () => ref
                                               .read(driveControllerProvider)
@@ -518,7 +531,12 @@ class _StarredScreenState extends ConsumerState<StarredScreen>
                             selectedFileIds: selectedFileIds,
                             onFileTap: (file) => selectMode
                                 ? toggleFileSelection(file.id)
-                                : openDriveFile(context, ref, file),
+                                : openDriveFile(
+                                    context,
+                                    ref,
+                                    file,
+                                    siblings: files,
+                                  ),
                             onFileLongPress: (id) => enterSelect(fileId: id),
                             onFileMore: (file) =>
                                 DriveItemActions.openFile(context, ref, file),

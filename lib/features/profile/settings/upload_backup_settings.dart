@@ -219,12 +219,10 @@ class BackupSettingsScreen extends ConsumerWidget {
                               .read(galleryBackupControllerProvider)
                               .scanNow(reason: 'settings_scan_now')
                         : () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Use the profile action sheet to turn backup on first.',
-                                ),
-                              ),
+                            showAppMessage(
+                              context,
+                              'Use the profile action sheet to turn backup on first.',
+                              error: true,
                             );
                           },
                   ),
