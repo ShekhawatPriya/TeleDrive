@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,7 @@ import '../../drive/components/drive_dialogs.dart';
 import '../../profile/app_settings_controller.dart';
 import '../share_controller.dart';
 import 'share_result_view.dart';
+import '../../../widgets/app_message.dart';
 
 class CreateShareSheet extends ConsumerStatefulWidget {
   const CreateShareSheet({required this.items, this.isCurrent, super.key});
@@ -158,9 +160,7 @@ class _CreateShareSheetState extends ConsumerState<CreateShareSheet> {
     if (share == null) return;
     await Clipboard.setData(ClipboardData(text: share.url));
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Link copied')));
+    showAppMessage(context, 'Link copied', iosIcon: CupertinoIcons.link);
   }
 
   Future<void> _shareSheet() async {

@@ -66,13 +66,35 @@ abstract final class IosBrowse {
         letterSpacing: -.23,
       );
 
+  /// Metadata (sizes, counts, dates) uses fixed-width digits so values line
+  /// up and counters do not shift as they change.
   static TextStyle footnote(BuildContext context, {Color? color}) =>
       _base(context).copyWith(
         fontSize: 13,
         height: 18 / 13,
         letterSpacing: -.08,
         color: color ?? Theme.of(context).colorScheme.onSurfaceVariant,
+        fontFeatures: tabular,
       );
+
+  static const tabular = [FontFeature.tabularFigures()];
+
+  /// Files-style icon grid: at least three columns of ~110-point items with
+  /// a square thumbnail, a centered two-line name and one metadata line.
+  static SliverGridDelegate fileGrid(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width - gutter * 2;
+    const spacing = 12.0;
+    final columns = ((width + spacing) / 124).floor().clamp(3, 8);
+    final tile = (width - spacing * (columns - 1)) / columns;
+    final scaler = MediaQuery.textScalerOf(context);
+    return SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: columns,
+      crossAxisSpacing: spacing,
+      mainAxisSpacing: 20,
+      mainAxisExtent:
+          tile + 8 + scaler.scale(20) * 2 + 2 + scaler.scale(18) + 4,
+    );
+  }
 
   static TextStyle _base(BuildContext context) =>
       (Theme.of(context).textTheme.bodyLarge ?? const TextStyle()).copyWith(

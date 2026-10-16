@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import 'app_update_controller.dart';
 import 'app_update_models.dart';
+import '../../widgets/app_message.dart';
 
 Future<void> showAppUpdatePrompt(
   BuildContext context,
@@ -53,9 +54,7 @@ class _AppUpdateSheetState extends State<_AppUpdateSheet> {
     if (!mounted) return;
     setState(() => _launching = false);
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open the download link.')),
-      );
+      showAppMessage(context, 'Could not open the download link.', error: true);
       return;
     }
     if (!widget.info.mandatory) {

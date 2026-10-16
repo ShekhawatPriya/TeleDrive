@@ -14,9 +14,7 @@ class NotificationsSettingsScreen extends ConsumerWidget {
           .read(uploadNotificationServiceProvider)
           .requestPermission();
       if (!ok && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Notifications are disabled.')),
-        );
+        showAppMessage(context, 'Notifications are disabled.', error: true);
         return;
       }
     }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../models/drive_models.dart';
+import 'item_status.dart';
 import 'starred_badge.dart';
 import 'ios/ios_browse.dart';
 import 'item_status_indicators.dart';
@@ -172,23 +173,12 @@ class FolderCollectionCard extends StatelessWidget {
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Icon(
-                          folder.shared
-                              ? CupertinoIcons.folder_fill_badge_person_crop
-                              : CupertinoIcons.folder_fill,
-                          size: 32,
-                          color: folderInk,
-                        ),
-                        if (folder.starred)
-                          const Positioned(
-                            right: -4,
-                            bottom: -1,
-                            child: StarredBadge(),
-                          ),
-                      ],
+                    // Status is shown on the metadata line (ItemStatus), so
+                    // every folder keeps the same symbol.
+                    child: Icon(
+                      CupertinoIcons.folder_fill,
+                      size: 32,
+                      color: folderInk,
                     ),
                   ),
                   const Spacer(),
@@ -223,12 +213,12 @@ class FolderCollectionCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 3),
-              Text(
-                folder.isOptimistic
+              ItemStatusLine(
+                starred: folder.starred && !folder.isOptimistic,
+                shared: folder.shared && !folder.isOptimistic,
+                text: folder.isOptimistic
                     ? 'Creating…'
                     : '$count ${count == 1 ? 'file' : 'files'} · ${formatFileSize(folder.recursiveSize)}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: IosBrowse.footnote(context),
               ),
             ],

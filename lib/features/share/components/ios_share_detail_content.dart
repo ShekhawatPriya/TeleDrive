@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../models/share_models.dart';
+import '../../../widgets/ios/ios_page.dart';
 import 'share_contents.dart';
 
 /// A content-led share summary, with inline statistics and a plain activity list.
@@ -100,66 +101,46 @@ class IosShareDetailContent extends StatelessWidget {
             );
           },
         ),
-        const SizedBox(height: 24),
-        _InfoLine(label: 'Access', value: share.permission.label),
-        _InfoLine(
-          label: 'Created',
-          value: DateFormat.yMMMd().format(share.createdAt.toLocal()),
+        const SizedBox(height: 28),
+        // Settings › General › About style: grouped rows, value on the right.
+        IosGroup(
+          children: [
+            IosRow(title: 'Access', value: share.permission.label),
+            IosRow(
+              title: 'Created',
+              value: DateFormat.yMMMd().format(share.createdAt.toLocal()),
+            ),
+            IosRow(
+              title: 'Expires',
+              value: share.expiresAt == null
+                  ? 'Never'
+                  : DateFormat.yMMMd().format(share.expiresAt!.toLocal()),
+            ),
+          ],
         ),
-        _InfoLine(
-          label: 'Expires',
-          value: share.expiresAt == null
-              ? 'Never'
-              : DateFormat.yMMMd().format(share.expiresAt!.toLocal()),
+        IosGroup(
+          title: 'Statistics',
+          children: [
+            IosRow(title: 'Views', value: '${share.viewCount}'),
+            IosRow(title: 'Downloads', value: '${share.downloadCount}'),
+            IosRow(
+              title: 'Unique Viewers',
+              value: stats == null ? '—' : '${stats!.uniqueViewers}',
+            ),
+          ],
         ),
-        const SizedBox(height: 24),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final stacked = MediaQuery.textScalerOf(context).scale(17) > 25;
-            final metrics = [
-              ('${share.viewCount}', 'Views'),
-              ('${share.downloadCount}', 'Downloads'),
-              (
-                stats == null ? '—' : '${stats!.uniqueViewers}',
-                'Unique viewers',
-              ),
-            ];
-            if (stacked)
-              return Column(
-                children: [
-                  for (final metric in metrics)
-                    _InfoLine(label: metric.$2, value: metric.$1),
-                ],
-              );
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final metric in metrics)
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text(metric.$1, style: theme.textTheme.headlineSmall),
-                        const SizedBox(height: 4),
-                        Text(
-                          metric.$2,
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-        if (stats?.byCountry.isNotEmpty == true) ...[
-          const SizedBox(height: 28),
-          Text('By country', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          for (final country in stats!.byCountry.entries)
-            _InfoLine(label: country.key, value: '${country.value} views'),
-        ],
-        const SizedBox(height: 32),
+        if (stats?.byCountry.isNotEmpty == true)
+          IosGroup(
+            title: 'By Country',
+            children: [
+              for (final country in stats!.byCountry.entries)
+                IosRow(
+                  title: country.key,
+                  value:
+                      '${country.value} ${country.value == 1 ? 'view' : 'views'}',
+                ),
+            ],
+          ),
         Text('Activity', style: theme.textTheme.titleLarge),
         const SizedBox(height: 12),
         if (accesses.isEmpty && !loading)
@@ -254,34 +235,6 @@ class IosShareDetailContent extends StatelessWidget {
             child: const Text('Load more'),
           ),
       ],
-    );
-  }
-}
-
-class _InfoLine extends StatelessWidget {
-  const _InfoLine({required this.label, required this.value});
-  final String label, value;
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
-          const SizedBox(width: 16),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

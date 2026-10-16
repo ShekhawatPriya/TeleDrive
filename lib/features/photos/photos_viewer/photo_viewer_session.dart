@@ -12,7 +12,12 @@ class PhotoViewerSession {
     required this.generation,
     this.sourceRect,
     this.revealSource,
+    this.scopeIds,
   });
+
+  /// Pages through these files (in this order) instead of the photo library,
+  /// e.g. the photos and videos of the Drive folder an item was opened from.
+  final List<String>? scopeIds;
   final PhotosFilter filter;
   final String query;
   final int generation;

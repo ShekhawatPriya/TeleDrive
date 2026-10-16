@@ -23,6 +23,8 @@ import 'components/photos_menu_builder.dart';
 import 'photos_grid/photo_grid_density.dart';
 import 'photos_filter.dart';
 import 'photos_grid/photos_grid_view.dart';
+import '../../models/drive_models.dart';
+import '../../core/utils/file_type_detector.dart';
 
 class PhotosScreen extends ConsumerStatefulWidget {
   const PhotosScreen({super.key});
@@ -235,7 +237,13 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
                             child: Text(
-                              query.isEmpty
+                              ios
+                                  ? _iosLibraryFooter(
+                                      files,
+                                      searching: query.isNotEmpty,
+                                      partial: drive.state.mediaCursor != null,
+                                    )
+                                  : query.isEmpty
                                   ? '$allCount items in your loaded library'
                                   : '$allCount matches in loaded photos',
                               textAlign: TextAlign.center,
@@ -359,4 +367,22 @@ class _PhotosScreenState extends ConsumerState<PhotosScreen>
     } catch (_) {}
     super.dispose();
   }
+}
+
+/// Photos-style summary ("8 Photos, 1 Video"). While more pages remain on
+/// the server the count describes what is loaded, never the whole library.
+String _iosLibraryFooter(
+  List<DriveFile> files, {
+  required bool searching,
+  required bool partial,
+}) {
+  final videos = files.where((f) => isVideoFile(f)).length;
+  final photos = files.length - videos;
+  String count(int n, String one, String many) => '$n ${n == 1 ? one : many}';
+  final parts = [
+    if (photos > 0 || videos == 0) count(photos, 'Photo', 'Photos'),
+    if (videos > 0) count(videos, 'Video', 'Videos'),
+  ].join(', ');
+  if (searching) return '$parts found';
+  return partial ? '$parts loaded so far' : parts;
 }

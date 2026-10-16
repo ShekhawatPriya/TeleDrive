@@ -76,8 +76,9 @@ Widget _iosBackup(BuildContext context, WidgetRef ref) {
       IosGroup(
         footer: 'Backups are saved in Auto › Media › Photos or Videos.',
         children: [
+          // Named by its action so it doesn't repeat the page title.
           _iosToggle(
-            'Photo Backup',
+            'Back Up This iPhone',
             settings.galleryBackupEnabled,
             controller.setGalleryBackupEnabled,
           ),
@@ -154,40 +155,80 @@ class _IosLimitRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    // UIStepper: the value in secondary text, then one capsule split into
+    // − | +. Each half keeps a 44-point touch target.
+    Widget half(IconData icon, String label, VoidCallback? onPressed) =>
+        CupertinoButton(
+          padding: EdgeInsets.zero,
+          minimumSize: const Size(47, 44),
+          onPressed: onPressed,
+          child: Icon(
+            icon,
+            size: 18,
+            semanticLabel: label,
+            color: onPressed == null
+                ? scheme.onSurfaceVariant.withValues(alpha: .4)
+                : scheme.onSurface,
+          ),
+        );
     final controls = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: value > min
-              ? () => onChanged((value - step).clamp(min, max))
-              : null,
-          child: Icon(
-            CupertinoIcons.minus,
-            size: 18,
-            semanticLabel: 'Decrease $title',
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Semantics(
-            value: '$value',
-            label: title,
-            child: Text(
-              '$value',
-              style: TextStyle(fontSize: 17, color: scheme.onSurface),
+        Semantics(
+          value: '$value',
+          label: title,
+          child: Text(
+            '$value',
+            style: TextStyle(
+              fontSize: 17,
+              color: scheme.onSurfaceVariant,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ),
-        CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: value < max
-              ? () => onChanged((value + step).clamp(min, max))
-              : null,
-          child: Icon(
-            CupertinoIcons.plus,
-            size: 18,
-            semanticLabel: 'Increase $title',
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 95,
+          height: 44,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned.fill(
+                top: 6,
+                bottom: 6,
+                child: DecoratedBox(
+                  decoration: ShapeDecoration(
+                    color: CupertinoColors.tertiarySystemFill.resolveFrom(
+                      context,
+                    ),
+                    shape: const StadiumBorder(),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  half(
+                    CupertinoIcons.minus,
+                    'Decrease $title',
+                    value > min
+                        ? () => onChanged((value - step).clamp(min, max))
+                        : null,
+                  ),
+                  Container(
+                    width: 1,
+                    height: 18,
+                    color: CupertinoColors.separator.resolveFrom(context),
+                  ),
+                  half(
+                    CupertinoIcons.plus,
+                    'Increase $title',
+                    value < max
+                        ? () => onChanged((value + step).clamp(min, max))
+                        : null,
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ],
@@ -300,13 +341,19 @@ Widget _iosCache(BuildContext context, WidgetRef ref) {
       IosSettingsIntro(
         icon: CupertinoIcons.cube_box_fill,
         color: CupertinoColors.systemOrange,
-        title: cache.isLoading ? 'Calculating…' : _formatBytes(cache.totalSize),
+        title: 'Cache & Storage',
         description:
-            'Used on this iPhone for cached files and uploads. Your files in Telegram are stored separately.',
+            'Copies TeleDrive keeps on this iPhone so files open faster. Your files in Telegram are stored separately.',
       ),
       IosGroup(
         title: 'On This iPhone',
         children: [
+          IosRow(
+            title: 'Total',
+            value: cache.isLoading
+                ? 'Calculating…'
+                : _formatBytes(cache.totalSize),
+          ),
           IosRow(title: 'Thumbnails', value: _formatBytes(cache.thumbnailSize)),
           IosRow(title: 'Previews', value: _formatBytes(cache.previewSize)),
           IosRow(title: 'Originals', value: _formatBytes(cache.originalSize)),
@@ -339,12 +386,13 @@ Widget _iosPrivacy(BuildContext context, WidgetRef ref) {
     title: 'Privacy & Security',
     compact: true,
     children: [
-      const IosSettingsIntro(
+      IosSettingsIntro(
         icon: CupertinoIcons.hand_raised_fill,
         color: CupertinoColors.systemBlue,
         title: 'Privacy & Security',
         description:
             'Manage deleted files, public links, and the data kept on this iPhone.',
+        onLearnMore: () => context.push('/privacy'),
       ),
       IosGroup(
         title: 'Deleted Files',

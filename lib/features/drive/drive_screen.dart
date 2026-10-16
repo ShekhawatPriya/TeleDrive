@@ -329,7 +329,8 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                   child: DriveRecentsStrip(
                     files: recent,
                     onSelect: (f) => enterSelect(fileId: f.id),
-                    onFileTap: (f) => openDriveFile(context, ref, f),
+                    onFileTap: (f) =>
+                        openDriveFile(context, ref, f, siblings: recent),
                     onMore: (f) => DriveItemActions.openFile(context, ref, f),
                   ),
                 ),
@@ -477,7 +478,8 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
                   child: DriveRecentsStrip(
                     files: recent,
                     onSelect: (f) => enterSelect(fileId: f.id),
-                    onFileTap: (f) => openDriveFile(context, ref, f),
+                    onFileTap: (f) =>
+                        openDriveFile(context, ref, f, siblings: recent),
                   ),
                 ),
               ],
@@ -551,7 +553,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen>
       toggleFileSelection(file.id);
       return;
     }
-    openDriveFile(context, ref, file);
+    openDriveFile(context, ref, file, siblings: _sortedFiles);
   }
 
   void _onFolderTap(DriveFolder folder) {

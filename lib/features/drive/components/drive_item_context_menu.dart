@@ -11,6 +11,7 @@ import '../../auth/auth_controller.dart';
 import '../drive_controller.dart';
 import 'drive_item_actions.dart';
 import 'drive_sheet_action.dart';
+import '../../../widgets/item_status.dart';
 
 /// The same item actions and confirmations serve menus and action sheets.
 /// Resolve current model state on every opening and reject a stale account.
@@ -66,8 +67,12 @@ class DriveItemContextMenu extends ConsumerWidget {
           ? ''
           : '${file!.modifiedAt}:${file!.thumbnailVersion}:${file!.previewVersion}',
       subtitle: file == null
-          ? 'Folder'
+          ? '${folder!.recursiveFileCount} ${folder!.recursiveFileCount == 1 ? 'file' : 'files'} · ${formatFileSize(folder!.recursiveSize)}'
           : '${file!.kind.name.toUpperCase()} · ${formatFileSize(file!.size)}',
+      menuTitle: itemStatusText(
+        starred: file?.starred ?? folder!.starred,
+        shared: file?.shared ?? folder!.shared,
+      ),
       previewSymbol: switch (file?.kind) {
         null => 'folder.fill',
         FileKind.image => 'photo',

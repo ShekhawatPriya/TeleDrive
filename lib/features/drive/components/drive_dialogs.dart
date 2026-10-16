@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../../../widgets/sheet/adaptive_sheet.dart';
 import 'folder_editor.dart';
+import '../../../core/utils/app_haptics.dart';
 
 /// Prompts for a new folder name. Returns the trimmed value, or null if
 /// cancelled / left blank.
@@ -30,6 +31,7 @@ Future<bool> confirmAction(
   String confirmLabel = 'Confirm',
   bool destructive = false,
 }) async {
+  if (destructive) AppHaptics.warning();
   final result = await showAdaptiveDialog<bool>(
     context: context,
     builder: (ctx) {

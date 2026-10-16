@@ -1,11 +1,16 @@
+import 'package:flutter_m_fsdk/widgets/ios/ios_page.dart';
 // iOS browsing surfaces: Drive home, folders, Starred, Shared and the
 // Archive, Locked and Trash spaces. Run with
 // --dart-define=WRITE_UI_PREVIEWS=true to write build/modernization/ios-browse-*.
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_m_fsdk/features/drive/components/drive_recents_strip.dart';
+import 'package:flutter_m_fsdk/features/file_viewer/file_viewer_screen.dart';
+import 'package:flutter_m_fsdk/widgets/item_status.dart';
+import 'package:flutter_m_fsdk/widgets/starred_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -125,6 +130,8 @@ class _Drive extends ChangeNotifier implements DriveController {
   List<DriveFolder> get folders => empty ? const [] : _folders;
   @override
   DriveFile? file(String id) => _files.where((f) => f.id == id).firstOrNull;
+  @override
+  DriveFile? anyFile(String id) => file(id);
   @override
   DriveFolder? folder(String id) =>
       _folders.where((f) => f.id == id).firstOrNull;
@@ -444,7 +451,14 @@ void main() {
               ),
           isTrue,
         );
-        expect(find.byType(CupertinoSliverNavigationBar), findsOneWidget);
+        // Tabs are roots with large titles; pushed pages use the inline bar.
+        const pushed = {'folder', 'archive', 'locked', 'trash'};
+        expect(
+          find.byType(
+            pushed.contains(page.$1) ? IosInlineTitleBar : IosLargeTitleBar,
+          ),
+          findsOneWidget,
+        );
         await capture(tester, 'ios-browse-${page.$1}-${brightness.name}');
       });
       testWidgets('${page.$1} empty state ${brightness.name}', (tester) async {
@@ -560,5 +574,49 @@ void main() {
     expect(tester.getTopLeft(find.text('Folders')).dy, lessThan(before));
     expect(tester.takeException(), isNull);
     await capture(tester, 'ios-browse-starred-scrolled');
+  });
+
+  // One status vocabulary: a yellow star and a link symbol on the metadata
+  // line, never per-thumbnail badges or a second folder symbol.
+  testWidgets('starred and shared items use the shared status line', (
+    tester,
+  ) async {
+    await _pump(tester, const DriveScreen(), height: 1600);
+    expect(find.byType(StarredBadge), findsNothing);
+    expect(
+      find.byIcon(CupertinoIcons.folder_fill_badge_person_crop),
+      findsNothing,
+    );
+    expect(find.byType(ItemStatusInline), findsWidgets);
+    expect(find.bySemanticsLabel('Starred'), findsWidgets);
+    expect(find.bySemanticsLabel('Shared'), findsWidgets);
+  });
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'document page is a Quick Look-style summary ${brightness.name}',
+      (tester) async {
+        await _pump(
+          tester,
+          const FileViewerScreen(fileId: 'f2'),
+          brightness: brightness,
+        );
+        expect(find.text('Open'), findsOneWidget);
+        expect(find.text('Information'), findsOneWidget);
+        expect(find.text('PDF Document'), findsOneWidget);
+        expect(find.byIcon(CupertinoIcons.link), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await capture(tester, 'ios-file-detail-${brightness.name}');
+      },
+    );
+  }
+
+  test('Drive media opens in the viewer with its folder siblings', () {
+    final photo = _files.firstWhere((f) => f.id == 'f1');
+    final ids = mediaScopeIds(photo, _files);
+    expect(ids, contains('f1'));
+    expect(ids, contains('f3'));
+    expect(ids, isNot(contains('f2')));
+    expect(mediaScopeIds(photo, const []), ['f1']);
   });
 }

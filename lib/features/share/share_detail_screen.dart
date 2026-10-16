@@ -11,6 +11,7 @@ import '../../models/share_models.dart';
 import '../drive/components/drive_dialogs.dart';
 import 'components/share_detail_body.dart';
 import 'share_controller.dart';
+import '../../widgets/app_message.dart';
 
 class ShareDetailScreen extends ConsumerStatefulWidget {
   const ShareDetailScreen({required this.shareId, super.key});
@@ -81,9 +82,7 @@ class _ShareDetailScreenState extends ConsumerState<ShareDetailScreen> {
     if (share == null) return;
     await Clipboard.setData(ClipboardData(text: share.url));
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Link copied')));
+    showAppMessage(context, 'Link copied', iosIcon: CupertinoIcons.link);
   }
 
   Future<void> _shareLink() async {
@@ -133,6 +132,7 @@ class _ShareDetailScreenState extends ConsumerState<ShareDetailScreen> {
     if (Theme.of(context).platform == TargetPlatform.iOS)
       return IosPage(
         title: 'Share',
+        compact: true,
         trailing: NativeGlassButton(
           label: 'Revoke link',
           symbol: 'teledrive.link-off',

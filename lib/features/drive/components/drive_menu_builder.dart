@@ -7,6 +7,7 @@ import '../../../widgets/main_tab_menu_sections.dart';
 import '../../upload/upload_controller.dart';
 import '../drive_controller.dart';
 import 'drive_dialogs.dart';
+import '../../../widgets/app_message.dart';
 
 /// Builds the iOS-style three-dot menu sections for both the home and
 /// folder screens. Both surface the layout (Icons/List) section here —
@@ -54,10 +55,10 @@ Future<void> _newFolder(
     await ref.read(driveControllerProvider).createFolder(name, parentId);
   } catch (_) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not create folder. Please try again.'),
-        ),
+      showAppMessage(
+        context,
+        'Could not create folder. Please try again.',
+        error: true,
       );
     }
   }

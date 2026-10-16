@@ -28,8 +28,12 @@ class NativeItemContextMenu extends StatefulWidget {
     this.subtitle = '',
     this.previewRevision = '',
     this.hasVisualPreview = false,
+    this.menuTitle = '',
     super.key,
   });
+
+  /// Optional header above the actions, e.g. "Starred · Shared".
+  final String menuTitle;
   final Widget child;
   final String identity, title;
   final VoidCallback onOpen;
@@ -58,6 +62,7 @@ class _NativeItemContextMenuState extends State<NativeItemContextMenu> {
     'title': widget.title,
     'symbol': widget.previewSymbol,
     'subtitle': widget.subtitle,
+    'menuTitle': widget.menuTitle,
     'visualPreview': widget.hasVisualPreview,
     'revision': widget.previewRevision,
     'dark': Theme.of(context).brightness == Brightness.dark,

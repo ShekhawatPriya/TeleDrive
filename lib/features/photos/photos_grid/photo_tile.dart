@@ -3,11 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
-import '../../../widgets/file_list_tile.dart';
 import '../../../widgets/item_status_indicators.dart';
-import '../../../widgets/starred_badge.dart';
 import '../../../widgets/media_thumb.dart';
 import '../../drive/components/drive_item_context_menu.dart';
+import '../../../widgets/item_status.dart';
 
 class PhotoTile extends StatelessWidget {
   const PhotoTile({
@@ -118,18 +117,17 @@ class PhotoTile extends StatelessWidget {
                               ),
                             if (Theme.of(context).platform ==
                                     TargetPlatform.iOS &&
-                                file.starred &&
                                 !file.isOptimistic)
-                              const Positioned(
-                                right: 8,
-                                top: 8,
-                                child: StarredBadge(size: 16),
+                              // Media tiles have no caption, so status sits
+                              // in the shared overlay pill (ItemStatus).
+                              Positioned(
+                                right: 6,
+                                top: 6,
+                                child: ItemStatusOverlay(
+                                  starred: file.starred,
+                                  shared: file.shared,
+                                ),
                               ),
-                            if (Theme.of(context).platform ==
-                                    TargetPlatform.iOS &&
-                                file.shared &&
-                                !file.isOptimistic)
-                              _sharedBadge(),
                           ],
                         ),
                       ),
@@ -161,10 +159,6 @@ class PhotoTile extends StatelessWidget {
       colorFilter: ColorFilter.mode(selectedWash, BlendMode.srcATop),
       child: thumb,
     );
-  }
-
-  Widget _sharedBadge() {
-    return const Positioned(right: 8, bottom: 8, child: SharedBadge(size: 20));
   }
 
   Widget _videoBadge({required bool showDuration}) {

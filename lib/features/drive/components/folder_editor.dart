@@ -100,35 +100,75 @@ class _FolderEditorState extends State<FolderEditor> {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(ios ? 20 : 24, 0, ios ? 20 : 24, 16),
+        padding: EdgeInsets.fromLTRB(ios ? 8 : 24, 0, ios ? 8 : 24, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Semantics(
-                    header: true,
-                    child: Text(
-                      widget.title,
-                      style: ios
-                          ? theme.textTheme.titleMedium?.copyWith(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w600,
-                            )
-                          : theme.textTheme.headlineSmall,
+            if (ios)
+              // Notes-style sheet bar: Cancel, centered title, bold confirm.
+              SizedBox(
+                height: 44,
+                child: Row(
+                  children: [
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(64, 44),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    Expanded(
+                      child: Semantics(
+                        header: true,
+                        child: Text(
+                          _titleCase(widget.title),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(64, 44),
+                      onPressed: _valid ? _submit : null,
+                      child: Text(
+                        widget.confirmLabel,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: Semantics(
+                      header: true,
+                      child: Text(
+                        widget.title,
+                        style: ios
+                            ? theme.textTheme.titleMedium?.copyWith(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                              )
+                            : theme.textTheme.headlineSmall,
+                      ),
                     ),
                   ),
-                ),
-                if (!ios)
-                  IconButton(
-                    tooltip: 'Cancel',
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded, size: 20),
-                  ),
-              ],
-            ),
+                  if (!ios)
+                    IconButton(
+                      tooltip: 'Cancel',
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                    ),
+                ],
+              ),
             const SizedBox(height: 16),
             if (!ios)
               Container(
@@ -170,37 +210,30 @@ class _FolderEditorState extends State<FolderEditor> {
                 ),
               ),
             if (!ios) const SizedBox(height: 24),
-            if (ios) ...[
-              Text(
-                'Folder Name',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-            Semantics(label: 'Folder name', textField: true, child: input),
-            const SizedBox(height: 10),
-            Text(
-              _renaming
-                  ? 'Your files and sharing settings stay the same.'
-                  : 'You can move or rename this folder anytime.',
-              style: theme.textTheme.bodySmall,
-            ),
-            const SizedBox(height: 24),
-            if (ios)
-              CupertinoButton.filled(
-                borderRadius: BorderRadius.circular(18),
-                onPressed: _valid ? _submit : null,
-                child: Text(
-                  widget.confirmLabel,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: scheme.onPrimary,
-                    fontWeight: FontWeight.w600,
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: ios ? 12 : 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Semantics(
+                    label: 'Folder name',
+                    textField: true,
+                    child: input,
                   ),
-                ),
-              )
-            else
+                  const SizedBox(height: 10),
+                  Text(
+                    _renaming
+                        ? 'Your files and sharing settings stay the same.'
+                        : 'You can move or rename this folder anytime.',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            if (ios)
+              const SizedBox(height: 8)
+            else ...[
+              const SizedBox(height: 24),
               Row(
                 children: [
                   TextButton(
@@ -221,9 +254,16 @@ class _FolderEditorState extends State<FolderEditor> {
                   ),
                 ],
               ),
+            ],
           ],
         ),
       ),
     );
   }
 }
+
+/// iOS sheet titles use title case ("New Folder", "Rename Folder").
+String _titleCase(String value) => value
+    .split(' ')
+    .map((w) => w.isEmpty ? w : w[0].toUpperCase() + w.substring(1))
+    .join(' ');

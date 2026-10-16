@@ -1,4 +1,3 @@
-import 'starred_badge.dart';
 import 'item_status_indicators.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -12,6 +11,8 @@ import 'ios/ios_browse.dart';
 import 'media_thumb.dart';
 import 'selection_indicator.dart';
 import 'uploading_shimmer.dart';
+import 'file_name_text.dart';
+import 'item_status.dart';
 
 class FileListTile extends StatelessWidget {
   const FileListTile({
@@ -62,6 +63,7 @@ class FileListTile extends StatelessWidget {
         (MediaQuery.sizeOf(context).width < 360 ||
             MediaQuery.textScalerOf(context).scale(14) > 20);
     final isShared = shared || (file?.shared ?? false);
+    final isStarred = starred || (file?.starred ?? false);
     final isSelected = selected == true;
     final status = file?.uploadStatus;
     final isFailed =
@@ -80,10 +82,10 @@ class FileListTile extends StatelessWidget {
               child: isFolder
                   ? Center(
                       child: theme.platform == TargetPlatform.iOS
+                          // Sharing is shown by the status line, not a
+                          // second folder symbol.
                           ? Icon(
-                              isShared
-                                  ? CupertinoIcons.folder_fill_badge_person_crop
-                                  : CupertinoIcons.folder_fill,
+                              CupertinoIcons.folder_fill,
                               size: 36,
                               color: scheme.primary,
                             )
@@ -120,12 +122,6 @@ class FileListTile extends StatelessWidget {
                 ),
               ),
             ),
-          if (ios && starred && !isFailed && !isUploading)
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: StarredBadge(backgroundColor: scheme.surface),
-            ),
           if (isFailed)
             Positioned.fill(
               child: DecoratedBox(
@@ -139,13 +135,6 @@ class FileListTile extends StatelessWidget {
                   size: 20,
                 ),
               ),
-            ),
-          // A shared folder's own symbol already carries the person badge.
-          if (ios && isShared && !isOptimistic && !isFolder)
-            Positioned(
-              right: 0,
-              bottom: starred ? 22 : 0,
-              child: SharedBadge(size: 14),
             ),
         ],
       ),
@@ -182,17 +171,25 @@ class FileListTile extends StatelessWidget {
               ],
             )
           : thumbnail,
-      title: Text(
-        name,
-        maxLines: stackedActions || (ios && largeText) ? null : 1,
-        overflow: stackedActions || (ios && largeText)
-            ? TextOverflow.visible
-            : TextOverflow.ellipsis,
-        style: theme.textTheme.bodyLarge?.copyWith(
-          fontWeight: ios ? FontWeight.w400 : FontWeight.w600,
-          color: isFailed ? scheme.error : scheme.onSurface,
-        ),
-      ),
+      title: ios && file != null && !stackedActions && !largeText
+          ? FileNameText(
+              name,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w400,
+                color: isFailed ? scheme.error : scheme.onSurface,
+              ),
+            )
+          : Text(
+              name,
+              maxLines: stackedActions || (ios && largeText) ? null : 1,
+              overflow: stackedActions || (ios && largeText)
+                  ? TextOverflow.visible
+                  : TextOverflow.ellipsis,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: ios ? FontWeight.w400 : FontWeight.w600,
+                color: isFailed ? scheme.error : scheme.onSurface,
+              ),
+            ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -206,16 +203,16 @@ class FileListTile extends StatelessWidget {
                 shared: isShared,
               ),
             ),
-          Text(
-            ios && file != null && !isOptimistic
+          ItemStatusLine(
+            starred: ios && isStarred && !isOptimistic,
+            shared: ios && isShared && !isOptimistic,
+            text: ios && file != null && !isOptimistic
                 ? '${formatLabel(file!)} · ${formatFileSize(file!.size)} · ${_fileDate(file!.createdAt)}'
                 : subtitle,
             maxLines: ios && (inSelectMode || largeText) ? null : 2,
-            overflow: ios && (inSelectMode || largeText)
-                ? TextOverflow.visible
-                : TextOverflow.ellipsis,
             style: theme.textTheme.bodySmall?.copyWith(
               fontSize: ios ? 13 : null,
+              fontFeatures: ios ? IosBrowse.tabular : null,
               color: isFailed ? scheme.error : scheme.onSurfaceVariant,
             ),
           ),
@@ -341,12 +338,16 @@ class FileListTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    file == null
+                  ItemStatusLine(
+                    starred: isStarred && !isOptimistic,
+                    shared: isShared && !isOptimistic,
+                    maxLines: null,
+                    text: file == null
                         ? subtitle
                         : '${formatLabel(file!)} · ${formatFileSize(file!.size)} · ${_fileDate(file!.createdAt)}',
                     style: theme.textTheme.bodySmall?.copyWith(
                       fontSize: 13,
+                      fontFeatures: IosBrowse.tabular,
                       color: scheme.onSurfaceVariant,
                     ),
                   ),
@@ -414,9 +415,20 @@ class FileListTile extends StatelessWidget {
   }
 }
 
-String _fileDate(String value) {
+/// Recent items read as Files does: "Today at 10:22", "Yesterday", then the
+/// calendar date.
+String _fileDate(String value, {DateTime? now}) {
   final date = DateTime.tryParse(value)?.toLocal();
-  return date == null ? 'Unknown date' : DateFormat('d MMM y').format(date);
+  if (date == null) return 'Unknown date';
+  final today = now ?? DateTime.now();
+  final days = DateTime(
+    today.year,
+    today.month,
+    today.day,
+  ).difference(DateTime(date.year, date.month, date.day)).inDays;
+  if (days == 0) return 'Today at ${DateFormat.jm().format(date)}';
+  if (days == 1) return 'Yesterday';
+  return DateFormat('d MMM y').format(date);
 }
 
 class SharedBadge extends StatelessWidget {

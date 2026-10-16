@@ -7,6 +7,8 @@ import '../core/theme/app_theme.dart';
 import '../core/utils/file_type_detector.dart';
 import '../models/drive_models.dart';
 import 'file_list_tile.dart';
+import 'file_name_text.dart';
+import 'item_status.dart';
 import 'ios/ios_browse.dart';
 import 'media_thumb.dart';
 import 'selection_indicator.dart';
@@ -42,6 +44,18 @@ class FileCardTile extends StatelessWidget {
     final isFailed =
         file.isOptimistic && (status == 'failed' || status == 'cancelled');
     final isUploading = file.isOptimistic && !isFailed && status != 'uploaded';
+    if (theme.platform == TargetPlatform.iOS) {
+      return _IosFileGridTile(
+        file: file,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        onRetry: onRetry,
+        onRemove: onRemove,
+        selected: selected,
+        isFailed: isFailed,
+        isUploading: isUploading,
+      );
+    }
 
     final borderSide = isSelected
         ? BorderSide(color: scheme.primary, width: 2)
@@ -331,6 +345,150 @@ class _StatusChip extends StatelessWidget {
                 color: scheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Files-style icon: square thumbnail, centered two-line name truncated in
+/// the middle, and one metadata line. Actions come from the native hold
+/// menu, so there is no per-item ellipsis; failed uploads keep Retry/Remove.
+class _IosFileGridTile extends StatelessWidget {
+  const _IosFileGridTile({
+    required this.file,
+    required this.onTap,
+    required this.onLongPress,
+    required this.onRetry,
+    required this.onRemove,
+    required this.selected,
+    required this.isFailed,
+    required this.isUploading,
+  });
+
+  final DriveFile file;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress, onRetry, onRemove;
+  final bool? selected;
+  final bool isFailed, isUploading;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isSelected = selected == true;
+    final radius = BorderRadius.circular(12);
+    return Semantics(
+      selected: selected,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Column(
+          children: [
+            AspectRatio(
+              aspectRatio: 1,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: UploadingShimmer(
+                      enabled: isUploading,
+                      borderRadius: radius,
+                      child: DecoratedBox(
+                        position: DecorationPosition.foreground,
+                        decoration: BoxDecoration(
+                          borderRadius: radius,
+                          border: Border.all(
+                            color: isSelected
+                                ? scheme.primary
+                                : isFailed
+                                ? scheme.error
+                                : IosBrowse.hairline(context),
+                            width: isSelected || isFailed ? 2.5 : .5,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: radius,
+                          child: MediaThumb(
+                            file: file,
+                            fit: BoxFit.cover,
+                            fallback: IosFileGlyph(
+                              kind: file.kind,
+                              extension: extensionOf(file.name),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (selected != null)
+                    Positioned(
+                      left: 6,
+                      bottom: 6,
+                      child: PremiumSelectionIndicator(
+                        isSelected: isSelected,
+                        isOverImage: true,
+                        size: 22,
+                      ),
+                    ),
+                  if (isFailed)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 4,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size.square(44),
+                            onPressed: onRetry,
+                            child: Icon(
+                              CupertinoIcons.arrow_clockwise_circle_fill,
+                              color: scheme.error,
+                              size: 28,
+                              semanticLabel: 'Retry',
+                            ),
+                          ),
+                          CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size.square(44),
+                            onPressed: onRemove,
+                            child: Icon(
+                              CupertinoIcons.xmark_circle_fill,
+                              color: scheme.error,
+                              size: 28,
+                              semanticLabel: 'Remove',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            FileNameText(
+              file.name,
+              maxLines: 2,
+              textAlign: TextAlign.center,
+              style: IosBrowse.subheadline(context).copyWith(
+                fontSize: 13,
+                height: 18 / 13,
+                color: isFailed ? scheme.error : null,
+              ),
+            ),
+            const SizedBox(height: 2),
+            ItemStatusLine(
+              starred: file.starred && !file.isOptimistic,
+              shared: file.shared && !file.isOptimistic,
+              center: true,
+              text: file.isOptimistic
+                  ? formatUploadStatus(file)
+                  : formatFileSize(file.size),
+              textAlign: TextAlign.center,
+              style: IosBrowse.footnote(context).copyWith(fontSize: 12),
             ),
           ],
         ),

@@ -13,6 +13,7 @@ import '../../auth/auth_controller.dart';
 import '../../drive/components/drive_dialogs.dart';
 import '../../drive/drive_controller.dart';
 import '../share_controller.dart';
+import '../../../widgets/app_message.dart';
 
 /// Shared links retain their own access actions, using the same native hold
 /// surface and fresh, account-scoped menu snapshots as private Drive items.
@@ -64,9 +65,11 @@ class ShareItemMenu extends ConsumerWidget {
               if (value == null || !value.isActive) return;
               await Clipboard.setData(ClipboardData(text: value.url));
               if (context.mounted && current() != null)
-                ScaffoldMessenger.of(
+                showAppMessage(
                   context,
-                ).showSnackBar(const SnackBar(content: Text('Link copied')));
+                  'Link copied',
+                  iosIcon: CupertinoIcons.link,
+                );
             },
           ),
           IosMenuItem(
@@ -111,10 +114,10 @@ class ShareItemMenu extends ConsumerWidget {
                     .revokeShare(value.id, detail: value);
               } catch (_) {
                 if (context.mounted && current() != null)
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Could not revoke link. Try again.'),
-                    ),
+                  showAppMessage(
+                    context,
+                    'Could not revoke link. Try again.',
+                    error: true,
                   );
               }
             },

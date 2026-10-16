@@ -5,6 +5,7 @@ import '../../../models/drive_models.dart';
 import '../../../widgets/native_glass_button.dart';
 import 'native_photo_controls.dart';
 import '../../../widgets/ios_more_menu.dart';
+import '../../../widgets/item_status.dart';
 
 /// Navigation stays above the image; photo actions live at the bottom edge.
 class PhotoViewerTopBar extends StatelessWidget {
@@ -97,7 +98,16 @@ class PhotoViewerTopBar extends StatelessWidget {
                     const SizedBox(width: 12),
                     if (Theme.of(context).platform == TargetPlatform.iOS &&
                         menuSections != null)
-                      IosMoreButton(white: true, sectionsBuilder: menuSections!)
+                      IosMoreButton(
+                        white: true,
+                        menuTitle: file == null
+                            ? null
+                            : itemStatusText(
+                                starred: file!.starred,
+                                shared: file!.shared,
+                              ),
+                        sectionsBuilder: menuSections!,
+                      )
                     else if (!ios)
                       IconButton(
                         tooltip: 'More',

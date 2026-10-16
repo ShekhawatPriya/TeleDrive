@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/config/app_config.dart';
 import 'legal_data.dart';
-import '../../widgets/native_glass_button.dart';
+import '../../widgets/ios/ios_page.dart';
 
 enum LegalKind { privacy, terms }
 
@@ -54,27 +54,22 @@ class _LegalScreenState extends State<LegalScreen> {
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      appBar: AppBar(
-        title: const Text(
-          'Legal',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-        ),
-        centerTitle: true,
-        toolbarHeight: 56,
-        leading: theme.platform == TargetPlatform.iOS
-            ? Padding(
-                padding: const EdgeInsets.all(8),
-                child: NativeGlassButton(
-                  label: 'Back',
-                  symbol: 'chevron.left',
-                  icon: CupertinoIcons.chevron_back,
-                  size: 40,
-                  symbolSize: 17,
-                  onPressed: () => Navigator.of(context).maybePop(),
-                ),
-              )
-            : BackButton(onPressed: () => Navigator.of(context).maybePop()),
-      ),
+      appBar: theme.platform == TargetPlatform.iOS
+          ? IosNavigationBar.preferred(
+              title: 'Legal',
+              leading: IosNavigationBar.backButton(context),
+            )
+          : AppBar(
+              title: const Text(
+                'Legal',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+              ),
+              centerTitle: true,
+              toolbarHeight: 56,
+              leading: BackButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
+            ),
       body: SafeArea(
         top: false,
         bottom: false,

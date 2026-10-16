@@ -1,3 +1,4 @@
+import 'package:flutter_m_fsdk/widgets/ios/ios_page.dart';
 import 'package:flutter_m_fsdk/features/photos/components/photos_selection_bar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_m_fsdk/features/photos/components/photo_library_cover.dart';
@@ -480,7 +481,9 @@ Future<void> _pump(
                 textTheme: theme.textTheme.apply(fontFamily: 'Inter'),
               ),
 
-              home: MediaQuery(
+              // Wraps the navigator, so pushed pages are captured and receive
+              // the same text scale.
+              builder: (context, navigator) => MediaQuery(
                 data: MediaQueryData(
                   size: Size(width, 844),
                   textScaler: TextScaler.linear(scale),
@@ -489,9 +492,10 @@ Future<void> _pump(
                 ),
                 child: RepaintBoundary(
                   key: const ValueKey('preview'),
-                  child: child,
+                  child: navigator!,
                 ),
               ),
+              home: child,
             ),
     ),
   );
@@ -577,8 +581,8 @@ void main() {
           expect(tester.takeException(), isNull);
           if (entry.$1 == SearchScope.photos &&
               platform == TargetPlatform.iOS) {
-            final header = tester.widget<CupertinoSliverNavigationBar>(
-              find.byType(CupertinoSliverNavigationBar),
+            final header = tester.widget<IosLargeTitleBar>(
+              find.byType(IosLargeTitleBar),
             );
             // Photos shares the other tabs' systemBackground canvas.
             expect(
@@ -1061,7 +1065,12 @@ void main() {
       await tester.tap(find.text('Explore What’s New'));
       await tester.pumpAndSettle();
       expect(find.byType(ChangelogScreen), findsOneWidget);
-      expect(find.text('Release notes'), findsOneWidget);
+      expect(
+        find.text(
+          platform == TargetPlatform.iOS ? 'Latest Release' : 'Release notes',
+        ),
+        findsOneWidget,
+      );
     });
     for (final page in <(String, Widget)>[
       ('about', const ProjectScreen()),
@@ -1157,15 +1166,15 @@ void main() {
             );
             final scroll = find.byType(Scrollable).first;
             await tester.scrollUntilVisible(
-              find.text('Sharing & photo refinements'),
+              find.textContaining('Sharing & photo refinements'),
               240,
               scrollable: scroll,
             );
             await tester.ensureVisible(
-              find.text('Sharing & photo refinements'),
+              find.textContaining('Sharing & photo refinements'),
             );
             await tester.pumpAndSettle();
-            await tester.tap(find.text('Sharing & photo refinements'));
+            await tester.tap(find.textContaining('Sharing & photo refinements'));
             await tester.pumpAndSettle();
             expect(find.text('Sharing'), findsOneWidget);
             await _preview(
@@ -1175,22 +1184,25 @@ void main() {
             await tester.scrollUntilVisible(
               find.text('Photos'),
               240,
-              scrollable: scroll,
+              scrollable: find.byType(Scrollable).first,
             );
             await _preview(
               tester,
               'release-photos-${platform.name}-${brightness.name}-$scale',
             );
+            final details = find.text(
+              platform == TargetPlatform.iOS
+                  ? 'Build & Documentation'
+                  : 'Build & documentation details',
+            );
             await tester.scrollUntilVisible(
-              find.text('Build & documentation details'),
+              details,
               240,
-              scrollable: scroll,
+              scrollable: find.byType(Scrollable).first,
             );
-            await tester.ensureVisible(
-              find.text('Build & documentation details'),
-            );
+            await tester.ensureVisible(details);
             await tester.pumpAndSettle();
-            await tester.tap(find.text('Build & documentation details'));
+            await tester.tap(details);
             await tester.pumpAndSettle();
             expect(find.text('Release'), findsOneWidget);
             expect(tester.takeException(), isNull);
@@ -1315,7 +1327,9 @@ void main() {
             brightness: brightness,
           );
           expect(tester.takeException(), isNull);
-          expect(find.text('Alex'), findsOneWidget);
+          // The identity card and the Accounts list both name the account.
+          expect(find.text('Alex'), findsNWidgets(2));
+          expect(find.text('Switch Account'), findsNothing);
           await _preview(tester, 'account-${brightness.name}-$scale');
           await tester.drag(
             find.byType(CustomScrollView).first,
@@ -1886,7 +1900,10 @@ void main() {
           platform: platform,
           brightness: dark ? Brightness.dark : Brightness.light,
         );
-        expect(find.text('@alex_reid'), findsOneWidget);
+        expect(
+          find.text('@alex_reid'),
+          platform == TargetPlatform.iOS ? findsNWidgets(2) : findsOneWidget,
+        );
         expect(find.text('Telegram ID'), findsOneWidget);
         expect(find.text('1468204194'), findsOneWidget);
         expect(tester.takeException(), isNull);

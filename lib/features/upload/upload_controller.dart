@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:uuid/uuid.dart';
@@ -24,6 +25,7 @@ import 'upload_models.dart';
 import 'upload_picker_helper.dart';
 import '../../core/utils/file_type_detector.dart';
 import '../../models/drive_models.dart';
+import '../../core/utils/app_haptics.dart';
 
 part 'upload_controller/upload_state_sync.dart';
 part 'upload_controller/upload_controller_helpers.dart';

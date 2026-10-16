@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../widgets/ios/ios_page.dart';
 import 'app_update_controller.dart';
 import 'app_update_models.dart';
+import '../../widgets/app_message.dart';
 
 part 'app_update_screen_cards.dart';
 part 'app_update_screen_hero.dart';
@@ -46,9 +48,7 @@ class _AppUpdateScreenState extends ConsumerState<AppUpdateScreen> {
   Future<void> _download() async {
     final ok = await ref.read(appUpdateControllerProvider).openDownload();
     if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open the download link.')),
-      );
+      showAppMessage(context, 'Could not open the download link.', error: true);
     }
   }
 
@@ -63,14 +63,22 @@ class _AppUpdateScreenState extends ConsumerState<AppUpdateScreen> {
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: 'Back',
-          onPressed: () => context.pop(),
-        ),
-        title: const Text('App Update'),
-      ),
+      appBar: theme.platform == TargetPlatform.iOS
+          ? IosNavigationBar.preferred(
+              title: 'App Update',
+              leading: IosNavigationBar.backButton(
+                context,
+                onPressed: () => context.pop(),
+              ),
+            )
+          : AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                tooltip: 'Back',
+                onPressed: () => context.pop(),
+              ),
+              title: const Text('App Update'),
+            ),
       body: SafeArea(
         top: false,
         child: AnimatedSwitcher(

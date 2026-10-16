@@ -77,7 +77,9 @@ class _BottomActionSystemState extends ConsumerState<BottomActionSystem> {
                           duration: MediaQuery.disableAnimationsOf(context)
                               ? Duration.zero
                               : AppDurations.medium3,
-                          switchInCurve: AppEasing.emphasizedDecelerate,
+                          switchInCurve: AdaptiveEasing.enter(
+                            Theme.of(context).platform,
+                          ),
                           switchOutCurve: AppEasing.emphasizedAccelerate,
                           transitionBuilder: (child, animation) {
                             return FadeTransition(
@@ -102,7 +104,9 @@ class _BottomActionSystemState extends ConsumerState<BottomActionSystem> {
                           duration: MediaQuery.disableAnimationsOf(context)
                               ? Duration.zero
                               : AppDurations.medium3,
-                          switchInCurve: AppEasing.emphasizedDecelerate,
+                          switchInCurve: AdaptiveEasing.enter(
+                            Theme.of(context).platform,
+                          ),
                           switchOutCurve: AppEasing.emphasizedAccelerate,
                           transitionBuilder: (child, animation) {
                             return FadeTransition(

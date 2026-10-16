@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_type_detector.dart';
 import '../cache_controller.dart';
 import 'cache_item_row.dart';
+import '../../../widgets/app_message.dart';
 
 class LocalCacheCard extends ConsumerWidget {
   const LocalCacheCard({this.embed = false, super.key});
@@ -244,14 +245,10 @@ class LocalCacheCard extends ConsumerWidget {
                               );
                               await controller.clearCache();
                               if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: const Text(
-                                      'Device cache cleared successfully!',
-                                    ),
-                                    backgroundColor: scheme.inverseSurface,
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
+                                AppMessenger.of(context).show(
+                                  'Device cache cleared successfully!',
+                                  backgroundColor: scheme.inverseSurface,
+                                  behavior: SnackBarBehavior.floating,
                                 );
                               }
                             },

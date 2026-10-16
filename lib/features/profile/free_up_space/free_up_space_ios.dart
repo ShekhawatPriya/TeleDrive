@@ -12,61 +12,78 @@ extension _IosFreeUpSpace on _FreeUpSpaceScreenState {
     return IosPage(
       title: 'Free Up Space',
       compact: true,
-      footer: DecoratedBox(
-        decoration: BoxDecoration(color: scheme.surface),
-        child: SafeArea(
-          top: false,
-          minimum: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-          child: CupertinoButton.filled(
-            borderRadius: BorderRadius.circular(28),
-            onPressed: busy
-                ? null
-                : state.eligibleCount > 0
-                ? () => _confirmAndFree(context, controller, state)
-                : () => controller.scan(),
-            child: Text(
-              state.deleting
-                  ? 'Removing…'
-                  : state.scanning
-                  ? 'Checking Photos…'
-                  : state.eligibleCount > 0
-                  ? 'Free Up ${formatFileSize(state.eligibleBytes)}'
-                  : 'Check Again',
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      ),
+      // Only the destructive step earns a pinned button; rescanning is an
+      // ordinary action row, as in Settings.
+      footer: state.eligibleCount > 0 || state.deleting
+          ? DecoratedBox(
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                border: Border(
+                  top: BorderSide(
+                    color: CupertinoColors.separator.resolveFrom(context),
+                    width: .5,
+                  ),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                minimum: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: CupertinoButton.filled(
+                  borderRadius: BorderRadius.circular(28),
+                  onPressed: busy
+                      ? null
+                      : () => _confirmAndFree(context, controller, state),
+                  child: Text(
+                    state.deleting
+                        ? 'Removing…'
+                        : 'Free Up ${formatStorageSize(state.eligibleBytes)}',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            )
+          : null,
       children: [
-        const SizedBox(height: 12),
-        Icon(
-          CupertinoIcons.device_phone_portrait,
-          size: 56,
-          color: scheme.primary,
+        const IosSettingsIntro(
+          icon: CupertinoIcons.device_phone_portrait,
+          color: IosTint.freeUpSpace,
+          title: 'Free Up Space',
+          description:
+              'Remove photos and videos from this iPhone once their backups are verified in Telegram.',
         ),
-        const SizedBox(height: 18),
-        if (state.scanning)
-          const Center(child: CupertinoActivityIndicator(radius: 14))
-        else
-          Text(
-            formatFileSize(state.eligibleBytes),
-            textAlign: TextAlign.center,
-            style: theme.textTheme.displaySmall,
-          ),
-        const SizedBox(height: 8),
-        Text(
-          state.scanning
-              ? 'Checking backed-up photos and videos'
-              : 'Available to free up on this iPhone',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium,
+        IosGroup(
+          footer: state.scanning
+              ? 'Checking backed-up photos and videos…'
+              : state.eligibleCount == 0 &&
+                    !state.permissionDenied &&
+                    state.error == null
+              ? 'You’re all clear. No verified Auto Backup copies are ready to remove.'
+              : 'Only local copies are removed. iOS asks you to confirm before anything leaves Photos, and your backups stay in Telegram.',
+          children: [
+            IosRow(
+              title: 'Ready to Remove',
+              value: state.scanning
+                  ? null
+                  : formatStorageSize(state.eligibleBytes),
+              trailing: state.scanning
+                  ? const CupertinoActivityIndicator()
+                  : null,
+            ),
+            if (state.eligibleCount == 0 && !state.deleting)
+              IosRow(
+                title: state.scanning ? 'Checking Photos…' : 'Check Again',
+                action: true,
+                enabled: !busy,
+                trailing: const SizedBox.shrink(),
+                onTap: busy ? null : () => controller.scan(),
+              ),
+          ],
         ),
-        const SizedBox(height: 28),
         if (state.permissionDenied)
           IosGroup(
             children: [
               IosRow(
-                title: 'Photo access needed',
+                title: 'Photo Access Needed',
                 subtitle: 'Allow access to find backed-up photos and videos.',
                 icon: CupertinoIcons.photo,
                 onTap: () => controller.scan(),
@@ -77,17 +94,13 @@ extension _IosFreeUpSpace on _FreeUpSpaceScreenState {
           IosGroup(
             children: [
               IosRow(
-                title: 'Couldn’t verify cloud copies',
+                title: 'Couldn’t Verify Cloud Copies',
                 subtitle: state.error,
                 icon: CupertinoIcons.exclamationmark_triangle,
                 color: CupertinoColors.systemOrange,
                 onTap: () => controller.scan(),
               ),
             ],
-          )
-        else if (!state.scanning && state.eligibleCount == 0)
-          const IosNote(
-            'You’re all clear. No verified Auto Backup copies are ready to remove.',
           ),
         if (state.limitedAccess)
           const IosNote(
@@ -100,34 +113,16 @@ extension _IosFreeUpSpace on _FreeUpSpaceScreenState {
             IosRow(
               title: 'Photos',
               subtitle: '${state.photoCount} items',
-              value: formatFileSize(state.photoBytes),
+              value: formatStorageSize(state.photoBytes),
               icon: CupertinoIcons.photo_fill,
               color: IosTint.photos,
             ),
             IosRow(
               title: 'Videos',
               subtitle: '${state.videoCount} items',
-              value: formatFileSize(state.videoBytes),
+              value: formatStorageSize(state.videoBytes),
               icon: CupertinoIcons.videocam_fill,
               color: IosTint.videos,
-            ),
-          ],
-        ),
-        const IosGroup(
-          title: 'What Happens Next',
-          children: [
-            IosRow(
-              title: 'Only local copies are removed',
-              subtitle:
-                  'Your verified backups stay in Telegram. You can view or download them again in TeleDrive.',
-              icon: CupertinoIcons.cloud_fill,
-            ),
-            IosRow(
-              title: 'You stay in control',
-              subtitle:
-                  'iOS asks you to confirm removal from Photos. Cancel to keep everything on this iPhone.',
-              icon: CupertinoIcons.hand_raised_fill,
-              color: IosTint.privacy,
             ),
           ],
         ),
@@ -135,27 +130,27 @@ extension _IosFreeUpSpace on _FreeUpSpaceScreenState {
           title: 'Items Kept on This iPhone',
           children: [
             IosRow(
-              title: 'Not backed up',
+              title: 'Not Backed Up',
               value: '${state.skippedNotBackedUp}',
             ),
             IosRow(
-              title: 'Manual uploads',
+              title: 'Manual Uploads',
               value: '${state.skippedManualUpload}',
             ),
             IosRow(
-              title: 'Cloud copy unavailable',
+              title: 'Cloud Copy Unavailable',
               value: '${state.skippedRemoteMissing}',
             ),
             IosRow(
-              title: 'Still uploading',
+              title: 'Still Uploading',
               value: '${state.skippedCurrentlyUploading}',
             ),
             IosRow(
-              title: 'Already cleaned',
+              title: 'Already Cleaned',
               value: '${state.skippedAlreadyCleaned}',
             ),
             IosRow(
-              title: 'Unavailable local items',
+              title: 'Unavailable Local Items',
               value: '${state.skippedUnsupportedUri + state.skippedPathOnly}',
             ),
           ],

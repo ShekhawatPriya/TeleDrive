@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/navigation/root_navigator.dart';
@@ -148,14 +149,15 @@ class _PremiumToastOverlayState extends State<_PremiumToastOverlay>
   @override
   void initState() {
     super.initState();
+    final ios = defaultTargetPlatform == TargetPlatform.iOS;
     _controller = AnimationController(
       vsync: this,
-      duration: AppDurations.medium2,
+      duration: ios ? AppDurations.long1 : AppDurations.medium2,
       reverseDuration: AppDurations.short4,
     );
     final curved = CurvedAnimation(
       parent: _controller,
-      curve: AppEasing.emphasizedDecelerate,
+      curve: ios ? AdaptiveEasing.iosSpring : AppEasing.emphasizedDecelerate,
       reverseCurve: AppEasing.emphasizedAccelerate,
     );
     _opacity = curved;

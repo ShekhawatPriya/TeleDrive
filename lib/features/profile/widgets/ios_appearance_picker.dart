@@ -17,32 +17,17 @@ class IosAppearancePicker extends StatelessWidget {
     footer:
         'System automatically matches your iPhone’s Light or Dark appearance.',
     children: [
+      // A pick-one list: plain rows and one checkmark, no icon tiles, as in
+      // the system's own choice lists.
       for (final option in const [
-        (
-          ThemeMode.light,
-          'Light',
-          CupertinoIcons.sun_max_fill,
-          CupertinoColors.systemOrange,
-        ),
-        (
-          ThemeMode.dark,
-          'Dark',
-          CupertinoIcons.moon_fill,
-          CupertinoColors.systemIndigo,
-        ),
-        (
-          ThemeMode.system,
-          'System',
-          CupertinoIcons.circle_lefthalf_fill,
-          CupertinoColors.systemGrey,
-        ),
+        (ThemeMode.light, 'Light'),
+        (ThemeMode.dark, 'Dark'),
+        (ThemeMode.system, 'System'),
       ])
         Semantics(
           selected: mode == option.$1,
           child: IosRow(
             title: option.$2,
-            icon: option.$3,
-            color: option.$4,
             onTap: () => onChanged(option.$1),
             trailing: SizedBox(
               width: 24,

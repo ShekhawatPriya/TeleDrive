@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'drive_item_actions.dart';
 import '../../../models/drive_models.dart';
 import '../../auth/auth_controller.dart';
+import '../../../core/utils/app_haptics.dart';
 
 /// Mixin for screens that support a multi-select mode. Tracks
 /// [selectMode] plus the file and folder id sets and exposes helpers for
@@ -66,12 +67,14 @@ mixin SelectionModeMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   });
 
   void toggleFileSelection(String id) {
+    AppHaptics.selection();
     setState(() {
       if (!selectedFileIds.add(id)) selectedFileIds.remove(id);
     });
   }
 
   void toggleFolderSelection(String id) {
+    AppHaptics.selection();
     setState(() {
       if (!selectedFolderIds.add(id)) selectedFolderIds.remove(id);
     });
