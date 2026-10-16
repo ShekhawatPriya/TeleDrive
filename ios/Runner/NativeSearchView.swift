@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import UniformTypeIdentifiers
 
 final class NativeSearchFactory: NSObject, FlutterPlatformViewFactory {
   private let messenger: FlutterBinaryMessenger
@@ -263,4 +264,85 @@ final class UploadSourceChooser: NSObject, UIAdaptivePresentationControllerDeleg
   }
   private func finish(_ value: String?) { let callback = pending; pending = nil; callback?(value) }
   func presentationControllerDidDismiss(_ presentationController: UIPresentationController) { finish(nil) }
+}
+
+/// Document picker for uploads. Every pick is copied into its own
+/// `tmp/teledrive-upload-inputs/<UUID>/` folder, so two picks of one document,
+/// or two documents with the same name, never share or overwrite an input.
+/// (file_picker copies to `tmp/<file name>`, and each upload deletes its input
+/// when it settles.)
+final class UploadDocumentPicker: NSObject, UIDocumentPickerDelegate,
+  UIAdaptivePresentationControllerDelegate {
+  private var pending: FlutterResult?
+  private var picker: UIDocumentPickerViewController?
+
+  func show(result: @escaping FlutterResult) {
+    guard pending == nil else {
+      result(FlutterError(code: "busy", message: "A picker is already open", details: nil)); return
+    }
+    guard let window = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene })
+      .flatMap({ $0.windows }).first(where: { $0.isKeyWindow }),
+      var presenter = window.rootViewController else { result(nil); return }
+    while let presented = presenter.presentedViewController { presenter = presented }
+    pending = result
+    let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
+    picker.allowsMultipleSelection = true
+    picker.delegate = self
+    self.picker = picker
+    presenter.present(picker, animated: true) {
+      picker.presentationController?.delegate = self
+    }
+  }
+
+  func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+    DispatchQueue.global(qos: .userInitiated).async {
+      let files = Self.stage(urls)
+      DispatchQueue.main.async { self.finish(files) }
+    }
+  }
+
+  func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) { finish(nil) }
+  func presentationControllerDidDismiss(_ presentationController: UIPresentationController) { finish(nil) }
+
+  private func finish(_ value: Any?) {
+    let callback = pending
+    pending = nil
+    picker = nil
+    callback?(value)
+  }
+
+  /// Moves each picked copy into a unique folder. A source returned more than
+  /// once is copied for its earlier occurrences and moved for the last one.
+  private static func stage(_ urls: [URL]) -> [[String: Any]] {
+    let fileManager = FileManager.default
+    let root = URL(fileURLWithPath: NSTemporaryDirectory())
+      .appendingPathComponent("teledrive-upload-inputs", isDirectory: true)
+    let sources = urls.map { $0.standardizedFileURL.path }
+    var files: [[String: Any]] = []
+    for (index, url) in urls.enumerated() {
+      let scoped = url.startAccessingSecurityScopedResource()
+      defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+      let name = url.lastPathComponent
+      let folder = root.appendingPathComponent(UUID().uuidString, isDirectory: true)
+      let destination = folder.appendingPathComponent(name)
+      do {
+        try fileManager.createDirectory(at: folder, withIntermediateDirectories: true)
+        if sources[(index + 1)...].contains(sources[index]) {
+          try fileManager.copyItem(at: url, to: destination)
+        } else {
+          do { try fileManager.moveItem(at: url, to: destination) }
+          catch { try fileManager.copyItem(at: url, to: destination) }
+        }
+        let size = (try? destination.resourceValues(forKeys: [.fileSizeKey]))?.fileSize
+        var entry: [String: Any] = ["path": destination.path, "name": name]
+        if let size = size { entry["size"] = size }
+        files.append(entry)
+      } catch {
+        try? fileManager.removeItem(at: folder)
+        // Dart reports an inaccessible pick rather than silently dropping it.
+        files.append(["path": "", "name": name])
+      }
+    }
+    return files
+  }
 }

@@ -8,6 +8,7 @@ import UserNotifications
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private let tdlibBridge = TdlibBridge()
   private let uploadSourceChooser = UploadSourceChooser()
+  private let uploadDocumentPicker = UploadDocumentPicker()
   private let mediaChannelHandler = MediaChannelHandler()
   private var accessibilityPreferences: AccessibilityPreferences?
   private(set) var transferLiveActivity: TransferLiveActivityBridge?
@@ -46,6 +47,7 @@ import UserNotifications
     FlutterMethodChannel(name: "teledrive/appearance", binaryMessenger: messenger)
       .setMethodCallHandler { call, result in
         if call.method == "chooseUploadSource" { self.uploadSourceChooser.show(call.arguments, result: result) }
+        else if call.method == "pickDocuments" { self.uploadDocumentPicker.show(result: result) }
         else if call.method == "dismissKeyboard" {
           UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
             .flatMap { $0.windows }.forEach { $0.endEditing(true) }

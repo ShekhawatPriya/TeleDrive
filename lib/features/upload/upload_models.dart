@@ -111,6 +111,7 @@ class UploadItem {
 
   UploadItem copyWith({
     String? name,
+    String? path,
     String? uploadClientId,
     UploadStatus? status,
     double? httpProgress,
@@ -143,7 +144,7 @@ class UploadItem {
       name: name ?? this.name,
       size: size,
       mimeType: mimeType,
-      path: path,
+      path: path ?? this.path,
       status: status ?? this.status,
       clientSource: clientSource ?? this.clientSource,
       deleteLocalOnComplete:
