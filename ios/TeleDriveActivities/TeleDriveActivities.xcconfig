@@ -1,0 +1,3 @@
+// Version and build number must match Runner's; both come from the Flutter
+// tool's generated settings. Deliberately excludes the Runner Pods config.
+#include "../Flutter/Generated.xcconfig"

@@ -14,6 +14,13 @@ extension UploadSummaryPresentation on UploadSummary {
     return 'Uploading $itemCount ${itemCount == 1 ? 'file' : 'files'}';
   }
 
+  /// Short title for the iOS status capsule, which stays one line at
+  /// default text sizes; failures and cancellations name the count.
+  String get capsuleTitle {
+    if (!needsAttention) return statusTitle;
+    return '$failedCount ${failedCount == 1 ? 'file' : 'files'} not uploaded';
+  }
+
   String get countLabel => '$uploadedCount of $itemCount uploaded';
 
   String get detailLabel {

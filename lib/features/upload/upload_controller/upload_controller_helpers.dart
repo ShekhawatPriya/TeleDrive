@@ -132,6 +132,7 @@ extension _UploadControllerHelpers on UploadController {
 
   void _handleSettingsChanged() {
     if (_settings.state.uploadOnMobileData) _resumeWaitingUploads();
+    _syncLiveActivity();
   }
 
   void _resumeWaitingUploads() {
@@ -149,9 +150,7 @@ extension _UploadControllerHelpers on UploadController {
 
   Future<void> _notifyUploadSettledIfNeeded() async {
     final sessionId = uploadSessionId;
-    if (sessionId == null || _notifiedSessionId == sessionId || items.isEmpty) {
-      return;
-    }
+    if (sessionId == null || items.isEmpty) return;
     final settled = items.every(
       (i) =>
           i.status == UploadStatus.uploaded ||
@@ -159,17 +158,60 @@ extension _UploadControllerHelpers on UploadController {
           i.status == UploadStatus.cancelled,
     );
     if (!settled) return;
+    // A retried session settles again: its Live Activity still has to end,
+    // but haptics and alerts belong to the first outcome only.
+    final firstOutcome = _notifiedSessionId != sessionId;
     _notifiedSessionId = sessionId;
     final failed = failedCount;
     // Feedback only for uploads the user started, not background backup.
-    if (items.any((i) => i.backupFingerprint == null)) {
+    if (firstOutcome && items.any((i) => i.backupFingerprint == null)) {
       failed > 0 ? AppHaptics.error() : AppHaptics.success();
     }
-    if (failed > 0 && _settings.state.uploadFailedAlerts) {
+    final failedAlert =
+        firstOutcome && failed > 0 && _settings.state.uploadFailedAlerts;
+    final completedAlert =
+        firstOutcome && failed == 0 && _settings.state.uploadCompletedAlerts;
+    final snapshot = uploadActivitySnapshot(items);
+    // A running Live Activity reports the outcome itself, carrying the alert
+    // so the person is not notified twice (HIG).
+    final alertDelivered =
+        snapshot != null &&
+        _liveActivity.isTracking(sessionId) &&
+        await _liveActivity.finish(
+          sessionId: sessionId,
+          snapshot: snapshot,
+          foreground: _notifications.isForeground,
+          alert: failedAlert || completedAlert
+              ? _liveActivityAlert(snapshot)
+              : null,
+        );
+    if (alertDelivered) return;
+    if (failedAlert) {
       await _notifications.showUploadFailed(failed: failed);
-    } else if (failed == 0 && _settings.state.uploadCompletedAlerts) {
+    } else if (completedAlert) {
       await _notifications.showUploadComplete(total: items.length, failed: 0);
     }
+  }
+
+  TransferActivityAlert _liveActivityAlert(TransferActivitySnapshot outcome) {
+    final total = outcome.totalCount;
+    final noun = total == 1 ? 'file' : 'files';
+    return switch (outcome.phase) {
+      TransferActivityPhase.completed => (
+        title: 'Upload complete',
+        body: '$total $noun uploaded successfully.',
+      ),
+      TransferActivityPhase.partial => (
+        title: 'Upload finished',
+        body:
+            '${outcome.completedCount} uploaded, ${outcome.failedCount} failed.',
+      ),
+      _ => (
+        title: 'Upload failed',
+        body:
+            '${outcome.failedCount} ${outcome.failedCount == 1 ? 'file' : 'files'} could not be uploaded.',
+      ),
+    };
   }
 
   void _notifyListeners({bool force = false}) {

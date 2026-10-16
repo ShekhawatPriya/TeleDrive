@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/notifications/transfer_live_activity_service.dart';
 import '../../core/notifications/upload_notification_service.dart';
 import '../../core/network/api_client.dart';
 import '../../core/config/app_config.dart';
@@ -21,6 +22,7 @@ import '../auth/auth_controller.dart';
 import '../drive/drive_controller.dart';
 import '../profile/app_settings_controller.dart';
 import '../profile/gallery_backup_asset_store.dart';
+import 'upload_live_activity.dart';
 import 'upload_models.dart';
 import 'upload_picker_helper.dart';
 import '../../core/utils/file_type_detector.dart';
@@ -45,6 +47,7 @@ final uploadControllerProvider = ChangeNotifierProvider<UploadController>((
     ref.read(uploadNotificationServiceProvider),
     ref.read(authControllerProvider),
     ref.read(telegramTransferServiceProvider),
+    liveActivity: ref.read(transferLiveActivityServiceProvider),
   );
 });
 
@@ -55,8 +58,9 @@ class UploadController extends ChangeNotifier {
     this._settings,
     this._notifications,
     this._auth,
-    this._telegram,
-  ) {
+    this._telegram, {
+    TransferLiveActivityService? liveActivity,
+  }) : _liveActivity = liveActivity ?? TransferLiveActivityService.disabled {
     _settings.addListener(_handleSettingsChanged);
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
       _handleConnectivityChanged,
@@ -71,6 +75,7 @@ class UploadController extends ChangeNotifier {
   final UploadNotificationService _notifications;
   final AuthController _auth;
   final TelegramTransferService _telegram;
+  final TransferLiveActivityService _liveActivity;
   final ClientDerivativeGenerator _derivatives =
       const ClientDerivativeGenerator();
   final PendingTelegramCommitQueue _pendingCommits =
@@ -90,6 +95,16 @@ class UploadController extends ChangeNotifier {
 
   void _emitChange() {
     notifyListeners();
+    _syncLiveActivity();
+  }
+
+  /// Mirrors the queue to the iOS Live Activity; inert elsewhere.
+  void _syncLiveActivity() {
+    _liveActivity.sync(
+      sessionId: uploadSessionId,
+      snapshot: _disposed ? null : uploadActivitySnapshot(items),
+      enabled: _settings.state.transferLiveActivities,
+    );
   }
 
   String? uploadSessionId;
@@ -220,6 +235,7 @@ class UploadController extends ChangeNotifier {
     _connectivitySubscription?.cancel();
     _cancelCompletionTimers();
     _optimisticSyncTimer?.cancel();
+    _syncLiveActivity();
     super.dispose();
   }
 }

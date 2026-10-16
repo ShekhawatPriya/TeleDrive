@@ -10,6 +10,7 @@ import UserNotifications
   private let uploadSourceChooser = UploadSourceChooser()
   private let mediaChannelHandler = MediaChannelHandler()
   private var accessibilityPreferences: AccessibilityPreferences?
+  private(set) var transferLiveActivity: TransferLiveActivityBridge?
 
   override func application(
     _ application: UIApplication,
@@ -68,6 +69,8 @@ import UserNotifications
       }
     FlutterEventChannel(name: "teledrive/tdlib/events", binaryMessenger: messenger)
       .setStreamHandler(tdlibBridge)
+
+    transferLiveActivity = TransferLiveActivityBridge(messenger: messenger)
 
     let mediaChannelHandler = self.mediaChannelHandler
     FlutterMethodChannel(name: "teledrive/media", binaryMessenger: messenger)

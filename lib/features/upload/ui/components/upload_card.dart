@@ -10,6 +10,7 @@ import '../../upload_controller.dart';
 import '../../upload_models.dart';
 import '../upload_status_label.dart';
 import 'upload_progress_bar.dart';
+import 'upload_status_ring.dart';
 import 'upload_thumb_slot.dart';
 
 /// Compact transfer row; item subscriptions keep progress updates local.
@@ -46,6 +47,16 @@ class UploadCard extends ConsumerWidget {
             }.contains(detectFileKind(item.name, item.mimeType))
         ? 'Uploaded · Finishing preview'
         : uploadStatusLabel(item.status);
+    if (ios) {
+      return _IosUploadRow(
+        item: item,
+        status: status,
+        preparing: preparing,
+        onCancel: () => ref.read(uploadControllerProvider).cancelItem(localId),
+        onDismiss: () =>
+            ref.read(uploadControllerProvider).removeFailed(localId),
+      );
+    }
 
     Widget action({
       required String label,
@@ -224,6 +235,163 @@ class UploadCard extends ConsumerWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// iOS row inside the panel's inset files card: thumbnail, name, a quiet
+/// status line (percentage while uploading), a hairline tinted bar, and one
+/// trailing state mark — green check, circular cancel or dismiss.
+class _IosUploadRow extends StatelessWidget {
+  const _IosUploadRow({
+    required this.item,
+    required this.status,
+    required this.preparing,
+    required this.onCancel,
+    required this.onDismiss,
+  });
+
+  final UploadItem item;
+  final String status;
+  final bool preparing;
+  final VoidCallback onCancel;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final largeText = MediaQuery.textScalerOf(context).scale(17) > 24;
+    final active = uploadIsActive(item.status);
+    final uploaded = item.status == UploadStatus.uploaded;
+    final failed = item.status == UploadStatus.failed;
+    final cancelled = item.status == UploadStatus.cancelled;
+    final blue = CupertinoDynamicColor.resolve(IosTint.uploads, context);
+    final red = CupertinoDynamicColor.resolve(
+      CupertinoColors.systemRed,
+      context,
+    );
+    final green = CupertinoDynamicColor.resolve(
+      CupertinoColors.systemGreen,
+      context,
+    );
+    final uploading = active && !preparing;
+    final line = uploading
+        ? '${formatFileSize(item.size)} · '
+              '${(item.progress.clamp(0, 1) * 100).floor()}%'
+        : '${formatFileSize(item.size)} · $status';
+
+    Widget circleButton(String label, VoidCallback onPressed) => Semantics(
+      label: '$label ${item.name}',
+      button: true,
+      child: Tooltip(
+        message: label,
+        excludeFromSemantics: true,
+        child: CupertinoButton(
+          padding: EdgeInsets.zero,
+          minimumSize: const Size.square(48),
+          onPressed: onPressed,
+          child: Icon(
+            CupertinoIcons.xmark_circle_fill,
+            size: 24,
+            color: scheme.onSurfaceVariant.withValues(alpha: .55),
+          ),
+        ),
+      ),
+    );
+
+    final Widget trailing;
+    if (uploaded) {
+      trailing = SizedBox.square(
+        dimension: 48,
+        child: Icon(
+          CupertinoIcons.checkmark_circle_fill,
+          size: 24,
+          color: green,
+          semanticLabel: 'Uploaded',
+        ),
+      );
+    } else if (failed || cancelled) {
+      trailing = circleButton('Dismiss', onDismiss);
+    } else if (item.status == UploadStatus.cancelling) {
+      trailing = SizedBox.square(
+        dimension: 48,
+        child: MediaQuery.disableAnimationsOf(context)
+            ? const Icon(CupertinoIcons.ellipsis, size: 20)
+            : const CupertinoActivityIndicator(radius: 8),
+      );
+    } else {
+      trailing = circleButton('Cancel', onCancel);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 4, 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          UploadThumbSlot(item: item, size: 40),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  item.name,
+                  maxLines: largeText ? 2 : 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 16,
+                    height: 1.25,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: -0.3,
+                    color: scheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  line,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.25,
+                    letterSpacing: -0.08,
+                    color: failed ? red : scheme.onSurfaceVariant,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                if (active) ...[
+                  const SizedBox(height: 8),
+                  preparing
+                      ? UploadProgressBar(
+                          value: item.progress,
+                          height: 3,
+                          indeterminate: true,
+                        )
+                      : UploadTintBar(
+                          value: item.progress,
+                          tint: blue,
+                          height: 3,
+                        ),
+                ],
+                if (failed && item.error != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    item.error!,
+                    maxLines: largeText ? 4 : 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.25,
+                      color: red.withValues(alpha: .85),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 4),
+          trailing,
         ],
       ),
     );

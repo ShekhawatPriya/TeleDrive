@@ -30,6 +30,7 @@ class AppSettingsState {
     this.clearCacheOnSignOut = true,
     this.uploadCompletedAlerts = false,
     this.uploadFailedAlerts = false,
+    this.transferLiveActivities = true,
     this.galleryBackupEnabled = false,
     this.galleryBackupWifiOnly = true,
     this.galleryBackupScanLimit = 80,
@@ -47,6 +48,9 @@ class AppSettingsState {
   final bool clearCacheOnSignOut;
   final bool uploadCompletedAlerts;
   final bool uploadFailedAlerts;
+
+  /// iOS Lock Screen and Dynamic Island progress for uploads and backup.
+  final bool transferLiveActivities;
   final bool galleryBackupEnabled;
   final bool galleryBackupWifiOnly;
   final int galleryBackupScanLimit;
@@ -63,6 +67,7 @@ class AppSettingsState {
     bool? clearCacheOnSignOut,
     bool? uploadCompletedAlerts,
     bool? uploadFailedAlerts,
+    bool? transferLiveActivities,
     bool? galleryBackupEnabled,
     bool? galleryBackupWifiOnly,
     int? galleryBackupScanLimit,
@@ -81,6 +86,8 @@ class AppSettingsState {
       uploadCompletedAlerts:
           uploadCompletedAlerts ?? this.uploadCompletedAlerts,
       uploadFailedAlerts: uploadFailedAlerts ?? this.uploadFailedAlerts,
+      transferLiveActivities:
+          transferLiveActivities ?? this.transferLiveActivities,
       galleryBackupEnabled: galleryBackupEnabled ?? this.galleryBackupEnabled,
       galleryBackupWifiOnly:
           galleryBackupWifiOnly ?? this.galleryBackupWifiOnly,
@@ -109,6 +116,7 @@ class AppSettingsController extends ChangeNotifier {
   static const _clearCacheSignOutKey = 'settings_clear_cache_sign_out';
   static const _uploadCompleteAlertsKey = 'settings_upload_complete_alerts';
   static const _uploadFailedAlertsKey = 'settings_upload_failed_alerts';
+  static const _transferLiveActivitiesKey = 'settings_transfer_live_activities';
   static const _galleryBackupEnabledKey = 'settings_gallery_backup_enabled';
   static const _galleryBackupWifiOnlyKey = 'settings_gallery_backup_wifi_only';
   static const _galleryBackupScanLimitKey = 'settings_gallery_scan_limit';
@@ -129,6 +137,7 @@ class AppSettingsController extends ChangeNotifier {
       clearCacheOnSignOut: prefs.getBool(_clearCacheSignOutKey) ?? true,
       uploadCompletedAlerts: prefs.getBool(_uploadCompleteAlertsKey) ?? false,
       uploadFailedAlerts: prefs.getBool(_uploadFailedAlertsKey) ?? false,
+      transferLiveActivities: prefs.getBool(_transferLiveActivitiesKey) ?? true,
       galleryBackupEnabled: prefs.getBool(_galleryBackupEnabledKey) ?? false,
       galleryBackupWifiOnly: prefs.getBool(_galleryBackupWifiOnlyKey) ?? true,
       galleryBackupScanLimit: _boundedInt(
@@ -174,6 +183,11 @@ class AppSettingsController extends ChangeNotifier {
 
   Future<void> setUploadFailedAlerts(bool value) =>
       _set(_uploadFailedAlertsKey, state.copyWith(uploadFailedAlerts: value));
+
+  Future<void> setTransferLiveActivities(bool value) => _set(
+    _transferLiveActivitiesKey,
+    state.copyWith(transferLiveActivities: value),
+  );
 
   Future<void> setGalleryBackupEnabled(bool value) => _set(
     _galleryBackupEnabledKey,
@@ -223,6 +237,8 @@ class AppSettingsController extends ChangeNotifier {
         await prefs.setBool(key, next.uploadCompletedAlerts);
       case _uploadFailedAlertsKey:
         await prefs.setBool(key, next.uploadFailedAlerts);
+      case _transferLiveActivitiesKey:
+        await prefs.setBool(key, next.transferLiveActivities);
       case _galleryBackupEnabledKey:
         await prefs.setBool(key, next.galleryBackupEnabled);
       case _galleryBackupWifiOnlyKey:
