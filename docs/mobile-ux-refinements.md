@@ -5,10 +5,19 @@
 - **Upload:** iOS Add to Drive says Upload, then presents a UIKit action sheet
   offering Upload from Photos and Upload from Files. The installed image_picker
   plugin opens the system multi-media picker without requesting full-library
-  metadata access; file_picker opens the document browser. Android exposes
+  metadata access; the app's own UIKit document picker (`pickDocuments` on
+  `teledrive/appearance`) opens the document browser. Android exposes
   Upload Photos and Upload File as separate native picker sources. Camera,
   upload limits, identity checks, confirmations and direct-transfer code remain
   shared. A missing source bridge has a Cupertino fallback.
+- **Upload inputs:** every upload deletes its temporary input when it settles,
+  so no two queued items may share one input path. file_picker_darwin copies
+  picks to `tmp/<file name>`: picking one document twice gave both items one
+  path, and the second failed with TDLib's "Can't find real file path" after the
+  first deleted it; two same-named documents overwrote each other. The iOS
+  picker copies each pick into `tmp/teledrive-upload-inputs/<UUID>/`, and
+  `UploadPickerHelper.isolateSharedInputs` copies any path still shared within a
+  pick (other platforms, missing bridge) into per-item folders.
 - **Root folders:** keyboard insets used to remove Home's Add widget from the
   tree while its folder editor awaited a result. The unmounted-context check
   then discarded confirmation. Visibility now preserves that widget's state
