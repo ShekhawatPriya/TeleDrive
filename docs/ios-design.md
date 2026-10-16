@@ -72,23 +72,82 @@ valid; a layered Icon Composer icon is a separate artwork enhancement.
 
 The iOS `/account` route is a dedicated `CupertinoPage` with a compact `IosPage`
 header and standard Back control. It supports the Cupertino edge-back gesture.
-Destinations push above Account; Back returns to Account, preserving its scroll
-and expanded switcher state. Android retains its account sheet. Saved account
-rows include `ProfileAvatar` and keep the existing switch/remove contracts.
+Destinations push above Account; Back returns to Account, preserving its scroll.
+Saved accounts are listed in an Accounts group (current account checked, Add
+Account below) rather than behind an expanding row, and Remove This Account is
+a destructive row near the bottom. Android retains its account sheet. Saved
+account rows include `ProfileAvatar` and keep the existing switch/remove
+contracts, including the pending-upload block.
 
 `IosPage`, `IosGroup` and `IosRow` provide Cupertino large-title navigation,
 inset lists, disclosure indicators, switches and accessible wrapping text.
 Account, Settings, nested settings, Telegram Drive, My Data and Free Up Space
 have iOS-specific compositions. Android retains its existing screens.
 
-Appearance uses three full-width selection rows (Light, Dark, System), with one
-checkmark and an explanation of System mode. Each row is at least 44 points high
+Appearance uses three full-width plain selection rows (Light, Dark, System)
+without icon tiles, with one checkmark and an explanation of System mode. Each row is at least 44 points high
 and exposes selected semantics. Theme preference storage is unchanged.
 
 My Data's iOS presentation shows actual session and storage information. It does
 not present the legacy timer-driven diagnostics as a completed security audit.
 Free Up Space preserves the existing scan/delete controller and presents a
 Cupertino confirmation before the system Photos confirmation.
+
+## Settings-style page contract
+
+This section supersedes the earlier `IosPage` header descriptions above. It was
+measured from iOS 26 Settings (root, Wi-Fi, General, Mobile Service, Appearance
+and Camera) on a 402-point iPhone. Primitives live in
+`lib/widgets/ios/ios_page.dart`; `IosPageMetrics` holds the numbers.
+
+- **Root vs pushed.** Only the root tabs (Drive, Photos, Starred, Shared) use a
+  large title: `IosLargeTitleBar` (through `IosLargeTitleHeader`/`IosTabHeader`)
+  shows a 34-point bold title and the tab's search below a 44-point bar that
+  holds the glass overflow and account controls. Search tucks away first, then
+  the title, and the inline title fades into the bar. Every pushed page uses
+  `IosInlineTitleBar`: a 44-point bar below the status bar, the 44-point glass
+  Back at the 16-point margin, a centered 17-point semibold title and optional
+  trailing glass actions. This covers folders; Archive, Locked and Trash;
+  Account; Settings and its subpages; Telegram Drive; My Data; Free Up Space;
+  Share; About; and What's New (`IosPage(compact: true)` uses the same sliver).
+  Legal, App Update, the Telegram session setup and the file viewer use the same
+  bar through `IosNavigationBar.preferred`. Setup flows use a glass close control
+  instead of Back.
+- **Scrolling.** Content scrolls beneath both bars. At rest a bar is
+  transparent; once something is beneath it, it takes the page canvas
+  (`systemBackground` on browsing pages, the grouped background on Settings
+  pages) with a 12-point soft edge. No hairline or hard bar edge is drawn, so
+  floating glass controls never sit on a cut line. The fill is opaque, not a
+  blur, because item rows host UIKit hold views. Pull to refresh appears below
+  the bar, and the bar absorbs taps over content beneath it.
+- **Hero cards.** `IosSettingsIntro` opens a category page with a 60-point
+  continuous-corner symbol tile in the destination's `IosTint`, a 22-point bold
+  title that matches the page title, and one or two sentences of description.
+  It can end with an inline "Learn more…" link, used only where a real
+  destination exists (Privacy & Security and My Data link to the Privacy
+  Policy). Archive, Locked and Trash open with the same hero on the browsing
+  tile fill (`fill:`), carrying their Drive-tile symbol. While the hero title is
+  on screen the inline bar title stays hidden; pages wrap their scroll view in
+  `IosHeroScope` and pass `hasHero` to the bar.
+  It fades in as the hero title passes under the bar, as in Settings › General.
+  Status values and totals belong in rows, not in the hero title.
+- **Groups.** Cards are inset 16 points with 26-point continuous corners. Content
+  starts 20 points below the bar. Cards are 36 points apart, or 28 after a
+  footnote. Section headers sit outside the card in title case (17-point
+  semibold secondary, one to three words). Footnotes are 13-point secondary text
+  below the card, one or two sentences explaining the consequence of the
+  group's controls. Long explanations go in footnotes, not in rows with
+  paragraph subtitles.
+- **Rows.** Rows are at least 52 points tall and grow with text. Plain titles
+  start at 16 points; 28-point icon tiles sit at 12 points with the title at 54.
+  Avatar rows start their title at 64. Separators start where the title starts
+  and stop 16 points from the trailing edge. Row titles use title case. Values
+  are secondary 17-point text before the chevron and move under the title at
+  large text sizes.
+- **Limits.** The Flutter `CupertinoSwitch` keeps its pre-iOS 26 proportions,
+  and the bar's soft edge is not a native blur. Widget previews use portable
+  fonts. Coverage lives in `test/ios_settings_page_test.dart` (previews:
+  `ios-settings-*` with `--dart-define=WRITE_UI_PREVIEWS=true`).
 
 ## Verification
 
@@ -151,8 +210,10 @@ geometry tests cover a 402-point iPhone with and without a 260-point keyboard.
 
 ## Compact action sheets
 
-Add to Drive uses one group of three 48-point-minimum action rows, with a compact
-17-point heading and a drag indicator. Labels carry the choice; redundant
+Add to Drive is a native `UIMenu` on the floating glass + (Choose from Photos,
+Choose Files, Take Photo, New Folder). Without the bridge, and on Android, it
+uses one group of three 48-point-minimum action rows, with a compact 17-point
+heading and a drag indicator. Labels carry the choice; redundant
 promotional copy and per-action descriptions are omitted. File/folder sheets use
 a 44-point identity preview and real metadata, followed by the same grouped rows
 for frequent actions, organization, and destructive actions. Share/Star no longer
@@ -501,9 +562,9 @@ unchanged. Primitives live in `lib/widgets/ios/ios_browse.dart` and
 - **Canvas.** Browsing pages use `systemBackground` (white/black), as Files and
   Photos do; tiles use `secondarySystemBackground`. Settings-style pages keep
   the grouped background. System blue remains the only interface accent.
-- **Header.** Each tab owns a `CupertinoSliverNavigationBar` large title (Drive,
-  Starred, Shared) that collapses into the bar on scroll; the shell no longer
-  draws a fixed iOS header. The overflow glass button and avatar stay pinned.
+- **Header.** Superseded by the Settings-style page contract above: tabs own an
+  `IosLargeTitleBar` large title, and pushed pages use `IosInlineTitleBar`. The
+  shell draws no fixed iOS header. The overflow glass button and avatar stay pinned.
   Scoped search sits under the title and tucks away while browsing, but stays
   pinned while a query is shown. The bar is opaque because item rows host UIKit
   hold views a Flutter blur cannot sample; its hairline appears only once content
@@ -528,17 +589,18 @@ unchanged. Primitives live in `lib/widgets/ios/ios_browse.dart` and
   fill with a filled symbol (PDF red, documents blue, sheets green, video orange,
   audio purple, others grey) and the extension on larger tiles. Shared folders use
   the filled person-badge folder symbol without an extra link badge.
-- **Folder pages** use the same large title with glass back and overflow, ancestor
-  breadcrumbs only (the title names the current folder) and the Drive tiles.
+- **Folder pages** use the inline bar with glass back, centered title and
+  overflow and the Drive tiles. There is no breadcrumb row: holding Back opens a
+  native menu of enclosing folders and Drive, as UIKit's Back does.
 - **Starred** drops the boxed introduction and reuses Drive's Folders tiles and
   Files rows/grid under the same titles.
 - **Shared** groups links into Active and Expired or Revoked sections with counts.
   Rows use a 44-point thumbnail tile, the item identity, permission, and a status
   dot plus word (green active, orange expired, grey revoked) with view/download
   counts. Grid tiles put captions under the cover.
-- **Archive, Locked and Trash** use the large title with glass back and overflow,
-  an introduction carrying the same tinted symbol as the Drive tile, a quiet item
-  count and the Drive rows. Empty and failed loads use the content-unavailable
+- **Archive, Locked and Trash** use the inline bar with glass back and overflow,
+  a hero card carrying the same symbol as the Drive tile, a quiet item count and
+  the Drive rows. Empty and failed loads use the content-unavailable
   pattern (`IosContentUnavailable`); a failed load never shows a zero count.
 - **Empty and search states** use a secondary symbol, a short title and one line
   of guidance; Drive search shows "No Results" with the query.
@@ -556,3 +618,122 @@ scroll, and 320 points at 200% text with high contrast (previews under
 With the current Xcode, `flutter build ios --simulator` fails at
 `lipo -verify_arch`; generate config with `--config-only`, then build with
 `xcodebuild ... -sdk iphonesimulator ARCHS=arm64 ONLY_ACTIVE_ARCH=YES`.
+
+## Design-audit refinements (October 2026)
+
+A review against native iOS patterns (and the
+[awesome-ios-design-md](https://github.com/Meliwat/awesome-ios-design-md)
+reference packs) changed these contracts. The Photos featured mosaic, its
+spacing and its tile shapes are deliberately unchanged.
+
+- **Feedback.** iOS has no snackbars. `AppMessenger`/`showAppMessage`
+  (`lib/widgets/app_message.dart`) shows the app toast on iOS and keeps the
+  Material snackbar on Android. Capture `AppMessenger.of(context)` before an
+  `await`, as with `ScaffoldMessenger`. Confirmations reachable on iOS
+  (large uploads, upload in progress) use `CupertinoAlertDialog`.
+- **Haptics.** `AppHaptics` (`lib/core/utils/app_haptics.dart`) gives iOS a
+  selection tick when toggling selection, a light tap on star, a warning before
+  destructive confirmations, error feedback with error toasts, and success or
+  error when user-started uploads settle (background backup stays silent).
+  Android behavior is unchanged.
+- **File names** use `FileNameText`, which truncates in the middle and keeps
+  the extension, in iOS list rows, Recents and the icon grid. Assistive
+  technology receives the full name.
+- **Metadata** uses tabular figures (`IosBrowse.footnote`, `IosRow` values).
+  iOS file rows say "Today at 10:22" and "Yesterday" before calendar dates.
+  Storage pages show empty totals as "Zero KB" (`formatStorageSize`).
+- **Icon grid.** `IosBrowse.fileGrid` lays out at least three Files-style
+  columns: a square thumbnail, a centered two-line name and the size. Actions
+  come from the native hold menu, so grid items have no ellipsis; failed
+  uploads keep Retry and Remove.
+- **Motion.** `IosSpringCurve` (`tokens/app_motion.dart`) replaces the Material
+  entering curves on iOS for the toast, the upload controls and the upload
+  panel. The panel uses a nearly critical spring so its bottom edge never
+  lifts off the screen. Reduced motion still skips these transitions.
+- **Settings.** `IosSettingsIntro` centers its symbol, title and description.
+  Scan limits use a UIStepper-style capsule (− | +) with the value in secondary
+  text. The backup switch is labelled "Back Up This iPhone". Telegram Drive opens
+  its Summary with an iPhone Storage-style segmented bar in the same `IosTint`
+  colours as the rows below. Free Up Space pins a button only for the
+  destructive "Free Up …" step; Check Again is an action row.
+- **Share details** use grouped rows for Access, Created and Expires and a
+  Statistics group, matching Settings › General › About.
+- **Sheets.** The New Folder and Rename sheet uses a Cancel / title / Create
+  bar in title case, without a bottom button.
+- **Welcome and sign-in.** Welcome follows Apple's welcome-screen pattern:
+  centered identity, a feature list with tinted symbols and the primary action
+  pinned above the home indicator. Sign-in uses the native glass Back, plain
+  centered titles ("Your Phone Number", "Enter Code") and no arrow glyphs. The
+  code placeholder no longer implies a digit count.
+- **Not changed.** The tab bar remains an embedded `UITabBar`, so the upload
+  status is not a native tab-bar accessory. Switches remain Flutter's
+  `CupertinoSwitch` proportions.
+
+Coverage: `test/ios_audit_fixes_test.dart`, plus the updated account, login and
+modernization suites.
+
+## Item status, file opening and What's New (October 2026)
+
+- **Item status.** `lib/widgets/item_status.dart` is the single iOS
+  vocabulary: starred is `star.fill` in system yellow, shared is `link` in the
+  secondary label colour. `ItemStatusLine` leads every metadata line (file and
+  folder rows, folder tiles, Recents, the icon grid, the action-sheet header,
+  the document page and the photo Info panel). The Photos grid, which has no
+  captions, uses `ItemStatusOverlay`. Native menus (row and header ⋯, hold
+  menus, the photo viewer) show `itemStatusText` ("Starred · Shared") as the
+  `UIMenu` title. Folders always use the plain folder symbol; there are no
+  per-thumbnail star or share badges on iOS. Android is unchanged.
+- **Opening files.** On iOS, photos and videos from Drive, folders, Recents
+  and Starred open full screen in the Photos viewer, paging through the media
+  of the list they came from (`PhotoViewerSession.scopeIds`). Documents open
+  a Quick Look-style page: a centered preview, the name with its status and
+  kind, one Open action, grouped Information rows, and every other action in
+  the native ⋯ menu.
+- **What's New** follows Apple's What's New and App Store version history.
+  Superseded by the release-page contract below.
+- **Add Account** pushes sign-in without popping the iOS Account page.
+  Android's account sheet is closed synchronously first. An unawaited
+  `maybePop` used to pop the sign-in route itself, which returned to Drive.
+
+## First run, sign-in and release pages (October 2026)
+
+Reviewed against the [awesome-ios-design-md](https://github.com/Meliwat/awesome-ios-design-md)
+packs (Things 3's restraint, GitHub's semantic state pills, Telegram's
+onboarding CTA) and Apple's own welcome, setup and version-history screens.
+Previews: `flutter test test/first_run_design_test.dart
+--dart-define=WRITE_UI_PREVIEWS=true` writes `build/modernization/first-run/`
+for both themes and a 320-point phone at 200% text.
+
+- **Release pages.** A version opens with a hero card (the app icon, the
+  version or the author's title, the date, and a Latest Release or Pre-release
+  tag); the inline bar title stays hidden until the hero title scrolls under
+  it (`IosPage(hero: true)`). Each published section is an inset group with
+  its heading and a tinted symbol outside the card. Notes use the full card
+  width; nothing sits in a leading icon gutter. A bold lead such as
+  `**Photos:**` becomes a tinted tag above the note. GitHub's generated
+  "What's Changed" lines become pull-request rows (title, a purple `#12` tag
+  and the author) and "New Contributors" lines become contributor rows; both
+  open the pull request. Bare URLs elsewhere read as compact link tags (`#12`,
+  `v3.1.2 → v3.1.3`, or host and path) on both platforms. Compare Changes, View
+  on GitHub and Build & Documentation sit in a final More group. Parsing lives
+  in `release_notes.dart`; unrecognised lines fall back to plain notes.
+- **Welcome** shows the installed app icon (not the generic cloud mark), a
+  34-point title, the three features as one inset group of Settings-style
+  rows, and Continue with Telegram pinned above the home indicator, with the
+  storage explanation and Privacy Policy · Terms · Source Code beneath it. At
+  large text sizes the actions scroll with the page instead.
+- **Sign-in** starts at the top of the page: a solid 64-point symbol tile, a
+  plain title and one line, the fields as one inset group with a footnote, and
+  the primary action pinned above the keyboard. Reauthentication says "Sign In
+  Again", names the account and fills in its saved number. Errors are inline
+  system-red text, not a filled banner.
+- **Device setup** (`/tdlib-session`) uses a progress ring, the five setup
+  steps as one inset group (done, in progress, waiting, failed), the live
+  status on the current step with the code countdown, and the available
+  actions pinned at the bottom. The manual-code prompt is a
+  `CupertinoActionSheet`. Android keeps its Material card.
+- **Community setup** shows Telegram and TeleDrive joined by a green check,
+  "You're Connected", the community destinations and the transparency promise
+  as inset groups, and Continue pinned at the bottom.
+- Display titles on these screens cap text scaling at 135% so words never
+  break mid-word; body text scales fully.
