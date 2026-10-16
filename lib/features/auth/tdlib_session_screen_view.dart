@@ -2,10 +2,12 @@ part of 'tdlib_session_screen.dart';
 
 extension _TdlibSessionScreenView on _TdlibSessionScreenState {
   String _appBarTitle() {
+    final ios = Theme.of(context).platform == TargetPlatform.iOS;
     return switch (_resolvedSource) {
-      PendingTdlibMode.addAccount => 'Add account',
-      PendingTdlibMode.reauthenticateAccount => 'Reconnect account',
-      PendingTdlibMode.normalLogin => 'Set up account',
+      PendingTdlibMode.addAccount => ios ? 'Add Account' : 'Add account',
+      PendingTdlibMode.reauthenticateAccount =>
+        ios ? 'Reconnect Account' : 'Reconnect account',
+      PendingTdlibMode.normalLogin => ios ? 'Set Up Account' : 'Set up account',
     };
   }
 
