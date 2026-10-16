@@ -271,6 +271,10 @@ at every expansion. Android and standalone screens keep the scaffold sheet;
 home-indicator clearance is inside the surface when navigation is absent.
 The collapsed upload/Add controls hide while details are open and return when minimized; the queue is preserved.
 
+Outside the app, the same session appears as a Live Activity on the Lock
+Screen and in the Dynamic Island. Tapping it reopens this panel. See
+[live-activities.md](live-activities.md).
+
 One or two uploads open at the measured height of the header, actions and rows,
 including wrapped text and errors. Larger queues retain the spacious opening
 and lazy list. All sizes can expand to the large detent, scroll when constrained,
@@ -302,6 +306,28 @@ resize the panel, and switch tabs while expanded. Native captures are generated
 under `build/modernization/upload-native-*.png`. This is fixture-based simulator
 verification, not a live transfer check on the physical iOS 27 device.
 
+The iOS panel is a grouped page: secondary grouped background, with white
+cards in light mode and `#2C2C2E` cards in dark. Under a centered 17-point
+"Uploads" title and a 30-point circular minimize control (44-point target),
+one **summary card** uses the Live Activity's language:
+
+- a 56-point status ring;
+- a 20-point title with the count and total size;
+- a large tinted percentage, or once settled, the size saved or "N failed";
+- a 6-point tinted bar.
+
+The panel's actions live in this card as full-width tinted capsules: **Use
+Mobile Data** while waiting, and **Retry Failed** whenever something failed.
+Both appear when both apply. Retry is no longer repeated under every failed
+row. A "N FILES" section label precedes an inset files card.
+
+Each row has a 40-point thumbnail, a 16-point name, and a status line ("3.0 MB
+· 41%" while uploading). Below that sits a 3-point tinted bar, or a two-line
+red error for failures. The row ends in one trailing mark: a green check
+circle, or a circular cancel or dismiss control (48-point target). Dividers
+align with the filename and run to the card's edge. At accessibility sizes
+the summary card stacks its ring above the text.
+
 Files use 40-point thumbnails, unboxed rows, inset hairline dividers, quiet
 completion marks, and thin progress lines aligned to the filename. Available
 local photos render during upload with a bounded decode and a file-type fallback.
@@ -311,8 +337,29 @@ keeps the controller's existing batch-retry behavior. Android retains Material
 surfaces and interaction feedback.
 
 The floating upload control pairs a small progress ring with a status and actual
-completed-file count. It shares the Add control's neutral surface, without an
-oversized cloud badge or a second edge-to-edge progress bar. The expanded view
+completed-file count, without an oversized cloud badge or a second edge-to-edge
+progress bar.
+
+On iOS it is a 60-point capsule that matches the Add button's height and sits
+on the same floating glass as other floating controls. In dark mode a faint
+white lift keeps it visible against black. Its anatomy follows Apple's
+floating mini-player and the reference card in `rit3zh/expo-dynamic-notifications`:
+
+- a 44-point tinted disc: a progress ring with an arrow while uploading, or a
+  solid check, Wi-Fi, or exclamation glyph;
+- a one-line semibold title, such as "1 file not uploaded" (the panel keeps
+  the fuller "Uploads need attention");
+- a secondary count;
+- one trailing accent: a tabular percentage while uploading, or **Review**
+  when something failed.
+
+Colors match the Live Activity (blue, green, orange or red, gray). The capsule
+grows out of **+** with a spring and scales to 0.96 while pressed. Tapping it,
+or dragging it upward at least 22 points or with a fling, expands it into the
+upload panel; a short downward drag springs back. At accessibility text sizes
+the disc moves above the text and the percentage joins the second line, so
+words never break mid-word. Reduced motion removes the spring, scale, and ring
+animation. Android keeps its Material surface. The expanded view
 shows total size; phase-weighted progress is not labeled as bytes transferred.
 Both presentations derive their status from the same summary. Reduced motion
 stops preparation/preview spinners and presentation transitions.

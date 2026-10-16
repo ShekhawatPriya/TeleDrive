@@ -467,6 +467,43 @@ Widget _iosNotifications(
           _iosToggle('Upload Failed', settings.uploadFailedAlerts, onFailed),
         ],
       ),
+      _IosLiveActivitySettings(
+        enabled: settings.transferLiveActivities,
+        onChanged: ref
+            .read(appSettingsControllerProvider)
+            .setTransferLiveActivities,
+      ),
     ],
   );
+}
+
+/// Shown only where ActivityKit exists (iOS 16.2 and later).
+class _IosLiveActivitySettings extends ConsumerWidget {
+  const _IosLiveActivitySettings({
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final service = ref.watch(transferLiveActivityServiceProvider);
+    return FutureBuilder<bool>(
+      future: service.isSupported,
+      initialData: service.knownSupported,
+      builder: (context, supported) => supported.data != true
+          ? const SizedBox.shrink()
+          : IosGroup(
+              title: 'Live Activities',
+              footer:
+                  'Shows upload and photo backup progress on the Lock Screen '
+                  'and in the Dynamic Island. Touch and hold the Dynamic '
+                  'Island to see details. Live Activities must also be '
+                  'allowed for TeleDrive in your iPhone’s Settings.',
+              children: [_iosToggle('Upload Progress', enabled, onChanged)],
+            ),
+    );
+  }
 }

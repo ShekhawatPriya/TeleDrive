@@ -7,12 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A12020261006000200000001 /* PhotosLibraryControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12020261006000200000002 /* PhotosLibraryControlsView.swift */; };
-        A12020261006000100000001 /* PhotoVideoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12020261006000100000002 /* PhotoVideoView.swift */; };
-		A12020260920000100000001 /* NativeSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12020260920000100000002 /* NativeSearchView.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		304EB23B93B4A16DFA31B113 /* TransferLiveActivityBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60BD376438DDC538B6097773 /* TransferLiveActivityBridge.swift */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
+		33E746E052552556886857A1 /* TeleDriveActivities.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 75442893F25244A1084A1013 /* TeleDriveActivities.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		5D019C7E2FAAE38B0015627F /* TransferActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7489DC89601E17F0D523DB03 /* TransferActivityAttributes.swift */; };
+		69D98E345551DA48726A8A24 /* TransferPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 689380F131531988EA01DDE3 /* TransferPresentation.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
@@ -20,7 +21,13 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		9D271A8EDED8C26F5DA00601 /* TransferActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7489DC89601E17F0D523DB03 /* TransferActivityAttributes.swift */; };
+		9E400DC1D8BFFA837973BDBF /* TeleDriveMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = D54F5F7C952B319CFCE643EC /* TeleDriveMark.swift */; };
+		A12020260920000100000001 /* NativeSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12020260920000100000002 /* NativeSearchView.swift */; };
+		A12020261006000100000001 /* PhotoVideoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12020261006000100000002 /* PhotoVideoView.swift */; };
+		A12020261006000200000001 /* PhotosLibraryControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12020261006000200000002 /* PhotosLibraryControlsView.swift */; };
 		C3902D40AFE5A6E40BBC87CC /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 29E8C79DD22D2D1A3A0FFEFC /* Pods_Runner.framework */; };
+		C5348C1E02E46808870181F8 /* TeleDriveActivitiesBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = C22EBF9FC3F2EF32138A8E57 /* TeleDriveActivitiesBundle.swift */; };
 		DD1B000000000000000000B1 /* TdlibJsonClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1B000000000000000000A1 /* TdlibJsonClient.swift */; };
 		DD1B000000000000000000B2 /* TdlibBridgeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1B000000000000000000A2 /* TdlibBridgeModels.swift */; };
 		DD1B000000000000000000B3 /* TdlibBridgeUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1B000000000000000000A3 /* TdlibBridgeUtils.swift */; };
@@ -31,6 +38,7 @@
 		DD1B000000000000000000B8 /* MediaDerivativeGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1B000000000000000000A8 /* MediaDerivativeGenerator.swift */; };
 		DD1B000000000000000000B9 /* MediaChannelHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1B000000000000000000A9 /* MediaChannelHandler.swift */; };
 		DD1B000000000000000000D3 /* TDLibFramework in Frameworks */ = {isa = PBXBuildFile; productRef = DD1B000000000000000000D2 /* TDLibFramework */; };
+		EC8E704B0F377774C20FC603 /* TransferLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ABA07EBADCC04A9859B5300 /* TransferLiveActivity.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -40,6 +48,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
+		};
+		CA4A4E3E3F10CEE6C8E8D12E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0CA3699F259FC196029E8F82;
+			remoteInfo = TeleDriveActivities;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -54,12 +69,20 @@
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C78E2352795880E8CE0BA557 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				33E746E052552556886857A1 /* TeleDriveActivities.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		A12020261006000200000002 /* PhotosLibraryControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosLibraryControlsView.swift; sourceTree = "<group>"; };
-        A12020261006000100000002 /* PhotoVideoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoVideoView.swift; sourceTree = "<group>"; };
-		A12020260920000100000002 /* NativeSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSearchView.swift; sourceTree = "<group>"; };
 		1391718BB92111D8DDA334E2 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
@@ -68,15 +91,21 @@
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		33A5719EDDAEB9E6F4C777C2 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		420F5F6BFBC0EDCA422C3394 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		57D550F7CADE4F33161D8172 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
+		60BD376438DDC538B6097773 /* TransferLiveActivityBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TransferLiveActivityBridge.swift; sourceTree = "<group>"; };
 		65FD5A98B2E13B09312F549F /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
+		689380F131531988EA01DDE3 /* TransferPresentation.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TransferPresentation.swift; sourceTree = "<group>"; };
 		73B6367678AF6E2555F4B29F /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		7489DC89601E17F0D523DB03 /* TransferActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TransferActivityAttributes.swift; sourceTree = "<group>"; };
+		75442893F25244A1084A1013 /* TeleDriveActivities.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TeleDriveActivities.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
 		7BD8041B4327041971B5F97C /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
+		8ABA07EBADCC04A9859B5300 /* TransferLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TransferLiveActivity.swift; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
 		97C146EE1CF9000F007C117D /* Runner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Runner.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -84,6 +113,12 @@
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A12020260920000100000002 /* NativeSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSearchView.swift; sourceTree = "<group>"; };
+		A12020261006000100000002 /* PhotoVideoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoVideoView.swift; sourceTree = "<group>"; };
+		A12020261006000200000002 /* PhotosLibraryControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosLibraryControlsView.swift; sourceTree = "<group>"; };
+		C0E9D971AE7D35BB04ACEA1E /* TeleDriveActivities.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = TeleDriveActivities.xcconfig; sourceTree = "<group>"; };
+		C22EBF9FC3F2EF32138A8E57 /* TeleDriveActivitiesBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TeleDriveActivitiesBundle.swift; sourceTree = "<group>"; };
+		D54F5F7C952B319CFCE643EC /* TeleDriveMark.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TeleDriveMark.swift; sourceTree = "<group>"; };
 		DC2B39D6526095E48CA4425D /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		DD1B000000000000000000A1 /* TdlibJsonClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TdlibJsonClient.swift; sourceTree = "<group>"; };
 		DD1B000000000000000000A2 /* TdlibBridgeModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TdlibBridgeModels.swift; sourceTree = "<group>"; };
@@ -97,6 +132,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		18EC8C22D5E4D7CD61D0FD4F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		36C77BA4DA9AF390C412814E /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -141,12 +183,35 @@
 			path = Pods;
 			sourceTree = "<group>";
 		};
+		285392BE99C01FA9BB1E4FE6 /* TeleDriveActivities */ = {
+			isa = PBXGroup;
+			children = (
+				C22EBF9FC3F2EF32138A8E57 /* TeleDriveActivitiesBundle.swift */,
+				8ABA07EBADCC04A9859B5300 /* TransferLiveActivity.swift */,
+				D54F5F7C952B319CFCE643EC /* TeleDriveMark.swift */,
+				420F5F6BFBC0EDCA422C3394 /* Info.plist */,
+				C0E9D971AE7D35BB04ACEA1E /* TeleDriveActivities.xcconfig */,
+				689380F131531988EA01DDE3 /* TransferPresentation.swift */,
+			);
+			name = TeleDriveActivities;
+			path = TeleDriveActivities;
+			sourceTree = "<group>";
+		};
 		331C8082294A63A400263BE5 /* RunnerTests */ = {
 			isa = PBXGroup;
 			children = (
 				331C807B294A618700263BE5 /* RunnerTests.swift */,
 			);
 			path = RunnerTests;
+			sourceTree = "<group>";
+		};
+		91C5BAE1B3BFE91ED1EDAD8A /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				7489DC89601E17F0D523DB03 /* TransferActivityAttributes.swift */,
+			);
+			name = Shared;
+			path = Shared;
 			sourceTree = "<group>";
 		};
 		9740EEB11CF90186004384FC /* Flutter */ = {
@@ -170,6 +235,8 @@
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				18DEB1CB3551111ABE11FB39 /* Pods */,
 				154EB33FAAF50762BE991E98 /* Frameworks */,
+				285392BE99C01FA9BB1E4FE6 /* TeleDriveActivities */,
+				91C5BAE1B3BFE91ED1EDAD8A /* Shared */,
 			);
 			sourceTree = "<group>";
 		};
@@ -178,6 +245,7 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
+				75442893F25244A1084A1013 /* TeleDriveActivities.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -194,13 +262,23 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				A12020260920000100000002 /* NativeSearchView.swift */,
 				A12020261006000200000002 /* PhotosLibraryControlsView.swift */,
-                A12020261006000100000002 /* PhotoVideoView.swift */,
+				A12020261006000100000002 /* PhotoVideoView.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				DD1B000000000000000000C1 /* Tdlib */,
 				DD1B000000000000000000C2 /* Media */,
+				DBEBEF72DDA299A58E328A3F /* LiveActivity */,
 			);
 			path = Runner;
+			sourceTree = "<group>";
+		};
+		DBEBEF72DDA299A58E328A3F /* LiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				60BD376438DDC538B6097773 /* TransferLiveActivityBridge.swift */,
+			);
+			name = LiveActivity;
+			path = LiveActivity;
 			sourceTree = "<group>";
 		};
 		DD1B000000000000000000C1 /* Tdlib */ = {
@@ -229,6 +307,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		0CA3699F259FC196029E8F82 /* TeleDriveActivities */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F49A8005DA3251BD31855262 /* Build configuration list for PBXNativeTarget "TeleDriveActivities" */;
+			buildPhases = (
+				D5E18EDD1BAB9F2AD9CAC1D8 /* Sources */,
+				18EC8C22D5E4D7CD61D0FD4F /* Frameworks */,
+				EDC7D342A1E37F137B622B77 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TeleDriveActivities;
+			productName = TeleDriveActivities;
+			productReference = 75442893F25244A1084A1013 /* TeleDriveActivities.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		331C8080294A63A400263BE5 /* RunnerTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 331C8087294A63A400263BE5 /* Build configuration list for PBXNativeTarget "RunnerTests" */;
@@ -257,6 +352,7 @@
 				97C146EA1CF9000F007C117D /* Sources */,
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
+				C78E2352795880E8CE0BA557 /* Embed Foundation Extensions */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				F37E2DF3FC55C2765ADC02F8 /* [CP] Embed Pods Frameworks */,
@@ -264,6 +360,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				AB47DCA2D02CF4EBA0BC2ADA /* PBXTargetDependency */,
 			);
 			name = Runner;
 			packageProductDependencies = (
@@ -284,6 +381,9 @@
 				LastUpgradeCheck = 1510;
 				ORGANIZATIONNAME = "";
 				TargetAttributes = {
+					0CA3699F259FC196029E8F82 = {
+						CreatedOnToolsVersion = 27.1;
+					};
 					331C8080294A63A400263BE5 = {
 						CreatedOnToolsVersion = 14.0;
 						TestTargetID = 97C146ED1CF9000F007C117D;
@@ -313,6 +413,7 @@
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
+				0CA3699F259FC196029E8F82 /* TeleDriveActivities */,
 			);
 		};
 /* End PBXProject section */
@@ -333,6 +434,13 @@
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EDC7D342A1E37F137B622B77 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -449,7 +557,7 @@
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				A12020260920000100000001 /* NativeSearchView.swift in Sources */,
 				A12020261006000200000001 /* PhotosLibraryControlsView.swift in Sources */,
-                A12020261006000100000001 /* PhotoVideoView.swift in Sources */,
+				A12020261006000100000001 /* PhotoVideoView.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 				DD1B000000000000000000B1 /* TdlibJsonClient.swift in Sources */,
@@ -461,6 +569,20 @@
 				DD1B000000000000000000B7 /* GalleryMediaQuery.swift in Sources */,
 				DD1B000000000000000000B8 /* MediaDerivativeGenerator.swift in Sources */,
 				DD1B000000000000000000B9 /* MediaChannelHandler.swift in Sources */,
+				304EB23B93B4A16DFA31B113 /* TransferLiveActivityBridge.swift in Sources */,
+				9D271A8EDED8C26F5DA00601 /* TransferActivityAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D5E18EDD1BAB9F2AD9CAC1D8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C5348C1E02E46808870181F8 /* TeleDriveActivitiesBundle.swift in Sources */,
+				EC8E704B0F377774C20FC603 /* TransferLiveActivity.swift in Sources */,
+				9E400DC1D8BFFA837973BDBF /* TeleDriveMark.swift in Sources */,
+				5D019C7E2FAAE38B0015627F /* TransferActivityAttributes.swift in Sources */,
+				69D98E345551DA48726A8A24 /* TransferPresentation.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -471,6 +593,12 @@
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
+		};
+		AB47DCA2D02CF4EBA0BC2ADA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = TeleDriveActivities;
+			target = 0CA3699F259FC196029E8F82 /* TeleDriveActivities */;
+			targetProxy = CA4A4E3E3F10CEE6C8E8D12E /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -615,6 +743,65 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
+			};
+			name = Profile;
+		};
+		7921ABBDAF255A7C4D3B11B4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C0E9D971AE7D35BB04ACEA1E /* TeleDriveActivities.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 75B8BN8RJ6;
+				ENABLE_BITCODE = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TeleDriveActivities/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.sree.tgclouddrive.TeleDriveActivities;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7E8EB536F71255D07F25F3E1 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C0E9D971AE7D35BB04ACEA1E /* TeleDriveActivities.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 75B8BN8RJ6;
+				ENABLE_BITCODE = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TeleDriveActivities/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.sree.tgclouddrive.TeleDriveActivities;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
 			};
 			name = Profile;
 		};
@@ -774,6 +961,36 @@
 			};
 			name = Release;
 		};
+		C5B4739687A7F850D8A9BE94 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C0E9D971AE7D35BB04ACEA1E /* TeleDriveActivities.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 75B8BN8RJ6;
+				ENABLE_BITCODE = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TeleDriveActivities/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.sree.tgclouddrive.TeleDriveActivities;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -803,6 +1020,16 @@
 				97C147061CF9000F007C117D /* Debug */,
 				97C147071CF9000F007C117D /* Release */,
 				249021D4217E4FDB00AE95B9 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F49A8005DA3251BD31855262 /* Build configuration list for PBXNativeTarget "TeleDriveActivities" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C5B4739687A7F850D8A9BE94 /* Release */,
+				7921ABBDAF255A7C4D3B11B4 /* Debug */,
+				7E8EB536F71255D07F25F3E1 /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

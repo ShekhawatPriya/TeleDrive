@@ -22,6 +22,17 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.sree.tgclouddrive.transfers</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>teledrive</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
@@ -44,6 +55,8 @@
 	<string>TeleDrive needs the microphone only if you record a video to upload.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>TeleDrive saves photos and videos from your cloud back to your photo library.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>TeleDrive backs up the photos and videos in your library to your Telegram cloud, and can remove items that are already safely backed up when you ask it to free up space.</string>
 	<key>UIApplicationSceneManifest</key>

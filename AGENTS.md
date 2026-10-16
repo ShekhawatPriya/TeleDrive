@@ -17,6 +17,7 @@ For UI work, read the applicable documents before styling:
 | General hierarchy, platform treatment, fixture review | [docs/design-workflow.md](docs/design-workflow.md) |
 | Current iOS controls, account pages, browsing surfaces, sheets | [docs/ios-design.md](docs/ios-design.md) |
 | Drive home ordering, geometry, search and keyboard behavior | [docs/drive-home-design.md](docs/drive-home-design.md) |
+| Upload Live Activity, Dynamic Island, Lock Screen | [docs/live-activities.md](docs/live-activities.md) |
 | Platform differences and hosted-backend compatibility | [docs/platform-design-and-vps.md](docs/platform-design-and-vps.md) |
 | Cross-feature product contracts and modernization rationale | [docs/modernization.md](docs/modernization.md) |
 

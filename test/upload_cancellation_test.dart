@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_m_fsdk/core/network/api_client.dart';
+import 'package:flutter_m_fsdk/core/notifications/transfer_live_activity_service.dart';
 import 'package:flutter_m_fsdk/core/notifications/upload_notification_service.dart';
 import 'package:flutter_m_fsdk/core/telegram/pending_telegram_commit_queue.dart';
 import 'package:flutter_m_fsdk/core/telegram/telegram_client_exceptions.dart';
@@ -53,15 +54,49 @@ class _Drive extends ChangeNotifier implements DriveController {
 }
 
 class _Notifications implements UploadNotificationService {
+  final shown = <String>[];
+  @override
+  bool get isForeground => false;
   @override
   Future<void> showUploadComplete({
     required int total,
     required int failed,
-  }) async {}
+  }) async => shown.add('complete');
   @override
-  Future<void> showUploadFailed({required int failed}) async {}
+  Future<void> showUploadFailed({required int failed}) async =>
+      shown.add('failed');
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _LiveActivity extends TransferLiveActivityService {
+  _LiveActivity() : super(platformSupported: false);
+  final synced = <TransferActivitySnapshot?>[];
+  final finished =
+      <({TransferActivitySnapshot outcome, TransferActivityAlert? alert})>[];
+  bool deliversAlerts = true;
+
+  @override
+  void sync({
+    required String? sessionId,
+    required TransferActivitySnapshot? snapshot,
+    required bool enabled,
+  }) => synced.add(snapshot);
+
+  // Like the real service: tracked until the outcome has been delivered.
+  @override
+  bool isTracking(String sessionId) => finished.isEmpty;
+
+  @override
+  Future<bool> finish({
+    required String sessionId,
+    required TransferActivitySnapshot snapshot,
+    required bool foreground,
+    TransferActivityAlert? alert,
+  }) async {
+    finished.add((outcome: snapshot, alert: alert));
+    return deliversAlerts && alert != null;
+  }
 }
 
 class _Telegram implements TelegramTransferService {
@@ -112,6 +147,8 @@ void main() {
   late AppSettingsController settings;
   late UploadController uploads;
   late _Telegram telegram;
+  late _LiveActivity liveActivity;
+  late _Notifications notifications;
   late List<RequestOptions> requests;
   late Map<String, Completer<void>> gates;
   late List<PendingTelegramCommit> recordsAtCompletion;
@@ -129,6 +166,8 @@ void main() {
     gates = {};
     recordsAtCompletion = [];
     telegram = _Telegram();
+    liveActivity = _LiveActivity();
+    notifications = _Notifications();
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(
@@ -182,9 +221,10 @@ void main() {
             api,
             _Drive(),
             settings,
-            _Notifications(),
+            notifications,
             _Auth(),
             telegram,
+            liveActivity: liveActivity,
           )
           ..sheetVisible = true
           ..items = [
@@ -332,4 +372,60 @@ void main() {
       expect(requests.where((r) => r.path == cancelPath), isEmpty);
     },
   );
+
+  group('Live Activity', () {
+    const original = TelegramUploadResult(
+      transferId: 'fixture',
+      ref: TelegramMediaRef(
+        variant: 'original',
+        tdlibChatId: -123,
+        tdlibMessageId: 100,
+      ),
+      sizeBytes: 100,
+      mimeType: 'image/jpeg',
+    );
+
+    test('mirrors the queue and ends with the outcome and alert', () async {
+      await settings.setUploadCompletedAlerts(true);
+      await uploads.confirmUpload();
+      await _flush();
+      final running = liveActivity.synced.whereType<TransferActivitySnapshot>();
+      expect(running, isNotEmpty);
+      expect(running.first.isTerminal, isFalse);
+      expect(running.first.currentName, 'one.jpg');
+
+      telegram.result.complete(original);
+      await _flush();
+      expect(uploads.items.single.status, UploadStatus.uploaded);
+      final finish = liveActivity.finished.single;
+      expect(finish.outcome.phase, TransferActivityPhase.completed);
+      expect(finish.alert?.title, 'Upload complete');
+      // The activity carried the alert; no second local notification.
+      expect(notifications.shown, isEmpty);
+    });
+
+    test('falls back to the local alert when the activity cannot', () async {
+      liveActivity.deliversAlerts = false;
+      await settings.setUploadCompletedAlerts(true);
+      await uploads.confirmUpload();
+      await _flush();
+      telegram.result.complete(original);
+      await _flush();
+      expect(liveActivity.finished, hasLength(1));
+      expect(notifications.shown, ['complete']);
+    });
+
+    test('cancelled sessions end without an alert', () async {
+      await uploads.confirmUpload();
+      await _flush();
+      await uploads.cancelItem('one');
+      telegram.result.completeError(
+        const TelegramClientException('Cancelled', code: 'tdlib_cancelled'),
+      );
+      await _flush();
+      final finish = liveActivity.finished.single;
+      expect(finish.outcome.phase, TransferActivityPhase.cancelled);
+      expect(finish.alert, isNull);
+    });
+  });
 }

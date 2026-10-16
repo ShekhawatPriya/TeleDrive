@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../widgets/native_glass_button.dart';
 import '../../core/config/app_config.dart';
 import '../../core/network/backend_resolver.dart';
+import '../../core/notifications/transfer_live_activity_service.dart';
 import '../../core/notifications/upload_notification_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/auth_controller.dart';

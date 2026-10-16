@@ -16,6 +16,7 @@ import 'package:flutter_m_fsdk/features/upload/upload_models.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/components/bottom_action_system.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/components/upload_card.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/components/upload_collapsed_bar.dart';
+import 'package:flutter_m_fsdk/features/upload/ui/components/upload_status_ring.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/upload_sheet.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/upload_panel_host.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/upload_status_label.dart';
@@ -246,6 +247,12 @@ Future<void> _pump(
   await tester.pump(const Duration(milliseconds: 300));
 }
 
+/// iOS buttons use title case; Android keeps sentence case.
+String _mobileDataLabel(TargetPlatform platform) =>
+    platform == TargetPlatform.iOS ? 'Use Mobile Data' : 'Use mobile data';
+String _retryLabel(TargetPlatform platform) =>
+    platform == TargetPlatform.iOS ? 'Retry Failed' : 'Retry uploads';
+
 Future<void> _open(WidgetTester tester) async {
   await tester.tap(find.byType(UploadCollapsedBar));
   await tester.pumpAndSettle();
@@ -315,7 +322,7 @@ void main() {
         );
         await _open(tester);
         expect(find.byType(UploadSheet), findsOneWidget);
-        expect(find.text('2 of 6 uploaded'), findsWidgets);
+        expect(find.textContaining('2 of 6 uploaded'), findsWidgets);
         expect(tester.takeException(), isNull);
         await _preview(
           tester,
@@ -366,7 +373,7 @@ void main() {
         );
         await _open(tester);
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Use mobile data'));
+        await tester.tap(find.text(_mobileDataLabel(platform)));
         expect(uploads.mobileData, 1);
         await _preview(
           tester,
@@ -375,15 +382,15 @@ void main() {
         for (
           var attempt = 0;
           attempt < 8 &&
-              find.text('Retry uploads').hitTestable().evaluate().isEmpty;
+              find.text(_retryLabel(platform)).hitTestable().evaluate().isEmpty;
           attempt++
         ) {
           await tester.drag(find.byType(UploadSheet), const Offset(0, -240));
           await tester.pumpAndSettle();
         }
-        expect(find.text('Retry uploads').hitTestable(), findsOneWidget);
+        expect(find.text(_retryLabel(platform)).hitTestable(), findsOneWidget);
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Retry uploads'));
+        await tester.tap(find.text(_retryLabel(platform)));
         expect(uploads.retries, 1);
         await _preview(
           tester,
@@ -437,7 +444,7 @@ void main() {
             final scheme = Theme.of(
               tester.element(find.byType(UploadSheet)),
             ).colorScheme;
-            final argb = scheme.surfaceContainerLow.toARGB32();
+            final argb = iosUploadPanelColors(scheme).page.toARGB32();
             final expected = [
               (argb >> 16) & 255,
               (argb >> 8) & 255,
@@ -534,13 +541,18 @@ void main() {
             if (waiting) {
               final button = tester.widget<CupertinoButton>(
                 find.ancestor(
-                  of: find.text('Use mobile data'),
+                  of: find.text('Use Mobile Data'),
                   matching: find.byType(CupertinoButton),
                 ),
               );
-              expect(button.color, isNull);
+              // One tinted capsule action inside the summary card.
+              expect(button.color, isNotNull);
+              expect(
+                tester.getSize(find.byWidget(button)).height,
+                greaterThanOrEqualTo(48),
+              );
               await tester.pumpAndSettle();
-              await tester.tap(find.text('Use mobile data'));
+              await tester.tap(find.text('Use Mobile Data'));
               expect(uploads.mobileData, 1);
             }
             await _preview(
@@ -592,7 +604,7 @@ void main() {
         await _open(tester);
         final scroll = find.byType(CustomScrollView).last;
         await tester.scrollUntilVisible(
-          find.text('Use mobile data'),
+          find.text(_mobileDataLabel(platform)),
           100,
           scrollable: find.descendant(
             of: scroll,
@@ -600,10 +612,10 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Use mobile data'));
+        await tester.tap(find.text(_mobileDataLabel(platform)));
         expect(uploads.mobileData, 1);
         await tester.scrollUntilVisible(
-          find.text('Retry uploads'),
+          find.text(_retryLabel(platform)),
           100,
           scrollable: find.descendant(
             of: scroll,
@@ -611,7 +623,7 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Retry uploads'));
+        await tester.tap(find.text(_retryLabel(platform)));
         expect(uploads.retries, 1);
         await _preview(tester, 'upload-compact-accessible-${platform.name}');
         expect(tester.takeException(), isNull);
@@ -658,34 +670,123 @@ void main() {
     expect(find.byType(UploadSheet), findsOneWidget);
   });
 
-  testWidgets('cancel, retry, dismiss and completion use controller state', (
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    testWidgets(
+      'cancel, retry, dismiss and completion use controller state ${platform.name}',
+      (tester) async {
+        final uploads = _Uploads([
+          _item(0, UploadStatus.uploadingOriginalToTelegram),
+          _item(1, UploadStatus.failed),
+          _item(2, UploadStatus.cancelled),
+        ]);
+        await _pump(
+          tester,
+          uploads,
+          platform: platform,
+          body: ListView(
+            children: [
+              for (final item in uploads.items)
+                UploadCard(localId: item.localId),
+            ],
+          ),
+        );
+        // Android tooltips name the file; iOS rows carry it in semantics.
+        final ios = platform == TargetPlatform.iOS;
+        final cancel = ios ? 'Cancel' : 'Cancel ${uploads.items[0].name}';
+        final dismiss = ios ? 'Dismiss' : 'Dismiss ${uploads.items[2].name}';
+        await tester.tap(find.byTooltip(cancel));
+        expect(uploads.cancelled, ['0']);
+        expect(
+          tester.getSize(find.byTooltip(cancel)).height,
+          greaterThanOrEqualTo(48),
+        );
+        if (platform == TargetPlatform.iOS) {
+          // iOS retries from the panel's summary card, once for the batch.
+          expect(find.text('Retry uploads'), findsNothing);
+        } else {
+          await tester.tap(find.text('Retry uploads'));
+          expect(uploads.retries, 1);
+        }
+        await tester.tap(find.byTooltip(dismiss).last);
+        expect(uploads.removed, ['2']);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  // The floating status pill beside Add, in every state and theme, plus the
+  // narrow/large-text case. Previews: upload-pill-*.
+  final pillStates = <String, List<UploadStatus>>{
+    'uploading': [
+      UploadStatus.uploaded,
+      UploadStatus.uploadingOriginalToTelegram,
+      UploadStatus.queued,
+    ],
+    'wifi': [UploadStatus.waitingForWifi, UploadStatus.waitingForWifi],
+    'complete': [UploadStatus.uploaded, UploadStatus.uploaded],
+    'attention': [UploadStatus.uploaded, UploadStatus.failed],
+  };
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final brightness in Brightness.values) {
+      for (final entry in pillStates.entries) {
+        testWidgets(
+          'status pill ${entry.key} ${platform.name} ${brightness.name}',
+          (tester) async {
+            await _pump(
+              tester,
+              _Uploads([
+                for (var i = 0; i < entry.value.length; i++)
+                  _item(i, entry.value[i]),
+              ]),
+              platform: platform,
+              brightness: brightness,
+            );
+            final pill = find.byType(UploadCollapsedBar);
+            expect(pill, findsOneWidget);
+            expect(tester.getSize(pill).height, greaterThanOrEqualTo(48));
+            await _preview(
+              tester,
+              'upload-pill-${platform.name}-${entry.key}-${brightness.name}',
+            );
+            expect(tester.takeException(), isNull);
+          },
+        );
+      }
+    }
+  }
+
+  testWidgets('dragging the iOS status pill upward expands the panel', (
     tester,
   ) async {
-    final uploads = _Uploads([
-      _item(0, UploadStatus.uploadingOriginalToTelegram),
-      _item(1, UploadStatus.failed),
-      _item(2, UploadStatus.cancelled),
-    ]);
     await _pump(
       tester,
-      uploads,
-      body: ListView(
-        children: [
-          for (final item in uploads.items) UploadCard(localId: item.localId),
-        ],
-      ),
+      _Uploads([_item(0, UploadStatus.uploadingOriginalToTelegram)]),
     );
-    await tester.tap(find.byTooltip('Cancel'));
-    expect(uploads.cancelled, ['0']);
-    expect(
-      tester.getSize(find.byTooltip('Cancel')).height,
-      greaterThanOrEqualTo(48),
-    );
-    await tester.tap(find.text('Retry uploads'));
-    expect(uploads.retries, 1);
-    await tester.tap(find.byTooltip('Dismiss').last);
-    expect(uploads.removed, ['2']);
+    final pill = find.byType(UploadCollapsedBar);
+    // A short downward nudge springs back without opening anything.
+    await tester.drag(pill, const Offset(0, 30));
+    await tester.pumpAndSettle();
+    expect(find.byType(UploadSheet), findsNothing);
+    expect(pill, findsOneWidget);
+    await tester.drag(pill, const Offset(0, -40));
+    await tester.pumpAndSettle();
+    expect(find.byType(UploadSheet), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('status pill fits 320 points at 200% text', (tester) async {
+    await _pump(
+      tester,
+      _Uploads([
+        _item(0, UploadStatus.uploaded),
+        _item(1, UploadStatus.uploadingOriginalToTelegram),
+      ]),
+      width: 320,
+      scale: 2,
+      brightness: Brightness.light,
+    );
+    expect(tester.takeException(), isNull);
+    await _preview(tester, 'upload-pill-iOS-accessible');
   });
 
   for (final status in [
@@ -699,9 +800,12 @@ void main() {
       final uploads = _Uploads([_item(0, status, ready: false)]);
       final semantics = tester.ensureSemantics();
       await _pump(tester, uploads);
+      // The iOS capsule names the count; the panel keeps the full title.
       final title = status == UploadStatus.uploaded
           ? 'Uploads complete'
-          : 'Uploads need attention';
+          : '1 file not uploaded';
+      // The iOS panel's summary card uses the same concise title.
+      final panelTitle = title;
       expect(find.text(title), findsOneWidget);
       if (status == UploadStatus.uploaded)
         expect(find.text('Finishing previews…'), findsOneWidget);
@@ -715,7 +819,7 @@ void main() {
         ),
       );
       await _open(tester);
-      expect(find.text(title), findsWidgets);
+      expect(find.text(panelTitle), findsWidgets);
       // Minimizing preserves the in-flight queue.
       tester
           .getSemantics(find.bySemanticsLabel('Minimize uploads'))

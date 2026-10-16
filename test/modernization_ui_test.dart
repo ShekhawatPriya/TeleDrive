@@ -20,6 +20,7 @@ import 'package:flutter_m_fsdk/widgets/account_button.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_m_fsdk/features/profile/widgets/account_bottom_sheet.dart';
 import 'package:flutter_m_fsdk/features/profile/settings_screen.dart';
+import 'package:flutter_m_fsdk/core/notifications/transfer_live_activity_service.dart';
 import 'package:flutter_m_fsdk/features/profile/storage_summary_controller.dart';
 import 'package:flutter_m_fsdk/features/profile/app_settings_controller.dart';
 import 'package:flutter_m_fsdk/features/profile/cache_controller.dart';
@@ -309,9 +310,24 @@ class _DesignChangelog extends ChangeNotifier implements ChangelogController {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// ActivityKit is unavailable in tests; previews show the iOS 16.2+ group.
+class _DesignLiveActivity extends TransferLiveActivityService {
+  _DesignLiveActivity() : super(platformSupported: false) {
+    knownSupported = true;
+  }
+  @override
+  Future<bool> get isSupported async => true;
+}
+
 class _DesignSettings extends ChangeNotifier implements AppSettingsController {
   @override
   AppSettingsState state = const AppSettingsState(loaded: true);
+  @override
+  Future<void> setTransferLiveActivities(bool value) async {
+    state = state.copyWith(transferLiveActivities: value);
+    notifyListeners();
+  }
+
   @override
   Future<void> setUploadOnMobileData(bool value) async {
     state = state.copyWith(uploadOnMobileData: value);
@@ -466,6 +482,9 @@ Future<void> _pump(
         driveControllerProvider.overrideWith((_) => _DesignDrive()),
         driveSearchProvider.overrideWith((_) => _DesignSearch()),
         shareControllerProvider.overrideWith((_) => _DesignShares()),
+        transferLiveActivityServiceProvider.overrideWithValue(
+          _DesignLiveActivity(),
+        ),
       ],
       child: router != null
           ? MaterialApp.router(
@@ -1042,6 +1061,25 @@ void main() {
       }
     }
   }
+  testWidgets('iOS notifications page controls Live Activities', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await _pump(tester, const NotificationsSettingsScreen());
+    expect(find.text('Live Activities'), findsOneWidget);
+    expect(find.text('Upload Progress'), findsOneWidget);
+    final toggle = find.descendant(
+      of: find.ancestor(
+        of: find.text('Upload Progress'),
+        matching: find.byType(IosRow),
+      ),
+      matching: find.byType(CupertinoSwitch),
+    );
+    expect(tester.widget<CupertinoSwitch>(toggle).value, isTrue);
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(tester.widget<CupertinoSwitch>(toggle).value, isFalse);
+  });
   for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
     testWidgets('About opens What’s New ${platform.name}', (tester) async {
       SharedPreferences.setMockInitialValues({});
@@ -1174,7 +1212,9 @@ void main() {
               find.textContaining('Sharing & photo refinements'),
             );
             await tester.pumpAndSettle();
-            await tester.tap(find.textContaining('Sharing & photo refinements'));
+            await tester.tap(
+              find.textContaining('Sharing & photo refinements'),
+            );
             await tester.pumpAndSettle();
             expect(find.text('Sharing'), findsOneWidget);
             await _preview(
