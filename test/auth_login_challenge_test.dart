@@ -65,26 +65,78 @@ void main() {
     });
   });
 
-  for (final invalidToken in [null, '', 'short', 'a' * 42, '!' * 43]) {
-    test(
-      'start rejects an absent or invalid challenge: $invalidToken',
-      () async {
-        final api = ApiClient();
-        addTearDown(() => api.dio.close());
-        api.dio.interceptors.add(
-          InterceptorsWrapper(
-            onRequest: (options, handler) => handler.resolve(
-              Response<Map<String, dynamic>>(
-                requestOptions: options,
-                statusCode: 200,
-                data: {'attempt_id': 42, 'attempt_token': invalidToken},
-              ),
+  for (final invalidToken in ['', 'short', 'a' * 42, '!' * 43, 42]) {
+    test('start rejects a malformed challenge: $invalidToken', () async {
+      final api = ApiClient();
+      addTearDown(() => api.dio.close());
+      api.dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) => handler.resolve(
+            Response<Map<String, dynamic>>(
+              requestOptions: options,
+              statusCode: 200,
+              data: {'attempt_id': 42, 'attempt_token': invalidToken},
             ),
           ),
-        );
-        final repository = AuthRepository(api, SecureStorageService());
-        await expectLater(repository.start('+911234567890'), throwsException);
-      },
-    );
+        ),
+      );
+      final repository = AuthRepository(api, SecureStorageService());
+      await expectLater(repository.start('+911234567890'), throwsException);
+    });
   }
+
+  test('a legacy server without challenges still reaches code entry', () async {
+    // Telegram has already sent the code by the time /start answers, so a
+    // server that predates login challenges must not burn that code.
+    final api = ApiClient();
+    addTearDown(() => api.dio.close());
+    final requests = <RequestOptions>[];
+    api.dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          requests.add(options);
+          handler.resolve(
+            Response<Map<String, dynamic>>(
+              requestOptions: options,
+              statusCode: 200,
+              data: options.path.endsWith('/start')
+                  ? {'attempt_id': 42, 'status': 'code_sent'}
+                  : {'status': 'requires_2fa'},
+            ),
+          );
+        },
+      ),
+    );
+    final repository = AuthRepository(api, SecureStorageService());
+    final challenge = await repository.start('+911234567890');
+    final attemptToken = challenge['attempt_token'] as String?;
+    expect(attemptToken, isNull);
+    await repository.verifyCode(42, attemptToken, '12345');
+    await repository.verifyPassword(42, attemptToken, 'fixture-password');
+
+    expect(requests, hasLength(3));
+    expect(requests[1].data, {'attempt_id': 42, 'code': '12345'});
+    expect(requests[2].data, {
+      'attempt_id': 42,
+      'password': 'fixture-password',
+    });
+  });
+
+  test('start still rejects a reply without an attempt id', () async {
+    final api = ApiClient();
+    addTearDown(() => api.dio.close());
+    api.dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) => handler.resolve(
+          Response<Map<String, dynamic>>(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'status': 'code_sent'},
+          ),
+        ),
+      ),
+    );
+    final repository = AuthRepository(api, SecureStorageService());
+    await expectLater(repository.start('+911234567890'), throwsException);
+  });
 }

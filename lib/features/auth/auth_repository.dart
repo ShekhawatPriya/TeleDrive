@@ -74,10 +74,15 @@ class AuthRepository {
       data: {'phone_number': phone},
     );
     final data = Map<String, dynamic>.from(res.data as Map);
+    // By now Telegram has already sent the code, so only reject a reply the
+    // code could never be verified against. A server that predates login
+    // challenges omits the token and verifies by attempt id alone; a token it
+    // does send must be well-formed.
     final attemptToken = data['attempt_token'];
     if (data['attempt_id'] is! int ||
-        attemptToken is! String ||
-        !RegExp(r'^[A-Za-z0-9_-]{43}$').hasMatch(attemptToken)) {
+        (attemptToken != null &&
+            (attemptToken is! String ||
+                !RegExp(r'^[A-Za-z0-9_-]{43}$').hasMatch(attemptToken)))) {
       throw Exception(
         'The service could not start a secure sign-in. Please try again later.',
       );
@@ -87,14 +92,14 @@ class AuthRepository {
 
   Future<Map<String, dynamic>> verifyCode(
     int attemptId,
-    String attemptToken,
+    String? attemptToken,
     String code,
   ) async {
     final res = await api.dio.post(
       '/telegram/auth/verify-code',
       data: {
         'attempt_id': attemptId,
-        'attempt_token': attemptToken,
+        'attempt_token': ?attemptToken,
         'code': code,
       },
     );
@@ -103,14 +108,14 @@ class AuthRepository {
 
   Future<Map<String, dynamic>> verifyPassword(
     int attemptId,
-    String attemptToken,
+    String? attemptToken,
     String password,
   ) async {
     final res = await api.dio.post(
       '/telegram/auth/verify-password',
       data: {
         'attempt_id': attemptId,
-        'attempt_token': attemptToken,
+        'attempt_token': ?attemptToken,
         'password': password,
       },
     );

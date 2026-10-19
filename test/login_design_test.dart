@@ -31,7 +31,7 @@ class _FixtureAuth extends AuthRepository {
   @override
   Future<Map<String, dynamic>> verifyCode(
     int attemptId,
-    String attemptToken,
+    String? attemptToken,
     String value,
   ) async {
     expect(attemptId, 42);
@@ -43,7 +43,7 @@ class _FixtureAuth extends AuthRepository {
   @override
   Future<Map<String, dynamic>> verifyPassword(
     int attemptId,
-    String attemptToken,
+    String? attemptToken,
     String value,
   ) async {
     expect(attemptId, 42);

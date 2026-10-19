@@ -50,16 +50,14 @@ extension _LoginScreenActions on _LoginScreenState {
       );
       if (!mounted) return;
       _attemptId = (data['attempt_id'] as num).toInt();
-      _attemptToken = data['attempt_token'] as String;
+      _attemptToken = data['attempt_token'] as String?;
       _setStep(_Step.code);
     } catch (_) {}
   }
 
   Future<void> _verifyCode() async {
     if (_loading) return;
-    if (_attemptId == null ||
-        _attemptToken == null ||
-        _code.text.trim().isEmpty) {
+    if (_attemptId == null || _code.text.trim().isEmpty) {
       _setUiState(() => _error = 'Please enter the verification code');
       return;
     }
@@ -67,7 +65,7 @@ extension _LoginScreenActions on _LoginScreenState {
       final data = await _call(
         () => ref
             .read(authRepositoryProvider)
-            .verifyCode(_attemptId!, _attemptToken!, _code.text.trim()),
+            .verifyCode(_attemptId!, _attemptToken, _code.text.trim()),
       );
       if (!mounted) return;
       if (data['status'] == 'requires_2fa') {
@@ -80,9 +78,7 @@ extension _LoginScreenActions on _LoginScreenState {
 
   Future<void> _verifyPassword() async {
     if (_loading) return;
-    if (_attemptId == null ||
-        _attemptToken == null ||
-        _password.text.trim().isEmpty) {
+    if (_attemptId == null || _password.text.trim().isEmpty) {
       _setUiState(() => _error = 'Please enter your password');
       return;
     }
@@ -90,7 +86,7 @@ extension _LoginScreenActions on _LoginScreenState {
       final data = await _call(
         () => ref
             .read(authRepositoryProvider)
-            .verifyPassword(_attemptId!, _attemptToken!, _password.text.trim()),
+            .verifyPassword(_attemptId!, _attemptToken, _password.text.trim()),
       );
       if (!mounted) return;
       if (data['token'] != null) {

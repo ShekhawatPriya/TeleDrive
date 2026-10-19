@@ -5,8 +5,8 @@ import '../../widgets/brand_mark.dart';
 import '../../core/utils/safe_navigation.dart';
 import '../../core/theme/ios_palette.dart';
 import '../../widgets/ios/ios_page.dart';
-import '../../widgets/sheet/adaptive_sheet.dart';
 import 'components/how_it_works_section.dart';
+import 'components/ios_data_storage_page.dart';
 import 'components/landing_collection_art.dart';
 import 'components/privacy_and_trust_section.dart';
 import 'components/storage_separation_section.dart';
@@ -226,7 +226,7 @@ class _IosLanding extends StatelessWidget {
           CupertinoButton(
             minimumSize: const Size.fromHeight(44),
             padding: const EdgeInsets.symmetric(vertical: 10),
-            onPressed: () => _showStorageExplanation(context),
+            onPressed: () => IosDataStoragePage.push(context),
             child: const Text(
               'How TeleDrive Stores Your Data',
               textAlign: TextAlign.center,
@@ -364,23 +364,6 @@ class _IosLanding extends StatelessWidget {
       ),
     );
   }
-
-  void _showStorageExplanation(BuildContext context) => showAdaptiveSheet<void>(
-    context: context,
-    builder: (_) => const Padding(
-      padding: EdgeInsets.fromLTRB(20, 0, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          HowItWorksSection(),
-          SizedBox(height: 24),
-          StorageSeparationSection(),
-          SizedBox(height: 24),
-          PrivacyAndTrustSection(),
-        ],
-      ),
-    ),
-  );
 }
 
 /// The installed app icon with the system's continuous corners.

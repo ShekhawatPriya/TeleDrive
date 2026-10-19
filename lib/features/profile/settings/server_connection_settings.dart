@@ -133,6 +133,7 @@ class _ServerConnectionSettingsScreenState
           description: AppConfig.backendPinned
               ? 'Connect to your TeleDrive server from any of your devices.'
               : 'Connect automatically on your network or choose a server address.',
+          onLearnMore: () => context.push('/privacy'),
         ),
         IosGroup(
           title: 'Connection',

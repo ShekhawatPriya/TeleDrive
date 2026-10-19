@@ -17,7 +17,11 @@ extension _TdlibSessionScreenView on _TdlibSessionScreenState {
     ColorScheme scheme,
   ) {
     final auto = session.auto;
-    final busy = auto.isAutomationActive || _submitting || _submittingPassword;
+    final busy =
+        auto.isAutomationActive ||
+        (auto.stage == TdlibAutoAuthStage.idle && _error == null) ||
+        _requestingCode ||
+        _submittingPassword;
     final value = auto.progressPercent.clamp(0, 100) / 100;
     final auth = ref.watch(authControllerProvider);
     final hasPreviousAccount =
@@ -59,7 +63,9 @@ extension _TdlibSessionScreenView on _TdlibSessionScreenState {
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Setting up secure local transfer on this device.',
+              'This happens automatically. Telegram sends a code to your '
+              'Telegram app and TeleDrive reads it for you, so there is '
+              'nothing to type.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: scheme.onSurfaceVariant,
                 height: 1.35,
@@ -100,11 +106,6 @@ extension _TdlibSessionScreenView on _TdlibSessionScreenState {
                 height: 1.35,
               ),
             ),
-            if (auto.stage == TdlibAutoAuthStage.waitingForCode &&
-                auto.otpSecondsRemaining != null) ...[
-              const SizedBox(height: AppSpacing.md),
-              _buildTimerPill(auto.otpSecondsRemaining!, theme, scheme),
-            ],
             const SizedBox(height: AppSpacing.lg),
             _buildProgressSteps(auto.progressPercent, theme, scheme),
             if (auto.error != null) ...[
@@ -128,10 +129,12 @@ extension _TdlibSessionScreenView on _TdlibSessionScreenState {
             if (auto.stage == TdlibAutoAuthStage.manualPasswordRequired) ...[
               const SizedBox(height: AppSpacing.lg),
               _buildManualPasswordFallback(theme),
-            ] else if (_manualCodeVisible ||
-                auto.stage == TdlibAutoAuthStage.manualCodeRequired) ...[
+            ] else if (auto.stage == TdlibAutoAuthStage.manualCodeRequired) ...[
               const SizedBox(height: AppSpacing.lg),
-              _buildManualCodeFallback(theme),
+              FilledButton(
+                onPressed: _requestingCode ? null : _requestNewCode,
+                child: const Text('Send a new code'),
+              ),
             ],
             if (auto.stage == TdlibAutoAuthStage.failed) ...[
               const SizedBox(height: AppSpacing.lg),
@@ -140,11 +143,11 @@ extension _TdlibSessionScreenView on _TdlibSessionScreenState {
                 child: const Text('Retry'),
               ),
             ],
-            if (auto.stage == TdlibAutoAuthStage.idle) ...[
+            if (auto.stage == TdlibAutoAuthStage.idle && _error != null) ...[
               const SizedBox(height: AppSpacing.lg),
               FilledButton(
                 onPressed: () => _startAutomation(force: true),
-                child: const Text('Start authorization'),
+                child: const Text('Retry'),
               ),
             ],
             const SizedBox(height: AppSpacing.md),

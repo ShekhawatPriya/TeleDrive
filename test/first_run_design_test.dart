@@ -16,6 +16,8 @@ import 'package:flutter_m_fsdk/core/theme/app_theme.dart';
 import 'package:flutter_m_fsdk/features/auth/auth_controller.dart';
 import 'package:flutter_m_fsdk/features/auth/auth_repository.dart';
 import 'package:flutter_m_fsdk/features/auth/community_onboarding_screen.dart';
+import 'package:flutter_m_fsdk/features/auth/components/ios_data_storage_page.dart';
+import 'package:flutter_m_fsdk/features/auth/components/login_controls.dart';
 import 'package:flutter_m_fsdk/features/auth/landing_screen.dart';
 import 'package:flutter_m_fsdk/features/auth/models/community_onboarding.dart';
 import 'package:flutter_m_fsdk/features/auth/login_screen.dart';
@@ -105,6 +107,7 @@ class _Setup extends ChangeNotifier implements TdlibSessionController {
   _Setup(this.state);
   @override
   TdlibSessionState state;
+  int newCodeRequests = 0;
   @override
   Future<void> authorizeAutomatically({
     required String phoneNumber,
@@ -114,7 +117,7 @@ class _Setup extends ChangeNotifier implements TdlibSessionController {
     bool restartOtpWindow = false,
   }) async {}
   @override
-  Future<void> retryOtp() async {}
+  Future<void> retryOtp() async => newCodeRequests++;
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }
@@ -246,6 +249,24 @@ void main() {
       await capture(tester, 'welcome-$theme');
     });
 
+    testWidgets('welcome opens the data explanation as a page $theme', (
+      tester,
+    ) async {
+      await pumpScreen(tester, const LandingScreen(), dark: dark);
+      await tester.tap(find.text('How TeleDrive Stores Your Data'));
+      await tester.pumpAndSettle();
+      expect(find.byType(IosDataStoragePage), findsOneWidget);
+      expect(find.text('Where Things Live'), findsOneWidget);
+      // A pushed page, not a draggable sheet of Material cards.
+      expect(find.byType(Card), findsNothing);
+      expect(find.byType(BottomSheet), findsNothing);
+      await capture(tester, 'your-data-$theme');
+      await tester.drag(find.byType(Scrollable).last, const Offset(0, -900));
+      await tester.pumpAndSettle();
+      expect(find.text('Privacy Policy'), findsOneWidget);
+      await capture(tester, 'your-data-scrolled-$theme');
+    });
+
     testWidgets('sign-in phone and code $theme', (tester) async {
       await pumpScreen(tester, const LoginScreen(), dark: dark);
       await capture(tester, 'login-phone-$theme');
@@ -256,21 +277,25 @@ void main() {
     });
 
     for (final entry in <(String, TdlibAutoAuthorizationState)>[
+      ('starting', const TdlibAutoAuthorizationState()),
       (
         'waiting',
         const TdlibAutoAuthorizationState(
           stage: TdlibAutoAuthStage.waitingForCode,
           progressPercent: 45,
           otpSecondsRemaining: 42,
-          subtitle: 'Reading the sign-in code Telegram just sent.',
+          subtitle:
+              'Telegram sent a code to your Telegram app. Reading it now.',
         ),
       ),
       (
         'code',
         const TdlibAutoAuthorizationState(
           stage: TdlibAutoAuthStage.manualCodeRequired,
-          progressPercent: 45,
-          subtitle: 'Enter the code from your Telegram app.',
+          progressPercent: 65,
+          subtitle:
+              'TeleDrive couldn’t read the code in time. Send a new code '
+              'and TeleDrive will read it automatically.',
         ),
       ),
       (
@@ -300,12 +325,30 @@ void main() {
           ),
         );
         await capture(tester, 'setup-${entry.$1}-$theme');
+        // Setup is automatic: there is never a way to start it by hand or
+        // to type the Telegram code.
+        expect(find.text('Start Setup'), findsNothing);
+        expect(find.textContaining('Manually'), findsNothing);
+        expect(find.byType(CupertinoTextField), findsNothing);
+        expect(
+          find.textContaining('TeleDrive reads it for you'),
+          entry.$1 == 'done' ? findsNothing : findsOneWidget,
+        );
+        final setup =
+            ProviderScope.containerOf(
+                  tester.element(find.byType(TdlibSessionScreen)),
+                ).read(tdlibSessionControllerProvider)
+                as _Setup;
+        // Nothing asks Telegram for another code on its own.
+        expect(setup.newCodeRequests, 0);
+        if (entry.$1 == 'starting' || entry.$1 == 'waiting') {
+          expect(find.byType(LoginPrimaryButton), findsNothing);
+          expect(find.textContaining('Keep TeleDrive open'), findsOneWidget);
+        }
         if (entry.$1 == 'code') {
-          await tester.tap(find.text('Enter Code Manually').last);
-          for (var i = 0; i < 4; i++) {
-            await tester.pump(const Duration(milliseconds: 140));
-          }
-          await capture(tester, 'setup-code-entry-$theme');
+          await tester.tap(find.text('Send a New Code'));
+          await tester.pump();
+          expect(setup.newCodeRequests, 1);
         }
         // Leave before the success navigation delay elapses.
         await tester.pumpWidget(const SizedBox());
@@ -368,6 +411,7 @@ void main() {
   // A small phone at 200% text: nothing overflows or clips.
   for (final entry in <(String, Widget, bool)>[
     ('welcome', const LandingScreen(), false),
+    ('your-data', const IosDataStoragePage(), false),
     ('login', const LoginScreen(), false),
     ('community', const CommunityOnboardingScreen(), true),
     ('whats-new', const ChangelogScreen(), false),

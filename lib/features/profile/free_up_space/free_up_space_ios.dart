@@ -44,12 +44,13 @@ extension _IosFreeUpSpace on _FreeUpSpaceScreenState {
             )
           : null,
       children: [
-        const IosSettingsIntro(
+        IosSettingsIntro(
           icon: CupertinoIcons.device_phone_portrait,
           color: IosTint.freeUpSpace,
           title: 'Free Up Space',
           description:
               'Remove photos and videos from this iPhone once their backups are verified in Telegram.',
+          onLearnMore: () => context.push('/privacy'),
         ),
         IosGroup(
           footer: state.scanning

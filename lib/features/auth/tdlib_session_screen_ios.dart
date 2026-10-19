@@ -4,20 +4,32 @@ part of 'tdlib_session_screen.dart';
 /// ring and a plain title, the setup steps as one inset group whose current
 /// row carries the live status, and the available actions pinned above the
 /// home indicator. The steps, thresholds and messages are the controller's.
+///
+/// Setup is automatic: TeleDrive reads the Telegram code itself, so the page
+/// never offers to type it. The only input it asks for is a two-step
+/// verification password TeleDrive does not already have, and the only way
+/// to get another code is an explicit Send a New Code.
 extension _TdlibSessionScreenIos on _TdlibSessionScreenState {
   static const _steps = [
-    (18, 'Prepare Secure Engine'),
-    (32, 'Confirm Telegram Account'),
-    (45, 'Verify with Telegram'),
-    (78, 'Secure Local Session'),
-    (92, 'Finish Transfer Setup'),
+    (18, 'Start Secure Connection'),
+    (32, 'Request Sign-In Code'),
+    (45, 'Read Code Automatically'),
+    (78, 'Secure This iPhone'),
+    (92, 'Finish Setup'),
   ];
 
   Widget _buildIosBody(TdlibSessionState session) {
     final scheme = Theme.of(context).colorScheme;
     final auto = session.auto;
     final done = auto.stage == TdlibAutoAuthStage.authorized;
-    final busy = auto.isAutomationActive || _submitting || _submittingPassword;
+    // Before the automation reports its first stage the page is starting,
+    // not waiting on the user.
+    final starting = auto.stage == TdlibAutoAuthStage.idle && _error == null;
+    final busy =
+        auto.isAutomationActive ||
+        starting ||
+        _requestingCode ||
+        _submittingPassword;
     final progress = done ? 100 : auto.progressPercent.clamp(0, 100);
     // A threshold marks where a step begins: the last step reached is the
     // current one, and every step before it is done.
@@ -26,10 +38,7 @@ extension _TdlibSessionScreenIos on _TdlibSessionScreenState {
     final failed = auto.stage == TdlibAutoAuthStage.failed;
     final manualPassword =
         auto.stage == TdlibAutoAuthStage.manualPasswordRequired;
-    final manualCode =
-        !manualPassword &&
-        (_manualCodeVisible ||
-            auto.stage == TdlibAutoAuthStage.manualCodeRequired);
+    final needsNewCode = auto.stage == TdlibAutoAuthStage.manualCodeRequired;
     final errors = [?auto.error, ?_error];
 
     return SafeArea(
@@ -78,9 +87,10 @@ extension _TdlibSessionScreenIos on _TdlibSessionScreenState {
                         child: Text(
                           done
                               ? 'Your Telegram session is ready on this iPhone.'
-                              : 'TeleDrive is creating a secure Telegram session '
-                                    'on this iPhone, so your files transfer '
-                                    'directly between it and Telegram.',
+                              : 'This happens automatically. Telegram sends a '
+                                    'code to your Telegram app and TeleDrive '
+                                    'reads it for you, so there’s nothing to '
+                                    'type.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 16,
@@ -108,13 +118,6 @@ extension _TdlibSessionScreenIos on _TdlibSessionScreenState {
                                         : _StepState.waiting)
                                   : _StepState.pending,
                               detail: i == current ? auto.subtitle : null,
-                              trailing:
-                                  i == current &&
-                                      auto.stage ==
-                                          TdlibAutoAuthStage.waitingForCode &&
-                                      auto.otpSecondsRemaining != null
-                                  ? _countdown(auto.otpSecondsRemaining!)
-                                  : null,
                             ),
                         ],
                       ),
@@ -135,19 +138,6 @@ extension _TdlibSessionScreenIos on _TdlibSessionScreenState {
                             ),
                           ),
                         ),
-                      if (manualCode && _manualCodeVisible) ...[
-                        const SizedBox(height: 28),
-                        _iosField(
-                          controller: _code,
-                          placeholder: 'Telegram Code',
-                          code: true,
-                          onSubmitted: _submitManualAutoCode,
-                        ),
-                        _iosFootnote(
-                          'Find the code in your Telegram app, in the chat '
-                          'from Telegram.',
-                        ),
-                      ],
                       if (manualPassword) ...[
                         const SizedBox(height: 28),
                         _iosField(
@@ -175,8 +165,9 @@ extension _TdlibSessionScreenIos on _TdlibSessionScreenState {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: _iosActions(
                   auto: auto,
-                  manualCode: manualCode,
+                  needsNewCode: needsNewCode,
                   manualPassword: manualPassword,
+                  busy: busy && !done,
                 ),
               ),
             ),
@@ -188,31 +179,21 @@ extension _TdlibSessionScreenIos on _TdlibSessionScreenState {
 
   List<Widget> _iosActions({
     required TdlibAutoAuthorizationState auto,
-    required bool manualCode,
+    required bool needsNewCode,
     required bool manualPassword,
+    required bool busy,
   }) {
     final auth = ref.watch(authControllerProvider);
     final hasPreviousAccount =
         (widget.previousUserId ?? auth.pendingPreviousUserId) != null;
     final (String, VoidCallback, bool)? primary = manualPassword
         ? ('Continue', _submitManualPassword, _submittingPassword)
-        : manualCode && _manualCodeVisible
-        ? ('Continue', _submitManualAutoCode, _submitting)
-        : manualCode
-        ? (
-            'Enter Code Manually',
-            () => _setUiState(() => _manualCodeVisible = true),
-            false,
-          )
+        : needsNewCode
+        ? ('Send a New Code', _requestNewCode, _requestingCode)
         : auto.stage == TdlibAutoAuthStage.failed
         ? ('Try Again', () => _startAutomation(restartOtpWindow: true), false)
-        : auto.stage == TdlibAutoAuthStage.idle
-        ? ('Start Setup', () => _startAutomation(force: true), false)
-        : null;
-    final (String, VoidCallback)? secondary = manualCode && _manualCodeVisible
-        ? ('Try Automatic Detection Again', _retryOtp)
-        : manualCode
-        ? ('Send Code Again', _retryOtp)
+        : auto.stage == TdlibAutoAuthStage.idle && _error != null
+        ? ('Try Again', () => _startAutomation(force: true), false)
         : null;
     Widget text(String label, VoidCallback? onPressed, {Color? color}) =>
         CupertinoButton(
@@ -231,8 +212,20 @@ extension _TdlibSessionScreenIos on _TdlibSessionScreenState {
           label: primary.$1,
           busy: primary.$3,
           onPressed: primary.$2,
+        )
+      else if (busy)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+          child: Text(
+            'Keep TeleDrive open. This usually takes less than a minute.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.38,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
         ),
-      if (secondary != null) text(secondary.$1, secondary.$2),
       if (hasPreviousAccount)
         text(
           'Back to Previous Account',
@@ -247,22 +240,11 @@ extension _TdlibSessionScreenIos on _TdlibSessionScreenState {
     ];
   }
 
-  Widget _countdown(int seconds) => Text(
-    '0:${seconds.toString().padLeft(2, '0')}',
-    style: TextStyle(
-      fontSize: 15,
-      fontWeight: FontWeight.w500,
-      fontFeatures: const [FontFeature.tabularFigures()],
-      color: Theme.of(context).colorScheme.onSurfaceVariant,
-    ),
-  );
-
   Widget _iosField({
     required TextEditingController controller,
     required String placeholder,
     required VoidCallback onSubmitted,
-    bool code = false,
-    bool? obscure,
+    required bool obscure,
   }) {
     final scheme = Theme.of(context).colorScheme;
     return ClipRSuperellipse(
@@ -271,50 +253,36 @@ extension _TdlibSessionScreenIos on _TdlibSessionScreenState {
         controller: controller,
         autofocus: true,
         placeholder: placeholder,
-        obscureText: obscure ?? false,
-        keyboardType: code
-            ? TextInputType.number
-            : TextInputType.visiblePassword,
+        obscureText: obscure,
+        keyboardType: TextInputType.visiblePassword,
         textInputAction: TextInputAction.done,
-        textAlign: code ? TextAlign.center : TextAlign.start,
         autocorrect: false,
         enableSuggestions: false,
-        autofillHints: code
-            ? const [AutofillHints.oneTimeCode]
-            : const [AutofillHints.password],
-        inputFormatters: code
-            ? [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(6),
-              ]
-            : null,
+        autofillHints: const [AutofillHints.password],
         onSubmitted: (_) => onSubmitted(),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
         style: TextStyle(
-          fontSize: code ? 26 : 17,
-          letterSpacing: code ? 8 : -.4,
-          fontWeight: code ? FontWeight.w500 : FontWeight.w400,
+          fontSize: 17,
+          letterSpacing: -.4,
           color: scheme.onSurface,
         ),
         placeholderStyle: TextStyle(
-          fontSize: code ? 22 : 17,
+          fontSize: 17,
           letterSpacing: -.4,
           color: CupertinoColors.placeholderText.resolveFrom(context),
         ),
-        suffix: obscure == null
-            ? null
-            : CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                minimumSize: const Size(44, 44),
-                onPressed: () =>
-                    _setUiState(() => _obscurePassword = !_obscurePassword),
-                child: Icon(
-                  obscure ? CupertinoIcons.eye : CupertinoIcons.eye_slash,
-                  size: 20,
-                  semanticLabel: obscure ? 'Show password' : 'Hide password',
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
+        suffix: CupertinoButton(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          minimumSize: const Size(44, 44),
+          onPressed: () =>
+              _setUiState(() => _obscurePassword = !_obscurePassword),
+          child: Icon(
+            obscure ? CupertinoIcons.eye : CupertinoIcons.eye_slash,
+            size: 20,
+            semanticLabel: obscure ? 'Show password' : 'Hide password',
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
         decoration: BoxDecoration(color: scheme.surfaceContainerLow),
       ),
     );
@@ -331,47 +299,15 @@ extension _TdlibSessionScreenIos on _TdlibSessionScreenState {
       ),
     ),
   );
-
-  Future<String?> _showIosCodeActionSheet() => showCupertinoModalPopup<String>(
-    context: context,
-    builder: (context) => CupertinoActionSheet(
-      title: const Text('Telegram Code Needed'),
-      message: const Text(
-        'The latest Telegram code could not be read automatically. Enter it '
-        'yourself, or try automatic detection again.',
-      ),
-      actions: [
-        CupertinoActionSheetAction(
-          isDefaultAction: true,
-          onPressed: () => Navigator.pop(context, 'manual'),
-          child: const Text('Enter Code Manually'),
-        ),
-        CupertinoActionSheetAction(
-          onPressed: () => Navigator.pop(context, 'retry'),
-          child: const Text('Try Again'),
-        ),
-      ],
-      cancelButton: CupertinoActionSheetAction(
-        onPressed: () => Navigator.pop(context, 'cancel'),
-        child: const Text('Cancel'),
-      ),
-    ),
-  );
 }
 
 enum _StepState { done, active, waiting, failed, pending }
 
 class _IosSetupStep extends StatelessWidget {
-  const _IosSetupStep({
-    required this.title,
-    required this.state,
-    this.detail,
-    this.trailing,
-  });
+  const _IosSetupStep({required this.title, required this.state, this.detail});
   final String title;
   final _StepState state;
   final String? detail;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -457,7 +393,6 @@ class _IosSetupStep extends StatelessWidget {
                   ],
                 ),
               ),
-              if (trailing != null) ...[const SizedBox(width: 12), trailing!],
             ],
           ),
         ),
