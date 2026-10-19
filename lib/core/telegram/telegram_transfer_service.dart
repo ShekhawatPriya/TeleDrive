@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../config/app_config.dart';
+import '../storage/media_disk_cache.dart';
 import '../storage/secure_storage.dart';
 import '../utils/stable_hash.dart';
 import 'telegram_client_exceptions.dart';
@@ -62,6 +63,14 @@ abstract class TelegramTransferService {
   Stream<TelegramTransferProgress> watchProgress(String transferId);
 
   Future<void> cancelTransfer(String transferId);
+
+  /// Runs TDLib's own time-aware LRU over its file store (`optimizeStorage`).
+  /// Best effort: never throws, and does nothing while unauthorized.
+  Future<void> optimizeStorage({
+    required int maxBytes,
+    required Duration ttl,
+    required Duration immunity,
+  });
 
   Future<TelegramDownloadResult> downloadToCache(
     TelegramMediaRef ref, {
@@ -345,11 +354,13 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
     CancelToken? cancelToken,
     ProgressCallback? onProgress,
   }) async {
-    final dir = await getTemporaryDirectory();
-    final safeName = filename.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
-    final path =
-        '${dir.path}${Platform.pathSeparator}teledrive_${stableHash(cacheKey)}_$safeName';
+    final cache = MediaDiskCache.instance;
+    final target = await cache.previewFile(cacheKey, filename);
+    final path = target.path;
     if (cancelToken?.isCancelled ?? false) throw cancelToken!.cancelError!;
+    // Cache-first: a complete copy from an earlier read needs no native call.
+    final hit = await cache.hit(target);
+    if (hit != null) return TelegramDownloadResult(file: hit, ref: ref);
     final transferId = _uuid.v4();
     final progress = onProgress == null
         ? null
@@ -393,10 +404,29 @@ class MethodChannelTelegramTransferService implements TelegramTransferService {
       await progress?.cancel();
       _closeTransferController(transferId);
     }
+    unawaited(cache.trim());
     return TelegramDownloadResult(
       file: File((result['filePath'] as String?) ?? path),
       ref: ref,
     );
+  }
+
+  @override
+  Future<void> optimizeStorage({
+    required int maxBytes,
+    required Duration ttl,
+    required Duration immunity,
+  }) async {
+    try {
+      if (!await isAuthorized) return;
+      await _channel.invokeMethod<Object?>('optimizeStorage', {
+        'maxBytes': maxBytes,
+        'ttlSeconds': ttl.inSeconds,
+        'immunitySeconds': immunity.inSeconds,
+      });
+    } catch (_) {
+      // Storage maintenance must never break media access.
+    }
   }
 
   Future<Map<String, dynamic>> _invokeMap(

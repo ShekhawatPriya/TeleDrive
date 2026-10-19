@@ -72,6 +72,7 @@ class MainActivity : FlutterActivity() {
                 "sendDocument" -> complete(tdlibBridge.sendDocument(typedArgs), result)
                 "downloadToFile" -> complete(tdlibBridge.downloadToFile(typedArgs), result)
                 "cancelTransfer" -> complete(tdlibBridge.cancelTransfer(typedArgs), result)
+                "optimizeStorage" -> complete(tdlibBridge.optimizeStorage(typedArgs), result)
                 else -> result.notImplemented()
             }
         } catch (error: TdlibException) {

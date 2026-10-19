@@ -50,6 +50,103 @@ local upload thumbnails retain Flutter's immediate image-cache path.
   native calls have a 15-second deadline; original fallback uses 30 seconds.
   Viewer originals retain the viewer's longer timeout policy.
 
+## Media cache tiers
+
+Each tier has **one owner** and a time-aware LRU (TLRU) policy: entries idle
+longer than a TTL expire, and a tier over its high watermark evicts
+least-recently-used entries down to its low watermark. Recency is last
+access, not download time: every hit touches the entry. Entries used within
+the immunity window are never evicted, so on-screen or in-flight media stays.
+
+| Tier | Owner | Budget |
+| --- | --- | --- |
+| Decoded images | Flutter `ImageCache`, plus `ThumbnailLoader`'s 256-path memory LRU | Flutter defaults; decode is bounded by tile size |
+| Thumbnails | `TeleDriveThumbnailCacheManager` (`flutter_cache_manager`) | 3,000 objects, 30 days since last access |
+| Previews (`teledrive_<hash>_<name>` in temp) | `MediaDiskCache` | 256 MiB → 192 MiB, 14-day TTL, 5-minute immunity |
+| Originals (`teledrive-downloads/<revision>/`) | `DownloadCache` + `MediaDiskCache` trim | 1 GiB → 768 MiB, 7-day TTL; staging directories are immune |
+| TDLib file store (application support) | native bridge | Not a cache tier: released once copied out |
+
+Flow and invariants:
+
+- **Cache-first.** `TelegramMediaAccessService.downloadForPrivateView` looks up
+  the preview tier *before* account setup, media-ref requests, or TDLib. The key
+  is scoped to the storage namespace, backend user, Telegram user, file id,
+  variant, and file revision (modified time, size, derivative versions). It
+  never depends on a backend-provided ref key, so lookup needs no network.
+  `downloadToCache` checks the same file before invoking native code.
+- **Atomic writes.** Native copies go to `<dest>.partial` and are renamed, so
+  an interrupted copy is never a hit. Stale `.partial` files are swept.
+- **No duplicates.** After copy-out the bridge sends TDLib `deleteFile`, but
+  only for files inside TDLib's own files directory. A file uploaded from this
+  device can point at a picker or staging path TDLib must not delete. The
+  thumbnail loader deletes its transient `thumbnail`/`original` source once the
+  thumbnail cache holds the bytes. The original loader *moves* its transient
+  copy into the originals tier. Both delete or move only the bridge's own
+  `teledrive_*` files, never a file the app does not own.
+- **Maintenance.** Once per account generation, after TDLib is verified, the
+  app runs TDLib `optimizeStorage` (64 MiB, 1-day TTL, 1-hour
+  `immunity_delay`) to sweep legacy or interrupted files, and forces a
+  `MediaDiskCache.trim()`. Further trims run after downloads, rate-limited to
+  one per 30 seconds and single-flight. "Clear cache" also empties TDLib's
+  store with `optimizeStorage(size: 0, ttl: 0, immunity_delay: 0)`.
+- Everything here is re-fetchable from Telegram. Evicting a tier costs
+  latency, never data. Upload staging and pending-commit records are not
+  cache and are never trimmed by these rules.
+
+References: Grab's [TLRU disk image cache](https://engineering.grab.com/reclaiming-tetabytes-optimizing-android-image-caching-with-tlru)
+(size cap, last-access TTL, read refreshes recency) and TDLib
+[`optimizeStorage`](https://core.telegram.org/tdlib/docs/classtd_1_1td__api_1_1optimize_storage.html)
+(size/ttl/count limits by last access, `immunity_delay`), together with the
+Glide and Fresco staged-cache references below. `test/media_disk_cache_test.dart`
+covers eviction order, recency refresh, TTL, immunity, partial sweeps, and
+staging protection. Budgets are starting points: tune them from real device
+storage and hit-rate measurements, and keep this table current.
+
+## Fresh TDLib database (re-login) contract
+
+Every Telegram-backed image, video, preview, and original — grid tiles,
+viewer, filmstrip, video playback, item sheets — goes through the native
+`downloadToFile` bridge (`ios/Runner/Tdlib/TdlibBridge+Transfers.swift`,
+`android/.../TdlibBridge.kt`). Fixing media loading belongs there, not in a
+single screen.
+
+**Failure this prevents.** After logging in again, TDLib starts with an empty
+database: it knows no chats. Previously `getMessage(chat, message)` failed with
+"Chat not found" for every stored media ref and the bridge fell back to:
+
+- the stored remote file id, whose embedded file reference has usually expired.
+  With no known source message TDLib cannot refresh it, so the download stopped
+  silently and the tile spun until its timeout. Recently uploaded files still
+  had fresh references, which is why only a few loaded;
+- the stored `tdlibFileId`, a local id from the *previous* database that can
+  name a different file in the new one.
+
+**Required resolution order** (both platforms must match):
+
+1. Wait for `connectionStateReady` **or** `connectionStateUpdating`; a fresh
+   login can stay in "updating" for a long time while requests already work.
+2. `getMessage`. On failure call `ensureChatKnown(chatId)`, then retry
+   `getMessage` once. `ensureChatKnown` checks `getChat`, then pages
+   `loadChats` through `chatListMain` and then `chatListArchive` (100 per page,
+   at most 50 pages per list) until the chat appears or the list is exhausted.
+   It is single-flight per chat, is not tied to one transfer's cancellation (a
+   timed-out thumbnail's retry reuses the in-flight discovery), is forgotten on
+   failure so the next request retries, and is cleared when the client is
+   reconfigured. A downloaded message lets TDLib repair expired file references
+   itself.
+3. Only if the message cannot be used, the persistent remote file id.
+4. A raw `tdlibFileId` only when the ref has neither message nor remote id.
+5. When TDLib reports a file it was actively downloading as inactive and
+   incomplete (`is_downloading_active` false), fail that waiter with
+   `tdlib_download_stalled` immediately, so callers advance to the next source
+   or show the retry/error state instead of spinning until the deadline.
+
+`test/tdlib_download_resolution_contract_test.dart` pins these invariants in
+both bridge sources. If you find a better approach (for example a backend-
+provided chat title for `searchChatsOnServer`, or proactive chat warm-up after
+login), change both bridges, update this section and that test together, and
+keep the AGENTS.md pointer accurate.
+
 These are admission limits, not promises of zero network latency. A missing
 remote derivative, unavailable Telegram session, corrupt original, or offline
 connection still needs recovery. Large originals may require opening the viewer

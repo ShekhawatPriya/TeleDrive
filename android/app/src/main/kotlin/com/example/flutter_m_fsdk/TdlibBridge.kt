@@ -40,6 +40,9 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
     @Volatile private var activeScopeKey: String? = null
     @Volatile private var authorizationState: String = "authorizationStateClosed"
     @Volatile private var connectionState: String = "connectionStateWaitingForNetwork"
+    /// Single-flight chat discovery for downloads, keyed by TDLib chat id.
+    /// See ensureChatKnown and docs/media-loading.md ("Fresh TDLib database").
+    private val chatResolutions = ConcurrentHashMap<Long, CompletableFuture<Unit>>()
     @Volatile private var loadError: Throwable? = null
     @Volatile private var loaded = false
     private val configureLock = Any()
@@ -152,6 +155,7 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         clientId = 0
         authorizationState = "authorizationStateClosed"
         connectionState = "connectionStateWaitingForNetwork"
+        chatResolutions.clear()
     }
 
     fun resendCode(): CompletableFuture<Map<String, Any?>> {
@@ -327,15 +331,20 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
             longArg(args, "timeoutMs")?.takeIf { it > 0L }
         )
         transfers[transferId] = Transfer(transferId)
-        val messageFuture = waitForConnectionReady(timeoutMs = 45000L).thenCompose {
+        // Resolution order (docs/media-loading.md, "Fresh TDLib database"):
+        // 1. the source message, after making its chat known to this TDLib
+        //    database, so TDLib can refresh expired file references itself;
+        // 2. the persistent remote file id;
+        // 3. a raw TDLib file id only when nothing else exists, because local
+        //    file ids belong to the database that produced them and can name a
+        //    different file after a re-login.
+        val messageFuture = waitForConnectionReady(
+            timeoutMs = 45000L,
+            acceptedStates = setOf("connectionStateReady", "connectionStateUpdating")
+        ).thenCompose {
             ensureDownloadActive(transferId)
-            if (hasMessageRef) {
-                send(
-                    JSONObject()
-                        .put("@type", "getMessage")
-                        .put("chat_id", chatId)
-                        .put("message_id", messageId)
-                ).handle<JSONObject?> { message, _ -> message }
+            if (chatId != null && messageId != null) {
+                fetchMessage(chatId, messageId, transferId)
             } else {
                 CompletableFuture.completedFuture<JSONObject?>(null)
             }
@@ -349,12 +358,101 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
             }
             downloadByRemoteOrSupplied(
                 remoteFileId,
-                suppliedFileId,
+                if (hasMessageRef || remoteFileId != null) null else suppliedFileId,
                 transferId,
                 destinationPath,
                 timeoutMs
             )
         }.whenComplete { _, _ -> transfers.remove(transferId) }
+    }
+
+    /// getMessage, retried once after chat discovery when the chat or message
+    /// is unknown to this database. Completes with null (never fails) so the
+    /// caller can still try the remote file id.
+    private fun fetchMessage(chatId: Long, messageId: Long, transferId: String): CompletableFuture<JSONObject?> {
+        fun request() = JSONObject()
+            .put("@type", "getMessage")
+            .put("chat_id", chatId)
+            .put("message_id", messageId)
+        return send(request()).handle<CompletableFuture<JSONObject?>> { message, _ ->
+            if (message != null) {
+                CompletableFuture.completedFuture(message)
+            } else {
+                ensureChatKnown(chatId)
+                    .thenCompose {
+                        ensureDownloadActive(transferId)
+                        send(request())
+                    }
+                    .handle<JSONObject?> { retried, _ -> retried }
+            }
+        }.thenCompose { it }
+    }
+
+    /// Makes a storage chat known to this TDLib database before getMessage.
+    ///
+    /// After a re-login (or any fresh database) TDLib knows no chats, so
+    /// getMessage fails with "Chat not found" for every stored media ref, and
+    /// the remote-file fallback stalls once the embedded file reference has
+    /// expired because TDLib has no message to refresh it from. Loading the
+    /// chat lists gives TDLib the channel's access hash. Discovery is
+    /// single-flight per chat, survives transfer cancellation (a retry reuses
+    /// it), and is forgotten on failure so the next request tries again.
+    private fun ensureChatKnown(chatId: Long): CompletableFuture<Unit> {
+        val created = CompletableFuture<Unit>()
+        val existing = chatResolutions.putIfAbsent(chatId, created)
+        if (existing != null) return existing
+        getChatExists(chatId)
+            .thenCompose { known ->
+                if (known) {
+                    CompletableFuture.completedFuture(true)
+                } else {
+                    loadChatPages(chatId, listOf("chatListMain", "chatListArchive"), 0)
+                }
+            }
+            .whenComplete { found, _ ->
+                if (found == true) {
+                    created.complete(Unit)
+                } else {
+                    chatResolutions.remove(chatId, created)
+                    created.completeExceptionally(
+                        TdlibException(
+                            "tdlib_chat_unavailable",
+                            "The Telegram storage chat is not available to the signed-in account.",
+                            "chatId=$chatId"
+                        )
+                    )
+                }
+            }
+        return created
+    }
+
+    private fun getChatExists(chatId: Long): CompletableFuture<Boolean> {
+        return send(JSONObject().put("@type", "getChat").put("chat_id", chatId))
+            .handle { chat, error -> error == null && chat != null }
+    }
+
+    /// Pages through each chat list until the chat appears or the list is
+    /// exhausted (loadChats returns 404). Bounded so a huge account cannot
+    /// loop forever.
+    private fun loadChatPages(chatId: Long, lists: List<String>, page: Int): CompletableFuture<Boolean> {
+        val list = lists.firstOrNull() ?: return CompletableFuture.completedFuture(false)
+        val rest = lists.drop(1)
+        if (page >= 50) return loadChatPages(chatId, rest, 0)
+        return send(
+            JSONObject()
+                .put("@type", "loadChats")
+                .put("chat_list", JSONObject().put("@type", list))
+                .put("limit", 100)
+        ).handle { _, error -> error == null }
+            .thenCompose { loaded ->
+                getChatExists(chatId).thenCompose { known ->
+                    when {
+                        known -> CompletableFuture.completedFuture(true)
+                        loaded -> loadChatPages(chatId, lists, page + 1)
+                        else -> loadChatPages(chatId, rest, 0)
+                    }
+                }
+            }
     }
 
     private fun ensureDownloadActive(transferId: String) {
@@ -376,7 +474,6 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
                 val remoteResolvedFileId = if (error == null) file?.optInt("id")?.takeIf { it > 0 } else null
                 when {
                     remoteResolvedFileId != null -> startDownloadFile(remoteResolvedFileId, transferId, destinationPath, timeoutMs)
-                    suppliedFileId != null -> startDownloadFile(suppliedFileId, transferId, destinationPath, timeoutMs)
                     error != null -> failed(error)
                     else -> failed(TdlibException("tdlib_file_ref_missing", "Could not locate TDLib file id for this reference."))
                 }
@@ -427,6 +524,9 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
             } else if (file != null) {
                 handleDownloadedFile(file)
                 val local = file.optJSONObject("local")
+                if (local?.optBoolean("is_downloading_active", false) == true) {
+                    waiter.observedActive = true
+                }
                 if (local?.optBoolean("is_downloading_completed", false) != true) {
                     val remote = file.optJSONObject("remote")
                     if (remote?.optBoolean("is_uploading_completed", true) == false) {
@@ -599,13 +699,19 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         }
     }
 
-    private fun waitForConnectionReady(timeoutMs: Long): CompletableFuture<String> {
-        if (connectionState == "connectionStateReady") {
+    /// Downloads also accept connectionStateUpdating: TDLib serves requests
+    /// while it catches up, and a freshly logged-in account can stay in that
+    /// state for a long time.
+    private fun waitForConnectionReady(
+        timeoutMs: Long,
+        acceptedStates: Set<String> = setOf("connectionStateReady")
+    ): CompletableFuture<String> {
+        if (acceptedStates.contains(connectionState)) {
             return CompletableFuture.completedFuture(connectionState)
         }
         sendNoWait(JSONObject().put("@type", "getCurrentState"))
         val future = CompletableFuture<String>()
-        val waiter = ConnectionWaiter(setOf("connectionStateReady"), future)
+        val waiter = ConnectionWaiter(acceptedStates, future)
         connectionWaiters.add(waiter)
         thread(name = "teledrive-tdlib-connection-timeout", isDaemon = true) {
             try {
@@ -926,6 +1032,33 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         }
         if (downloaded) {
             handleDownloadedFile(file)
+        } else {
+            failStalledDownloads(fileId, local?.optBoolean("is_downloading_active", false) == true)
+        }
+    }
+
+    /// TDLib stops a download (is_downloading_active false, incomplete) when it
+    /// cannot continue, e.g. an expired file reference with no known source
+    /// message. Fail those waiters now so the UI advances to its next source
+    /// or error state instead of spinning until the timeout.
+    private fun failStalledDownloads(fileId: Int, active: Boolean) {
+        val stalled = synchronized(downloadsLock) {
+            val waiters = downloads[fileId] ?: return
+            if (active) {
+                waiters.forEach { it.observedActive = true }
+                return
+            }
+            val stopped = waiters.filter { it.observedActive }
+            stopped.forEach { removeDownloadWaiter(fileId, it) }
+            stopped
+        }
+        for (waiter in stalled) {
+            transfers.remove(waiter.transferId)
+            val message = "Telegram stopped downloading this file."
+            emitProgress(waiter.transferId, "failed", 0, null, message)
+            waiter.future.completeExceptionally(
+                TdlibException("tdlib_download_stalled", message, "fileId=$fileId")
+            )
         }
     }
 
@@ -936,12 +1069,22 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         if (sourcePath.isNullOrBlank()) return
         if (!synchronized(downloadsLock) { downloads.remove(fileId, waiters) }) return
         val source = File(sourcePath)
+        var copiedOut = false
         for (waiter in waiters) {
             try {
                 val dest = File(waiter.destinationPath)
                 dest.parentFile?.mkdirs()
                 if (source.absolutePath != dest.absolutePath) {
-                    source.copyTo(dest, overwrite = true)
+                    // Copy to a sibling and rename, so an interrupted copy never
+                    // leaves a truncated file that the Dart disk cache would
+                    // later treat as a hit.
+                    val partial = File(dest.absolutePath + ".partial")
+                    source.copyTo(partial, overwrite = true)
+                    if (!partial.renameTo(dest)) {
+                        partial.copyTo(dest, overwrite = true)
+                        partial.delete()
+                    }
+                    copiedOut = true
                 }
                 transfers.remove(waiter.transferId)
                 emitProgress(waiter.transferId, "completed", source.length(), source.length(), null)
@@ -953,6 +1096,40 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
                 waiter.future.completeExceptionally(TdlibException("tdlib_download_copy_failed", message))
             }
         }
+        releaseTdlibCopy(fileId, source, copiedOut)
+    }
+
+    /// The app's Dart disk cache owns the copied file, so TDLib's copy is a
+    /// duplicate. Release it only when it lives inside TDLib's own files
+    /// directory — a file uploaded from this device can point at a picker or
+    /// staging path that TDLib must not delete.
+    private fun releaseTdlibCopy(fileId: Int, source: File, copiedOut: Boolean) {
+        if (!copiedOut || fileId <= 0) return
+        val filesDirectory = config?.filesDirectory?.takeIf { it.isNotBlank() } ?: return
+        val root = File(filesDirectory).canonicalPath + File.separator
+        if (!source.canonicalPath.startsWith(root)) return
+        if (downloads.containsKey(fileId)) return
+        sendNoWait(JSONObject().put("@type", "deleteFile").put("file_id", fileId))
+    }
+
+    /// TDLib's time-aware LRU for its file store: trims least-recently-accessed
+    /// files to `maxBytes`, drops files idle longer than `ttlSeconds`, and
+    /// never touches files younger than `immunitySeconds` (in-flight work).
+    fun optimizeStorage(args: Map<String, Any?>): CompletableFuture<Map<String, Any?>> {
+        ensureAuthorized()
+        return send(
+            JSONObject()
+                .put("@type", "optimizeStorage")
+                .put("size", longArg(args, "maxBytes") ?: -1L)
+                .put("ttl", intArg(args, "ttlSeconds") ?: -1)
+                .put("count", -1)
+                .put("immunity_delay", intArg(args, "immunitySeconds") ?: -1)
+                .put("file_types", JSONArray())
+                .put("chat_ids", JSONArray())
+                .put("exclude_chat_ids", JSONArray())
+                .put("return_deleted_file_statistics", false)
+                .put("chat_limit", 0)
+        ).thenApply { stats -> mapOf("optimized" to true, "size" to stats.optLong("size", 0L)) }
     }
 
     private fun expireDownloadWaiter(fileId: Int, waiter: DownloadWaiter, timeoutMs: Long) {

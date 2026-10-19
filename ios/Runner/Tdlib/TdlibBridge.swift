@@ -34,9 +34,15 @@ final class TdlibBridge: NSObject {
     private var clientId: Int32 = 0
     private var receiverStarted = false
     private var config: TdlibConfig?
+    /// TDLib's own files directory; only files inside it are released after a
+    /// download is copied out (see docs/media-loading.md, "Media cache tiers").
+    var tdlibFilesDirectory: String? { withLock { config?.filesDirectory } }
     private var activeScopeKey: String?
     private var authorizationState = "authorizationStateClosed"
     private var connectionState = "connectionStateWaitingForNetwork"
+    /// Single-flight chat discovery for downloads, keyed by TDLib chat id.
+    /// See ensureChatKnown and docs/media-loading.md ("Fresh TDLib database").
+    private var chatResolutions: [Int64: Promise<Void>] = [:]
 
     // Accessed only on the main thread (Flutter invokes the stream handler there).
     private var eventSink: FlutterEventSink?
@@ -100,6 +106,8 @@ final class TdlibBridge: NSObject {
                     self.finishPromise(try self.downloadToFile(args), result)
                 case "cancelTransfer":
                     self.finishValue(result, try self.cancelTransfer(args))
+                case "optimizeStorage":
+                    self.finishPromise(try self.optimizeStorage(args), result)
                 default:
                     DispatchQueue.main.async { result(FlutterMethodNotImplemented) }
                 }
@@ -275,6 +283,7 @@ final class TdlibBridge: NSObject {
             clientId = 0
             authorizationState = "authorizationStateClosed"
             connectionState = "connectionStateWaitingForNetwork"
+            chatResolutions.removeAll()
         }
         pendingSnapshot.forEach { $0.fail(reconfigured) }
         sendWaiterSnapshot.forEach { $0.fail(reconfigured) }
@@ -402,6 +411,74 @@ final class TdlibBridge: NSObject {
                 }
             }
             .then { $0 }
+    }
+
+    /// Makes a storage chat known to this TDLib database before getMessage.
+    ///
+    /// After a re-login (or any fresh database) TDLib knows no chats, so
+    /// getMessage fails with "Chat not found" for every stored media ref, and
+    /// the remote-file fallback stalls once the embedded file reference has
+    /// expired because TDLib has no message to refresh it from. Loading the
+    /// chat lists gives TDLib the channel's access hash. Discovery is
+    /// single-flight per chat, survives transfer cancellation (a retry reuses
+    /// it), and is forgotten on failure so the next request tries again.
+    func ensureChatKnown(_ chatId: Int64) -> Promise<Void> {
+        let created = Promise<Void>()
+        let existing: Promise<Void>? = withLock {
+            if let inFlight = chatResolutions[chatId] { return inFlight }
+            chatResolutions[chatId] = created
+            return nil
+        }
+        if let existing = existing { return existing }
+        getChatExists(chatId)
+            .then { known -> Promise<Bool> in
+                if known { return Promise.value(true) }
+                return self.loadChatPages(chatId, lists: ["chatListMain", "chatListArchive"], page: 0)
+            }
+            .onComplete { result in
+                if case .success(true) = result {
+                    created.complete(())
+                    return
+                }
+                self.withLock {
+                    if self.chatResolutions[chatId] === created {
+                        self.chatResolutions.removeValue(forKey: chatId)
+                    }
+                }
+                created.fail(TdlibError(
+                    "tdlib_chat_unavailable",
+                    "The Telegram storage chat is not available to the signed-in account.",
+                    "chatId=\(chatId)"
+                ))
+            }
+        return created
+    }
+
+    private func getChatExists(_ chatId: Int64) -> Promise<Bool> {
+        return send(["@type": "getChat", "chat_id": NSNumber(value: chatId)])
+            .handle { chat, error in error == nil && chat != nil }
+    }
+
+    /// Pages through each chat list until the chat appears or the list is
+    /// exhausted (loadChats returns 404). Bounded so a huge account cannot
+    /// loop forever.
+    private func loadChatPages(_ chatId: Int64, lists: [String], page: Int) -> Promise<Bool> {
+        guard let list = lists.first else { return Promise.value(false) }
+        let rest = Array(lists.dropFirst())
+        if page >= 50 { return loadChatPages(chatId, lists: rest, page: 0) }
+        return send([
+            "@type": "loadChats",
+            "chat_list": ["@type": list] as [String: Any],
+            "limit": 100,
+        ])
+        .handle { _, error in error == nil }
+        .then { loaded -> Promise<Bool> in
+            self.getChatExists(chatId).then { known -> Promise<Bool> in
+                if known { return Promise.value(true) }
+                if loaded { return self.loadChatPages(chatId, lists: lists, page: page + 1) }
+                return self.loadChatPages(chatId, lists: rest, page: 0)
+            }
+        }
     }
 
     private func refreshChats(_ title: String?) -> Promise<Void> {
@@ -597,11 +674,17 @@ final class TdlibBridge: NSObject {
         matched.forEach { $0.promise.complete(state) }
     }
 
-    func waitForConnectionReady(timeoutMs: Int) -> Promise<String> {
+    /// Downloads also accept connectionStateUpdating: TDLib serves requests
+    /// while it catches up, and a freshly logged-in account can stay in that
+    /// state for a long time.
+    func waitForConnectionReady(
+        timeoutMs: Int,
+        acceptedStates: Set<String> = ["connectionStateReady"]
+    ) -> Promise<String> {
         let promise = Promise<String>()
-        let waiter = TdlibConnectionWaiter(acceptedStates: ["connectionStateReady"], promise: promise)
+        let waiter = TdlibConnectionWaiter(acceptedStates: acceptedStates, promise: promise)
         let immediate: String? = withLock {
-            if connectionState == "connectionStateReady" {
+            if acceptedStates.contains(connectionState) {
                 return connectionState
             }
             connectionWaiters.append(waiter)

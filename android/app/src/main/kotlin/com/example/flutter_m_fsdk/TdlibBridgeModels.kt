@@ -27,7 +27,11 @@ internal data class DownloadWaiter(
     val transferId: String,
     val destinationPath: String,
     val future: CompletableFuture<Map<String, Any?>>,
-)
+) {
+    /// Set once TDLib reports the file actively downloading. A later inactive,
+    /// incomplete update means TDLib gave up and the waiter fails immediately.
+    @Volatile var observedActive: Boolean = false
+}
 
 internal data class AuthorizationWaiter(
     val acceptedStates: Set<String>,

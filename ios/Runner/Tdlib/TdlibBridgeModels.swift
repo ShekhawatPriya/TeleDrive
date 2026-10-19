@@ -181,6 +181,11 @@ final class TdlibDownloadWaiter {
     let transferId: String
     let destinationPath: String
     let promise = Promise<[String: Any]>()
+    /// Set once TDLib reports this file actively downloading; guarded by the
+    /// bridge state lock. A later inactive, incomplete update means TDLib gave
+    /// up (for example an unrepairable file reference) and the waiter fails
+    /// immediately instead of spinning until its timeout.
+    var observedActive = false
 
     init(transferId: String, destinationPath: String) {
         self.transferId = transferId

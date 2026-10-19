@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import '../config/app_config.dart';
 import '../storage/download_cache.dart';
+import '../storage/media_disk_cache.dart';
 import '../telegram/telegram_media_access_service.dart';
 import '../../features/auth/auth_controller.dart';
 import '../../models/drive_models.dart';
@@ -50,9 +52,9 @@ class PhotoMediaLoader {
     if (!exists) return null;
     final length = await cached.length();
     _check(generation, token);
-    return length > 0 && (file.size <= 0 || length == file.size)
-        ? cached
-        : null;
+    if (length <= 0 || (file.size > 0 && length != file.size)) return null;
+    await MediaDiskCache.instance.touch(cached);
+    return cached;
   }
 
   Future<File> original(
@@ -81,11 +83,28 @@ class PhotoMediaLoader {
         );
         _check(generation, token);
         if (local == null) throw StateError('The original is unavailable.');
-        await local.copy(target);
+        // Move the bridge's transient copy rather than copy it, so the
+        // originals tier is the single owner and a large file is never stored
+        // twice. Files the app does not own (local fixtures, optimistic
+        // uploads) are copied and left in place.
+        final owned = local.uri.pathSegments.last.startsWith(
+          MediaDiskCache.previewPrefix,
+        );
+        if (!owned) {
+          await local.copy(target);
+        } else {
+          try {
+            await local.rename(target);
+          } on FileSystemException {
+            await local.copy(target);
+            await local.delete();
+          }
+        }
         _check(generation, token);
       },
     );
     _check(generation, token);
+    unawaited(MediaDiskCache.instance.trim());
     return result;
   }
 
