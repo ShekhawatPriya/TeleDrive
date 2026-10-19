@@ -1010,10 +1010,11 @@ class _IosSettingsIntroState extends State<IosSettingsIntro> {
           color: widget.fill ?? scheme.surfaceContainerLow,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 18),
-            // Centered, as the category cards in iOS Settings (General,
-            // Camera, Apps) present their symbol, title and description.
+            // Leading-aligned, as the category cards in iOS Settings
+            // (Mobile Service, General, Camera) present their symbol, title
+            // and description.
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ExcludeSemantics(
                   child: DecoratedBox(
@@ -1038,7 +1039,7 @@ class _IosSettingsIntroState extends State<IosSettingsIntro> {
                   child: Text(
                     widget.title,
                     key: IosHeroScope.titleKeyOf(context),
-                    textAlign: TextAlign.center,
+                    textAlign: TextAlign.start,
                     style: TextStyle(
                       fontSize: 22,
                       height: 1.2,
@@ -1064,7 +1065,7 @@ class _IosSettingsIntroState extends State<IosSettingsIntro> {
                       ],
                     ],
                   ),
-                  textAlign: TextAlign.center,
+                  textAlign: TextAlign.start,
                   style: descriptionStyle,
                 ),
               ],

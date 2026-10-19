@@ -28,12 +28,13 @@ class IosStoragePage extends StatelessWidget {
       onRefresh: onRefresh,
       onBack: () => context.canPop() ? context.pop() : context.go('/drive'),
       children: [
-        const IosSettingsIntro(
+        IosSettingsIntro(
           icon: CupertinoIcons.tray_2_fill,
           color: IosTint.telegramDrive,
           title: 'Telegram Drive',
           description:
               'See how your library uses your Telegram account and what TeleDrive keeps on this iPhone.',
+          onLearnMore: () => context.push('/privacy'),
         ),
         if (data == null) ...[
           if (error == null)

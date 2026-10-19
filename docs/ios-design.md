@@ -124,8 +124,9 @@ and Camera) on a 402-point iPhone. Primitives live in
   continuous-corner symbol tile in the destination's `IosTint`, a 22-point bold
   title that matches the page title, and one or two sentences of description.
   It can end with an inline "Learn more…" link, used only where a real
-  destination exists (Privacy & Security and My Data link to the Privacy
-  Policy). Archive, Locked and Trash open with the same hero on the browsing
+  destination exists (Privacy & Security, My Data, Telegram Drive, Photo
+  Backup, Cache & Storage, Free Up Space and Server Connection link to the
+  Privacy Policy). Archive, Locked and Trash open with the same hero on the browsing
   tile fill (`fill:`), carrying their Drive-tile symbol. While the hero title is
   on screen the inline bar title stays hidden; pages wrap their scroll view in
   `IosHeroScope` and pass `hasHero` to the bar.
@@ -697,7 +698,8 @@ spacing and its tile shapes are deliberately unchanged.
   entering curves on iOS for the toast, the upload controls and the upload
   panel. The panel uses a nearly critical spring so its bottom edge never
   lifts off the screen. Reduced motion still skips these transitions.
-- **Settings.** `IosSettingsIntro` centers its symbol, title and description.
+- **Settings.** `IosSettingsIntro` leading-aligns its symbol, title and description, as the
+  iOS Settings category cards do.
   Scan limits use a UIStepper-style capsule (− | +) with the value in secondary
   text. The backup switch is labelled "Back Up This iPhone". Telegram Drive opens
   its Summary with an iPhone Storage-style segmented bar in the same `IosTint`
@@ -769,6 +771,13 @@ for both themes and a 320-point phone at 200% text.
   rows, and Continue with Telegram pinned above the home indicator, with the
   storage explanation and Privacy Policy · Terms · Source Code beneath it. At
   large text sizes the actions scroll with the page instead.
+- **How TeleDrive Stores Your Data** pushes a compact `IosPage` ("Your Data",
+  `IosDataStoragePage`) rather than a drag-handle sheet: an
+  `IosSettingsIntro` hero, a Where Things Live group (Telegram, TeleDrive
+  Server, This iPhone) whose footnote says file bytes never pass through the
+  server, a Common Questions group in plain language, and Privacy Policy and
+  Source Code rows. It uses no Material cards, timeline connectors or orange
+  accents; Android keeps its expandable explanation on the landing page.
 - **Sign-in** starts at the top of the page: a solid 64-point symbol tile, a
   plain title and one line, the fields as one inset group with a footnote, and
   the primary action pinned above the keyboard. Reauthentication says "Sign In
@@ -776,9 +785,18 @@ for both themes and a 320-point phone at 200% text.
   system-red text, not a filled banner.
 - **Device setup** (`/tdlib-session`) uses a progress ring, the five setup
   steps as one inset group (done, in progress, waiting, failed), the live
-  status on the current step with the code countdown, and the available
-  actions pinned at the bottom. The manual-code prompt is a
-  `CupertinoActionSheet`. Android keeps its Material card.
+  status on the current step, and the available actions pinned at the
+  bottom. Android keeps its Material card.
+- **Device setup is automatic** on both platforms. It starts on its own
+  (there is no Start Setup button), says up front that TeleDrive reads the
+  Telegram code so there is nothing to type, and offers no manual code entry,
+  code action sheet or countdown. Steps read Start Secure Connection, Request
+  Sign-In Code, Read Code Automatically, Secure This iPhone and Finish Setup.
+  While it runs, the footer says to keep TeleDrive open. If the code is not
+  read in time, the only action is Send a New Code; nothing requests another
+  Telegram code without that tap, because each code counts against the
+  account's sign-in limits. A two-step verification password TeleDrive does
+  not already hold is the only thing setup asks the user to type.
 - **Community setup** shows Telegram and TeleDrive joined by a green check,
   "You're Connected", the community destinations and the transparency promise
   as inset groups, and Continue pinned at the bottom.

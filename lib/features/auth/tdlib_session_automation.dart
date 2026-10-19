@@ -98,7 +98,6 @@ extension _TdlibSessionAutomation on TdlibSessionController {
     if (run == null) {
       _setAutoStage(
         TdlibAutoAuthStage.manualCodeRequired,
-        error: 'Telegram code needed.',
         otpSecondsRemaining: 0,
       );
       return;
@@ -128,9 +127,7 @@ extension _TdlibSessionAutomation on TdlibSessionController {
           nonce: nonce,
         );
       } catch (_) {
-        _showManualCodeRequired(
-          error: 'We could not detect the latest Telegram code automatically.',
-        );
+        _showManualCodeRequired();
         return;
       }
       if (!_isRunActive(runId)) return;
@@ -166,10 +163,7 @@ extension _TdlibSessionAutomation on TdlibSessionController {
           return;
         case TdlibCodeResolveStatus.rateLimited:
         case TdlibCodeResolveStatus.error:
-          _showManualCodeRequired(
-            error:
-                'We could not detect the latest Telegram code automatically.',
-          );
+          _showManualCodeRequired();
           return;
       }
     }

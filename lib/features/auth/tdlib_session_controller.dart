@@ -134,7 +134,7 @@ class TdlibSessionController extends ChangeNotifier {
         if (message.contains('flood') || message.contains('rate')) {
           _showManualCodeRequired(
             error:
-                'Telegram requires waiting before requesting another code. Enter the code manually if you already received one.',
+                'Telegram asks you to wait before requesting another code. Try again in a few minutes.',
           );
           return;
         }
@@ -150,25 +150,6 @@ class TdlibSessionController extends ChangeNotifier {
       await task;
     } finally {
       if (identical(_autoTask, task)) _autoTask = null;
-    }
-  }
-
-  Future<void> submitManualCodeForAutomation(String code) async {
-    final run = _activeRun;
-    if (run == null) return;
-    _cancelOtpTimer();
-    final runId = ++_autoRunId;
-    _activeRun = run.copyWith(runId: runId);
-    _setAutoStage(TdlibAutoAuthStage.submittingCode);
-    try {
-      await submitCode(code);
-      await _advanceAutomaticAuthorization(runId);
-    } catch (_) {
-      _setAutoStage(
-        TdlibAutoAuthStage.manualCodeRequired,
-        error: 'Telegram rejected that code.',
-        otpSecondsRemaining: 0,
-      );
     }
   }
 

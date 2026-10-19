@@ -46,14 +46,10 @@ class TdlibSessionScreen extends ConsumerStatefulWidget {
 
 class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
   final _phone = TextEditingController();
-  final _code = TextEditingController();
   final _password = TextEditingController();
   bool _autoStarted = false;
-  bool _submitting = false;
+  bool _requestingCode = false;
   bool _submittingPassword = false;
-  bool _manualCodeVisible = false;
-  bool _codeSheetVisible = false;
-  bool _codeSheetShown = false;
   bool _navigating = false;
   bool _disposed = false;
   bool _obscurePassword = true;
@@ -113,7 +109,6 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
     }
     _tdlib.cancelAutomation();
     _phone.dispose();
-    _code.dispose();
     _password.dispose();
     super.dispose();
   }
@@ -155,20 +150,6 @@ class _TdlibSessionScreenState extends ConsumerState<TdlibSessionScreen> {
             (priorStage == null && priorStatus == null));
     if (reachedFinish) {
       unawaited(_navigateAfterSuccess());
-    }
-    if (stageChanged &&
-        next.auto.stage != TdlibAutoAuthStage.manualCodeRequired) {
-      _codeSheetShown = false;
-    }
-    if (stageChanged &&
-        next.auto.stage == TdlibAutoAuthStage.manualCodeRequired &&
-        !_codeSheetShown &&
-        !_codeSheetVisible &&
-        !_manualCodeVisible) {
-      _codeSheetShown = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !_disposed && !_navigating) _showManualCodeSheet();
-      });
     }
   }
 

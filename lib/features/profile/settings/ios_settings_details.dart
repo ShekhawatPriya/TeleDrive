@@ -66,12 +66,13 @@ Widget _iosBackup(BuildContext context, WidgetRef ref) {
     title: 'Photo Backup',
     compact: true,
     children: [
-      const IosSettingsIntro(
+      IosSettingsIntro(
         icon: CupertinoIcons.cloud_upload_fill,
         color: CupertinoColors.systemIndigo,
         title: 'Photo Backup',
         description:
             'Save photos and videos from your photo library to your Telegram account.',
+        onLearnMore: () => context.push('/privacy'),
       ),
       IosGroup(
         footer: 'Backups are saved in Auto › Media › Photos or Videos.',
@@ -344,6 +345,7 @@ Widget _iosCache(BuildContext context, WidgetRef ref) {
         title: 'Cache & Storage',
         description:
             'Copies TeleDrive keeps on this iPhone so files open faster. Your files in Telegram are stored separately.',
+        onLearnMore: () => context.push('/privacy'),
       ),
       IosGroup(
         title: 'On This iPhone',

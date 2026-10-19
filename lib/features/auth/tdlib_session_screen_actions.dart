@@ -35,7 +35,6 @@ extension _TdlibSessionScreenActions on _TdlibSessionScreenState {
     if (mounted) {
       _setUiState(() {
         _autoStarted = true;
-        _manualCodeVisible = false;
         _error = null;
       });
     }
@@ -52,24 +51,19 @@ extension _TdlibSessionScreenActions on _TdlibSessionScreenState {
     );
   }
 
-  Future<void> _retryOtp() async {
-    if (mounted) _setUiState(() => _error = null);
-    await ref.read(tdlibSessionControllerProvider).retryOtp();
-  }
-
-  Future<void> _submitManualAutoCode() async {
-    if (_submitting || _code.text.trim().isEmpty) return;
+  /// Asks Telegram for a new sign-in code, which the automation then reads.
+  /// Only an explicit tap calls this: every code counts against the
+  /// account's Telegram sign-in limits, so nothing resends on its own.
+  Future<void> _requestNewCode() async {
+    if (_requestingCode) return;
     _setUiState(() {
-      _submitting = true;
+      _requestingCode = true;
       _error = null;
     });
     try {
-      await ref
-          .read(tdlibSessionControllerProvider)
-          .submitManualCodeForAutomation(_code.text.trim());
-      HapticFeedback.lightImpact();
+      await ref.read(tdlibSessionControllerProvider).retryOtp();
     } finally {
-      if (mounted) _setUiState(() => _submitting = false);
+      if (mounted) _setUiState(() => _requestingCode = false);
     }
   }
 
@@ -179,70 +173,5 @@ extension _TdlibSessionScreenActions on _TdlibSessionScreenState {
     await ref.read(authControllerProvider).signOutAll();
     if (!mounted || _disposed) return;
     context.go('/welcome');
-  }
-
-  Future<void> _showManualCodeSheet() async {
-    _codeSheetVisible = true;
-    final action = Theme.of(context).platform == TargetPlatform.iOS
-        ? await _showIosCodeActionSheet()
-        : await showModalBottomSheet<String>(
-            context: context,
-            showDragHandle: true,
-            builder: (context) {
-              final theme = Theme.of(context);
-              final scheme = theme.colorScheme;
-              return SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    AppSpacing.sm,
-                    AppSpacing.lg,
-                    AppSpacing.lg,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'Telegram code needed',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'We could not detect the latest Telegram code automatically. You can enter it manually or try automatic detection again.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          height: 1.35,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      FilledButton(
-                        onPressed: () => Navigator.pop(context, 'manual'),
-                        child: const Text('Enter manually'),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      OutlinedButton(
-                        onPressed: () => Navigator.pop(context, 'retry'),
-                        child: const Text('Try again'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, 'cancel'),
-                        child: const Text('Cancel'),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-    _codeSheetVisible = false;
-    if (!mounted || _disposed) return;
-    if (action == 'manual') {
-      _setUiState(() => _manualCodeVisible = true);
-    } else if (action == 'retry') {
-      await _retryOtp();
-    }
   }
 }
