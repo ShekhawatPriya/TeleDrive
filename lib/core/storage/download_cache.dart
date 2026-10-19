@@ -29,8 +29,13 @@ class DownloadCache {
   }) async {
     final target = File('${root.path}/${relativePath(backend, userId, file)}');
     if (await target.exists() &&
-        (file.size <= 0 || await target.length() == file.size))
+        (file.size <= 0 || await target.length() == file.size)) {
+      // Mark the hit recently used for the originals tier's LRU.
+      try {
+        await target.setLastModified(DateTime.now());
+      } catch (_) {}
       return target;
+    }
     await target.parent.create(recursive: true);
     final staging = await target.parent.createTemp('.download-');
     final partial = File('${staging.path}/payload');

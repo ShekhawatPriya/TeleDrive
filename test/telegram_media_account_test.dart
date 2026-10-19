@@ -73,6 +73,12 @@ class _Repo implements DriveRepository {
 }
 
 class _Transfer implements TelegramTransferService {
+  @override
+  Future<void> optimizeStorage({
+    required int maxBytes,
+    required Duration ttl,
+    required Duration immunity,
+  }) async {}
   final configureGate = Completer<void>();
   int configurations = 0;
   int downloads = 0;

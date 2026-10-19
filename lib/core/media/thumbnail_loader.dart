@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/auth_controller.dart';
 import '../../models/drive_models.dart';
 import '../config/app_config.dart';
+import '../storage/media_disk_cache.dart';
 import '../storage/thumbnail_cache_manager.dart';
 import '../telegram/telegram_media_access_service.dart';
 import '../utils/stable_hash.dart';
@@ -148,6 +149,9 @@ class ThumbnailLoader {
         requiresThumbnail: true,
         requiresPreview: false,
       );
+      // The original was fetched only to derive this thumbnail; keep just the
+      // derivative (docs/media-loading.md, "Media cache tiers").
+      await _discard(source);
       final thumbnail = derivatives.thumbnail;
       if (thumbnail == null) return null;
       try {
@@ -195,7 +199,11 @@ class ThumbnailLoader {
         final source = await telegram(file, variant, token);
         _check(token);
         if (source != null) {
-          return await _store(key, await source.readAsBytes(), token);
+          final stored = await _store(key, await source.readAsBytes(), token);
+          // The thumbnail cache now owns these bytes. A preview copy stays in
+          // its bounded tier because the viewer reads the same variant.
+          if (variant == 'thumbnail') await _discard(source);
+          return stored;
         }
       } catch (_) {
         _check(token);
@@ -226,6 +234,20 @@ class ThumbnailLoader {
     _check(token);
     _remember(key, file);
     return file;
+  }
+
+  /// Deletes only the bridge's transient `teledrive_*` copies, never a file
+  /// the app does not own (an upload source, fixture, or user file).
+  static Future<void> _discard(File file) async {
+    final name = file.uri.pathSegments.isEmpty
+        ? ''
+        : file.uri.pathSegments.last;
+    if (!name.startsWith(MediaDiskCache.previewPrefix)) return;
+    try {
+      if (await file.exists()) await file.delete();
+    } catch (_) {
+      // A concurrent reader may already have removed the transient copy.
+    }
   }
 
   void _remember(String key, File file) {

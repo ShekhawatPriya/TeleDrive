@@ -14,6 +14,15 @@ class _Paths extends PathProviderPlatform with MockPlatformInterfaceMixin {
   Future<String?> getTemporaryPath() async => Directory.systemTemp.path;
 }
 
+/// The transfer service checks its disk cache (real file I/O) before the
+/// native call, so wait for the call instead of a single microtask turn.
+Future<void> _nativeDownload(List<MethodCall> calls) async {
+  for (var i = 0; i < 200; i++) {
+    if (calls.any((call) => call.method == 'downloadToFile')) return;
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const channel = MethodChannel('test/thumbnail-transfers');
@@ -64,7 +73,7 @@ void main() {
         cancelToken: token,
       );
       final result = expectLater(pending, throwsA(isA<DioException>()));
-      await Future<void>.delayed(Duration.zero);
+      await _nativeDownload(calls);
       final request = calls.singleWhere(
         (call) => call.method == 'downloadToFile',
       );
@@ -105,7 +114,7 @@ void main() {
         cacheKey: 'original:scope:1',
         onProgress: (done, total) => updates.add((done, total)),
       );
-      await Future<void>.delayed(Duration.zero);
+      await _nativeDownload(calls);
       final id = calls
           .singleWhere((call) => call.method == 'downloadToFile')
           .arguments['transferId'];

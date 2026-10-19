@@ -10,6 +10,7 @@ import '../../features/drive/drive_repository.dart';
 import '../../features/auth/auth_controller.dart';
 import '../../models/drive_models.dart';
 import '../config/app_config.dart';
+import '../storage/media_disk_cache.dart';
 import 'telegram_client_exceptions.dart';
 import 'telegram_transfer_service.dart';
 
@@ -30,7 +31,8 @@ class TelegramMediaAccessService {
     required this._driveRepository,
     required this._transferService,
     required this._auth,
-  }) {
+    MediaDiskCache? diskCache,
+  }) : _diskCache = diskCache ?? MediaDiskCache.instance {
     _identity = _currentIdentity;
     _auth.addListener(_authChanged);
   }
@@ -38,7 +40,9 @@ class TelegramMediaAccessService {
   final DriveRepository _driveRepository;
   final TelegramTransferService _transferService;
   final AuthController _auth;
+  final MediaDiskCache _diskCache;
   Object? _identity;
+  int? _maintainedGeneration;
   int _generation = 0;
   int get generation => _generation;
   bool _disposed = false;
@@ -90,6 +94,13 @@ class TelegramMediaAccessService {
     }
     final generation = _generation;
     _check(generation, cancelToken);
+    // Cache-first (docs/media-loading.md, "Media cache tiers"): the key is
+    // scoped to backend, account, Telegram identity, file revision, and
+    // variant, so a hit needs no account setup, media-ref request, or TDLib.
+    final cacheKey = _cacheKey(file, variant);
+    final cached = await _diskCache.lookupPreview(cacheKey, file.name);
+    _check(generation, cancelToken);
+    if (cached != null) return cached;
     var configuration = _configuration;
     if (configuration == null) {
       configuration = _configurationTail.then((_) {
@@ -123,6 +134,7 @@ class TelegramMediaAccessService {
       ]).timeout(const Duration(seconds: 15));
     }
     _check(generation, cancelToken);
+    _maintainStorage(generation);
     final ref = await _driveRepository.mediaRef(
       file.id,
       variant: variant,
@@ -139,8 +151,7 @@ class TelegramMediaAccessService {
     final result = await _transferService.downloadToCache(
       telegramRef,
       filename: file.name,
-      cacheKey:
-          '${AppConfig.storageNamespace}:$_backendUserId:$_telegramUserId:${ref.cacheKey}:${file.modifiedAt}:${file.size}:${file.thumbnailVersion}:${file.previewVersion}',
+      cacheKey: cacheKey,
       timeout: timeout,
       variant: variant,
       cancelToken: cancelToken,
@@ -148,6 +159,27 @@ class TelegramMediaAccessService {
     );
     _check(generation, cancelToken);
     return result.file;
+  }
+
+  String _cacheKey(DriveFile file, String variant) =>
+      '${AppConfig.storageNamespace}:$_backendUserId:$_telegramUserId:'
+      '${file.id}:$variant:${file.modifiedAt}:${file.size}:'
+      '${file.thumbnailVersion}:${file.previewVersion}';
+
+  /// Once per account generation, after TDLib is verified: sweep TDLib's file
+  /// store (downloads are copied out and released, so anything left there is
+  /// legacy or interrupted) and apply the app's disk budgets.
+  void _maintainStorage(int generation) {
+    if (_maintainedGeneration == generation) return;
+    _maintainedGeneration = generation;
+    unawaited(
+      _transferService.optimizeStorage(
+        maxBytes: 64 * 1024 * 1024,
+        ttl: const Duration(days: 1),
+        immunity: const Duration(hours: 1),
+      ),
+    );
+    unawaited(_diskCache.trim(force: true));
   }
 
   Future<void> _configureForActiveUser(int generation) async {

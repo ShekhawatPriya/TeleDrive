@@ -356,17 +356,23 @@ extension TdlibBridge {
             }()
         )
         withLock { transfers[transferId] = TdlibTransfer(transferId: transferId) }
-        let messagePromise: Promise<[String: Any]?> = waitForConnectionReady(timeoutMs: 45000)
+        // Resolution order (docs/media-loading.md, "Fresh TDLib database"):
+        // 1. the source message, after making its chat known to this TDLib
+        //    database, so TDLib can refresh expired file references itself;
+        // 2. the persistent remote file id;
+        // 3. a raw TDLib file id only when nothing else exists, because local
+        //    file ids belong to the database that produced them and can name a
+        //    different file after a re-login.
+        let messagePromise: Promise<[String: Any]?> = waitForConnectionReady(
+            timeoutMs: 45000,
+            acceptedStates: ["connectionStateReady", "connectionStateUpdating"]
+        )
             .then { _ -> Promise<[String: Any]?> in
                 try self.ensureDownloadActive(transferId)
-                if hasMessageRef {
-                    return self.send([
-                        "@type": "getMessage",
-                        "chat_id": NSNumber(value: chatId ?? 0),
-                        "message_id": NSNumber(value: messageId ?? 0),
-                    ]).handle { message, _ in message }
+                guard hasMessageRef, let chatId = chatId, let messageId = messageId else {
+                    return Promise.value(nil)
                 }
-                return Promise.value(nil)
+                return self.fetchMessage(chatId, messageId, transferId)
             }
         emitProgress(transferId, "downloading", 0, nil, nil)
         let result = messagePromise.then { message -> Promise<[String: Any]> in
@@ -376,12 +382,35 @@ extension TdlibBridge {
                let fileId = TdlibJson.int(file["id"]), fileId > 0 {
                 return self.startDownloadFile(fileId, transferId, destinationPath, timeoutMs)
             }
-            return self.downloadByRemoteOrSupplied(remoteFileId, suppliedFileId, transferId, destinationPath, timeoutMs)
+            let rawFileId = hasMessageRef || remoteFileId != nil ? nil : suppliedFileId
+            return self.downloadByRemoteOrSupplied(remoteFileId, rawFileId, transferId, destinationPath, timeoutMs)
         }
         result.onComplete { _ in
             self.withLock { _ = self.transfers.removeValue(forKey: transferId) }
         }
         return result
+    }
+
+    /// getMessage, retried once after chat discovery when the chat or message
+    /// is unknown to this database. Resolves nil (never fails) so callers can
+    /// still try the remote file id.
+    private func fetchMessage(_ chatId: Int64, _ messageId: Int64, _ transferId: String) -> Promise<[String: Any]?> {
+        let request: [String: Any] = [
+            "@type": "getMessage",
+            "chat_id": NSNumber(value: chatId),
+            "message_id": NSNumber(value: messageId),
+        ]
+        return send(request)
+            .handle { message, _ -> Promise<[String: Any]?> in
+                if let message = message { return Promise.value(message) }
+                return self.ensureChatKnown(chatId)
+                    .then { _ -> Promise<[String: Any]?> in
+                        try self.ensureDownloadActive(transferId)
+                        return self.send(request).handle { message, _ in message }
+                    }
+                    .handle { message, _ in message ?? nil }
+            }
+            .then { $0 }
     }
 
     private func ensureDownloadActive(_ transferId: String) throws {
@@ -407,9 +436,6 @@ extension TdlibBridge {
                         return id
                     }()
                     if let fileId = remoteResolvedFileId {
-                        return self.startDownloadFile(fileId, transferId, destinationPath, timeoutMs)
-                    }
-                    if let fileId = suppliedFileId {
                         return self.startDownloadFile(fileId, transferId, destinationPath, timeoutMs)
                     }
                     if let error = error {
@@ -473,6 +499,9 @@ extension TdlibBridge {
                 // The file may already be complete locally — deliver it now.
                 self.handleDownloadedFile(file)
                 let local = file["local"] as? [String: Any]
+                if TdlibJson.bool(local?["is_downloading_active"]) == true {
+                    self.withLock { waiter.observedActive = true }
+                }
                 if TdlibJson.bool(local?["is_downloading_completed"]) != true {
                     let remote = file["remote"] as? [String: Any]
                     if TdlibJson.bool(remote?["is_uploading_completed"]) == false {
@@ -524,6 +553,37 @@ extension TdlibBridge {
         }
         if downloaded {
             handleDownloadedFile(file)
+        } else {
+            failStalledDownloads(fileId, active: TdlibJson.bool(local?["is_downloading_active"]) == true)
+        }
+    }
+
+    /// TDLib stops a download (is_downloading_active false, incomplete) when it
+    /// cannot continue, e.g. an expired file reference with no known source
+    /// message. Fail those waiters now so the UI advances to its next source
+    /// or error state instead of spinning until the timeout.
+    private func failStalledDownloads(_ fileId: Int, active: Bool) {
+        let stalled: [TdlibDownloadWaiter] = withLock {
+            guard let waiters = downloads[fileId] else { return [] }
+            if active {
+                waiters.forEach { $0.observedActive = true }
+                return []
+            }
+            let stopped = waiters.filter { $0.observedActive }
+            if stopped.isEmpty { return [] }
+            let remaining = waiters.filter { !$0.observedActive }
+            if remaining.isEmpty {
+                downloads.removeValue(forKey: fileId)
+            } else {
+                downloads[fileId] = remaining
+            }
+            for waiter in stopped { transfers.removeValue(forKey: waiter.transferId) }
+            return stopped
+        }
+        for waiter in stalled {
+            let message = "Telegram stopped downloading this file."
+            emitProgress(waiter.transferId, "failed", 0, nil, message)
+            waiter.promise.fail(TdlibError("tdlib_download_stalled", message, "fileId=\(fileId)"))
         }
     }
 
@@ -540,18 +600,26 @@ extension TdlibBridge {
         }
         guard let waiters = waiters else { return }
         let fileManager = FileManager.default
+        var copiedOut = false
         for waiter in waiters {
             do {
                 let destinationPath = waiter.destinationPath
                 let parent = (destinationPath as NSString).deletingLastPathComponent
                 try? fileManager.createDirectory(atPath: parent, withIntermediateDirectories: true)
                 if sourcePath != destinationPath {
-                    // FileManager.copyItem refuses to overwrite, unlike
-                    // Kotlin's copyTo(overwrite = true).
+                    // Copy to a sibling and rename, so an interrupted copy never
+                    // leaves a truncated file that the Dart disk cache would
+                    // later treat as a hit. FileManager refuses to overwrite.
+                    let partialPath = destinationPath + ".partial"
+                    if fileManager.fileExists(atPath: partialPath) {
+                        try fileManager.removeItem(atPath: partialPath)
+                    }
+                    try fileManager.copyItem(atPath: sourcePath, toPath: partialPath)
                     if fileManager.fileExists(atPath: destinationPath) {
                         try fileManager.removeItem(atPath: destinationPath)
                     }
-                    try fileManager.copyItem(atPath: sourcePath, toPath: destinationPath)
+                    try fileManager.moveItem(atPath: partialPath, toPath: destinationPath)
+                    copiedOut = true
                 }
                 withLock { _ = transfers.removeValue(forKey: waiter.transferId) }
                 let sourceLength = ((try? fileManager.attributesOfItem(atPath: sourcePath))?[.size] as? NSNumber)?.int64Value ?? 0
@@ -566,6 +634,47 @@ extension TdlibBridge {
                 emitProgress(waiter.transferId, "failed", 0, nil, message)
                 waiter.promise.fail(TdlibError("tdlib_download_copy_failed", message))
             }
+        }
+        releaseTdlibCopy(fileId, sourcePath, copiedOut: copiedOut)
+    }
+
+    /// The app's Dart disk cache owns the copied file, so TDLib's copy is a
+    /// duplicate. Release it only when it lives inside TDLib's own files
+    /// directory — a file uploaded from this device can point at a picker or
+    /// staging path that TDLib must not delete.
+    private func releaseTdlibCopy(_ fileId: Int, _ sourcePath: String, copiedOut: Bool) {
+        guard copiedOut, fileId > 0, let filesDirectory = tdlibFilesDirectory,
+              !TdlibArgs.isBlank(filesDirectory) else { return }
+        let root = (filesDirectory as NSString).standardizingPath + "/"
+        guard (sourcePath as NSString).standardizingPath.hasPrefix(root) else { return }
+        let stillWanted = withLock { downloads[fileId] != nil }
+        if stillWanted { return }
+        sendNoWait(["@type": "deleteFile", "file_id": fileId])
+    }
+
+    // MARK: - Storage
+
+    /// TDLib's time-aware LRU for its file store: trims least-recently-accessed
+    /// files to `maxBytes`, drops files idle longer than `ttlSeconds`, and
+    /// never touches files younger than `immunitySeconds` (in-flight work).
+    func optimizeStorage(_ args: [String: Any]) throws -> Promise<[String: Any]> {
+        try ensureAuthorized()
+        let maxBytes = TdlibArgs.int64(args, "maxBytes") ?? -1
+        let ttlSeconds = TdlibArgs.int(args, "ttlSeconds") ?? -1
+        let immunitySeconds = TdlibArgs.int(args, "immunitySeconds") ?? -1
+        return send([
+            "@type": "optimizeStorage",
+            "size": NSNumber(value: maxBytes),
+            "ttl": ttlSeconds,
+            "count": -1,
+            "immunity_delay": immunitySeconds,
+            "file_types": [] as [Any],
+            "chat_ids": [] as [Any],
+            "exclude_chat_ids": [] as [Any],
+            "return_deleted_file_statistics": false,
+            "chat_limit": 0,
+        ]).map { stats in
+            ["optimized": true, "size": stats["size"] ?? NSNull()]
         }
     }
 

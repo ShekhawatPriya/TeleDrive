@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/storage/thumbnail_cache_manager.dart';
+import '../../core/telegram/telegram_transfer_service.dart';
 
 class CacheState {
   final int totalSize;
@@ -58,10 +59,23 @@ class CacheState {
 }
 
 final cacheControllerProvider = ChangeNotifierProvider<CacheController>((ref) {
-  return CacheController()..refreshCacheStats();
+  return CacheController(
+    clearTelegramStore: () => ref
+        .read(telegramTransferServiceProvider)
+        .optimizeStorage(
+          maxBytes: 0,
+          ttl: Duration.zero,
+          immunity: Duration.zero,
+        ),
+  )..refreshCacheStats();
 });
 
 class CacheController extends ChangeNotifier {
+  CacheController({this.clearTelegramStore});
+
+  /// Empties TDLib's own downloaded-file store, which lives outside the
+  /// temporary directory (docs/media-loading.md, "Media cache tiers").
+  final Future<void> Function()? clearTelegramStore;
   CacheState state = const CacheState();
 
   Future<void> refreshCacheStats() async {
@@ -158,11 +172,23 @@ class CacheController extends ChangeNotifier {
                 path.endsWith('.bin')) {
               stats['staging'] = stats['staging']! + size;
             }
-            // 3. Cached Originals/Downloaded files: direct children in temp directory root
+            // 3. Cached originals: the DownloadCache tier.
+            else if (path.contains('teledrive-downloads')) {
+              stats['original'] = stats['original']! + size;
+            }
+            // 4. Viewer previews written by the native download bridge.
+            else if (parentPath == tempPath &&
+                path
+                    .split(Platform.pathSeparator)
+                    .last
+                    .startsWith('teledrive_')) {
+              stats['preview'] = stats['preview']! + size;
+            }
+            // 5. Other loose downloads at the temp root.
             else if (parentPath == tempPath) {
               stats['original'] = stats['original']! + size;
             }
-            // 4. Preview Cache: general preview chunks or cached streams
+            // 6. Preview Cache: general preview chunks or cached streams
             else {
               stats['preview'] = stats['preview']! + size;
             }
@@ -192,7 +218,14 @@ class CacheController extends ChangeNotifier {
         debugPrint('Error clearing TeleDriveThumbnailCacheManager: $e');
       }
 
-      // 2. Delete all other files in temporary directory safely
+      // 2. TDLib's downloaded-file store.
+      try {
+        await clearTelegramStore?.call();
+      } catch (e) {
+        debugPrint('Error clearing the Telegram file store: $e');
+      }
+
+      // 3. Delete all other files in temporary directory safely
       final tempDir = await getTemporaryDirectory();
       if (await tempDir.exists()) {
         final stream = tempDir.list(recursive: false, followLinks: false);

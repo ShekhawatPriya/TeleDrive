@@ -100,6 +100,12 @@ class _LiveActivity extends TransferLiveActivityService {
 }
 
 class _Telegram implements TelegramTransferService {
+  @override
+  Future<void> optimizeStorage({
+    required int maxBytes,
+    required Duration ttl,
+    required Duration immunity,
+  }) async {}
   final sent = <String>[];
   final cancelled = <String>[];
   final result = Completer<TelegramUploadResult>();
