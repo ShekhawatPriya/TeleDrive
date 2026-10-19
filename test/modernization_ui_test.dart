@@ -1061,6 +1061,24 @@ void main() {
       }
     }
   }
+  for (final kind in LegalKind.values) {
+    testWidgets('legal page ${kind.name} is titled after its document', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      await _pump(tester, LegalScreen(kind: kind));
+      final title = kind == LegalKind.privacy
+          ? 'Privacy Policy'
+          : 'Terms of Service';
+      expect(find.byType(IosSettingsIntro), findsOneWidget);
+      expect(find.text(title), findsWidgets);
+      expect(find.text('Legal'), findsNothing);
+      expect(
+        find.byType(CupertinoSlidingSegmentedControl<LegalKind>),
+        findsNothing,
+      );
+    });
+  }
   testWidgets('iOS notifications page controls Live Activities', (
     tester,
   ) async {

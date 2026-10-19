@@ -110,8 +110,12 @@ and Camera) on a 402-point iPhone. Primitives live in
   trailing glass actions. This covers folders; Archive, Locked and Trash;
   Account; Settings and its subpages; Telegram Drive; My Data; Free Up Space;
   Share; About; and What's New (`IosPage(compact: true)` uses the same sliver).
-  Legal, App Update, the Telegram session setup and the file viewer use the same
-  bar through `IosNavigationBar.preferred`. Setup flows use a glass close control
+  Privacy Policy and Terms of Service are separate pushed pages (`/privacy`,
+  `/terms`), each titled after its document and opening with an
+  `IosSettingsIntro` hero (hand symbol on blue, document symbol on grey);
+  there is no combined "Legal" page or switcher. App Update, the Telegram
+  session setup and the file viewer use the same bar through
+  `IosNavigationBar.preferred`. Setup flows use a glass close control
   instead of Back.
 - **Scrolling.** Content scrolls beneath both bars. At rest a bar is
   transparent; once something is beneath it, it takes the page canvas
