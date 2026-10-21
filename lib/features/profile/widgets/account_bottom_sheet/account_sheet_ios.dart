@@ -17,59 +17,50 @@ extension _IosAccountSheet on _AccountBottomSheetState {
       controller: widget.scrollController,
       children: [
         if (account != null) ...[
+          // Profile header follows the Apple Account header in Settings:
+          // centered avatar, name and handle directly on the page, with the
+          // Telegram details as ordinary grouped rows below it.
           Padding(
-            padding: const EdgeInsets.only(bottom: IosPageMetrics.groupSpacing),
-            child: ClipRSuperellipse(
-              borderRadius: BorderRadius.circular(IosPageMetrics.groupRadius),
-              child: ColoredBox(
-                color: scheme.surfaceContainerLow,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      CupertinoButton(
-                        padding: EdgeInsets.zero,
-                        onPressed: () =>
-                            _openTelegramProfile(context, account.username),
-                        child: Row(
-                          children: [
-                            _buildAvatarWidget(account, size: 60),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    account.displayName,
-                                    style: TextStyle(
-                                      fontSize: 21,
-                                      fontWeight: FontWeight.w600,
-                                      color: scheme.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    label,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      color: scheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+            padding: const EdgeInsets.only(
+              top: 4,
+              bottom: IosPageMetrics.groupSpacing,
+            ),
+            child: Semantics(
+              button: true,
+              label: 'Open Telegram profile',
+              child: CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () =>
+                    _openTelegramProfile(context, account.username),
+                child: Column(
+                  children: [
+                    _buildAvatarWidget(account, size: 88),
+                    const SizedBox(height: 12),
+                    Text(
+                      account.displayName,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.07,
+                        color: scheme.onSurface,
                       ),
-                      const SizedBox(height: 20),
-                      _buildAccountConnectionDetails(context, account),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
+          _buildIosTelegramGroup(context, account),
           // Saved accounts are listed directly, as in Telegram's Settings,
           // instead of behind an expanding row. The current account carries
           // the checkmark; tapping another one switches to it.
@@ -187,6 +178,33 @@ extension _IosAccountSheet on _AccountBottomSheetState {
             ],
           ),
         _buildAccountFooter(context),
+      ],
+    );
+  }
+
+  Widget _buildIosTelegramGroup(BuildContext context, SavedAccount account) {
+    final connected = ref.watch(authControllerProvider).telegramConnected;
+    return IosGroup(
+      children: [
+        IosRow(
+          title: 'Telegram',
+          icon: CupertinoIcons.paperplane_fill,
+          color: connected == false
+              ? CupertinoColors.systemRed
+              : IosTint.session,
+          value: connected == true
+              ? 'Connected'
+              : connected == false
+              ? 'Reconnect'
+              : 'Connecting…',
+          onTap: () => _showIosConnectionInfo(context, connected),
+        ),
+        IosRow(
+          title: 'Telegram ID',
+          icon: CupertinoIcons.number,
+          color: IosTint.neutral,
+          value: '${account.telegramId}',
+        ),
       ],
     );
   }
