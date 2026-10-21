@@ -99,12 +99,13 @@ extension _TdlibSessionScreenActions on _TdlibSessionScreenState {
     context.go(destination);
     if (source != null && account != null) {
       final action = switch (source) {
-        PendingTdlibMode.addAccount => 'Added',
+        PendingTdlibMode.addAccount => 'Account added',
         PendingTdlibMode.reauthenticateAccount => 'Reconnected',
-        PendingTdlibMode.normalLogin => 'Signed in as',
+        PendingTdlibMode.normalLogin => 'Signed in',
       };
       showAppPremiumToast(
-        message: '$action ${account.displayName}.',
+        headline: account.displayName,
+        message: action,
         avatarUser: account.toAuthUser(),
         afterNavigation: true,
         canShow: () =>

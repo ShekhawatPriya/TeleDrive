@@ -6,6 +6,7 @@ import '../account_button.dart';
 import '../drive_search_field.dart';
 import '../ios_more_menu.dart';
 import '../native_glass_button.dart';
+import '../premium_toast.dart';
 import 'ios_browse.dart';
 import 'ios_page.dart';
 
@@ -80,22 +81,24 @@ class IosHeaderActions extends StatelessWidget {
   final String tooltip;
 
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      IosMoreButton(
-        claimsTouches: true,
-        sectionsBuilder: menuSections,
-        tooltip: tooltip,
-        size: 44,
-      ),
-      const SizedBox(width: 8),
-      const SizedBox(
-        width: 44,
-        height: 44,
-        child: AccountButton(avatarSize: 40),
-      ),
-    ],
+  Widget build(BuildContext context) => PremiumToastHeaderAnchor(
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IosMoreButton(
+          claimsTouches: true,
+          sectionsBuilder: menuSections,
+          tooltip: tooltip,
+          size: 44,
+        ),
+        const SizedBox(width: 8),
+        const SizedBox(
+          width: 44,
+          height: 44,
+          child: AccountButton(avatarSize: 40),
+        ),
+      ],
+    ),
   );
 }
 

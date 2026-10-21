@@ -160,17 +160,46 @@ added/reconnected account only after local authorization succeeds and the pendin
 account is committed. Entering the authorization route clears visible and queued
 banners; cancellation and failed verification do not announce success.
 
-Transient confirmations retain the avatar/card composition and the original
-bottom alignment beside Add, with 16-point side insets. Reserve the measured
-width of the visible Add button plus a 12-point gap. Without Add, the banner
-uses the full available width at the same row height; it never moves above the
-action row. Outside that row, use keyboard/safe-area clearance. Text wraps without a
-two-line truncation limit. iOS uses the existing bounded Flutter glass surface
-with a legibility tint and opaque high-contrast fallback; this is not native
-UIKit Liquid Glass. Android uses an opaque Material inverse surface without blur.
-Announcements use live-region semantics and reduced motion skips transitions.
+Transient confirmations follow platform placement. **iOS** places the banner
+in empty space rather than over controls. On the Drive, Photos, Starred and
+Shared tabs (`IosHeaderActions` registers a `PremiumToastHeaderAnchor`), it sits
+in the empty leading side of the header's controls row: vertically centred on
+the 44-point overflow and account controls, starting at the title's 20-point
+gutter and ending at least 8 points before the controls (their own spacing).
+Hidden shell tabs and covered routes do not anchor it. Elsewhere, it is centred
+under the status bar or Dynamic Island (safe-area top, minimum 16, plus 4).
+
+The capsule matches the controls: 44 points tall (radius 22), a 32-point avatar
+6 points from the leading end so it is concentric with the curve, a 10-point
+gap, then leading-aligned text and a 16-point trailing inset. The pill hugs its
+text, so "Sree" and "Priya Shekhawat" have identical internal spacing and share
+the same leading edge; only the trailing edge moves, as a title would. Account
+banners show the name as a semibold subheadline (18-point line) above the
+action ("Switched account", "Account added", "Reconnected", "Signed in",
+"Removed from this device") as a secondary footnote (16-point line). Long names
+wrap without truncation inside the free span, shrinking to their longest line,
+and the pill grows downward. With text larger than 135% or a span under 168
+points, the pill takes its own row 8 points below the controls, between the
+gutters. A tap or upward swipe dismisses it. Apple publishes no toast
+specification; iOS has no snackbar, and this keeps the banner clear of both the
+header controls and the bottom action row.
+
+**Android** keeps Material snackbar placement: the bottom row beside Add, with
+16-point side insets, reserving the measured width of the visible Add button
+plus a 12-point gap. Without Add the banner uses the full available width at the
+same row height; it never moves above the action row. Outside that row, use
+keyboard/safe-area clearance. It uses an opaque Material inverse surface without
+blur, with the headline above the secondary line.
+
+Text wraps without a line limit on both platforms. iOS uses the existing
+bounded Flutter glass surface with a legibility tint and opaque high-contrast
+fallback; this is not native UIKit Liquid Glass. Announcements use live-region
+semantics ("Priya Shekhawat. Switched account") and reduced motion skips
+transitions.
 
 References: [Apple materials](https://developer.apple.com/design/human-interface-guidelines/materials)
 and [Android snackbars](https://developer.android.com/develop/ui/compose/components/snackbar).
-Fixture/regression checks: `test/premium_toast_test.dart`, including light/dark,
+Fixture/regression checks: `test/premium_toast_test.dart`, including the iOS
+header-row placement for short/medium/long names, hidden tabs, large-text row,
+centred fallback, swipe dismissal, Android row placement, light/dark,
 320-point width, 200% text, high contrast and queued-confirmation cancellation.

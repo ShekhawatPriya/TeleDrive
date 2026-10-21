@@ -164,7 +164,8 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
 
         if (newActive != null) {
           showAppPremiumToast(
-            message: 'Switched to ${newActive.displayName}.',
+            headline: newActive.displayName,
+            message: 'Switched account',
             avatarUser: newActive.toAuthUser(),
             afterNavigation: true,
             canShow: () =>
@@ -209,7 +210,8 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
         if (stillAuthenticated) {
           if (wasActive && newActive != null) {
             showAppPremiumToast(
-              message: 'Switched to ${newActive.displayName}.',
+              headline: newActive.displayName,
+              message: 'Switched account',
               avatarUser: newActive.toAuthUser(),
               afterNavigation: true,
               canShow: () =>
@@ -218,7 +220,8 @@ class SwitchAccountNotifier extends StateNotifier<SwitchAccountState> {
             );
           } else if (!wasActive) {
             showAppPremiumToast(
-              message: 'Removed ${account.displayName}.',
+              headline: account.displayName,
+              message: 'Removed from this device',
               icon: Icons.person_remove_outlined,
               afterNavigation: true,
             );
