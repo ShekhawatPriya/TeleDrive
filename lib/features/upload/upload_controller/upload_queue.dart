@@ -18,14 +18,16 @@ extension _UploadQueue on UploadController {
               !_runningLocalIds.contains(i.localId),
         )
         .firstOrNull;
-    final nextFolderId = firstQueued?.destinationFolderId ?? activeFolderId;
+    final nextFolderId = firstQueued == null
+        ? null
+        : _destinationOf(firstQueued);
     final next = items
         .where(
           (i) =>
               i.status == UploadStatus.queued &&
               !_runningLocalIds.contains(i.localId),
         )
-        .where((i) => (i.destinationFolderId ?? activeFolderId) == nextFolderId)
+        .where((i) => _destinationOf(i) == nextFolderId)
         .take(availableSlots)
         .toList();
     if (next.isEmpty) {
@@ -103,6 +105,7 @@ extension _UploadQueue on UploadController {
         );
       }
       final me = await _telegram.getMe();
+      _telegramPremium = me['is_premium'] == true;
       final tdlibUserId = _intish(me['id']);
       if (tdlibUserId != null && tdlibUserId != user.telegramId) {
         throw const TelegramAccountMismatchException(

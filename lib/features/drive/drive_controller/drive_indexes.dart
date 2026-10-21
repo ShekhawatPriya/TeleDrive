@@ -82,7 +82,8 @@ extension _DriveIndexes on DriveController {
           a.duration == b.duration &&
           a.lastAccessedAt == b.lastAccessedAt &&
           a.isOptimistic == b.isOptimistic &&
-          a.localId == b.localId);
+          a.localId == b.localId &&
+          a.uploadProgress == b.uploadProgress);
 
   bool _foldersEqual(DriveFolder a, DriveFolder b) =>
       identical(a, b) ||

@@ -4,9 +4,10 @@ extension _UploadControllerHelpers on UploadController {
   Future<void> _handlePicker(
     Future<UploadPickerResult> Function() pickAction,
     String defaultErrorMessage, {
+    String? folderId,
     BuildContext? context,
   }) async {
-    if (picking || uploading) return;
+    if (picking) return;
     final owner = (_auth.user?.userId, _auth.user?.telegramId, _auth.token);
     picking = true;
     error = null;
@@ -19,24 +20,24 @@ extension _UploadControllerHelpers on UploadController {
       if (res.error != null) {
         error = res.error;
         sheetVisible = true;
-      } else if (res.items != null) {
-        uploadSessionId = res.sessionId;
-        items = res.items!;
-        _bumpItemsVersion();
-        sheetVisible = items.isNotEmpty;
-        _syncOptimistic();
+      } else if (res.items != null && res.items!.isNotEmpty) {
+        final picked = _addPickedItems(res.items!, folderId: folderId);
         // The picker completes before this optional UI confirmation; callers
         // pass a still-mounted context from the current screen.
-        // ignore: use_build_context_synchronously
-        final shouldUpload = await _confirmLargeUploadsIfNeeded(context);
+        final shouldUpload = await _confirmLargeUploadsIfNeeded(
+          // ignore: use_build_context_synchronously
+          context,
+          picked,
+        );
         if (_disposed ||
             owner != (_auth.user?.userId, _auth.user?.telegramId, _auth.token))
           return;
+        final ids = picked.map((i) => i.localId).toSet();
         if (!shouldUpload) {
-          dismiss();
+          _discardSelected(ids);
           return;
         }
-        await confirmUpload();
+        _queueSelected(ids);
       }
     } catch (err) {
       error = _api.errorMessage(err, defaultErrorMessage);
@@ -47,6 +48,136 @@ extension _UploadControllerHelpers on UploadController {
     }
   }
 
+  /// Adds a pick to the queue. With nothing in flight it starts a fresh
+  /// session (clearing settled rows); otherwise the new items join the back of
+  /// the running queue. Every item is pinned to its own destination, so a pick
+  /// in another folder cannot redirect files that are already queued.
+  List<UploadItem> _addPickedItems(
+    List<UploadItem> pickedItems, {
+    String? folderId,
+  }) {
+    final picked = [
+      for (final item in pickedItems)
+        item.copyWith(destinationFolderId: folderId ?? uploadRootFolderId),
+    ];
+    if (!hasBlockingUploads) {
+      for (final item in items) {
+        if (item.deleteLocalOnComplete) {
+          unawaited(_safeDeleteLocalFile(item.path));
+        }
+      }
+      items = picked;
+      uploadSessionId = _uuid.v4();
+      activeFolderId = folderId;
+    } else {
+      items = [
+        for (final item in items)
+          item.destinationFolderId == null
+              ? item.copyWith(
+                  destinationFolderId: activeFolderId ?? uploadRootFolderId,
+                )
+              : item,
+        ...picked,
+      ];
+      // A session that already reported its outcome reports the new files
+      // as a new outcome (haptics, alerts, Live Activity).
+      if (_notifiedSessionId != null && _notifiedSessionId == uploadSessionId) {
+        uploadSessionId = _uuid.v4();
+      }
+    }
+    _cancelCompletionTimers();
+    _bumpItemsVersion();
+    sheetVisible = true;
+    _syncOptimistic();
+    _notifyListeners();
+    for (final item in picked) {
+      if (detectFileKind(item.name, item.mimeType) == FileKind.video) {
+        unawaited(_attachPoster(item));
+      }
+    }
+    return picked;
+  }
+
+  Future<void> _attachPoster(UploadItem item) async {
+    String? poster;
+    try {
+      poster = await _derivatives.createUploadPoster(
+        localId: item.localId,
+        videoPath: item.path,
+        filename: item.name,
+      );
+    } catch (_) {
+      return;
+    }
+    if (poster == null) return;
+    if (_disposed || _findItem(item.localId) == null) {
+      unawaited(_safeDeleteLocalFile(poster));
+      return;
+    }
+    _posterPaths[item.localId] = poster;
+    items = [
+      for (final current in items)
+        current.localId == item.localId
+            ? current.copyWith(posterPath: poster)
+            : current,
+    ];
+    _syncOptimistic();
+    _notifyListeners();
+  }
+
+  /// Drops picked items the person declined before they were queued.
+  void _discardSelected(Set<String> localIds) {
+    for (final item in items) {
+      if (localIds.contains(item.localId) && item.deleteLocalOnComplete) {
+        unawaited(_safeDeleteLocalFile(item.path));
+      }
+    }
+    items = items.where((i) => !localIds.contains(i.localId)).toList();
+    _bumpItemsVersion();
+    if (items.isEmpty) {
+      sheetVisible = false;
+      uploadSessionId = null;
+      error = null;
+    }
+    _syncOptimistic();
+    _updateUploadingFlag();
+    _notifyListeners(force: true);
+  }
+
+  /// Why Telegram would refuse [item], or null. Before the account tier is
+  /// known only files above the Premium ceiling are refused.
+  String? _oversizeMessage(UploadItem item) {
+    final premium = _telegramPremium;
+    final limit = premium == false
+        ? UploadController.telegramMaxFileBytes
+        : UploadController.telegramPremiumMaxFileBytes;
+    if (item.size <= limit) return null;
+    return premium == false
+        ? 'Telegram accepts files up to 2 GB (4 GB with Telegram Premium). '
+              'This file is ${formatFileSize(item.size)}.'
+        : 'Telegram accepts files up to 4 GB. This file is '
+              '${formatFileSize(item.size)}.';
+  }
+
+  Future<void> _failOversized(UploadItem item, String message) async {
+    _setItem(
+      item.localId,
+      status: UploadStatus.failed,
+      error: message,
+      notify: false,
+    );
+    final scope = _backupScope();
+    if (scope != null && item.backupFingerprint != null) {
+      await _backupAssetStore.mark(
+        scope,
+        item.backupFingerprint!,
+        GalleryBackupAssetStatus.failed,
+        failureCode: 'telegram_file_too_large',
+        failureMessage: message,
+      );
+    }
+  }
+
   String? _backupScope() {
     final user = _auth.user;
     final telegramId = user?.telegramId ?? _auth.activeAccount?.telegramId ?? 0;
@@ -54,10 +185,17 @@ extension _UploadControllerHelpers on UploadController {
     return '${user.userId}_$telegramId';
   }
 
-  Future<bool> _confirmLargeUploadsIfNeeded(BuildContext? context) async {
-    if (!_settings.state.askBeforeLargeUploads || context == null) return true;
+  Future<bool> _confirmLargeUploadsIfNeeded(
+    BuildContext? context,
+    List<UploadItem> candidates,
+  ) async {
+    if (!_settings.state.askBeforeLargeUploads ||
+        context == null ||
+        !context.mounted) {
+      return true;
+    }
     final threshold = _auth.largeUploadThresholdBytes;
-    final large = items.where((i) => i.size > threshold).toList();
+    final large = candidates.where((i) => i.size > threshold).toList();
     if (large.isEmpty) return true;
     final totalBytes = large.fold<int>(0, (sum, item) => sum + item.size);
     final thresholdMbStr =

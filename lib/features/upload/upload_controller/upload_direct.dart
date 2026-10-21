@@ -7,6 +7,24 @@ extension _UploadDirect on UploadController {
     return '$sessionId:$chunkId';
   }
 
+  /// Fails files above the account's Telegram limit before any backend slot or
+  /// transfer is created, and returns the rest of the batch.
+  Future<List<UploadItem>> _rejectOversized(List<UploadItem> batchItems) async {
+    final accepted = <UploadItem>[];
+    var rejected = false;
+    for (final item in batchItems) {
+      final message = _oversizeMessage(item);
+      if (message == null) {
+        accepted.add(item);
+        continue;
+      }
+      rejected = true;
+      if (_isCurrentUpload(item)) await _failOversized(item, message);
+    }
+    if (rejected) _flushSetItemBatch(force: true);
+    return accepted;
+  }
+
   Future<void> _uploadManyDirect(List<UploadItem> batchItems) async {
     final blockedOnMobileData = await _isBlockedOnMobileData();
     if (!batchItems.any(_isCurrentUpload)) return;
@@ -19,6 +37,8 @@ extension _UploadDirect on UploadController {
       _notifyListeners();
       return;
     }
+    batchItems = await _rejectOversized(batchItems);
+    if (!batchItems.any(_isCurrentUpload)) return;
     final user = _auth.user;
     if (user == null || user.telegramId == 0) {
       throw const TelegramClientUnavailableException(
@@ -53,8 +73,7 @@ extension _UploadDirect on UploadController {
     _flushSetItemBatch();
 
     TelegramUploadTarget? preparedTarget;
-    final effectiveFolderId =
-        batchItems.first.destinationFolderId ?? activeFolderId;
+    final effectiveFolderId = _destinationOf(batchItems.first);
     final prepareRes = await _api.dio.post(
       '/client-uploads/prepare-target',
       data: {

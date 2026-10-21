@@ -37,6 +37,7 @@ class DriveFile {
     this.lastAccessedAt,
     this.isOptimistic = false,
     this.localId,
+    this.uploadProgress,
   });
 
   final String id;
@@ -80,6 +81,10 @@ class DriveFile {
   final bool isOptimistic;
   final String? localId;
 
+  /// Overall progress (0-1) of an optimistic upload still in flight; null
+  /// when unknown or not uploading.
+  final double? uploadProgress;
+
   bool get isClientManaged =>
       storageMode == 'client_managed' ||
       mediaAccessMode == 'client_direct' ||
@@ -120,6 +125,7 @@ class DriveFile {
     String? lastAccessedAt,
     bool? isOptimistic,
     String? localId,
+    Object? uploadProgress = _unset,
   }) {
     return DriveFile(
       id: id,
@@ -180,6 +186,9 @@ class DriveFile {
       lastAccessedAt: lastAccessedAt ?? this.lastAccessedAt,
       isOptimistic: isOptimistic ?? this.isOptimistic,
       localId: localId ?? this.localId,
+      uploadProgress: uploadProgress == _unset
+          ? this.uploadProgress
+          : uploadProgress as double?,
     );
   }
 }

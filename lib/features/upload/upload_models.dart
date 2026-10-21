@@ -47,7 +47,11 @@ class UploadItem {
     this.cancelRequested = false,
     this.thumbnailReady = false,
     this.thumbnailUrl,
-  }) : progress = _computeProgress(status, httpProgress, serverProgress);
+    this.bytesPerSecond,
+    this.posterPath,
+    DateTime? addedAt,
+  }) : addedAt = addedAt ?? DateTime.now(),
+       progress = _computeProgress(status, httpProgress, serverProgress);
 
   final String localId;
   final String uploadClientId;
@@ -78,6 +82,20 @@ class UploadItem {
   final bool thumbnailReady;
   final String? thumbnailUrl;
 
+  /// When the item joined the queue. Optimistic drive rows use it as their
+  /// timestamp so rebuilding a row never changes its thumbnail cache key.
+  final DateTime addedAt;
+
+  /// On-device poster frame for a video, shown while it uploads.
+  final String? posterPath;
+
+  /// Smoothed upload speed of the original while it is transferring.
+  final double? bytesPerSecond;
+
+  /// Bytes of the original Telegram has accepted so far.
+  int get transferredBytes =>
+      (serverProgress.clamp(0.0, 1.0) * size).round().clamp(0, size);
+
   static double _computeProgress(
     UploadStatus status,
     double http,
@@ -90,18 +108,20 @@ class UploadItem {
       case UploadStatus.queued:
       case UploadStatus.waitingForWifi:
         return 0.0;
+      // The original's bytes dominate; derivatives are made after it lands,
+      // so their phases sit above it and the bar never moves backwards.
       case UploadStatus.preparingMetadata:
-        return 0.05;
+        return 0.02;
+      case UploadStatus.uploadingOriginalToTelegram:
+        return (0.03 + server * 0.89).clamp(0.03, 0.92);
       case UploadStatus.creatingThumbnail:
       case UploadStatus.creatingPreview:
-        return 0.10;
-      case UploadStatus.uploadingOriginalToTelegram:
-        return (0.10 + server * 0.75).clamp(0.10, 0.85);
+        return 0.92;
       case UploadStatus.uploadingThumbnailToTelegram:
       case UploadStatus.uploadingPreviewToTelegram:
-        return (0.85 + server * 0.10).clamp(0.85, 0.95);
+        return (0.92 + server * 0.05).clamp(0.92, 0.97);
       case UploadStatus.committingMetadata:
-        return 0.96;
+        return 0.98;
       case UploadStatus.cancelling:
       case UploadStatus.cancelled:
       case UploadStatus.failed:
@@ -137,6 +157,9 @@ class UploadItem {
     bool? thumbnailReady,
     String? thumbnailUrl,
     bool clearThumbnail = false,
+    double? bytesPerSecond,
+    bool clearSpeed = false,
+    String? posterPath,
   }) {
     return UploadItem(
       localId: localId,
@@ -169,9 +192,19 @@ class UploadItem {
           ? false
           : thumbnailReady ?? this.thumbnailReady,
       thumbnailUrl: clearThumbnail ? null : thumbnailUrl ?? this.thumbnailUrl,
+      bytesPerSecond: clearSpeed ? null : bytesPerSecond ?? this.bytesPerSecond,
+      posterPath: posterPath ?? this.posterPath,
+      addedAt: addedAt,
     );
   }
 }
+
+/// Destination marker for "drive root" on an item, distinct from `null`
+/// ("follow the controller's active folder").
+const uploadRootFolderId = '';
+
+String? uploadFolderIdOrNull(String? folderId) =>
+    folderId == null || folderId == uploadRootFolderId ? null : folderId;
 
 bool directDerivativePayloadsReady(
   UploadItem item,
@@ -182,28 +215,60 @@ bool directDerivativePayloadsReady(
   return payloads.containsKey('thumbnail') || payloads.containsKey('preview');
 }
 
+/// Overall progress weighted by size, as other cloud drives report it: a
+/// 2 GB video dominates the bar instead of counting as much as a 1 MB photo.
+/// Falls back to the per-item average when sizes are unknown.
+double uploadOverallProgress(Iterable<UploadItem> items) {
+  var count = 0;
+  var sum = 0.0;
+  var bytes = 0;
+  var weighted = 0.0;
+  for (final item in items) {
+    count++;
+    sum += item.progress;
+    if (item.size > 0) {
+      bytes += item.size;
+      weighted += item.progress * item.size;
+    }
+  }
+  if (count == 0) return 0;
+  final value = bytes > 0 ? weighted / bytes : sum / count;
+  return value.clamp(0.0, 1.0);
+}
+
 extension UploadItemMapping on UploadItem {
   DriveFile toDriveFile(String? activeFolderId) {
     final kind = detectFileKind(name, mimeType);
+    // Only real images are drawn from disk: a video file is not an image, so
+    // pointing the thumbnail at it failed and sent the row to the network
+    // loader (spinner, then a "cloud off" retry mark, over and over).
+    final localImage = kind == FileKind.image && path.startsWith('/')
+        ? path
+        : null;
+    final localThumb = localImage ?? posterPath;
+    // A stable timestamp keeps the row's thumbnail key fixed while progress
+    // updates rebuild it several times a second.
+    final stamp = addedAt.toIso8601String();
     return DriveFile(
       id: fileId != null ? '$fileId' : 'local:$localId',
       name: name,
       kind: kind,
       size: size,
-      modifiedAt: DateTime.now().toIso8601String(),
-      createdAt: DateTime.now().toIso8601String(),
-      parentId: destinationFolderId ?? activeFolderId,
+      modifiedAt: stamp,
+      createdAt: stamp,
+      parentId: uploadFolderIdOrNull(destinationFolderId ?? activeFolderId),
       starred: false,
       mimeType: mimeType,
       uploadStatus: status.name,
       uploadError: error,
       localUri: path,
-      thumbnailUrl: kind == FileKind.image || kind == FileKind.video
-          ? path
-          : null,
-      previewUrl: kind == FileKind.image ? path : null,
+      thumbnailUrl: localThumb,
+      previewUrl: localImage,
       isOptimistic: true,
       localId: localId,
+      uploadProgress: status == UploadStatus.uploaded
+          ? null
+          : (progress * 100).round() / 100,
     );
   }
 }

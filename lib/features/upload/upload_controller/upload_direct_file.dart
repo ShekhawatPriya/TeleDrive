@@ -1,6 +1,64 @@
 part of '../upload_controller.dart';
 
 extension _UploadDirectFile on UploadController {
+  /// Mirrors TDLib's uploaded bytes into the row and a smoothed speed. The
+  /// subscription must exist before the native send starts: the bridge drops
+  /// events for transfers nobody observes, which left the bar at its floor.
+  StreamSubscription<TelegramTransferProgress>? _trackOriginalProgress(
+    UploadItem item,
+    String transferId,
+  ) {
+    final clock = Stopwatch()..start();
+    var sampleMs = 0;
+    var sampleBytes = 0;
+    double? speed;
+    try {
+      return _telegram.watchProgress(transferId).listen((event) {
+        if (event.state != TelegramTransferState.uploading) return;
+        final current = _findItem(item.localId);
+        if (current == null ||
+            current.uploadClientId != item.uploadClientId ||
+            current.cancelRequested ||
+            current.status != UploadStatus.uploadingOriginalToTelegram) {
+          return;
+        }
+        final total = (event.totalBytes ?? 0) > 0
+            ? event.totalBytes!
+            : item.size;
+        if (total <= 0) return;
+        final fraction = (event.bytesDone / total).clamp(0.0, 1.0);
+        final now = clock.elapsedMilliseconds;
+        final elapsed = now - sampleMs;
+        if (elapsed >= 500 && event.bytesDone >= sampleBytes) {
+          final instant = (event.bytesDone - sampleBytes) * 1000 / elapsed;
+          // Exponential smoothing keeps the rate readable on bursty links.
+          speed = sampleMs == 0 && sampleBytes == 0
+              ? null
+              : speed == null
+              ? instant
+              : speed! * .7 + instant * .3;
+          sampleMs = now;
+          sampleBytes = event.bytesDone;
+        }
+        // TDLib can restart a part after a reconnect; never move backwards.
+        if (fraction <= current.serverProgress &&
+            speed == current.bytesPerSecond) {
+          return;
+        }
+        _setItem(
+          item.localId,
+          serverProgress: fraction > current.serverProgress
+              ? fraction
+              : current.serverProgress,
+          bytesPerSecond: speed,
+        );
+      });
+    } catch (err) {
+      debugPrint('Upload progress unavailable for ${item.name}: $err');
+      return null;
+    }
+  }
+
   Future<void> _uploadDirectFiles({
     required List<UploadItem> batchItems,
     required List<Map<String, dynamic>> files,
@@ -82,14 +140,20 @@ extension _UploadDirectFile on UploadController {
           );
         }
         if (!_isCurrentUpload(latest)) continue;
-        final result = await _telegram.uploadOriginal(
-          filePath: latest.path,
-          filename: latest.name,
-          mimeType: latest.mimeType,
-          sizeBytes: latest.size,
-          target: target,
-          transferId: transferId,
-        );
+        final progress = _trackOriginalProgress(latest, transferId);
+        final TelegramUploadResult result;
+        try {
+          result = await _telegram.uploadOriginal(
+            filePath: latest.path,
+            filename: latest.name,
+            mimeType: latest.mimeType,
+            sizeBytes: latest.size,
+            target: target,
+            transferId: transferId,
+          );
+        } finally {
+          await progress?.cancel();
+        }
         uploadedToTelegram = true;
         final derivativePayloads = await _uploadDirectDerivatives(
           item: latest,
@@ -164,7 +228,7 @@ extension _UploadDirectFile on UploadController {
         // The server now has one more available file: reflect it instantly in
         // the destination folder's (and all its ancestors') displayed totals.
         _drive.bumpFolderAggregates(
-          latest.destinationFolderId ?? activeFolderId,
+          _destinationOf(latest),
           fileCountDelta: 1,
           sizeDelta: latest.size,
         );

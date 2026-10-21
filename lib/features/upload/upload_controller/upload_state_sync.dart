@@ -11,6 +11,11 @@ extension _UploadStateSync on UploadController {
   UploadItem? _findItem(String localId) =>
       items.where((i) => i.localId == localId).firstOrNull;
 
+  /// Resolved destination; [uploadRootFolderId] pins an item to the root so a
+  /// later pick in another folder cannot redirect it through [activeFolderId].
+  String? _destinationOf(UploadItem item) =>
+      uploadFolderIdOrNull(item.destinationFolderId ?? activeFolderId);
+
   bool _isCurrentUpload(UploadItem item) {
     final current = _findItem(item.localId);
     return !_disposed &&
@@ -40,6 +45,14 @@ extension _UploadStateSync on UploadController {
 
   void _bumpItemsVersion() {
     _itemsVersion++;
+    // Posters live only as long as their row.
+    if (_posterPaths.isEmpty) return;
+    final live = items.map((i) => i.localId).toSet();
+    _posterPaths.removeWhere((localId, path) {
+      if (live.contains(localId)) return false;
+      unawaited(_safeDeleteLocalFile(path));
+      return true;
+    });
   }
 
   _OptimisticBucket _bucketFor(UploadItem item) {
@@ -87,6 +100,8 @@ extension _UploadStateSync on UploadController {
     bool? cancelRequested,
     bool? thumbnailReady,
     String? thumbnailUrl,
+    double? bytesPerSecond,
+    bool clearSpeed = false,
     bool notify = true,
   }) {
     final before = notify ? _optimisticSignatureSet() : null;
@@ -106,6 +121,12 @@ extension _UploadStateSync on UploadController {
                   cancelRequested: cancelRequested,
                   thumbnailReady: thumbnailReady,
                   thumbnailUrl: thumbnailUrl,
+                  bytesPerSecond: bytesPerSecond,
+                  // Speed describes only the original's live transfer.
+                  clearSpeed:
+                      clearSpeed ||
+                      (status != null &&
+                          status != UploadStatus.uploadingOriginalToTelegram),
                 )
               : i,
         )
@@ -164,7 +185,7 @@ extension _UploadStateSync on UploadController {
       // before the sheet auto-dismiss strips them.
       final destinations = items
           .where((i) => i.status == UploadStatus.uploaded)
-          .map((i) => i.destinationFolderId ?? activeFolderId)
+          .map(_destinationOf)
           .toSet();
       for (final dest in destinations) {
         if (dest != null && dest != _drive.state.activeFolderId) {

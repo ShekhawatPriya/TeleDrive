@@ -136,6 +136,32 @@ upload controller and fixture connectivity/metadata requests. It does not perfor
 live Telegram transfers.
 
 
+## Upload queue, progress and limits
+
+- Pickers stay usable while uploads run. A pick with nothing in flight starts a
+  new session; otherwise its items join the back of the running queue and only
+  they are queued (earlier cancelled or failed items are never re-run). Each
+  item is pinned to its destination (`uploadRootFolderId` marks the root), so a
+  later pick in another folder cannot redirect queued files.
+- The controller subscribes to `watchProgress(transferId)` **before** calling
+  `uploadOriginal`. The bridge drops progress for transfers nobody observes;
+  without the subscription the row sat at its phase floor for the entire
+  transfer. Progress never moves backwards and carries a smoothed speed.
+- Overall progress (panel and Live Activity) is weighted by file size.
+  Derivatives are made after the original lands, so their phases sit above it.
+- Telegram's per-file limit is 2000 MiB, or 4000 MiB with Telegram Premium
+  (`getMe.is_premium`). Oversized files fail before any backend slot or
+  transfer; before the tier is known only files above 4000 MiB are refused
+  at queue time, and the batch re-checks after `getMe`.
+- Native uploads have no fixed deadline. Both bridges fail a send only after
+  `updateFile` has reported no upload progress for 10 minutes
+  (`tdlib_upload_stalled`), so slow 2–4 GB uploads are not cut off while they
+  still advance.
+- A cancelled row is removed after `UploadController.cancelledRowDwell`; its
+  input was already deleted, so it cannot be retried.
+
+`test/upload_queue_append_test.dart` covers these with fixture transfers.
+
 ## Original-file sharing progress
 
 `downloadToCache` accepts an optional byte-progress callback. It subscribes to

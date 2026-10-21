@@ -133,9 +133,12 @@ String formatLabel(DriveFile file) {
   return file.mimeType?.split('/').last.toUpperCase() ?? 'FILE';
 }
 
+/// Status text for an optimistic upload row. While bytes move it carries the
+/// same percentage as the row's ring ("Uploading 42%").
 String formatUploadStatus(DriveFile file) {
+  final progress = file.uploadProgress;
   return switch (file.uploadStatus) {
-    'queued' => 'Queued',
+    'queued' || 'selected' => 'Queued',
     'waitingForWifi' => 'Waiting for Wi-Fi',
     'stagingToBackend' => 'Sending to server',
     'waitingForServer' => 'Waiting for server',
@@ -144,6 +147,8 @@ String formatUploadStatus(DriveFile file) {
     'uploaded' => 'Uploaded',
     'failed' => 'Upload failed',
     'cancelled' => 'Cancelled',
+    _ when progress != null && progress > 0 =>
+      'Uploading ${(progress.clamp(0, 1) * 100).floor()}%',
     _ => 'Uploading',
   };
 }

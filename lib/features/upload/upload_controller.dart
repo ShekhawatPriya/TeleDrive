@@ -68,6 +68,13 @@ class UploadController extends ChangeNotifier {
   }
 
   static const maxFiles = 50;
+  static const cancelledRowDwell = Duration(milliseconds: 900);
+
+  /// Telegram's per-file limits: 4000 parts of 512 KiB (2000 MiB), doubled
+  /// for Telegram Premium. Checked before upload so an oversized file fails
+  /// immediately instead of after transferring gigabytes.
+  static const telegramMaxFileBytes = 2000 * 1024 * 1024;
+  static const telegramPremiumMaxFileBytes = 4000 * 1024 * 1024;
 
   final ApiClient _api;
   final DriveController _drive;
@@ -84,6 +91,8 @@ class UploadController extends ChangeNotifier {
       const GalleryBackupAssetStore();
   final _uuid = const Uuid();
   final Set<String> _runningLocalIds = {};
+  final Map<String, Timer> _cancelledRemovalTimers = {};
+  final Map<String, String> _posterPaths = {};
   Timer? _autoDismissTimer;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   String? _refreshedUploadSessionId;
@@ -91,6 +100,9 @@ class UploadController extends ChangeNotifier {
   bool _disposed = false;
   bool _notifyScheduled = false;
   int _itemsVersion = 0;
+
+  /// Telegram Premium status from the last TDLib getMe; null until known.
+  bool? _telegramPremium;
   Timer? _optimisticSyncTimer;
 
   void _emitChange() {
@@ -163,13 +175,11 @@ class UploadController extends ChangeNotifier {
 
   UploadSummary get summary {
     final count = items.length;
-    var sumProgress = 0.0;
     var totalBytes = 0;
     var completedBytes = 0;
     var stillGeneratingThumbs = false;
     var allUploaded = count > 0;
     for (final item in items) {
-      sumProgress += item.progress;
       totalBytes += item.size;
       completedBytes += (item.progress * item.size).round();
       if (item.status != UploadStatus.uploaded) allUploaded = false;
@@ -180,9 +190,9 @@ class UploadController extends ChangeNotifier {
         }
       }
     }
-    final progressPermille = count == 0
-        ? 0
-        : (sumProgress * 1000 / count).round().clamp(0, 1000);
+    final progressPermille = (uploadOverallProgress(items) * 1000)
+        .round()
+        .clamp(0, 1000);
     return UploadSummary(
       sheetVisible: sheetVisible,
       itemCount: count,
@@ -206,6 +216,13 @@ class UploadController extends ChangeNotifier {
 
   Future<void> pickPhotos({String? folderId, BuildContext? context}) =>
       _pickPhotos(folderId: folderId, context: context);
+
+  /// Runs the pick flow with a substitute picker (tests have no system UI).
+  @visibleForTesting
+  Future<void> pickWith(
+    Future<UploadPickerResult> Function() pick, {
+    String? folderId,
+  }) => _handlePicker(pick, 'Picking failed.', folderId: folderId);
 
   Future<void> confirmUpload() => _confirmUpload();
 
@@ -235,6 +252,10 @@ class UploadController extends ChangeNotifier {
     _connectivitySubscription?.cancel();
     _cancelCompletionTimers();
     _optimisticSyncTimer?.cancel();
+    for (final timer in _cancelledRemovalTimers.values) {
+      timer.cancel();
+    }
+    _cancelledRemovalTimers.clear();
     _syncLiveActivity();
     super.dispose();
   }

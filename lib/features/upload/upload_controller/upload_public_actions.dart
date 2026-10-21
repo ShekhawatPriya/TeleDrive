@@ -1,34 +1,63 @@
 part of '../upload_controller.dart';
 
 extension _UploadPublicActions on UploadController {
-  Future<void> _pickPhotos({String? folderId, BuildContext? context}) async {
-    if (picking || uploading) return;
-    activeFolderId = folderId;
-    await _handlePicker(
-      () => UploadPickerHelper.pickPhotos(maxFiles: UploadController.maxFiles),
-      'Photo picking failed.',
-      context: context,
-    );
-  }
+  // Picking stays available while uploads run: new picks join the back of
+  // the queue instead of waiting for (or replacing) the current batch.
+  Future<void> _pickPhotos({String? folderId, BuildContext? context}) =>
+      _handlePicker(
+        () =>
+            UploadPickerHelper.pickPhotos(maxFiles: UploadController.maxFiles),
+        'Photo picking failed.',
+        folderId: folderId,
+        context: context,
+      );
 
-  Future<void> _pickFiles({String? folderId, BuildContext? context}) async {
-    if (picking || uploading) return;
-    activeFolderId = folderId;
-    await _handlePicker(
-      () => UploadPickerHelper.pickFiles(maxFiles: UploadController.maxFiles),
-      'Document picking failed.',
-      context: context,
-    );
-  }
+  Future<void> _pickFiles({String? folderId, BuildContext? context}) =>
+      _handlePicker(
+        () => UploadPickerHelper.pickFiles(maxFiles: UploadController.maxFiles),
+        'Document picking failed.',
+        folderId: folderId,
+        context: context,
+      );
 
-  Future<void> _pickPhoto({String? folderId, BuildContext? context}) async {
-    if (picking || uploading) return;
-    activeFolderId = folderId;
-    await _handlePicker(
-      () => UploadPickerHelper.pickPhoto(),
-      'Camera capture failed.',
-      context: context,
-    );
+  Future<void> _pickPhoto({String? folderId, BuildContext? context}) =>
+      _handlePicker(
+        () => UploadPickerHelper.pickPhoto(),
+        'Camera capture failed.',
+        folderId: folderId,
+        context: context,
+      );
+
+  /// Queues only [localIds]; unlike [_confirmUpload] it never re-runs items
+  /// the person previously cancelled or that failed.
+  void _queueSelected(Set<String> localIds) {
+    if (localIds.isEmpty) return;
+    _cancelCompletionTimers();
+    uploadSessionId ??= _uuid.v4();
+    uploading = true;
+    error = null;
+    items = items
+        .map(
+          (i) =>
+              localIds.contains(i.localId) && i.status == UploadStatus.selected
+              ? i.copyWith(
+                  uploadClientId: _uuid.v4(),
+                  status: UploadStatus.queued,
+                  httpProgress: 0,
+                  serverProgress: 0,
+                  clearError: true,
+                  cancelRequested: false,
+                  resetServerIds: true,
+                  clearThumbnail: true,
+                )
+              : i,
+        )
+        .toList();
+    _failQueuedOversized();
+    _syncOptimistic();
+    _updateUploadingFlag();
+    _notifyListeners();
+    _pumpQueue();
   }
 
   Future<void> _confirmUpload() async {
@@ -59,9 +88,23 @@ extension _UploadPublicActions on UploadController {
               : i,
         )
         .toList();
+    _failQueuedOversized();
     _syncOptimistic();
+    _updateUploadingFlag();
     _notifyListeners();
     _pumpQueue();
+  }
+
+  /// Known-oversized files fail now instead of waiting behind the queue.
+  void _failQueuedOversized() {
+    for (final item in items) {
+      if (item.status != UploadStatus.queued ||
+          _runningLocalIds.contains(item.localId)) {
+        continue;
+      }
+      final message = _oversizeMessage(item);
+      if (message != null) unawaited(_failOversized(item, message));
+    }
   }
 
   Future<void> _enqueueGalleryBackupItems(List<UploadItem> backupItems) async {
@@ -184,6 +227,28 @@ extension _UploadPublicActions on UploadController {
     if (item.deleteLocalOnComplete) {
       unawaited(_safeDeleteLocalFile(item.path));
     }
+    _scheduleCancelledRemoval(item);
+  }
+
+  /// A row the person cancelled shows "Cancelled" for a beat, then leaves the
+  /// list; the panel animates it out. Its input is already deleted, so it
+  /// could not be retried anyway.
+  void _scheduleCancelledRemoval(UploadItem item) {
+    _cancelledRemovalTimers.remove(item.localId)?.cancel();
+    _cancelledRemovalTimers[item.localId] = Timer(
+      UploadController.cancelledRowDwell,
+      () {
+        _cancelledRemovalTimers.remove(item.localId);
+        final current = _findItem(item.localId);
+        if (_disposed ||
+            current == null ||
+            current.uploadClientId != item.uploadClientId ||
+            current.status != UploadStatus.cancelled) {
+          return;
+        }
+        _removeFailed(item.localId);
+      },
+    );
   }
 
   Future<void> _cancelUpload() async {
@@ -235,6 +300,8 @@ extension _UploadPublicActions on UploadController {
       sheetVisible = false;
       uploadSessionId = null;
       error = null;
+    } else if (_allItemsCompleted && !uploading) {
+      _scheduleAutoDismiss();
     }
     _syncOptimistic();
     _notifyListeners();

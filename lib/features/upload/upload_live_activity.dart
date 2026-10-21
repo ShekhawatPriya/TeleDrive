@@ -32,7 +32,6 @@ TransferActivitySnapshot? uploadActivitySnapshot(List<UploadItem> items) {
   var queued = 0;
   var working = 0;
   var transferring = 0;
-  var progressSum = 0.0;
   var totalBytes = 0;
   var completedBytes = 0;
   for (final item in items) {
@@ -46,7 +45,6 @@ TransferActivitySnapshot? uploadActivitySnapshot(List<UploadItem> items) {
     }
     if (_working.contains(status)) working++;
     if (_transferring.contains(status)) transferring++;
-    progressSum += item.progress;
     totalBytes += item.size;
     completedBytes += (item.progress * item.size).round();
   }
@@ -84,7 +82,7 @@ TransferActivitySnapshot? uploadActivitySnapshot(List<UploadItem> items) {
     totalCount: total,
     completedCount: completed,
     failedCount: unsuccessful,
-    progress: (progressSum / total).clamp(0.0, 1.0),
+    progress: uploadOverallProgress(items),
     completedBytes: completedBytes,
     totalBytes: totalBytes,
     currentName: settled ? null : current?.name,

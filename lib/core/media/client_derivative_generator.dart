@@ -339,6 +339,24 @@ class ClientDerivativeGenerator {
     return ClientDerivativeSet(thumbnail: thumbnail, preview: preview);
   }
 
+  /// Small on-device poster frame for a video that is still uploading, so
+  /// its row shows the clip instead of a generic glyph. Null when the native
+  /// bridge is unavailable or the frame cannot be read.
+  Future<String?> createUploadPoster({
+    required String localId,
+    required String videoPath,
+    required String filename,
+  }) async {
+    final asset = await _createNativeVideoThumbnail(
+      localId: localId,
+      originalPath: videoPath,
+      originalFilename: filename,
+      variant: 'poster',
+      maxEdge: thumbnailMaxEdge,
+    );
+    return asset?.path;
+  }
+
   Future<ClientDerivativeAsset?> _createNativeVideoThumbnail({
     required String localId,
     required String originalPath,
