@@ -326,12 +326,21 @@ Mobile Data** while waiting, and **Retry Failed** whenever something failed.
 Both appear when both apply. Retry is no longer repeated under every failed
 row. A "N FILES" section label precedes an inset files card.
 
-Each row has a 40-point thumbnail, a 16-point name, and a status line ("3.0 MB
-· 41%" while uploading). Below that sits a 3-point tinted bar, or a two-line
+Each row has a 40-point thumbnail, a 16-point name, and a status line (real
+bytes and smoothed speed while the original transfers, "45 MB of 160 MB ·
+2.1 MB/s"; size and percentage or phase otherwise). Below that sits a 3-point tinted bar, or a two-line
 red error for failures. The row ends in one trailing mark: a green check
 circle, or a circular cancel or dismiss control (48-point target). Dividers
 align with the filename and run to the card's edge. At accessibility sizes
 the summary card stacks its ring above the text.
+
+Picking stays available while uploads run: a new pick joins the back of the
+queue in the open panel. Added rows spring in (the slot opens with a
+decelerating curve while the row settles from slightly below at 94% scale); a
+cancelled row shows "Cancelled" briefly, then slides down, fades and its slot
+closes (`UploadRowTransition`). Completed rows stay until the whole queue is
+done, so "N of M uploaded" stays truthful, and the panel then dismisses.
+Reduced motion swaps every row motion for an immediate change.
 
 Files use 40-point thumbnails, unboxed rows, inset hairline dividers, quiet
 completion marks, and thin progress lines aligned to the filename. Available
@@ -344,6 +353,25 @@ surfaces and interaction feedback.
 The floating upload control pairs a small progress ring with a status and actual
 completed-file count, without an oversized cloud badge or a second edge-to-edge
 progress bar.
+
+Every background operation beside Add uses this one control,
+`StatusCapsule` (`lib/features/upload/ui/components/status_capsule.dart`):
+uploads and deletes have the same capsule, disc, ring, type and trailing
+percentage. Delete uses a red trash ring while running, a green check when
+done, and orange or red with an exclamation when some items failed; it is
+status-only (no tap or drag). Android renders the same content on its Material
+surface. Do not add a separate card or a flat progress bar for a new
+operation; give it a `StatusCapsule`.
+
+Files still uploading appear in the drive list, grid and Recents with a stable
+local picture (the photo itself, or a poster frame the controller grabs from a
+video when it is picked) or the file glyph. They are never sent to the network
+thumbnail loader, so no spinner or "cloud off" retry mark appears. Their
+timestamp is fixed when they are queued, so progress rebuilds never change the
+thumbnail cache key. The trailing mark (`UploadRowStatus`) is the same ring as
+the capsule, filled by the real upload progress, with "Uploading 42%" in the
+status line; queued and Wi-Fi waits show a gray clock or Wi-Fi glyph. There is
+no shimmer over uploading thumbnails.
 
 On iOS it is a 60-point capsule that matches the Add button's height and sits
 on the same floating glass as other floating controls. In dark mode a faint
@@ -680,7 +708,9 @@ spacing and its tile shapes are deliberately unchanged.
 
 - **Feedback.** iOS has no snackbars. `AppMessenger`/`showAppMessage`
   (`lib/widgets/app_message.dart`) shows the app toast on iOS and keeps the
-  Material snackbar on Android. Capture `AppMessenger.of(context)` before an
+  Material snackbar on Android. The iOS toast sits in the empty leading side of a
+  tab header's controls row, or is centred below the Dynamic Island elsewhere
+  (see "Account confirmation banners" in [design-workflow.md](design-workflow.md)). Capture `AppMessenger.of(context)` before an
   `await`, as with `ScaffoldMessenger`. Confirmations reachable on iOS
   (large uploads, upload in progress) use `CupertinoAlertDialog`.
 - **Haptics.** `AppHaptics` (`lib/core/utils/app_haptics.dart`) gives iOS a

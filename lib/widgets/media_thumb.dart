@@ -190,6 +190,7 @@ class _MediaThumbState extends ConsumerState<MediaThumb> {
           File(path),
           fit: widget.fit,
           cacheWidth: widget.decodeWidth,
+          gaplessPlayback: true,
           errorBuilder: (_, __, ___) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted && _failedLocal != path)
@@ -199,6 +200,12 @@ class _MediaThumbState extends ConsumerState<MediaThumb> {
           },
         ),
       );
+    }
+    // An upload in flight has nothing on the server yet. It shows its local
+    // picture or its file glyph, never the network spinner and retry mark.
+    if (widget.file.isOptimistic) {
+      _stop();
+      return _frame(context, _fallback(context));
     }
     final loader = ref.watch(thumbnailLoaderProvider);
     final key = loader.keyFor(widget.file);

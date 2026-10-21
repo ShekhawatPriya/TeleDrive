@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../widgets/sheet/sheet_drag_handle.dart';
 import '../upload_controller.dart';
+import '../upload_models.dart';
 import 'components/upload_card.dart';
+import 'components/upload_row_transition.dart';
 import 'components/upload_sheet_header.dart';
 import 'components/upload_status_ring.dart';
 
@@ -26,6 +28,92 @@ class UploadSheet extends ConsumerStatefulWidget {
 class _UploadSheetState extends ConsumerState<UploadSheet> {
   final _compactContentKey = GlobalKey();
   double? _compactHeight;
+
+  /// Displayed rows: the queue's ids plus rows still animating out.
+  List<String> _rows = const [];
+  final Set<String> _departing = {};
+
+  /// Ids added after the panel opened; they spring in instead of appearing.
+  final Set<String> _entering = {};
+  int? _reconciledVersion;
+
+  /// Merges the queue into the displayed rows. Removed ids stay in place as
+  /// departing rows until their exit finishes; new ids take their queue
+  /// position. The first snapshot appears with the panel, unanimated.
+  void _reconcile(UploadItemIdsSnapshot snapshot) {
+    if (_reconciledVersion == snapshot.version) return;
+    final first = _reconciledVersion == null;
+    _reconciledVersion = snapshot.version;
+    final ids = snapshot.ids;
+    final current = ids.toSet();
+    final shown = _rows.toSet();
+    // Clearing the whole queue closes the panel; nothing to animate.
+    if (ids.isEmpty) {
+      _rows = const [];
+      _departing.clear();
+      _entering.clear();
+      return;
+    }
+    final merged = <String>[];
+    final placed = <String>{};
+    var next = 0;
+    void place(String id) {
+      if (placed.add(id)) merged.add(id);
+    }
+
+    for (final row in _rows) {
+      if (!current.contains(row)) {
+        _departing.add(row);
+        place(row);
+        continue;
+      }
+      while (next < ids.length && ids[next] != row) {
+        place(ids[next++]);
+      }
+      if (next < ids.length) {
+        place(ids[next++]);
+      }
+    }
+    while (next < ids.length) {
+      place(ids[next++]);
+    }
+    if (!first) {
+      _entering.addAll(current.where((id) => !shown.contains(id)));
+    }
+    // An id that returns while departing is live again.
+    _departing.removeWhere(current.contains);
+    _rows = merged;
+  }
+
+  void _handleExited(String id) {
+    if (!mounted || !_departing.remove(id)) return;
+    setState(() => _rows = _rows.where((row) => row != id).toList());
+    _measureCompactContent();
+  }
+
+  void _handleEntered(String id) {
+    _entering.remove(id);
+    _measureCompactContent();
+  }
+
+  /// One row with its leading separator, so both enter and leave together.
+  Widget _row(int index, Widget Function() separator, {EdgeInsets? padding}) {
+    final id = _rows[index];
+    Widget card = UploadCard(key: ValueKey(id), localId: id);
+    if (padding != null) card = Padding(padding: padding, child: card);
+    return UploadRowTransition(
+      key: ValueKey('row-$id'),
+      animateIn: _entering.contains(id),
+      departing: _departing.contains(id),
+      onEntered: () => _handleEntered(id),
+      onExited: () => _handleExited(id),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [if (index > 0) separator(), card],
+      ),
+    );
+  }
 
   void _measureCompactContent() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -52,7 +140,9 @@ class _UploadSheetState extends ConsumerState<UploadSheet> {
     ref.listen<UploadController>(uploadControllerProvider, (previous, next) {
       if (!next.sheetVisible || next.items.isEmpty) widget.onMinimize();
     });
-    final compact = idsSnapshot.ids.length <= 2;
+    _reconcile(idsSnapshot);
+    final rowCount = _rows.length;
+    final compact = rowCount <= 2;
     if (compact) _measureCompactContent();
 
     final header = Column(
@@ -154,38 +244,21 @@ class _UploadSheetState extends ConsumerState<UploadSheet> {
                                 ),
                                 child: Column(
                                   children: [
-                                    for (
-                                      var i = 0;
-                                      i < idsSnapshot.ids.length;
-                                      i++
-                                    ) ...[
-                                      if (i > 0) separator(),
-                                      UploadCard(
-                                        key: ValueKey(idsSnapshot.ids[i]),
-                                        localId: idsSnapshot.ids[i],
-                                      ),
-                                    ],
+                                    for (var i = 0; i < rowCount; i++)
+                                      _row(i, separator),
                                   ],
                                 ),
                               ),
                             )
                           else
-                            for (
-                              var i = 0;
-                              i < idsSnapshot.ids.length;
-                              i++
-                            ) ...[
-                              if (i > 0) separator(),
-                              Padding(
+                            for (var i = 0; i < rowCount; i++)
+                              _row(
+                                i,
+                                separator,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 16,
                                 ),
-                                child: UploadCard(
-                                  key: ValueKey(idsSnapshot.ids[i]),
-                                  localId: idsSnapshot.ids[i],
-                                ),
                               ),
-                            ],
                           SizedBox(height: 16 + widget.bottomInset),
                         ],
                       ),
@@ -206,13 +279,16 @@ class _UploadSheetState extends ConsumerState<UploadSheet> {
                                 shape: cardShape,
                               )
                             : const BoxDecoration(),
-                        sliver: SliverList.separated(
-                          itemCount: idsSnapshot.ids.length,
-                          separatorBuilder: (_, __) => separator(),
-                          itemBuilder: (_, i) => UploadCard(
-                            key: ValueKey(idsSnapshot.ids[i]),
-                            localId: idsSnapshot.ids[i],
-                          ),
+                        sliver: SliverList.builder(
+                          itemCount: rowCount,
+                          findChildIndexCallback: (key) {
+                            if (key is! ValueKey<String>) return null;
+                            final index = _rows.indexOf(
+                              key.value.replaceFirst('row-', ''),
+                            );
+                            return index < 0 ? null : index;
+                          },
+                          itemBuilder: (_, i) => _row(i, separator),
                         ),
                       ),
                     ),

@@ -14,18 +14,33 @@ import 'upload_status_ring.dart';
 import 'upload_thumb_slot.dart';
 
 /// Compact transfer row; item subscriptions keep progress updates local.
-class UploadCard extends ConsumerWidget {
+///
+/// After the item leaves the queue the row keeps showing its last state, so
+/// the panel can animate it out instead of collapsing an empty slot.
+class UploadCard extends ConsumerStatefulWidget {
   const UploadCard({required this.localId, super.key});
   final String localId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final item = ref.watch(
+  ConsumerState<UploadCard> createState() => _UploadCardState();
+}
+
+class _UploadCardState extends ConsumerState<UploadCard> {
+  UploadItem? _last;
+
+  @override
+  Widget build(BuildContext context) {
+    final localId = widget.localId;
+    final live = ref.watch(
       uploadControllerProvider.select(
         (c) => c.items.firstWhereOrNull((i) => i.localId == localId),
       ),
     );
+    if (live != null) _last = live;
+    final item = live ?? _last;
     if (item == null) return const SizedBox.shrink();
+    // A departed row is display-only; its actions would target nothing.
+    final departed = live == null;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final ios = theme.platform == TargetPlatform.iOS;
@@ -52,16 +67,19 @@ class UploadCard extends ConsumerWidget {
         item: item,
         status: status,
         preparing: preparing,
-        onCancel: () => ref.read(uploadControllerProvider).cancelItem(localId),
-        onDismiss: () =>
-            ref.read(uploadControllerProvider).removeFailed(localId),
+        onCancel: departed
+            ? null
+            : () => ref.read(uploadControllerProvider).cancelItem(localId),
+        onDismiss: departed
+            ? null
+            : () => ref.read(uploadControllerProvider).removeFailed(localId),
       );
     }
 
     Widget action({
       required String label,
       required IconData icon,
-      required VoidCallback onPressed,
+      required VoidCallback? onPressed,
     }) {
       final glyph = Icon(icon, size: 20, color: scheme.onSurfaceVariant);
       if (ios) {
@@ -127,7 +145,7 @@ class UploadCard extends ConsumerWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${formatFileSize(item.size)} · $status',
+                              uploadRowDetail(item, status),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: failed
                                     ? scheme.error
@@ -151,9 +169,11 @@ class UploadCard extends ConsumerWidget {
                       action(
                         label: 'Dismiss',
                         icon: ios ? CupertinoIcons.xmark : Icons.close_rounded,
-                        onPressed: () => ref
-                            .read(uploadControllerProvider)
-                            .removeFailed(item.localId),
+                        onPressed: departed
+                            ? null
+                            : () => ref
+                                  .read(uploadControllerProvider)
+                                  .removeFailed(item.localId),
                       )
                     else if (item.status == UploadStatus.cancelling)
                       SizedBox.square(
@@ -180,9 +200,11 @@ class UploadCard extends ConsumerWidget {
                       action(
                         label: 'Cancel',
                         icon: ios ? CupertinoIcons.xmark : Icons.close_rounded,
-                        onPressed: () => ref
-                            .read(uploadControllerProvider)
-                            .cancelItem(item.localId),
+                        onPressed: departed
+                            ? null
+                            : () => ref
+                                  .read(uploadControllerProvider)
+                                  .cancelItem(item.localId),
                       ),
                   ],
                 ),
@@ -256,8 +278,8 @@ class _IosUploadRow extends StatelessWidget {
   final UploadItem item;
   final String status;
   final bool preparing;
-  final VoidCallback onCancel;
-  final VoidCallback onDismiss;
+  final VoidCallback? onCancel;
+  final VoidCallback? onDismiss;
 
   @override
   Widget build(BuildContext context) {
@@ -277,12 +299,14 @@ class _IosUploadRow extends StatelessWidget {
       context,
     );
     final uploading = active && !preparing;
-    final line = uploading
+    final line = item.status == UploadStatus.uploadingOriginalToTelegram
+        ? uploadRowDetail(item, status)
+        : uploading
         ? '${formatFileSize(item.size)} · '
               '${(item.progress.clamp(0, 1) * 100).floor()}%'
         : '${formatFileSize(item.size)} · $status';
 
-    Widget circleButton(String label, VoidCallback onPressed) => Semantics(
+    Widget circleButton(String label, VoidCallback? onPressed) => Semantics(
       label: '$label ${item.name}',
       button: true,
       child: Tooltip(

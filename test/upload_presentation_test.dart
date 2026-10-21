@@ -16,11 +16,16 @@ import 'package:flutter_m_fsdk/features/upload/upload_models.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/components/bottom_action_system.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/components/upload_card.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/components/upload_collapsed_bar.dart';
+import 'package:flutter_m_fsdk/features/upload/ui/components/upload_row_transition.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/components/upload_status_ring.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/upload_sheet.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/upload_panel_host.dart';
 import 'package:flutter_m_fsdk/features/upload/ui/upload_status_label.dart';
 import 'package:flutter_m_fsdk/widgets/floating_pill_navigation_bar.dart';
+import 'package:flutter_m_fsdk/core/utils/file_type_detector.dart';
+import 'package:flutter_m_fsdk/widgets/file_list_tile.dart';
+import 'package:flutter_m_fsdk/widgets/media_thumb.dart';
+import 'package:flutter_m_fsdk/widgets/upload_row_status.dart';
 
 final _photo = File('test/fixtures/design/alpine.jpg').absolute.path;
 
@@ -142,6 +147,7 @@ Future<void> _pump(
   bool contrast = false,
   Widget? body,
   bool deleting = false,
+  ({int completed, int failed, int total})? deleteProgress,
   ValueChanged<int>? onTabSelected,
 }) async {
   tester.view.physicalSize = Size(width, height);
@@ -160,9 +166,9 @@ Future<void> _pump(
         driveControllerProvider.overrideWith(
           (_) => _Drive()
             ..state = DriveState(
-              deleteProgress: deleting
-                  ? (completed: 1, failed: 0, total: 3)
-                  : null,
+              deleteProgress:
+                  deleteProgress ??
+                  (deleting ? (completed: 1, failed: 0, total: 3) : null),
             ),
         ),
       ],
@@ -712,6 +718,244 @@ void main() {
         expect(tester.takeException(), isNull);
       },
     );
+  }
+
+  // Uploading files in the drive list: a stable local picture (video poster or
+  // the photo itself) and the shared progress ring. Never a network spinner
+  // or a "cloud off" retry mark. Previews: drive-upload-rows-*.
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        'uploading drive rows stay stable ${platform.name} ${brightness.name}',
+        (tester) async {
+          UploadItem upload(
+            String id,
+            String name,
+            String mime,
+            UploadStatus status, {
+            double server = 0,
+            String? poster,
+            String path = '/fixture/missing.mov',
+          }) => UploadItem(
+            localId: id,
+            uploadClientId: 'u-$id',
+            name: name,
+            size: 160 * 1024 * 1024,
+            mimeType: mime,
+            path: path,
+            status: status,
+            serverProgress: server,
+            posterPath: poster,
+            addedAt: DateTime(2026, 10, 21, 9),
+          );
+          final rows = [
+            upload(
+              'video',
+              'image_picker_5A2879E4-9F1C-7307.mov',
+              'video/quicktime',
+              UploadStatus.uploadingOriginalToTelegram,
+              server: .42,
+              poster: _photo,
+            ),
+            upload(
+              'photo',
+              'Alpine afternoon.jpg',
+              'image/jpeg',
+              UploadStatus.uploadingOriginalToTelegram,
+              server: .8,
+              path: _photo,
+            ),
+            upload(
+              'clip',
+              'Holiday clip.mov',
+              'video/quicktime',
+              UploadStatus.queued,
+            ),
+            upload(
+              'doc',
+              'September presentation.pdf',
+              'application/pdf',
+              UploadStatus.waitingForWifi,
+            ),
+          ];
+          Widget list(List<UploadItem> items) => ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            children: [
+              for (final item in items)
+                Builder(
+                  builder: (context) {
+                    final file = item.toDriveFile(null);
+                    return FileListTile(
+                      key: ValueKey(item.localId),
+                      name: file.name,
+                      subtitle:
+                          '${formatUploadStatus(file)} · ${formatFileSize(file.size)}',
+                      file: file,
+                      isOptimistic: true,
+                      onTap: () {},
+                    );
+                  },
+                ),
+            ],
+          );
+          // Decode the fixture photo outside the fake-async zone first, so the
+          // preview shows the real picture (as on a device).
+          await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+          await tester.runAsync(
+            () => precacheImage(
+              ResizeImage(FileImage(File(_photo)), width: 320),
+              tester.element(find.byType(SizedBox).first),
+            ),
+          );
+          final shown = ValueNotifier(rows);
+          addTearDown(shown.dispose);
+          await _pump(
+            tester,
+            _Uploads(const []),
+            platform: platform,
+            brightness: brightness,
+            navigation: false,
+            body: ValueListenableBuilder(
+              valueListenable: shown,
+              builder: (_, items, _) => list(items),
+            ),
+          );
+          await tester.pump();
+          expect(find.byIcon(Icons.cloud_off_outlined), findsNothing);
+          expect(find.byType(CircularProgressIndicator), findsNothing);
+          expect(find.byType(UploadRowStatus), findsNWidgets(4));
+          expect(find.text('Uploading 40% · 160 MB'), findsOneWidget);
+          expect(find.text('Queued · 160 MB'), findsOneWidget);
+          await _preview(
+            tester,
+            'drive-upload-rows-${platform.name}-${brightness.name}',
+          );
+
+          // Progress rebuilds keep the same thumbnail state: no reload.
+          final before = tester.state(find.byType(MediaThumb).first);
+          final firstKey = rows.first.toDriveFile(null).modifiedAt;
+          shown.value = [
+            rows.first.copyWith(serverProgress: .6),
+            ...rows.skip(1),
+          ];
+          await tester.pump();
+          expect(shown.value.first.toDriveFile(null).modifiedAt, firstKey);
+          expect(find.text('Uploading 56% · 160 MB'), findsOneWidget);
+          expect(find.byType(CircularProgressIndicator), findsNothing);
+          expect(find.byIcon(Icons.cloud_off_outlined), findsNothing);
+          expect(tester.state(find.byType(MediaThumb).first), same(before));
+          expect(before.mounted, isTrue);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+
+  // Delete and upload status share one floating capsule beside Add.
+  // Previews: status-pills-*.
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final brightness in Brightness.values) {
+      for (final entry in <String, ({int completed, int failed, int total})>{
+        'deleting': (completed: 1, failed: 0, total: 3),
+        'deleted': (completed: 1, failed: 0, total: 1),
+        'delete-failed': (completed: 3, failed: 1, total: 3),
+      }.entries) {
+        testWidgets(
+          'status pills ${entry.key} ${platform.name} ${brightness.name}',
+          (tester) async {
+            await _pump(
+              tester,
+              _Uploads([
+                _item(0, UploadStatus.uploaded),
+                _item(1, UploadStatus.uploadingOriginalToTelegram),
+              ]),
+              platform: platform,
+              brightness: brightness,
+              deleteProgress: entry.value,
+            );
+            expect(tester.takeException(), isNull);
+            await _preview(
+              tester,
+              'status-pills-${entry.key}-${platform.name}-${brightness.name}',
+            );
+          },
+        );
+      }
+    }
+  }
+
+  // Rows added to an open panel spring in at the back of the list; a row that
+  // leaves (cancelled) slides down and its slot closes before it is dropped.
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final reduced in [false, true]) {
+      testWidgets(
+        'queue rows animate in and out ${platform.name} reduced=$reduced',
+        (tester) async {
+          final uploads = _Uploads([
+            _item(0, UploadStatus.uploadingOriginalToTelegram),
+            _item(1, UploadStatus.queued),
+            _item(2, UploadStatus.queued),
+          ]);
+          await _pump(
+            tester,
+            uploads,
+            platform: platform,
+            reducedMotion: reduced,
+            body: Align(
+              alignment: Alignment.bottomCenter,
+              child: UploadSheet(onMinimize: () {}),
+            ),
+          );
+          await tester.pumpAndSettle();
+          RenderBox rowBox(String id) =>
+              tester.renderObject(find.byKey(ValueKey('row-$id')));
+          // The panel's first rows appear with it, unanimated.
+          expect(rowBox('0').size.height, greaterThan(40));
+
+          uploads.items = [...uploads.items, _item(3, UploadStatus.queued)];
+          uploads.notifyListeners();
+          await tester.pump();
+          final added = find.byKey(const ValueKey('row-3'));
+          expect(added, findsOneWidget);
+          if (!reduced) {
+            expect(tester.widget<UploadRowTransition>(added).animateIn, isTrue);
+            expect(rowBox('3').size.height, lessThan(4));
+            await tester.pump(UploadRowTransition.enterDuration ~/ 2);
+            expect(rowBox('3').size.height, greaterThan(4));
+          }
+          await tester.pumpAndSettle();
+          expect(rowBox('3').size.height, greaterThan(40));
+          // New rows join the back of the list.
+          expect(
+            tester.getTopLeft(added).dy,
+            greaterThan(
+              tester.getTopLeft(find.byKey(const ValueKey('row-2'))).dy,
+            ),
+          );
+
+          final leaving = uploads.items[1].copyWith(
+            status: UploadStatus.cancelled,
+          );
+          uploads.items = [uploads.items[0], leaving, ...uploads.items.skip(2)];
+          uploads.notifyListeners();
+          await tester.pump();
+          uploads.items = uploads.items.where((i) => i.localId != '1').toList();
+          uploads.notifyListeners();
+          await tester.pump();
+          if (!reduced) {
+            // Still on screen, showing its final state while it leaves.
+            expect(find.byKey(const ValueKey('row-1')), findsOneWidget);
+            expect(find.textContaining('Cancelled'), findsOneWidget);
+            await tester.pump(UploadRowTransition.exitDuration ~/ 2);
+            expect(find.byKey(const ValueKey('row-1')), findsOneWidget);
+          }
+          await tester.pumpAndSettle();
+          expect(find.byKey(const ValueKey('row-1')), findsNothing);
+          expect(find.byKey(const ValueKey('row-3')), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
   }
 
   // The floating status pill beside Add, in every state and theme, plus the

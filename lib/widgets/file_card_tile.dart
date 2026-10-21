@@ -12,7 +12,7 @@ import 'item_status.dart';
 import 'ios/ios_browse.dart';
 import 'media_thumb.dart';
 import 'selection_indicator.dart';
-import 'uploading_shimmer.dart';
+import 'upload_row_status.dart';
 
 class FileCardTile extends StatelessWidget {
   const FileCardTile({
@@ -84,30 +84,30 @@ class FileCardTile extends StatelessWidget {
               child: Stack(
                 children: [
                   Positioned.fill(
-                    child: UploadingShimmer(
-                      enabled: isUploading,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(24),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: theme.platform == TargetPlatform.iOS
-                            ? BorderRadius.circular(18)
-                            : const BorderRadius.vertical(
-                                top: Radius.circular(24),
-                              ),
-                        child: MediaThumb(
-                          file: file,
-                          fit: BoxFit.cover,
-                          fallback: theme.platform == TargetPlatform.iOS
-                              ? IosFileGlyph(
-                                  kind: file.kind,
-                                  extension: extensionOf(file.name),
-                                )
-                              : null,
-                        ),
+                    child: ClipRRect(
+                      borderRadius: theme.platform == TargetPlatform.iOS
+                          ? BorderRadius.circular(18)
+                          : const BorderRadius.vertical(
+                              top: Radius.circular(24),
+                            ),
+                      child: MediaThumb(
+                        file: file,
+                        fit: BoxFit.cover,
+                        fallback: theme.platform == TargetPlatform.iOS
+                            ? IosFileGlyph(
+                                kind: file.kind,
+                                extension: extensionOf(file.name),
+                              )
+                            : null,
                       ),
                     ),
                   ),
+                  if (isUploading)
+                    Positioned(
+                      right: 8,
+                      bottom: 8,
+                      child: UploadRowStatus(file: file, onImage: true),
+                    ),
                   if (theme.platform != TargetPlatform.iOS &&
                       !file.isOptimistic &&
                       (file.starred || file.shared))
@@ -392,36 +392,38 @@ class _IosFileGridTile extends StatelessWidget {
               child: Stack(
                 children: [
                   Positioned.fill(
-                    child: UploadingShimmer(
-                      enabled: isUploading,
-                      borderRadius: radius,
-                      child: DecoratedBox(
-                        position: DecorationPosition.foreground,
-                        decoration: BoxDecoration(
-                          borderRadius: radius,
-                          border: Border.all(
-                            color: isSelected
-                                ? scheme.primary
-                                : isFailed
-                                ? scheme.error
-                                : IosBrowse.hairline(context),
-                            width: isSelected || isFailed ? 2.5 : .5,
-                          ),
+                    child: DecoratedBox(
+                      position: DecorationPosition.foreground,
+                      decoration: BoxDecoration(
+                        borderRadius: radius,
+                        border: Border.all(
+                          color: isSelected
+                              ? scheme.primary
+                              : isFailed
+                              ? scheme.error
+                              : IosBrowse.hairline(context),
+                          width: isSelected || isFailed ? 2.5 : .5,
                         ),
-                        child: ClipRRect(
-                          borderRadius: radius,
-                          child: MediaThumb(
-                            file: file,
-                            fit: BoxFit.cover,
-                            fallback: IosFileGlyph(
-                              kind: file.kind,
-                              extension: extensionOf(file.name),
-                            ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: radius,
+                        child: MediaThumb(
+                          file: file,
+                          fit: BoxFit.cover,
+                          fallback: IosFileGlyph(
+                            kind: file.kind,
+                            extension: extensionOf(file.name),
                           ),
                         ),
                       ),
                     ),
                   ),
+                  if (isUploading)
+                    Positioned(
+                      right: 6,
+                      bottom: 6,
+                      child: UploadRowStatus(file: file, onImage: true),
+                    ),
                   if (selected != null)
                     Positioned(
                       left: 6,

@@ -9,6 +9,7 @@ import '../../../core/utils/file_type_detector.dart';
 import '../../../models/drive_models.dart';
 import '../../../widgets/ios/ios_browse.dart';
 import '../../../widgets/media_thumb.dart';
+import '../../../widgets/upload_row_status.dart';
 import '../drive_controller.dart';
 import 'drive_item_context_menu.dart';
 import '../../../widgets/app_message.dart';
@@ -108,6 +109,12 @@ class RecentFileCard extends StatelessWidget {
                         radius: 0,
                         decodeWidth: 640,
                       ),
+                      if (isUploadInFlight(file))
+                        Positioned(
+                          right: 12,
+                          bottom: 12,
+                          child: UploadRowStatus(file: file, onImage: true),
+                        ),
                       if (theme.platform != TargetPlatform.iOS &&
                           !file.isOptimistic &&
                           (file.starred || file.shared))
@@ -288,6 +295,12 @@ class _IosRecentTile extends StatelessWidget {
                   ),
                 ),
               ),
+              if (isUploadInFlight(file))
+                Positioned(
+                  right: 8,
+                  bottom: 8,
+                  child: UploadRowStatus(file: file, onImage: true),
+                ),
             ],
           ),
         ),

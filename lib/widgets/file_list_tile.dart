@@ -10,7 +10,7 @@ import 'google_drive_icon.dart';
 import 'ios/ios_browse.dart';
 import 'media_thumb.dart';
 import 'selection_indicator.dart';
-import 'uploading_shimmer.dart';
+import 'upload_row_status.dart';
 import 'file_name_text.dart';
 import 'item_status.dart';
 
@@ -76,37 +76,30 @@ class FileListTile extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: UploadingShimmer(
-              enabled: isUploading,
-              borderRadius: AppRadii.smR,
-              child: isFolder
-                  ? Center(
-                      child: theme.platform == TargetPlatform.iOS
-                          // Sharing is shown by the status line, not a
-                          // second folder symbol.
-                          ? Icon(
-                              CupertinoIcons.folder_fill,
-                              size: 36,
-                              color: scheme.primary,
-                            )
-                          : GoogleDriveIcon.folder(
-                              isShared: isShared,
-                              size: 40,
-                            ),
-                    )
-                  : MediaThumb(
-                      file: file!,
-                      fit: BoxFit.cover,
-                      radius: ios ? 8 : AppRadii.sm,
-                      showBackground: false,
-                      fallback: ios
-                          ? IosFileGlyph(
-                              kind: file!.kind,
-                              extension: extensionOf(file!.name),
-                            )
-                          : null,
-                    ),
-            ),
+            child: isFolder
+                ? Center(
+                    child: theme.platform == TargetPlatform.iOS
+                        // Sharing is shown by the status line, not a
+                        // second folder symbol.
+                        ? Icon(
+                            CupertinoIcons.folder_fill,
+                            size: 36,
+                            color: scheme.primary,
+                          )
+                        : GoogleDriveIcon.folder(isShared: isShared, size: 40),
+                  )
+                : MediaThumb(
+                    file: file!,
+                    fit: BoxFit.cover,
+                    radius: ios ? 8 : AppRadii.sm,
+                    showBackground: false,
+                    fallback: ios
+                        ? IosFileGlyph(
+                            kind: file!.kind,
+                            extension: extensionOf(file!.name),
+                          )
+                        : null,
+                  ),
           ),
           if (ios && !isFolder)
             Positioned.fill(
@@ -265,13 +258,14 @@ class FileListTile extends StatelessWidget {
               ],
             )
           : isUploading
-          ? const Padding(
-              padding: EdgeInsetsDirectional.only(end: AppSpacing.sm),
-              child: SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
+          ? Padding(
+              padding: const EdgeInsetsDirectional.only(end: AppSpacing.sm),
+              child: file == null
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : UploadRowStatus(file: file!),
             )
           : moreButton ??
                 Row(

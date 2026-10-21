@@ -32,8 +32,9 @@ class UploadThumbSlot extends StatelessWidget {
   Widget build(BuildContext context) {
     final bg = Theme.of(context).colorScheme.surfaceContainerHighest;
     final localImage =
-        detectFileKind(item.name, item.mimeType) == FileKind.image &&
-        item.path.startsWith('/');
+        (detectFileKind(item.name, item.mimeType) == FileKind.image &&
+            item.path.startsWith('/')) ||
+        item.posterPath != null;
     final showSpinner =
         _isUploaded && _isPreviewable && !item.thumbnailReady && !localImage;
     final showThumb =
@@ -122,7 +123,7 @@ class _Thumb extends StatelessWidget {
         (detectFileKind(item.name, item.mimeType) == FileKind.image &&
                 item.path.startsWith('/')
             ? item.path
-            : null);
+            : item.posterPath);
     if (url == null || url.isEmpty)
       return _Glyph(kind: detectFileKind(item.name, item.mimeType));
     final isLocal = url.startsWith('/') || url.contains(':\\');
