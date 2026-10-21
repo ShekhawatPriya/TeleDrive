@@ -21,6 +21,9 @@ internal data class Transfer(
     val uploadChatId: Long? = null,
     val deletedMessageIds: MutableSet<Long> = mutableSetOf(),
     @Volatile var onUploadDeleted: (() -> Unit)? = null,
+    /// Monotonic time of the last upload byte progress; drives the idle
+    /// watchdog so a slow but advancing upload is never cut off.
+    @Volatile var lastActivityAtMs: Long = android.os.SystemClock.elapsedRealtime(),
 )
 
 internal data class DownloadWaiter(

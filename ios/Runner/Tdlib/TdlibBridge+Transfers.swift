@@ -241,19 +241,7 @@ extension TdlibBridge {
             }
         }
 
-        let timeoutMs = uploadTimeoutMs(sizeBytes)
-        scheduleTimeout(afterMs: timeoutMs) { [weak self] in
-            guard let self = self else { return }
-            if self.removeSendWaiter(key, ifSame: waiter) {
-                self.withLock { _ = self.transfers.removeValue(forKey: transferId) }
-                self.emitProgress(transferId, "failed", 0, sizeBytes, "Timed out waiting for Telegram to confirm the upload.")
-                waiter.fail(TdlibError(
-                    "tdlib_send_timeout",
-                    "Timed out waiting for Telegram to confirm the upload.",
-                    "key=\(key) timeoutMs=\(timeoutMs)"
-                ))
-            }
-        }
+        scheduleUploadIdleCheck(key, waiter, transferId, sizeBytes, afterMs: TdlibBridge.uploadIdleTimeoutMs)
 
         return waiter
     }
@@ -317,12 +305,38 @@ extension TdlibBridge {
         }
     }
 
-    /// 10 minutes base + 1 minute per MiB, capped at 60 minutes.
-    func uploadTimeoutMs(_ sizeBytes: Int64?) -> Int {
-        let size = sizeBytes ?? 0
-        let mib = size / (1024 * 1024)
-        let ms: Int64 = 10 * 60 * 1000 + mib * 60 * 1000
-        return Int(min(ms, 60 * 60 * 1000))
+    /// An upload fails only after Telegram has made no byte progress (and sent
+    /// no final message) for this long. A fixed deadline cut off slow 2-4 GB
+    /// uploads that were still advancing.
+    static let uploadIdleTimeoutMs = 10 * 60 * 1000
+
+    private func scheduleUploadIdleCheck(
+        _ key: String,
+        _ waiter: Promise<[String: Any]>,
+        _ transferId: String,
+        _ sizeBytes: Int64?,
+        afterMs: Int
+    ) {
+        scheduleTimeout(afterMs: afterMs) { [weak self] in
+            guard let self = self else { return }
+            let idleMs: Int64? = self.withLock {
+                guard self.sendWaiters[key] === waiter else { return nil }
+                let last = self.transfers[transferId]?.lastActivityAtMs ?? 0
+                return TdlibTransfer.monotonicMs() - last
+            }
+            guard let idle = idleMs else { return }
+            let limit = Int64(TdlibBridge.uploadIdleTimeoutMs)
+            if idle < limit {
+                self.scheduleUploadIdleCheck(key, waiter, transferId, sizeBytes, afterMs: Int(limit - idle))
+                return
+            }
+            if self.removeSendWaiter(key, ifSame: waiter) {
+                self.withLock { _ = self.transfers.removeValue(forKey: transferId) }
+                let message = "Telegram made no upload progress for 10 minutes."
+                self.emitProgress(transferId, "failed", 0, sizeBytes, message)
+                waiter.fail(TdlibError("tdlib_upload_stalled", message, "key=\(key) idleMs=\(idle)"))
+            }
+        }
     }
 
     // MARK: - Download
@@ -540,9 +554,12 @@ extension TdlibBridge {
         let uploadedBytes = TdlibJson.int64(remote?["uploaded_size"]) ?? 0
         let matches: [(transferId: String, isDownload: Bool)] = withLock {
             let isDownload = downloads[fileId] != nil
-            return transfers.values
-                .filter { $0.fileId == fileId && !$0.cancelled }
-                .map { ($0.transferId, isDownload) }
+            let active = transfers.values.filter { $0.fileId == fileId && !$0.cancelled }
+            if !isDownload {
+                let now = TdlibTransfer.monotonicMs()
+                active.forEach { $0.lastActivityAtMs = now }
+            }
+            return active.map { ($0.transferId, isDownload) }
         }
         for match in matches {
             if match.isDownload {

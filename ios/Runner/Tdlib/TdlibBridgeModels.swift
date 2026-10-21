@@ -169,6 +169,13 @@ final class TdlibTransfer {
     let uploadChatId: Int64?
     var deletedMessageIds = Set<Int64>()
     var onUploadDeleted: (() -> Void)?
+    /// Monotonic time of the last upload byte progress; drives the idle
+    /// watchdog so a slow but advancing upload is never cut off.
+    var lastActivityAtMs: Int64 = TdlibTransfer.monotonicMs()
+
+    static func monotonicMs() -> Int64 {
+        Int64(DispatchTime.now().uptimeNanoseconds / 1_000_000)
+    }
 
     init(transferId: String, fileId: Int? = nil, uploadChatId: Int64? = nil) {
         self.transferId = transferId

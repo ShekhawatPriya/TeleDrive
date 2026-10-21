@@ -16,6 +16,9 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.concurrent.thread
 
+/// An upload fails only after Telegram has made no byte progress for this long.
+private const val UPLOAD_IDLE_TIMEOUT_MS = 10 * 60 * 1000L
+
 class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val pending = ConcurrentHashMap<String, CompletableFuture<JSONObject>>()
@@ -957,19 +960,23 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
             }
         }
 
-        val timeoutMs = uploadTimeoutMs(sizeBytes)
         thread(name = "teledrive-tdlib-send-timeout", isDaemon = true) {
             try {
-                Thread.sleep(timeoutMs)
+                // Fail only after Telegram has made no upload progress for the
+                // idle window; a fixed deadline cut off slow 2-4 GB uploads.
+                while (true) {
+                    val last = transfers[transferId]?.lastActivityAtMs ?: 0L
+                    val idle = SystemClock.elapsedRealtime() - last
+                    if (idle >= UPLOAD_IDLE_TIMEOUT_MS) break
+                    Thread.sleep(UPLOAD_IDLE_TIMEOUT_MS - idle)
+                    if (sendWaiters[key] !== waiter) return@thread
+                }
                 if (sendWaiters.remove(key, waiter)) {
                     transfers.remove(transferId)
-                    emitProgress(transferId, "failed", 0, sizeBytes, "Timed out waiting for Telegram to confirm the upload.")
+                    val message = "Telegram made no upload progress for 10 minutes."
+                    emitProgress(transferId, "failed", 0, sizeBytes, message)
                     waiter.completeExceptionally(
-                        TdlibException(
-                            "tdlib_send_timeout",
-                            "Timed out waiting for Telegram to confirm the upload.",
-                            "key=$key timeoutMs=$timeoutMs"
-                        )
+                        TdlibException("tdlib_upload_stalled", message, "key=$key")
                     )
                 }
             } catch (_: InterruptedException) {
@@ -1000,12 +1007,6 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         }
     }
 
-    private fun uploadTimeoutMs(sizeBytes: Long?): Long {
-        val size = sizeBytes ?: 0L
-        val mib = size / (1024L * 1024L)
-        return (10 * 60 * 1000L + mib * 60 * 1000L).coerceAtMost(60 * 60 * 1000L)
-    }
-
     private fun downloadTimeoutMs(variant: String?, requestedTimeoutMs: Long?): Long {
         if (requestedTimeoutMs != null) return requestedTimeoutMs.coerceAtLeast(1000L)
         return if (variant == "original") {
@@ -1024,6 +1025,9 @@ class TdlibBridge(private val context: Context) : EventChannel.StreamHandler {
         val downloadedBytes = local?.optLong("downloaded_size", 0L) ?: 0L
         val uploadedBytes = remote?.optLong("uploaded_size", 0L) ?: 0L
         transfers.values.filter { it.fileId == fileId && !it.cancelled }.forEach { transfer ->
+            if (!downloads.containsKey(fileId)) {
+                transfer.lastActivityAtMs = SystemClock.elapsedRealtime()
+            }
             if (downloads.containsKey(fileId)) {
                 emitProgress(transfer.transferId, "downloading", downloadedBytes, size, null)
             } else {
