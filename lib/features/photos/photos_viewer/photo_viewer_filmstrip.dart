@@ -9,11 +9,15 @@ class PhotoViewerFilmstrip extends StatefulWidget {
     required this.index,
     required this.onSelected,
     this.onScrubbingChanged,
+    this.dark = true,
   });
   final List<DriveFile> files;
   final int index;
   final ValueChanged<int> onSelected;
   final ValueChanged<bool>? onScrubbingChanged;
+
+  /// Selection outline contrasts with the light or dark chrome.
+  final bool dark;
   @override
   State<PhotoViewerFilmstrip> createState() => _PhotoViewerFilmstripState();
 }
@@ -97,7 +101,10 @@ class _PhotoViewerFilmstripState extends State<PhotoViewerFilmstrip> {
                   height: i == widget.index ? 36 : 30,
                   decoration: BoxDecoration(
                     border: i == widget.index
-                        ? Border.all(color: Colors.white, width: 2)
+                        ? Border.all(
+                            color: widget.dark ? Colors.white : Colors.black,
+                            width: 2,
+                          )
                         : null,
                     borderRadius: BorderRadius.circular(4),
                   ),

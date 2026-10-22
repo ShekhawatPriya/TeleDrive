@@ -7,6 +7,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:photo_view/photo_view.dart';
+import 'dart:async';
+import 'package:dio/dio.dart';
+import 'package:flutter_m_fsdk/core/media/photo_media_loader.dart';
+import 'package:flutter_m_fsdk/core/media/photo_video_controller.dart';
 import 'package:flutter_m_fsdk/core/theme/app_theme.dart';
 import 'package:flutter_m_fsdk/features/drive/drive_controller.dart';
 import 'package:flutter_m_fsdk/features/profile/cache_controller.dart';
@@ -16,6 +20,8 @@ import 'package:flutter_m_fsdk/features/photos/photos_viewer/photo_viewer_stage.
 import 'package:flutter_m_fsdk/features/photos/photos_viewer/photo_viewer_filmstrip.dart';
 import 'package:flutter_m_fsdk/features/photos/photos_viewer/photo_viewer_pager.dart';
 import 'package:flutter_m_fsdk/features/photos/photos_viewer/photo_details_sheet.dart';
+import 'package:flutter_m_fsdk/features/photos/photos_viewer/photo_viewer_top_bar.dart';
+import 'package:flutter_m_fsdk/features/photos/photos_viewer/photo_viewer_transport.dart';
 import 'package:flutter_m_fsdk/models/drive_models.dart';
 
 final path = File('test/fixtures/design/alpine.jpg').absolute.path;
@@ -89,6 +95,8 @@ Future<void> pump(
   Drive? drive,
   bool portrait = false,
   ui.Image? sourceImage,
+  PhotoMediaLoader? media,
+  bool settle = true,
 }) async {
   tester.view.physicalSize = Size(width, 844);
   tester.view.devicePixelRatio = 1;
@@ -126,6 +134,7 @@ Future<void> pump(
       overrides: [
         driveControllerProvider.overrideWith((_) => fixtureDrive),
         cacheControllerProvider.overrideWith((_) => Cache()),
+        if (media != null) photoMediaLoaderProvider.overrideWithValue(media),
       ],
       child: MaterialApp(
         theme: theme.copyWith(
@@ -148,8 +157,72 @@ Future<void> pump(
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+  }
 }
+
+/// A video source that never arrives, so the page stays on its poster.
+class PendingVideo implements PhotoMediaLoader {
+  @override
+  String revision(DriveFile file) => '${file.id}:${file.modifiedAt}';
+  @override
+  Future<String> video(
+    DriveFile file,
+    CancelToken token, {
+    ProgressCallback? progress,
+  }) => Completer<String>().future;
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
+}
+
+class RecordingEngine implements PhotoVideoEngine {
+  final calls = <String>[];
+  @override
+  Future<void> play() async => calls.add('play');
+  @override
+  Future<void> pause() async => calls.add('pause');
+  @override
+  Future<void> seek(Duration position, {bool exact = true}) async =>
+      calls.add('seek ${position.inSeconds} ${exact ? 'exact' : 'fast'}');
+  @override
+  Future<void> mute(bool value) async => calls.add('mute $value');
+  @override
+  Future<void> fill(bool value) async => calls.add('fill $value');
+}
+
+Drive videoDrive() => Drive()
+  ..items = [
+    for (final file in files)
+      file.id == 'p4'
+          ? DriveFile(
+              id: file.id,
+              name: 'Lodipur.mov',
+              kind: FileKind.video,
+              size: file.size,
+              modifiedAt: file.modifiedAt,
+              createdAt: file.createdAt,
+              parentId: null,
+              starred: false,
+              mimeType: 'video/quicktime',
+              previewUrl: path,
+              thumbnailUrl: path,
+              widthPx: file.widthPx,
+              heightPx: file.heightPx,
+            )
+          : file,
+  ];
+
+bool chromeShown(WidgetTester tester) =>
+    tester.widget<PhotoViewerTopBar>(find.byType(PhotoViewerTopBar)).visible;
+
+Color backdrop(WidgetTester tester) => tester
+    .widget<ColoredBox>(find.byKey(const ValueKey('viewer-backdrop')))
+    .color;
 
 void main() {
   setUpAll(() async {
@@ -542,6 +615,181 @@ void main() {
           .widget<PhotoViewerFilmstrip>(find.byType(PhotoViewerFilmstrip))
           .index,
       7,
+    );
+  });
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'one tap hides all chrome and the status bar, iOS $brightness',
+      (tester) async {
+        final modes = <Object?>[];
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'SystemChrome.setEnabledSystemUIMode' ||
+                call.method == 'SystemChrome.setEnabledSystemUIOverlays') {
+              modes.add(call.arguments);
+            }
+            return null;
+          },
+        );
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          ),
+        );
+        await pump(
+          tester,
+          TargetPlatform.iOS,
+          brightness,
+          drive: videoDrive(),
+          media: PendingVideo(),
+          settle: false,
+        );
+        final light = brightness == Brightness.light;
+        expect(chromeShown(tester), isTrue);
+        expect(
+          find.byKey(const ValueKey('photo-video-transport')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('photo-viewer-title')),
+          findsOneWidget,
+        );
+        expect(backdrop(tester), light ? Colors.white : Colors.black);
+        await preview(tester, 'video-ios-${brightness.name}');
+
+        modes.clear();
+        await tester.tapAt(const Offset(195, 420));
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        expect(chromeShown(tester), isFalse);
+        // Toolbar, filmstrip and transport hide together with the header.
+        final footer = tester.widget<IgnorePointer>(
+          find
+              .ancestor(
+                of: find.byKey(const ValueKey('photo-video-transport')),
+                matching: find.byType(IgnorePointer),
+              )
+              .first,
+        );
+        expect(footer.ignoring, isTrue);
+        expect(backdrop(tester), Colors.black);
+        expect(modes.join(), contains('immersiveSticky'));
+        await preview(tester, 'video-ios-${brightness.name}-hidden');
+
+        await tester.tapAt(const Offset(195, 420));
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        expect(chromeShown(tester), isTrue);
+        expect(backdrop(tester), light ? Colors.white : Colors.black);
+        expect(modes.last.toString(), contains('edgeToEdge'));
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    testWidgets('video transport drives the current page $platform', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        platform,
+        Brightness.dark,
+        drive: videoDrive(),
+        media: PendingVideo(),
+        settle: false,
+      );
+      final transport = tester.widget<PhotoVideoTransport>(
+        find.byType(PhotoVideoTransport),
+      );
+      final controller = transport.controller!;
+      final engine = RecordingEngine();
+      controller.engine = engine;
+      // Disabled until the video is ready.
+      await tester.tap(find.byTooltip('Play'));
+      expect(engine.calls, isEmpty);
+      controller.report(
+        const PhotoVideoState(
+          ready: true,
+          duration: Duration(seconds: 24),
+          position: Duration(seconds: 6),
+        ),
+      );
+      await tester.pump();
+      await preview(tester, 'video-${platform.name}-transport');
+      await tester.tap(find.byTooltip('Play'));
+      await tester.pump();
+      expect(engine.calls.last, 'play');
+      expect(find.byTooltip('Pause'), findsOneWidget);
+      await tester.tap(find.byTooltip('Pause'));
+      await tester.pump();
+      expect(engine.calls.last, 'pause');
+      await tester.tap(find.byTooltip('Unmute'));
+      await tester.pump();
+      expect(engine.calls.last, 'mute false');
+      expect(find.byTooltip('Mute'), findsOneWidget);
+
+      // Scrubbing follows the finger, then lands exactly.
+      final track = find.byKey(const ValueKey('photo-video-scrubber'));
+      final width = tester.getSize(track).width;
+      await tester.drag(track, Offset(width / 4, 0));
+      await tester.pump();
+      expect(engine.calls.any((c) => c.endsWith('fast')), isTrue);
+      expect(engine.calls.last, 'seek 12 exact');
+      expect(controller.value.scrubbing, isFalse);
+
+      final semantics = tester.ensureSemantics();
+      final slider = find.bySemanticsLabel('Playback position');
+      expect(
+        tester.getSemantics(slider),
+        matchesSemantics(
+          label: 'Playback position',
+          value: '0:12 of 0:24',
+          increasedValue: '0:22',
+          decreasedValue: '0:02',
+          isSlider: true,
+          isEnabled: true,
+          hasEnabledState: true,
+          hasIncreaseAction: true,
+          hasDecreaseAction: true,
+        ),
+      );
+      semantics.dispose();
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
+  testWidgets('the Photos title reads day, then time', (tester) async {
+    final now = DateTime(2026, 10, 21, 20);
+    final today = photoViewerTitle(DateTime(2026, 10, 21, 9, 5), now: now);
+    expect(today.day, 'Today');
+    // intl separates AM with a narrow no-break space.
+    expect(today.time.replaceAll(' ', ' '), '9:05 AM');
+    expect(
+      photoViewerTitle(
+        DateTime(2026, 10, 20, 5, 2),
+        now: now,
+        use24HourFormat: true,
+      ),
+      (day: 'Yesterday', time: '05:02'),
+    );
+    expect(
+      photoViewerTitle(
+        DateTime(2026, 9, 17, 14, 31),
+        now: now,
+        use24HourFormat: true,
+      ).day,
+      'September 17',
+    );
+    expect(
+      photoViewerTitle(DateTime(2025, 9, 17, 14, 31), now: now).day,
+      'September 17, 2025',
     );
   });
 }

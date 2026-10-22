@@ -315,7 +315,7 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
                   height: 32,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: _statusGray,
                   ),
                 ),
               );
@@ -372,7 +372,7 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
               height: 32,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: Colors.white,
+                color: _statusGray,
               ),
             ),
           ),
@@ -438,15 +438,11 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(
-          Icons.broken_image_outlined,
-          color: Colors.white54,
-          size: 48,
-        ),
+        const Icon(Icons.broken_image_outlined, color: _statusGray, size: 48),
         const SizedBox(height: 12),
         Text(
           _originalError ?? 'Could not load this photo.',
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(color: _statusGray),
         ),
         TextButton(
           onPressed: () {
@@ -465,3 +461,7 @@ class _PhotoViewerImageState extends ConsumerState<PhotoViewerImage> {
     ),
   );
 }
+
+/// Loading and error marks read on the white (light chrome) and black
+/// backdrops alike.
+const _statusGray = Color(0xFF8E8E93);

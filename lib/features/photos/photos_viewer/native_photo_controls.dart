@@ -13,12 +13,16 @@ class NativePhotoControls extends StatefulWidget {
     required this.onShare,
     this.onDelete,
     this.download = false,
+    this.dark = true,
     required this.fallback,
   });
   final bool starred, infoSelected;
   final VoidCallback onStar, onInfo, onShare;
   final VoidCallback? onDelete;
   final bool download;
+
+  /// Dark chrome (white glyphs) or light chrome over the white backdrop.
+  final bool dark;
   final Widget fallback;
   @override
   State<NativePhotoControls> createState() => _NativePhotoControlsState();
@@ -28,7 +32,7 @@ class _NativePhotoControlsState extends State<NativePhotoControls> {
   MethodChannel? _channel;
   bool _available = false;
   Map<String, Object> get _configuration => {
-    'dark': true,
+    'dark': widget.dark,
     'photoViewer': true,
     'enabled': true,
     'selectAll': false,
@@ -80,6 +84,7 @@ class _NativePhotoControlsState extends State<NativePhotoControls> {
     if (oldWidget.starred != widget.starred ||
         oldWidget.infoSelected != widget.infoSelected ||
         oldWidget.download != widget.download ||
+        oldWidget.dark != widget.dark ||
         (oldWidget.onDelete == null) != (widget.onDelete == null)) {
       _update();
     }

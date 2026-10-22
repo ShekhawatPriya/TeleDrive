@@ -15,6 +15,7 @@ import 'package:flutter_m_fsdk/features/photos/photos_grid/photo_grid_density.da
 import 'package:flutter_m_fsdk/features/photos/photos_grid/photo_pan_selector.dart';
 import 'package:flutter_m_fsdk/features/photos/photos_viewer/photo_viewer_session.dart';
 import 'package:flutter_m_fsdk/features/photos/photos_viewer/photo_viewer_stage.dart';
+import 'package:flutter_m_fsdk/core/media/photo_video_controller.dart';
 import 'package:flutter_m_fsdk/features/photos/photos_viewer/photo_viewer_video.dart';
 import 'package:flutter_m_fsdk/models/drive_models.dart';
 
@@ -383,7 +384,7 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
-  testWidgets('AVKit host survives readiness and buffering changes', (
+  testWidgets('native video host survives readiness and buffering changes', (
     tester,
   ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
@@ -471,6 +472,146 @@ void main() {
     }
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
+    debugDefaultTargetPlatformOverride = null;
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('native video fills the page and takes transport commands', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(
+      const MethodChannel('teledrive/appearance'),
+      (call) async => call.method == 'supportsPhotoVideo',
+    );
+    final created = <int>[];
+    final commands = <String>[];
+    String? session;
+    messenger.setMockMethodCallHandler(
+      const MethodChannel('flutter/platform_views'),
+      (call) async {
+        if (call.method == 'create') {
+          final args = call.arguments as Map;
+          final id = args['id'] as int;
+          created.add(id);
+          final params =
+              const StandardMessageCodec().decodeMessage(
+                    ByteData.sublistView(args['params'] as Uint8List),
+                  )
+                  as Map;
+          session = params['session'] as String;
+          messenger.setMockMethodCallHandler(
+            MethodChannel('teledrive/photo-video/$id'),
+            (call) async {
+              final data = call.arguments as Map;
+              expect(data['session'], session);
+              commands.add(
+                [
+                  call.method,
+                  if (data.containsKey('value')) '${data['value']}',
+                  if (data.containsKey('positionMs')) '${data['positionMs']}',
+                  if (data.containsKey('exact')) '${data['exact']}',
+                ].join(' '),
+              );
+              return null;
+            },
+          );
+        }
+        return null;
+      },
+    );
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(
+        const MethodChannel('teledrive/appearance'),
+        null,
+      );
+      messenger.setMockMethodCallHandler(
+        const MethodChannel('flutter/platform_views'),
+        null,
+      );
+      for (final id in created) {
+        messenger.setMockMethodCallHandler(
+          MethodChannel('teledrive/photo-video/$id'),
+          null,
+        );
+      }
+    });
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    PhotoVideoController? controller;
+    final loader = PendingMedia();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [photoMediaLoaderProvider.overrideWithValue(loader)],
+        child: MaterialApp(
+          theme: ThemeData(platform: TargetPlatform.iOS),
+          home: MediaQuery(
+            data: const MediaQueryData(
+              size: Size(390, 844),
+              padding: EdgeInsets.only(top: 54, bottom: 34),
+            ),
+            child: PhotoViewerVideo(
+              file: photo('v', kind: FileKind.video),
+              isActive: true,
+              onTap: () {},
+              onPlayback: (value, attached) =>
+                  controller = attached ? value : null,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    loader.requests.single.$2.complete('/fixture.mp4');
+    await tester.pump();
+    await tester.pump();
+    expect(created, hasLength(1));
+    // Photos fits the video to the whole screen; chrome floats over it.
+    expect(
+      tester.getRect(find.byType(UiKitView)),
+      Offset.zero & const Size(390, 844),
+    );
+    final done = Completer<void>();
+    messenger.handlePlatformMessage(
+      'teledrive/photo-video/${created.first}',
+      const StandardMethodCodec().encodeMethodCall(
+        MethodCall('state', {
+          'session': session,
+          'ready': true,
+          'playing': true,
+          'muted': true,
+          'positionMs': 6000,
+          'durationMs': 24000,
+        }),
+      ),
+      (_) => done.complete(),
+    );
+    await done.future;
+    await tester.pump();
+    final state = controller!.value;
+    expect(state.ready, isTrue);
+    expect(state.playing, isTrue);
+    expect(state.duration, const Duration(seconds: 24));
+    commands.clear();
+    await controller!.togglePlay();
+    await controller!.togglePlay();
+    await controller!.setMuted(false);
+    await controller!.toggleFill();
+    await controller!.seek(const Duration(seconds: 30));
+    expect(commands, [
+      'pause',
+      'play',
+      'mute false',
+      'fill true',
+      'seek 24000 true',
+    ]);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    expect(controller, isNull);
     debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });

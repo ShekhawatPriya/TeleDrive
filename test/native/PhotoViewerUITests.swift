@@ -82,63 +82,59 @@ final class PhotoViewerUITests: XCTestCase {
     XCTAssertTrue(app.staticTexts["Photos library fixture"].waitForExistence(timeout: 5))
     let video = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Fixture video.mp4")).firstMatch
     video.tap()
-    let player = app.otherElements.matching(NSPredicate(format: "label == %@", "Video")).firstMatch
-    XCTAssertTrue(player.waitForExistence(timeout: 10), app.debugDescription)
-    let pause = app.buttons["Play/Pause"]
-    revealControls(player, until: pause)
-    XCTAssertTrue(pause.exists, app.debugDescription)
-    assertPlaybackAdvances(app)
-    XCTAssertEqual(app.buttons["Mute/Unmute"].value as? String, "Muted")
+    // Photos-style transport: one chrome layer, no AVKit controls.
+    let pause = app.buttons["Pause"]
+    XCTAssertTrue(pause.waitForExistence(timeout: 10), app.debugDescription)
+    XCTAssertTrue(app.buttons["Unmute"].exists, "Videos start muted")
+    XCTAssertFalse(app.buttons["Play/Pause"].exists, "AVKit transport must not appear")
+    XCTAssertFalse(app.buttons["Fullscreen Button"].exists, "AVKit full screen must not appear")
+    let position = app.descendants(matching: .any).matching(
+      NSPredicate(format: "label == %@", "Playback position")).firstMatch
+    XCTAssertTrue(position.exists, app.debugDescription)
+    assertPlaybackAdvances(position)
     capture(app, "photos-native-video-controls")
     pause.tap()
-    XCTAssertTrue(pause.waitForExistence(timeout: 5), app.debugDescription)
-    let pausedTime = app.staticTexts["Elapsed Time"].label
-    let staysPaused = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in app.staticTexts["Elapsed Time"].label != pausedTime }, object: nil)
+    let play = app.buttons["Play"]
+    XCTAssertTrue(play.waitForExistence(timeout: 5), app.debugDescription)
+    let pausedTime = position.value as? String
+    let staysPaused = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in position.value as? String != pausedTime }, object: nil)
     staysPaused.isInverted = true
     XCTAssertEqual(XCTWaiter.wait(for: [staysPaused], timeout: 1.2), .completed)
-    let slider = app.sliders.matching(NSPredicate(format: "identifier == %@", "Current position")).firstMatch
-    XCTAssertTrue(slider.exists, app.debugDescription)
-    slider.adjust(toNormalizedSliderPosition: 0.45)
+    // One tap hides every control together, as in Photos; another shows them.
+    let media = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+    media.tap()
+    let hidden = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in !play.exists && !back.exists && !app.buttons["Share"].exists }, object: nil)
+    XCTAssertEqual(XCTWaiter.wait(for: [hidden], timeout: 3), .completed, app.debugDescription)
+    capture(app, "photos-native-video-hidden-chrome")
+    media.tap()
+    XCTAssertTrue(play.waitForExistence(timeout: 3), app.debugDescription)
+    XCTAssertTrue(back.exists)
+    media.doubleTap()
+    capture(app, "photos-native-video-filled")
+    media.doubleTap()
+    XCTAssertTrue(play.exists, "Double-tap changes fit, not chrome")
+    position.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5))
+      .press(forDuration: 0.05, thenDragTo: position.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.5)))
+    XCTAssertNotEqual(position.value as? String, pausedTime, "Scrubbing must move the position")
     XCTAssertTrue(back.exists, "Scrubbing must keep the video page open")
     capture(app, "photos-native-video-scrubbed")
-    app.buttons["Fullscreen Button"].tap()
-    let exitFullscreen = app.buttons.matching(NSPredicate(format: "label ==[c] %@ OR label == %@ OR label == %@", "exit full screen", "Done", "Close")).firstMatch
-    if !exitFullscreen.exists { app.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.3)).tap() }
-    XCTAssertTrue(exitFullscreen.waitForExistence(timeout: 5), app.debugDescription)
-    capture(app, "photos-native-video-fullscreen")
-    exitFullscreen.tap()
-    XCTAssertTrue(back.waitForExistence(timeout: 5))
-    revealControls(player, until: pause)
-    pause.tap()
+    play.tap()
+    XCTAssertTrue(pause.waitForExistence(timeout: 5))
     back.tap()
     XCTAssertTrue(app.staticTexts["Photos library fixture"].waitForExistence(timeout: 5))
     video.tap()
-    XCTAssertTrue(player.waitForExistence(timeout: 10))
-    let transport = app.buttons["Play/Pause"]
-    revealControls(player, until: transport)
-    XCTAssertTrue(transport.exists, app.debugDescription)
-    assertPlaybackAdvances(app)
+    XCTAssertTrue(pause.waitForExistence(timeout: 10), app.debugDescription)
+    assertPlaybackAdvances(position)
     capture(app, "photos-native-video-reopened")
     back.tap()
     XCTAssertTrue(app.staticTexts["Photos library fixture"].waitForExistence(timeout: 5))
   }
 
-  private func assertPlaybackAdvances(_ app: XCUIApplication) {
-    let elapsed = app.staticTexts["Elapsed Time"]
-    XCTAssertTrue(elapsed.exists)
-    let originalTime = elapsed.label
-    let advances = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in elapsed.label != originalTime }, object: nil)
+  private func assertPlaybackAdvances(_ position: XCUIElement) {
+    XCTAssertTrue(position.exists)
+    let original = position.value as? String
+    let advances = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in position.value as? String != original }, object: nil)
     XCTAssertEqual(XCTWaiter.wait(for: [advances], timeout: 3), .completed, "The active video must advance")
-  }
-
-  private func revealControls(_ player: XCUIElement, until control: XCUIElement) {
-    // AVKit may start with controls visible or already auto-hidden by the time
-    // XCTest finishes waiting for the presentation to become idle.
-    for _ in 0..<3 {
-      if control.exists { return }
-      player.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.28)).tap()
-      if control.waitForExistence(timeout: 1) { return }
-    }
   }
 
   private func capture(_ app: XCUIApplication, _ name: String) {

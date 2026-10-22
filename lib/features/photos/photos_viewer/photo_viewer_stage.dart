@@ -19,6 +19,7 @@ class PhotoViewerStage extends StatefulWidget {
     this.onInteractionChanged,
     this.gesturesEnabled = true,
     this.nativeVideo = false,
+    this.backdropColor = Colors.black,
   });
   final Widget media, header, footer;
   final double? mediaAspectRatio;
@@ -28,6 +29,9 @@ class PhotoViewerStage extends StatefulWidget {
   final VoidCallback? onDismissed;
   final ValueChanged<bool>? onInteractionChanged;
   final bool gesturesEnabled, nativeVideo;
+
+  /// Opaque viewer background: black, or white behind light chrome.
+  final Color backdropColor;
   final Widget Function(ScrollController) detailsBuilder;
   final VoidCallback onDetailsChanged;
   @override
@@ -399,9 +403,17 @@ class PhotoViewerStageState extends State<PhotoViewerStage>
         return Stack(
           children: [
             Positioned.fill(
-              child: ColoredBox(
-                key: const ValueKey('viewer-backdrop'),
-                color: Colors.black.withValues(alpha: opacity),
+              child: TweenAnimationBuilder<Color?>(
+                tween: ColorTween(end: widget.backdropColor),
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 200),
+                builder: (context, color, _) => ColoredBox(
+                  key: const ValueKey('viewer-backdrop'),
+                  color: (color ?? widget.backdropColor).withValues(
+                    alpha: opacity,
+                  ),
+                ),
               ),
             ),
             Positioned.fill(

@@ -35,6 +35,8 @@ import UserNotifications
     engineBridge.applicationRegistrar.register(
       GlassButtonFactory(messenger: messenger), withId: "teledrive/glass-button")
     engineBridge.applicationRegistrar.register(
+      GlassSurfaceFactory(messenger: messenger), withId: "teledrive/glass-surface")
+    engineBridge.applicationRegistrar.register(
       NativeTabBarFactory(messenger: messenger), withId: "teledrive/tab-bar")
     engineBridge.applicationRegistrar.register(
       ItemContextMenuFactory(messenger: messenger), withId: "teledrive/item-context-menu")
@@ -249,6 +251,50 @@ final class GlassButtonView: NSObject, FlutterPlatformView {
   deinit { channel.setMethodCallHandler(nil) }
 }
 
+
+/// A non-interactive Liquid Glass capsule behind Flutter-drawn content (the
+/// photo viewer's title and video transport). Touches stay with Flutter.
+final class GlassSurfaceFactory: NSObject, FlutterPlatformViewFactory {
+  private let messenger: FlutterBinaryMessenger
+  init(messenger: FlutterBinaryMessenger) { self.messenger = messenger }
+  func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol { FlutterStandardMessageCodec.sharedInstance() }
+  func create(withFrame frame: CGRect, viewIdentifier viewId: Int64, arguments args: Any?) -> FlutterPlatformView {
+    GlassSurfaceView(frame: frame, id: viewId, arguments: args, messenger: messenger)
+  }
+}
+
+final class GlassSurfaceView: NSObject, FlutterPlatformView {
+  private let surface = GlassCapsuleView(effect: nil)
+  private let channel: FlutterMethodChannel
+  init(frame: CGRect, id: Int64, arguments: Any?, messenger: FlutterBinaryMessenger) {
+    channel = FlutterMethodChannel(name: "teledrive/glass-surface/\(id)", binaryMessenger: messenger)
+    super.init()
+    surface.frame = frame
+    surface.isUserInteractionEnabled = false
+    surface.clipsToBounds = true
+    if #available(iOS 26.0, *) { surface.effect = UIGlassEffect(style: .regular) }
+    else { surface.effect = UIBlurEffect(style: .systemThinMaterial) }
+    update(arguments)
+    channel.setMethodCallHandler { [weak self] call, result in
+      if call.method == "update" { self?.update(call.arguments); result(nil) }
+      else { result(FlutterMethodNotImplemented) }
+    }
+  }
+  func view() -> UIView { surface }
+  private func update(_ arguments: Any?) {
+    let args = arguments as? [String: Any] ?? [:]
+    surface.overrideUserInterfaceStyle = (args["dark"] as? Bool ?? true) ? .dark : .light
+  }
+  deinit { channel.setMethodCallHandler(nil) }
+}
+
+private final class GlassCapsuleView: UIVisualEffectView {
+  override func layoutSubviews() {
+    super.layoutSubviews()
+    layer.cornerCurve = .continuous
+    layer.cornerRadius = min(bounds.height, bounds.width) / 2
+  }
+}
 
 /// A system tab bar; UIKit owns the Liquid Glass lens, SF Symbols and selection.
 final class NativeTabBarFactory: NSObject, FlutterPlatformViewFactory {
@@ -726,7 +772,8 @@ final class SelectionToolbarView: NSObject, FlutterPlatformView {
         // the native button explicit bounds while retaining toolbar-owned glass.
         var configuration = UIButton.Configuration.plain()
         configuration.image = image
-        configuration.baseForegroundColor = .white
+        // Follows the viewer's light or dark chrome through the style override.
+        configuration.baseForegroundColor = .label
         configuration.contentInsets = .zero
         button.configuration = configuration
         button.accessibilityLabel = label

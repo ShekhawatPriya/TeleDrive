@@ -29,23 +29,61 @@ after 32 points, completes dismissal. These thresholds are TeleDrive tuning,
 not Apple's private constants. Return uses the current file's tile, revealing it
 under the viewer first; an unavailable destination fades out. Back shares this
 path. An open inspector consumes downward dragging and Back before the viewer.
-Zoomed images retain pan/pinch ownership. Chrome, filmstrip and native playback
-controls do not enter the viewer's dismiss gesture. Reduced motion removes
+Zoomed images retain pan/pinch ownership. Chrome, filmstrip and the video
+transport do not enter the viewer's dismiss gesture. Reduced motion removes
 programmatic motion while retaining direct manipulation.
 
 ## Video and original-media lifecycle
 
-On iOS, `teledrive/photo-video` embeds an `AVPlayerViewController` using proper
-child-controller containment. It keeps native transport controls, scrubbing,
-accessibility and system full-screen playback. It does not subclass AVKit or
-match private control classes. Transport/control regions and `UIControl` touches
-remain native; unclaimed media pans feed the same pager/stage used for photos.
-The player is inset clear of the gallery header, filmstrip and action toolbar.
-Android and missing-bridge hosts retain the Flutter player.
+### Photos-style chrome and video transport
 
-Only a settled active video starts, initially muted. The viewer retains position,
-mute and explicit pause state for each visited file; page departure, covering
-routes, backgrounding and audio interruptions pause playback. Headphone removal
+The viewer follows iOS Photos: one layer of chrome over full-screen media.
+
+- **Top:** a glass Back button, a centered glass title capsule and the native
+  ⋯ item menu, with no scrim. The capsule reads the day ("Today",
+  "Yesterday", "17 September", with the year only for other years) over the
+  time (24-hour when the device uses it). It is Drive's date; Drive has no
+  place or capture date, so none is shown.
+- **Bottom, for a video:** a glass capsule with play/pause, a scrubber and
+  mute (`PhotoVideoTransport`), then the thumbnail strip, then the toolbar
+  (Share · Star + Info · Delete). The scrubber follows the finger relative to
+  where the drag began, thickens while held, shows "0:06 / 0:24" above the
+  capsule while scrubbing, lands exactly on release and resumes playback if
+  it was playing. VoiceOver sees an adjustable "Playback position" slider
+  that steps 10 seconds.
+- **One tap** on the media shows or hides all of it at once (title, transport,
+  thumbnails, toolbar) and the status bar with it. There is no second,
+  player-owned control layer, no AirPlay/expand/skip buttons, and no system
+  full-screen presentation; the media is already full screen.
+- **Double-tap** a video to switch between fit and fill. The single tap waits
+  for the double tap, as in Photos.
+- **Backdrop:** black in dark mode. In light mode it is white while the chrome
+  shows and black once it is hidden; glass, glyphs, the thumbnail outline and
+  the status bar follow. Loading and error marks use system gray so they read
+  on both. Android keeps its always-black gallery viewer with Material
+  controls but the same tap and transport model.
+- Media is aspect-fitted to the whole screen and the chrome floats over it, so
+  a 9:16 clip fills the width exactly like a photo. The poster uses the same
+  fit, so nothing jumps when playback becomes ready.
+- **Videos loop**, matching Photos' Loop Videos setting. An explicit pause
+  holds; Play at the end starts again from the beginning.
+
+On iOS, `teledrive/photo-video` is a plain `AVPlayerLayer` view; there is no
+`AVPlayerViewController`, so AVKit draws no controls. It reports ready,
+playing, buffering, mute, fill, position and duration to a
+`PhotoVideoController` (`lib/core/media/photo_video_controller.dart`), which
+the viewer's chrome drives with `play`, `pause`, `seek` (tolerant while
+scrubbing, exact on release, newest target only while one seek runs), `mute`
+and `fill`. Unclaimed pans still feed the same pager/stage used for photos.
+`teledrive/glass-surface` draws the non-interactive Liquid Glass behind the
+title and transport; older iOS, Reduce Transparency, high contrast, Android
+and widget tests use an opaque capsule. Android and bridge-less hosts play
+through `video_player` behind the same controller and transport.
+
+Only a settled active video starts, initially muted, and it loops. The viewer
+retains position, mute and explicit pause state for each visited file; page
+departure, covering routes, backgrounding and audio interruptions pause
+playback. Headphone removal
 pauses. Native events carry a session ID and obsolete events are ignored. No PiP
 or background-playback entitlement is added. Silent previews do not take over
 another app's audio session; explicit unmuting uses the playback audio session.
@@ -226,7 +264,10 @@ Physical-device frame timing, VoiceOver and audio-route/interruption behavior
 must be reported separately from widget and simulator verification.
 
 Additional implementation references:
-- [Apple: embedded AVKit playback](https://developer.apple.com/documentation/avkit/playing-video-content-in-a-standard-user-interface)
+- [Apple: Play videos and slideshows in Photos](https://support.apple.com/en-bn/guide/iphone/play-videos-and-slideshows-iphd01c01cb0/16.0/ios/16.0):
+  tap shows or hides the controls; play/pause and mute sit below the video;
+  double-tap switches between fit and full screen.
+- [Apple: AVPlayerLayer](https://developer.apple.com/documentation/avfoundation/avplayerlayer)
 - [Apple: continuously interactive transitions](https://developer.apple.com/videos/play/wwdc2024/10145/)
 - [Flutter: iOS platform views](https://docs.flutter.dev/platform-integration/ios/platform-views)
 

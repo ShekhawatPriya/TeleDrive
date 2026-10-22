@@ -7,6 +7,7 @@ import '../../../models/drive_models.dart';
 import 'photo_viewer_image.dart';
 import 'photo_viewer_video.dart';
 import '../../../core/media/photo_playback.dart';
+import '../../../core/media/photo_video_controller.dart';
 
 class PhotoViewerPager extends StatefulWidget {
   const PhotoViewerPager({
@@ -18,8 +19,8 @@ class PhotoViewerPager extends StatefulWidget {
     this.onZoomChanged,
     this.active = true,
     this.onNativeDrag,
-    this.onFullscreen,
     this.onNativeChanged,
+    this.onPlayback,
     super.key,
   });
 
@@ -27,7 +28,12 @@ class PhotoViewerPager extends StatefulWidget {
   final int initialIndex;
   final ValueChanged<int> onPageChanged;
   final bool active;
-  final ValueChanged<bool>? onFullscreen;
+  final void Function(
+    String id,
+    PhotoVideoController controller,
+    bool attached,
+  )?
+  onPlayback;
   final void Function(String id, bool native)? onNativeChanged;
   final void Function(String phase, Offset position, Offset velocity)?
   onNativeDrag;
@@ -135,7 +141,8 @@ class _PhotoViewerPagerState extends State<PhotoViewerPager> {
                     widget.onDimensions?.call(file.id, size),
                 onNativeDrag: widget.onNativeDrag,
                 onNativePageDrag: _dragPage,
-                onFullscreen: widget.onFullscreen,
+                onPlayback: (controller, attached) =>
+                    widget.onPlayback?.call(file.id, controller, attached),
                 onNativeChanged: (value) =>
                     widget.onNativeChanged?.call(file.id, value),
                 onNativePage: (forward) {

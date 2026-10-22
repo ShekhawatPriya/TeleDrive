@@ -1,5 +1,7 @@
 import 'package:flutter/services.dart';
 
+import 'photo_video_controller.dart';
+
 /// Retained only for the lifetime of one Photos viewer session.
 class PhotoPlaybackMemory {
   Duration position = Duration.zero;
@@ -23,6 +25,8 @@ class PhotoPlaybackEvent {
     required this.duration,
     required this.muted,
     required this.userPaused,
+    this.playing = false,
+    this.filled = false,
     this.dimensions,
     this.error,
   });
@@ -35,6 +39,8 @@ class PhotoPlaybackEvent {
     duration: Duration(milliseconds: (data['durationMs'] as num? ?? 0).toInt()),
     muted: data['muted'] != false,
     userPaused: data['userPaused'] == true,
+    playing: data['playing'] == true,
+    filled: data['filled'] == true,
     dimensions:
         (data['width'] as num? ?? 0) > 0 && (data['height'] as num? ?? 0) > 0
         ? Size(
@@ -44,7 +50,7 @@ class PhotoPlaybackEvent {
         : null,
     error: data['error'] as String?,
   );
-  final bool ready, buffering, muted, userPaused;
+  final bool ready, buffering, muted, userPaused, playing, filled;
   final Duration position, duration;
   final Size? dimensions;
   final String? error;
@@ -52,7 +58,7 @@ class PhotoPlaybackEvent {
 
 /// The native engine receives a resolved source and opaque session ID only.
 /// Account/Telegram resolution belongs to the Dart media service.
-class NativePhotoPlayback {
+class NativePhotoPlayback implements PhotoVideoEngine {
   NativePhotoPlayback(
     int viewId, {
     required this.session,
@@ -61,7 +67,6 @@ class NativePhotoPlayback {
     this.onPageDrag,
     this.onTap,
     this.onPage,
-    this.onFullscreen,
   }) : _channel = MethodChannel('teledrive/photo-video/$viewId') {
     _channel.setMethodCallHandler(_event);
   }
@@ -70,7 +75,7 @@ class NativePhotoPlayback {
   final void Function(String phase, Offset point, Offset velocity)? onDrag,
       onPageDrag;
   final VoidCallback? onTap;
-  final ValueChanged<bool>? onPage, onFullscreen;
+  final ValueChanged<bool>? onPage;
   final MethodChannel _channel;
   bool _disposed = false;
   Future<void> _event(MethodCall call) async {
@@ -78,7 +83,6 @@ class NativePhotoPlayback {
     if (_disposed || data is! Map || data['session'] != session) return;
     if (call.method == 'state') onEvent(PhotoPlaybackEvent.fromMap(data));
     if (call.method == 'page') onPage?.call(data['forward'] == true);
-    if (call.method == 'fullscreen') onFullscreen?.call(data['value'] == true);
     if (call.method == 'tap') onTap?.call();
     if (call.method == 'drag')
       (data['axis'] == 'horizontal' ? onPageDrag : onDrag)?.call(
@@ -112,10 +116,17 @@ class NativePhotoPlayback {
   }
 
   Future<void> setActive(bool value) => command('active', {'value': value});
-  Future<void> seek(Duration position) =>
-      command('seek', {'positionMs': position.inMilliseconds});
+  @override
+  Future<void> seek(Duration position, {bool exact = true}) =>
+      command('seek', {'positionMs': position.inMilliseconds, 'exact': exact});
+  @override
   Future<void> mute(bool value) => command('mute', {'value': value});
+  @override
+  Future<void> play() => command('play');
+  @override
   Future<void> pause() => command('pause');
+  @override
+  Future<void> fill(bool value) => command('fill', {'value': value});
   void dispose() {
     if (_disposed) return;
     command('dispose');

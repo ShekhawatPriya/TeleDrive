@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:chewie/chewie.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -11,9 +10,13 @@ import 'package:video_player/video_player.dart';
 import '../../../core/media/media_source_resolver.dart';
 import '../../../core/media/photo_media_loader.dart';
 import '../../../core/media/photo_playback.dart';
+import '../../../core/media/photo_video_controller.dart';
 import '../../../models/drive_models.dart';
 import '../../../widgets/media_thumb.dart';
 
+/// One video page. The video fills the page (fitted, or filled after a
+/// double-tap) and draws no controls of its own: the viewer's chrome shows the
+/// transport through [onPlayback], so a tap shows or hides everything at once.
 class PhotoViewerVideo extends ConsumerStatefulWidget {
   const PhotoViewerVideo({
     required this.file,
@@ -24,8 +27,8 @@ class PhotoViewerVideo extends ConsumerStatefulWidget {
     this.onNativeDrag,
     this.onNativePage,
     this.onNativePageDrag,
-    this.onFullscreen,
     this.onNativeChanged,
+    this.onPlayback,
     super.key,
   });
   final DriveFile file;
@@ -39,7 +42,11 @@ class PhotoViewerVideo extends ConsumerStatefulWidget {
     Offset velocity,
   )? onNativeDrag,
       onNativePageDrag;
-  final ValueChanged<bool>? onNativePage, onFullscreen, onNativeChanged;
+  final ValueChanged<bool>? onNativePage, onNativeChanged;
+
+  /// Reports this page's controller (`attached`) and its removal.
+  final void Function(PhotoVideoController controller, bool attached)?
+  onPlayback;
   @override
   ConsumerState<PhotoViewerVideo> createState() => _PhotoViewerVideoState();
 }
@@ -48,16 +55,13 @@ class _PhotoViewerVideoState extends ConsumerState<PhotoViewerVideo>
     with WidgetsBindingObserver {
   final _ownMemory = PhotoPlaybackMemory();
   PhotoPlaybackMemory get _memory => widget.memory ?? _ownMemory;
+  final _controller = PhotoVideoController();
   VideoPlayerController? _video;
-  ChewieController? _chewie;
   NativePhotoPlayback? _native;
   CancelToken? _cancel;
   int _generation = 0;
   String? _source, _revision, _error;
-  bool _ready = false,
-      _buffering = false,
-      _foreground = true,
-      _nativeSupported = false;
+  bool _ready = false, _foreground = true, _nativeSupported = false;
   bool _programmatic = false;
   double? _progress;
   Size? _dimensions;
@@ -69,6 +73,10 @@ class _PhotoViewerVideoState extends ConsumerState<PhotoViewerVideo>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _controller.report(PhotoVideoState(muted: _memory.muted));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onPlayback?.call(_controller, true);
+    });
   }
 
   @override
@@ -110,6 +118,13 @@ class _PhotoViewerVideoState extends ConsumerState<PhotoViewerVideo>
     _error = null;
     _revision = revision;
     _memory.resetFor(revision);
+    _controller.engine = null;
+    // Runs during build; the chrome listening to the controller is elsewhere
+    // in the tree, so it hears about the new revision after this frame.
+    final muted = _memory.muted;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _controller.report(PhotoVideoState(muted: muted));
+    });
     if (_active) _prepare();
   }
 
@@ -162,6 +177,8 @@ class _PhotoViewerVideoState extends ConsumerState<PhotoViewerVideo>
             await video.dispose();
             return;
           }
+          // Videos loop, as with Photos' Loop Videos setting.
+          await video.setLooping(true);
           await video.setVolume(_memory.muted ? 0 : 1);
           await video.seekTo(_memory.position);
           if (!mounted || generation != _generation || !_active) {
@@ -170,17 +187,13 @@ class _PhotoViewerVideoState extends ConsumerState<PhotoViewerVideo>
           }
           _video = video;
           video.addListener(_fallbackState);
-          _chewie = ChewieController(
-            videoPlayerController: video,
-            autoPlay: false,
-            looping: false,
-            allowFullScreen: true,
-          );
+          _controller.engine = _FallbackEngine(video, _fill);
           setState(() {
             _source = source;
             _ready = true;
           });
           _reportDimensions(video.value.size);
+          _fallbackState();
           _setActive();
         } catch (_) {
           await video.dispose();
@@ -195,6 +208,10 @@ class _PhotoViewerVideoState extends ConsumerState<PhotoViewerVideo>
     }
   }
 
+  void _fill(bool value) {
+    if (mounted) setState(() {});
+  }
+
   void _reportDimensions(Size? value) {
     if (value == null || value.isEmpty || value == _dimensions) return;
     _dimensions = value;
@@ -206,11 +223,23 @@ class _PhotoViewerVideoState extends ConsumerState<PhotoViewerVideo>
   void _fallbackState() {
     final video = _video;
     if (video == null) return;
-    _memory.position = video.value.position;
-    _memory.muted = video.value.volume == 0;
-    if (_active && !_programmatic && !video.value.isBuffering)
-      _memory.userPaused = !video.value.isPlaying;
-    if (video.value.hasError && _error == null && mounted)
+    final state = video.value;
+    _memory.position = state.position;
+    _memory.muted = state.volume == 0;
+    if (_active && !_programmatic && !state.isBuffering)
+      _memory.userPaused = !state.isPlaying;
+    _controller.report(
+      PhotoVideoState(
+        ready: state.isInitialized,
+        playing: state.isPlaying,
+        buffering: state.isBuffering,
+        muted: state.volume == 0,
+        filled: _controller.value.filled,
+        position: state.position,
+        duration: state.duration,
+      ),
+    );
+    if (state.hasError && _error == null && mounted)
       setState(() => _error = 'Could not play this video.');
   }
 
@@ -240,10 +269,8 @@ class _PhotoViewerVideoState extends ConsumerState<PhotoViewerVideo>
 
   void _disposeFallback() {
     _video?.removeListener(_fallbackState);
-    _chewie?.dispose();
     _video?.dispose();
     _video = null;
-    _chewie = null;
   }
 
   @override
@@ -253,6 +280,11 @@ class _PhotoViewerVideoState extends ConsumerState<PhotoViewerVideo>
     _cancel?.cancel();
     _native?.dispose();
     _disposeFallback();
+    _controller.engine = null;
+    widget.onPlayback?.call(_controller, false);
+    final controller = _controller;
+    // The chrome may still be listening during this frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
     super.dispose();
   }
 
@@ -260,26 +292,26 @@ class _PhotoViewerVideoState extends ConsumerState<PhotoViewerVideo>
   Widget build(BuildContext context) {
     final source = _source;
     final native = _useNative && source != null;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (!_ready || _error != null)
-          Center(
-            child: MediaThumb(
-              file: widget.file,
-              fit: BoxFit.contain,
-              radius: 0,
-              decodeWidth: 960,
+    final video = _video;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.onTap,
+      onDoubleTap: _ready && _error == null ? _controller.toggleFill : null,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (!_ready || _error != null)
+            Center(
+              child: MediaThumb(
+                file: widget.file,
+                fit: BoxFit.contain,
+                radius: 0,
+                decodeWidth: 960,
+                showBackground: false,
+              ),
             ),
-          ),
-        if (native && _error == null)
-          Padding(
-            key: const ValueKey('photo-native-player-host'),
-            padding: EdgeInsets.only(
-              top: MediaQuery.paddingOf(context).top + 48,
-              bottom: MediaQuery.paddingOf(context).bottom + 120,
-            ),
-            child: UiKitView(
+          if (native && _error == null)
+            UiKitView(
               key: ValueKey('$_revision:$_generation'),
               viewType: 'teledrive/photo-video',
               gestureRecognizers: {
@@ -299,7 +331,7 @@ class _PhotoViewerVideoState extends ConsumerState<PhotoViewerVideo>
               onPlatformViewCreated: (id) {
                 if (!mounted) return;
                 _native?.dispose();
-                _native = NativePhotoPlayback(
+                final native = NativePhotoPlayback(
                   id,
                   session: '$_revision:$_generation',
                   onEvent: (event) {
@@ -307,12 +339,20 @@ class _PhotoViewerVideoState extends ConsumerState<PhotoViewerVideo>
                     _memory.muted = event.muted;
                     _memory.userPaused = event.userPaused;
                     _reportDimensions(event.dimensions);
-                    if (_ready != event.ready ||
-                        _buffering != event.buffering ||
-                        event.error != _error) {
+                    _controller.report(
+                      PhotoVideoState(
+                        ready: event.ready,
+                        playing: event.playing,
+                        buffering: event.buffering,
+                        muted: event.muted,
+                        filled: event.filled,
+                        position: event.position,
+                        duration: event.duration,
+                      ),
+                    );
+                    if (_ready != event.ready || event.error != _error) {
                       setState(() {
                         _ready = event.ready;
-                        _buffering = event.buffering;
                         _error = event.error;
                       });
                     }
@@ -321,44 +361,83 @@ class _PhotoViewerVideoState extends ConsumerState<PhotoViewerVideo>
                   onPageDrag: widget.onNativePageDrag,
                   onTap: widget.onTap,
                   onPage: widget.onNativePage,
-                  onFullscreen: widget.onFullscreen,
                 );
-                _native!.command('status');
-                _native!.setActive(_active);
+                _native = native;
+                _controller.engine = native;
+                native.command('status');
+                native.setActive(_active);
               },
             ),
-          ),
-        if (!native && _chewie != null && _error == null)
-          Chewie(controller: _chewie!),
-        if (_error != null)
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(_error!, style: const TextStyle(color: Colors.white)),
-                TextButton(
-                  onPressed: () {
-                    setState(() => _reset(_revision!));
-                  },
-                  child: const Text('Try again'),
-                ),
-              ],
-            ),
-          )
-        else if (!_ready && _active)
-          IgnorePointer(
-            child: Center(
-              child: SizedBox(
-                width: 44,
-                height: 44,
-                child: CircularProgressIndicator.adaptive(
-                  value: _progress,
-                  semanticsLabel: 'Preparing video',
+          if (!native && video != null && _error == null)
+            SizedBox.expand(
+              child: FittedBox(
+                key: const ValueKey('photo-fallback-player'),
+                fit: _controller.value.filled ? BoxFit.cover : BoxFit.contain,
+                clipBehavior: Clip.hardEdge,
+                child: SizedBox(
+                  width: video.value.size.width,
+                  height: video.value.size.height,
+                  child: VideoPlayer(video),
                 ),
               ),
             ),
-          ),
-      ],
+          if (_error != null)
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _error!,
+                    style: const TextStyle(color: Color(0xFF8E8E93)),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() => _reset(_revision!));
+                    },
+                    child: const Text('Try again'),
+                  ),
+                ],
+              ),
+            )
+          else if (!_ready && _active)
+            IgnorePointer(
+              child: Center(
+                child: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: CircularProgressIndicator.adaptive(
+                    value: _progress,
+                    semanticsLabel: 'Preparing video',
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
+}
+
+/// video_player behind the shared transport on Android and bridge-less hosts.
+class _FallbackEngine implements PhotoVideoEngine {
+  _FallbackEngine(this.video, this.onFill);
+  final VideoPlayerController video;
+  final ValueChanged<bool> onFill;
+  @override
+  Future<void> play() async {
+    final value = video.value;
+    if (value.duration > Duration.zero && value.position >= value.duration)
+      await video.seekTo(Duration.zero);
+    await video.play();
+  }
+
+  @override
+  Future<void> pause() => video.pause();
+  @override
+  Future<void> seek(Duration position, {bool exact = true}) =>
+      video.seekTo(position);
+  @override
+  Future<void> mute(bool value) => video.setVolume(value ? 0 : 1);
+  @override
+  Future<void> fill(bool value) async => onFill(value);
 }

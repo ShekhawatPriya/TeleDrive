@@ -1,5 +1,7 @@
 // Simulator-only fixture. All actions stay local; no live account is loaded.
 import 'dart:io';
+import 'package:flutter_m_fsdk/core/media/photo_video_controller.dart';
+import 'package:flutter_m_fsdk/features/photos/photos_viewer/photo_viewer_transport.dart';
 import 'package:flutter_m_fsdk/features/photos/components/photos_library_controls.dart';
 import 'package:flutter_m_fsdk/features/photos/photos_filter.dart';
 import 'package:flutter_m_fsdk/features/search/search_controller.dart';
@@ -331,6 +333,17 @@ class _GalleryViewerState extends State<_GalleryViewer> {
   final stage = GlobalKey<PhotoViewerStageState>();
   late int index = widget.initial;
   bool moving = true, native = false, zoomed = false, scrub = false;
+  bool chrome = true;
+  final videos = <String, PhotoVideoController>{};
+
+  /// Hidden chrome leaves pointer and semantics, as in the real viewer.
+  Widget shown(Widget child) => IgnorePointer(
+    ignoring: !chrome,
+    child: ExcludeSemantics(
+      excluding: !chrome,
+      child: Opacity(opacity: chrome ? 1 : 0, child: child),
+    ),
+  );
   Size? dimensions;
   @override
   Widget build(BuildContext context) {
@@ -359,7 +372,14 @@ class _GalleryViewerState extends State<_GalleryViewer> {
             zoomed = false;
             dimensions = null;
           }),
-          onTapMedia: () {},
+          onTapMedia: () => setState(() => chrome = !chrome),
+          onPlayback: (id, controller, attached) {
+            if (attached) {
+              setState(() => videos[id] = controller);
+            } else if (identical(videos[id], controller)) {
+              videos.remove(id);
+            }
+          },
           onZoomChanged: (_, value) => setState(() => zoomed = value),
           onDimensions: (_, value) => setState(() => dimensions = value),
           onNativeChanged: (id, value) {
@@ -368,16 +388,18 @@ class _GalleryViewerState extends State<_GalleryViewer> {
           onNativeDrag: (phase, position, velocity) =>
               stage.currentState?.nativeDrag(phase, position, velocity),
         ),
-        header: SafeArea(
-          child: Row(
-            children: [
-              IconButton(
-                tooltip: 'Back to fixture library',
-                onPressed: () => stage.currentState?.dismiss(),
-                icon: const Icon(Icons.arrow_back),
-              ),
-              Expanded(child: Text(file.name)),
-            ],
+        header: shown(
+          SafeArea(
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: 'Back to fixture library',
+                  onPressed: () => stage.currentState?.dismiss(),
+                  icon: const Icon(Icons.arrow_back),
+                ),
+                Expanded(child: Text(file.name)),
+              ],
+            ),
           ),
         ),
         detailsBuilder: (scroll) => PhotoDetailsSheet(
@@ -386,26 +408,30 @@ class _GalleryViewerState extends State<_GalleryViewer> {
           scrollController: scroll,
           integrated: true,
         ),
-        footer: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              PhotoViewerFilmstrip(
-                files: widget.files,
-                index: index,
-                onSelected: (i) => setState(() => index = i),
-                onScrubbingChanged: (value) => setState(() => scrub = value),
-              ),
-              PhotoViewerActions(
-                file: file,
-                onStar: () {},
-                onInfo: () => stage.currentState?.toggle(),
-                onDownload: () {},
-                onDelete: () {},
-                infoSelected: stage.currentState?.isOpen ?? false,
-              ),
-            ],
+        footer: shown(
+          SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (file.kind == FileKind.video)
+                  PhotoVideoTransport(controller: videos[file.id], dark: true),
+                PhotoViewerFilmstrip(
+                  files: widget.files,
+                  index: index,
+                  onSelected: (i) => setState(() => index = i),
+                  onScrubbingChanged: (value) => setState(() => scrub = value),
+                ),
+                PhotoViewerActions(
+                  file: file,
+                  onStar: () {},
+                  onInfo: () => stage.currentState?.toggle(),
+                  onDownload: () {},
+                  onDelete: () {},
+                  infoSelected: stage.currentState?.isOpen ?? false,
+                ),
+              ],
+            ),
           ),
         ),
       ),

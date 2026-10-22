@@ -1,5 +1,4 @@
 import AVFoundation
-import AVKit
 import Flutter
 import UIKit
 
@@ -12,17 +11,19 @@ final class PhotoVideoFactory: NSObject, FlutterPlatformViewFactory {
   }
 }
 
-private final class PhotoVideoContainer: UIView {
-  var attached: (() -> Void)?
-  override func didMoveToWindow() { super.didMoveToWindow(); if window != nil { attached?() } }
+/// A bare video surface. As in Photos, the viewer's own chrome owns the
+/// transport (play, scrubber, mute), so there are no AVKit controls, no second
+/// tap-to-show layer and no system full-screen presentation.
+private final class PhotoVideoSurface: UIView {
+  override class var layerClass: AnyClass { AVPlayerLayer.self }
+  var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
 }
 
-/// AVKit owns transport controls, accessibility and its full-screen presentation.
-/// This container never subclasses AVPlayerViewController or inspects private
-/// AVKit classes. Dart owns source resolution, authentication and file actions.
-final class PhotoVideoView: NSObject, FlutterPlatformView, AVPlayerViewControllerDelegate, UIGestureRecognizerDelegate {
-  private let host: PhotoVideoContainer
-  private let controller = AVPlayerViewController()
+/// Dart owns source resolution, authentication, file actions and the
+/// transport controls. This view plays, reports state, and forwards taps and
+/// unclaimed pans to the shared pager/stage.
+final class PhotoVideoView: NSObject, FlutterPlatformView, UIGestureRecognizerDelegate {
+  private let host: PhotoVideoSurface
   private let player: AVPlayer
   private let channel: FlutterMethodChannel
   private let session: String
@@ -34,10 +35,12 @@ final class PhotoVideoView: NSObject, FlutterPlatformView, AVPlayerViewControlle
   private var userPaused: Bool
   private var internalChange = false
   private var disposed = false
-  private var fullscreen = false
   private var ownsAudioSession = false
   private var pendingPosition: Double
   private var restoredPosition = false
+  private var filled = false
+  private var seeking = false
+  private var pendingSeek: (time: CMTime, exact: Bool)?
   private var dragAxis: NSLayoutConstraint.Axis?
   private var previousPoint = CGPoint.zero
 
@@ -51,20 +54,13 @@ final class PhotoVideoView: NSObject, FlutterPlatformView, AVPlayerViewControlle
     let url = source.hasPrefix("/") ? URL(fileURLWithPath: source) : URL(string: source)
     player = url.map { AVPlayer(url: $0) } ?? AVPlayer()
     player.isMuted = args["muted"] as? Bool ?? true
-    host = PhotoVideoContainer(frame: frame)
+    host = PhotoVideoSurface(frame: frame)
     channel = FlutterMethodChannel(name: "teledrive/photo-video/\(id)", binaryMessenger: messenger)
     super.init()
-    controller.player = player
-    controller.delegate = self
-    controller.showsPlaybackControls = true
-    controller.allowsPictureInPicturePlayback = false
-    controller.entersFullScreenWhenPlaybackBegins = false
-    controller.exitsFullScreenWhenPlaybackEnds = false
-    controller.videoGravity = .resizeAspect
-    controller.view.backgroundColor = .clear
     host.backgroundColor = .clear
+    host.playerLayer.player = player
+    host.playerLayer.videoGravity = .resizeAspect
     host.accessibilityIdentifier = "photo-native-player"
-    host.attached = { [weak self] in self?.attach() }
     channel.setMethodCallHandler { [weak self] call, result in
       guard let self, !self.disposed else { result(nil); return }
       let data = call.arguments as? [String: Any] ?? [:]
@@ -73,11 +69,17 @@ final class PhotoVideoView: NSObject, FlutterPlatformView, AVPlayerViewControlle
       case "active":
         self.active = data["value"] as? Bool ?? false
         self.applyPlayback()
+      case "play":
+        self.userPaused = false
+        if self.atEnd { self.seek(to: .zero, exact: true) }
+        self.applyPlayback()
+      case "pause": self.userPaused = true; self.applyPlayback()
       case "seek":
         let ms = (data["positionMs"] as? NSNumber)?.doubleValue ?? 0
-        self.player.seek(to: CMTime(seconds: max(0, ms) / 1000, preferredTimescale: 600))
+        self.seek(to: CMTime(seconds: max(0, ms) / 1000, preferredTimescale: 600),
+          exact: data["exact"] as? Bool ?? true)
       case "mute": self.player.isMuted = data["value"] as? Bool ?? true
-      case "pause": self.userPaused = true; self.applyPlayback()
+      case "fill": self.setFilled(data["value"] as? Bool ?? false)
       case "status": self.sendState()
       case "dispose": self.dispose()
       default: result(FlutterMethodNotImplemented); return
@@ -86,16 +88,16 @@ final class PhotoVideoView: NSObject, FlutterPlatformView, AVPlayerViewControlle
     }
     observations.append(player.observe(\.timeControlStatus, options: [.new]) { [weak self] _, _ in
       guard let self else { return }
-      if self.active && self.foreground && !self.internalChange && self.restoredPosition {
+      if self.active && self.foreground && !self.internalChange && self.restoredPosition && !self.seeking {
         if self.player.timeControlStatus == .playing { self.userPaused = false }
-        else if self.player.timeControlStatus == .paused { self.userPaused = true; self.releaseAudioSession() }
+        else if self.player.timeControlStatus == .paused && !self.atEnd { self.userPaused = true; self.releaseAudioSession() }
       }
       self.sendState()
     })
     observations.append(player.observe(\.isMuted, options: [.new]) { [weak self] _, _ in
       self?.configureAudio(); self?.sendState()
     })
-    observations.append(controller.observe(\.isReadyForDisplay, options: [.new]) { [weak self] _, _ in
+    observations.append(host.playerLayer.observe(\.isReadyForDisplay, options: [.new]) { [weak self] _, _ in
       self?.applyPlayback()
     })
     if let item = player.currentItem {
@@ -109,8 +111,13 @@ final class PhotoVideoView: NSObject, FlutterPlatformView, AVPlayerViewControlle
         }
         self.sendState()
       })
+      // Videos loop, as with Photos' Loop Videos setting. An explicit pause
+      // still holds, and an inactive page never restarts.
       notifications.append(NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in
-        self?.userPaused = true; self?.sendState()
+        guard let self, !self.disposed else { return }
+        self.player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+          self?.applyPlayback()
+        }
       })
     }
     notifications.append(NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
@@ -135,30 +142,28 @@ final class PhotoVideoView: NSObject, FlutterPlatformView, AVPlayerViewControlle
         self?.userPaused = true; self?.applyPlayback()
       }
     })
-    periodic = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.25, preferredTimescale: 600), queue: .main) { [weak self] _ in self?.sendState() }
+    // Ten updates a second keep the scrubber moving smoothly.
+    periodic = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.1, preferredTimescale: 600), queue: .main) { [weak self] _ in self?.sendState() }
     let pan = UIPanGestureRecognizer(target: self, action: #selector(panned(_:)))
     pan.maximumNumberOfTouches = 1
-    pan.cancelsTouchesInView = false
     pan.delegate = self
     host.addGestureRecognizer(pan)
+    // Double-tap switches between fit and fill; the single tap that shows or
+    // hides the viewer's chrome waits for it, as in Photos.
+    let doubleTap = UITapGestureRecognizer(target: self, action: #selector(doubleTapped))
+    doubleTap.numberOfTapsRequired = 2
+    doubleTap.delegate = self
+    host.addGestureRecognizer(doubleTap)
     let tap = UITapGestureRecognizer(target: self, action: #selector(tapped))
-    tap.cancelsTouchesInView = false
+    tap.require(toFail: doubleTap)
     tap.delegate = self
     host.addGestureRecognizer(tap)
   }
 
   func view() -> UIView { host }
-  private func attach() {
-    guard controller.parent == nil, !disposed else { return }
-    var responder: UIResponder? = host.next
-    while responder != nil && !(responder is UIViewController) { responder = responder?.next }
-    guard let parent = responder as? UIViewController else { return }
-    parent.addChild(controller)
-    controller.view.frame = host.bounds
-    controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-    host.addSubview(controller.view)
-    controller.didMove(toParent: parent)
-    applyPlayback()
+  private var atEnd: Bool {
+    guard let duration = player.currentItem?.duration.seconds, duration.isFinite, duration > 0 else { return false }
+    return player.currentTime().seconds >= duration - 0.05
   }
   private func releaseAudioSession() {
     guard ownsAudioSession else { return }
@@ -176,7 +181,7 @@ final class PhotoVideoView: NSObject, FlutterPlatformView, AVPlayerViewControlle
       }
       try AVAudioSession.sharedInstance().setActive(true)
       ownsAudioSession = true
-    } catch { /* Playback controls remain usable if another session owns audio. */ }
+    } catch { /* Playback stays usable if another session owns audio. */ }
   }
   private func applyPlayback() {
     guard !disposed else { return }
@@ -185,6 +190,32 @@ final class PhotoVideoView: NSObject, FlutterPlatformView, AVPlayerViewControlle
       configureAudio(); player.play()
     } else { player.pause(); releaseAudioSession() }
     internalChange = false
+    sendState()
+  }
+  /// Scrubbing issues many targets; only the newest waits while one seek runs.
+  private func seek(to time: CMTime, exact: Bool) {
+    pendingSeek = (time, exact)
+    guard !seeking else { return }
+    runPendingSeek()
+  }
+  private func runPendingSeek() {
+    guard let next = pendingSeek, !disposed else { seeking = false; return }
+    pendingSeek = nil
+    seeking = true
+    let tolerance = next.exact ? CMTime.zero : CMTime(seconds: 0.2, preferredTimescale: 600)
+    player.seek(to: next.time, toleranceBefore: tolerance, toleranceAfter: tolerance) { [weak self] _ in
+      guard let self else { return }
+      if self.pendingSeek == nil { self.seeking = false; self.sendState() }
+      else { self.runPendingSeek() }
+    }
+  }
+  private func setFilled(_ value: Bool) {
+    guard value != filled else { return }
+    filled = value
+    CATransaction.begin()
+    CATransaction.setAnimationDuration(UIAccessibility.isReduceMotionEnabled ? 0 : 0.25)
+    host.playerLayer.videoGravity = value ? .resizeAspectFill : .resizeAspect
+    CATransaction.commit()
     sendState()
   }
   private func send(_ method: String, _ values: [String: Any]) {
@@ -197,9 +228,10 @@ final class PhotoVideoView: NSObject, FlutterPlatformView, AVPlayerViewControlle
     let seconds = player.currentTime().seconds
     let duration = item?.duration.seconds ?? 0
     let size = item?.presentationSize ?? .zero
-    var data: [String: Any] = ["ready": controller.isReadyForDisplay,
+    var data: [String: Any] = ["ready": host.playerLayer.isReadyForDisplay,
       "buffering": player.timeControlStatus == .waitingToPlayAtSpecifiedRate,
-      "muted": player.isMuted, "userPaused": userPaused,
+      "playing": player.timeControlStatus != .paused,
+      "muted": player.isMuted, "userPaused": userPaused, "filled": filled,
       "positionMs": seconds.isFinite ? Int(max(0, seconds) * 1000) : 0,
       "durationMs": duration.isFinite ? Int(max(0, duration) * 1000) : 0,
       "width": size.width, "height": size.height]
@@ -208,30 +240,15 @@ final class PhotoVideoView: NSObject, FlutterPlatformView, AVPlayerViewControlle
   }
 
   func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-    guard !fullscreen else { return false }
-    // Controls are authoritative. Reserve the transport and upper control
-    // regions as well as UIControl ancestors, without private-view matching.
-    let point = touch.location(in: host)
-    guard point.y > 88 && point.y < host.bounds.height - 144 else {
-      return false
-    }
-    var view = touch.view
-    while let current = view, current !== host {
-      if current is UIControl { return false }
-      view = current.superview
-    }
-    return true
+    !disposed
   }
   func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-    guard !fullscreen else { return false }
     guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return true }
     let velocity = pan.velocity(in: host)
     return max(abs(velocity.x), abs(velocity.y)) > 0
   }
   @objc private func tapped() { send("tap", [:]) }
-  func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-    gestureRecognizer is UITapGestureRecognizer && otherGestureRecognizer is UITapGestureRecognizer
-  }
+  @objc private func doubleTapped() { setFilled(!filled) }
   @objc private func panned(_ pan: UIPanGestureRecognizer) {
     let point = pan.location(in: host.window)
     let velocity = pan.velocity(in: host)
@@ -254,18 +271,6 @@ final class PhotoVideoView: NSObject, FlutterPlatformView, AVPlayerViewControlle
     default: break
     }
   }
-  func playerViewController(_ playerViewController: AVPlayerViewController, willBeginFullScreenPresentationWithAnimationCoordinator coordinator: UIViewControllerTransitionCoordinator) {
-    fullscreen = true; send("fullscreen", ["value": true])
-    coordinator.animate(alongsideTransition: nil) { [weak self] context in
-      if context.isCancelled { self?.fullscreen = false; self?.send("fullscreen", ["value": false]) }
-    }
-  }
-  func playerViewController(_ playerViewController: AVPlayerViewController, willEndFullScreenPresentationWithAnimationCoordinator coordinator: UIViewControllerTransitionCoordinator) {
-    coordinator.animate(alongsideTransition: nil) { [weak self] context in
-      guard !context.isCancelled else { return }
-      self?.fullscreen = false; self?.send("fullscreen", ["value": false]); self?.applyPlayback()
-    }
-  }
   private func dispose() {
     guard !disposed else { return }
     disposed = true
@@ -273,12 +278,8 @@ final class PhotoVideoView: NSObject, FlutterPlatformView, AVPlayerViewControlle
     if let periodic { player.removeTimeObserver(periodic) }; periodic = nil
     observations.removeAll()
     notifications.forEach(NotificationCenter.default.removeObserver); notifications.removeAll()
-    controller.willMove(toParent: nil)
-    controller.view.removeFromSuperview()
-    controller.removeFromParent()
-    controller.player = nil
+    host.playerLayer.player = nil
     player.replaceCurrentItem(with: nil)
-    host.attached = nil
     channel.setMethodCallHandler(nil)
     releaseAudioSession()
   }

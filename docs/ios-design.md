@@ -482,9 +482,9 @@ functional Cupertino context menu and accessible item actions.
 In the iOS full-screen photo viewer, Share, Star, Info and Delete sit along the
 bottom. The top overflow is native; Download and organization actions remain
 there. Tap-to-hide controls, paging, zoom, the existing Hero transition and the
-local-cache-first source resolution remain shared Flutter behavior. The current
-Photos viewer embeds AVKit playback on iOS; see the Photos contract below. This
-does not embed Apple's private Photos app.
+local-cache-first source resolution remain shared Flutter behavior. Video uses
+an `AVPlayerLayer` behind the viewer's own Photos-style transport; see the
+Photos contract below. This does not embed Apple's private Photos app.
 
 References:
 - [Apple toolbars](https://developer.apple.com/design/human-interface-guidelines/toolbars)
@@ -527,7 +527,8 @@ shared `IosLargeTitleHeader` on the same `systemBackground` canvas as Drive.
 Native accessibility settings select opaque surfaces or remove motion. Select
 is in the three-dot menu with view options. Comfortable densities use stable featured
 mosaics, with a persisted square-grid alternative. The viewer has coordinated
-interactive dismissal to the current tile and embedded AVKit video controls.
+interactive dismissal to the current tile and a Photos-style video transport
+(one chrome layer; no AVKit controls).
 See [Gallery layout](gallery-and-profile-refresh.md) and
 [Photo viewer design](photo-viewer-design.md) for the current contracts.
 

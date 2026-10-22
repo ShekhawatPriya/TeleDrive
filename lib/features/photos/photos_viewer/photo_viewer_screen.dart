@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/media/photo_video_controller.dart';
 import '../../../models/drive_models.dart';
 import '../../../core/utils/file_type_detector.dart';
 import 'photo_viewer_session.dart';
@@ -18,6 +19,7 @@ import 'photo_viewer_stage.dart';
 import 'photo_viewer_filmstrip.dart';
 import 'photo_viewer_pager.dart';
 import 'photo_viewer_top_bar.dart';
+import 'photo_viewer_transport.dart';
 import '../../share/share_flow.dart';
 
 class PhotoViewerScreen extends ConsumerStatefulWidget {
@@ -40,8 +42,8 @@ class PhotoViewerScreen extends ConsumerStatefulWidget {
 
 class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
   bool _chromeVisible = true;
-  bool _nativeFullscreen = false;
   final Set<String> _nativeVideos = {};
+  final Map<String, PhotoVideoController> _videos = {};
   bool _downloading = false;
   bool _initialResolving = false;
   bool _initialFailed = false;
@@ -71,10 +73,38 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
       _initialResolving = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _resolveInitial());
     }
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.edgeToEdge,
-      overlays: [SystemUiOverlay.top],
-    );
+    _applySystemChrome();
+  }
+
+  /// As in Photos, hiding the chrome also hides the status bar.
+  void _applySystemChrome() {
+    if (_chromeVisible) {
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.edgeToEdge,
+        overlays: [SystemUiOverlay.top],
+      );
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    }
+  }
+
+  void _setChromeVisible(bool value) {
+    if (_chromeVisible == value) return;
+    setState(() => _chromeVisible = value);
+    _applySystemChrome();
+  }
+
+  /// A video page attaches its controller after its first frame and detaches
+  /// while it is being disposed, when this state must not rebuild yet.
+  void _videoAttached(String id, PhotoVideoController controller, bool on) {
+    if (on) {
+      if (mounted) setState(() => _videos[id] = controller);
+    } else if (identical(_videos[id], controller)) {
+      _videos.remove(id);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    }
   }
 
   void _leaveViewer() {
@@ -171,200 +201,226 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
     final currentRoute = ModalRoute.of(context)?.isCurrent ?? true;
     final playbackActive =
         currentRoute && !sharing && !_transitioning && !_scrubbing;
+    final ios = Theme.of(context).platform == TargetPlatform.iOS;
+    // Photos: white behind light-mode chrome, black once it is hidden and in
+    // dark mode. Android keeps the always-black gallery viewer.
+    final dark =
+        !ios ||
+        Theme.of(context).brightness == Brightness.dark ||
+        !_chromeVisible;
+    final inspecting = _stageKey.currentState?.isOpen ?? false;
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      extendBodyBehindAppBar: true,
-      body: PhotoViewerStage(
-        key: _stageKey,
-        sourceRect: _session.sourceRect?.call(current.id),
-        prepareDismiss: () async =>
-            _session.revealSource?.call(_session.currentId),
-        onDismissed: () {
-          if (mounted) _leaveViewer();
-        },
-        onInteractionChanged: (value) {
-          if (mounted) setState(() => _transitioning = value);
-        },
-        gesturesEnabled: !sharing && currentRoute,
-        nativeVideo: _nativeVideos.contains(current.id) && isVideoFile(current),
-        mediaZoomed: _zoomed[current.id] ?? false,
-        mediaAspectRatio:
-            _aspectRatios[current.id] ??
-            ((current.widthPx ?? 0) > 0 && (current.heightPx ?? 0) > 0
-                ? current.widthPx! / current.heightPx!
-                : null),
-        detailsBuilder: (controller) => PhotoDetailsSheet(
-          file: current,
-          folderName: current.parentId == null
-              ? null
-              : drive.folder(current.parentId!)?.name,
-          scrollController: controller,
-          integrated: true,
-        ),
-        media: PhotoViewerPager(
-          files: files,
-          initialIndex: index,
-          active: playbackActive,
-          onNativeChanged: (id, value) {
-            if (mounted)
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBodyBehindAppBar: true,
+        body: PhotoViewerStage(
+          key: _stageKey,
+          backdropColor: dark ? Colors.black : Colors.white,
+          sourceRect: _session.sourceRect?.call(current.id),
+          prepareDismiss: () async =>
+              _session.revealSource?.call(_session.currentId),
+          onDismissed: () {
+            if (mounted) _leaveViewer();
+          },
+          onInteractionChanged: (value) {
+            if (mounted) setState(() => _transitioning = value);
+          },
+          gesturesEnabled: !sharing && currentRoute,
+          nativeVideo:
+              _nativeVideos.contains(current.id) && isVideoFile(current),
+          mediaZoomed: _zoomed[current.id] ?? false,
+          mediaAspectRatio:
+              _aspectRatios[current.id] ??
+              ((current.widthPx ?? 0) > 0 && (current.heightPx ?? 0) > 0
+                  ? current.widthPx! / current.heightPx!
+                  : null),
+          detailsBuilder: (controller) => PhotoDetailsSheet(
+            file: current,
+            folderName: current.parentId == null
+                ? null
+                : drive.folder(current.parentId!)?.name,
+            scrollController: controller,
+            integrated: true,
+          ),
+          media: PhotoViewerPager(
+            files: files,
+            initialIndex: index,
+            active: playbackActive,
+            onNativeChanged: (id, value) {
+              if (mounted)
+                setState(() {
+                  if (value) {
+                    _nativeVideos.add(id);
+                  } else {
+                    _nativeVideos.remove(id);
+                  }
+                });
+            },
+            onPlayback: _videoAttached,
+            onNativeDrag: (phase, point, velocity) =>
+                _stageKey.currentState?.nativeDrag(phase, point, velocity),
+            onZoomChanged: (id, zoomed) {
+              if (mounted && _zoomed[id] != zoomed) {
+                setState(() => _zoomed[id] = zoomed);
+              }
+            },
+            onDimensions: (id, dimensions) {
+              if (!mounted || dimensions.height <= 0) return;
+              final ratio = dimensions.width / dimensions.height;
+              if (_aspectRatios[id] != ratio)
+                setState(() => _aspectRatios[id] = ratio);
+            },
+            onPageChanged: (i) {
               setState(() {
-                if (value) {
-                  _nativeVideos.add(id);
-                } else {
-                  _nativeVideos.remove(id);
-                }
+                _session.select(i);
               });
-          },
-          onFullscreen: (value) {
-            if (mounted) setState(() => _nativeFullscreen = value);
-          },
-          onNativeDrag: (phase, point, velocity) =>
-              _stageKey.currentState?.nativeDrag(phase, point, velocity),
-          onZoomChanged: (id, zoomed) {
-            if (mounted && _zoomed[id] != zoomed) {
-              setState(() => _zoomed[id] = zoomed);
-            }
-          },
-          onDimensions: (id, dimensions) {
-            if (!mounted || dimensions.height <= 0) return;
-            final ratio = dimensions.width / dimensions.height;
-            if (_aspectRatios[id] != ratio)
-              setState(() => _aspectRatios[id] = ratio);
-          },
-          onPageChanged: (i) {
-            setState(() {
-              _session.select(i);
-            });
-            final id = files[i].id;
-            ref.read(driveControllerProvider).markAccessed(id);
-          },
-          onTapMedia: () {
-            if (!(_stageKey.currentState?.isOpen ?? false))
-              setState(() => _chromeVisible = !_chromeVisible);
-          },
-        ),
-        header: sharing || _nativeFullscreen
-            ? const SizedBox.shrink()
-            : PhotoViewerTopBar(
-                file: current,
-                visible: _chromeVisible,
-                onBack: () => _stageKey.currentState?.dismiss(),
-                onStar: () =>
-                    ref.read(driveControllerProvider).toggleStar(current.id),
-                onInfo: () => _openInfo(context, current),
-                onDownload: () => _download(context, current),
-                onMore: () => _openMore(context, current),
-                menuSections: (_) {
-                  final owner = ref.read(authControllerProvider).user;
-                  final latest =
-                      ref
-                          .read(driveControllerProvider)
-                          .file(_session.currentId) ??
-                      current;
-                  return [
-                    for (final destructive in [false, true])
-                      IosMenuSection([
-                        for (final action in DriveItemActions.fileActions(
-                          latest,
-                        ).where((a) => a.destructive == destructive))
-                          IosMenuItem(
-                            label: action.label,
-                            destructive: action.destructive,
-                            onTap: () {
-                              if (!mounted) return;
-                              final active = ref
-                                  .read(authControllerProvider)
-                                  .user;
-                              if (active?.userId != owner?.userId ||
-                                  active?.telegramId != owner?.telegramId)
-                                return;
-                              DriveItemActions.performFileAction(
-                                context,
-                                ref,
-                                ref
-                                        .read(driveControllerProvider)
-                                        .file(latest.id) ??
-                                    latest,
-                                action.id,
-                              );
-                            },
-                          ),
-                      ]),
-                  ];
-                },
-              ),
-        footer: sharing || _nativeFullscreen
-            ? const SizedBox.shrink()
-            : AnimatedOpacity(
-                duration: MediaQuery.disableAnimationsOf(context)
-                    ? Duration.zero
-                    : const Duration(milliseconds: 180),
-                opacity: _chromeVisible ? 1 : 0,
-                child: IgnorePointer(
-                  ignoring: !_chromeVisible,
-                  child: ExcludeSemantics(
-                    excluding: !_chromeVisible,
-                    child: ColoredBox(
-                      color:
-                          Theme.of(context).platform == TargetPlatform.android
-                          ? Colors.black
-                          : Colors.transparent,
-                      child: SafeArea(
-                        top: false,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (!(_stageKey.currentState?.isOpen ?? false))
-                              PhotoViewerFilmstrip(
-                                files: files,
-                                index: index,
-                                onScrubbingChanged: (value) {
-                                  if (mounted)
-                                    setState(() => _scrubbing = value);
-                                },
-                                onSelected: (i) {
-                                  setState(() {
-                                    _session.select(i);
-                                  });
-                                  drive.markAccessed(files[i].id);
-                                },
-                              ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
-                              child: PhotoViewerActions(
-                                file: current,
-                                infoSelected:
-                                    _stageKey.currentState?.isOpen ?? false,
-                                onStar: () => drive.toggleStar(current.id),
-                                onInfo: () => _openInfo(context, current),
-                                onDownload: () => _download(context, current),
-                                onShare: () =>
-                                    DriveItemActions.performFileAction(
-                                      context,
-                                      ref,
-                                      current,
-                                      'share',
-                                    ),
-                                onDelete: () =>
-                                    DriveItemActions.performFileAction(
-                                      context,
-                                      ref,
-                                      current,
-                                      'delete',
-                                    ),
-                              ),
+              final id = files[i].id;
+              ref.read(driveControllerProvider).markAccessed(id);
+            },
+            onTapMedia: () {
+              if (!(_stageKey.currentState?.isOpen ?? false))
+                _setChromeVisible(!_chromeVisible);
+            },
+          ),
+          header: sharing
+              ? const SizedBox.shrink()
+              : PhotoViewerTopBar(
+                  file: current,
+                  visible: _chromeVisible,
+                  dark: dark,
+                  onBack: () => _stageKey.currentState?.dismiss(),
+                  onStar: () =>
+                      ref.read(driveControllerProvider).toggleStar(current.id),
+                  onInfo: () => _openInfo(context, current),
+                  onDownload: () => _download(context, current),
+                  onMore: () => _openMore(context, current),
+                  menuSections: (_) {
+                    final owner = ref.read(authControllerProvider).user;
+                    final latest =
+                        ref
+                            .read(driveControllerProvider)
+                            .file(_session.currentId) ??
+                        current;
+                    return [
+                      for (final destructive in [false, true])
+                        IosMenuSection([
+                          for (final action in DriveItemActions.fileActions(
+                            latest,
+                          ).where((a) => a.destructive == destructive))
+                            IosMenuItem(
+                              label: action.label,
+                              destructive: action.destructive,
+                              onTap: () {
+                                if (!mounted) return;
+                                final active = ref
+                                    .read(authControllerProvider)
+                                    .user;
+                                if (active?.userId != owner?.userId ||
+                                    active?.telegramId != owner?.telegramId)
+                                  return;
+                                DriveItemActions.performFileAction(
+                                  context,
+                                  ref,
+                                  ref
+                                          .read(driveControllerProvider)
+                                          .file(latest.id) ??
+                                      latest,
+                                  action.id,
+                                );
+                              },
                             ),
-                          ],
+                        ]),
+                    ];
+                  },
+                ),
+          footer: sharing
+              ? const SizedBox.shrink()
+              : AnimatedOpacity(
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 180),
+                  opacity: _chromeVisible ? 1 : 0,
+                  child: IgnorePointer(
+                    ignoring: !_chromeVisible,
+                    child: ExcludeSemantics(
+                      excluding: !_chromeVisible,
+                      child: ColoredBox(
+                        color:
+                            Theme.of(context).platform == TargetPlatform.android
+                            ? Colors.black
+                            : Colors.transparent,
+                        child: SafeArea(
+                          top: false,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (!inspecting && isVideoFile(current))
+                                PhotoVideoTransport(
+                                  controller: _videos[current.id],
+                                  dark: dark,
+                                ),
+                              if (!inspecting)
+                                PhotoViewerFilmstrip(
+                                  files: files,
+                                  index: index,
+                                  dark: dark,
+                                  onScrubbingChanged: (value) {
+                                    if (mounted)
+                                      setState(() => _scrubbing = value);
+                                  },
+                                  onSelected: (i) {
+                                    setState(() {
+                                      _session.select(i);
+                                    });
+                                    drive.markAccessed(files[i].id);
+                                  },
+                                ),
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  28,
+                                  8,
+                                  28,
+                                  8,
+                                ),
+                                child: PhotoViewerActions(
+                                  file: current,
+                                  dark: dark,
+                                  infoSelected: inspecting,
+                                  onStar: () => drive.toggleStar(current.id),
+                                  onInfo: () => _openInfo(context, current),
+                                  onDownload: () => _download(context, current),
+                                  onShare: () =>
+                                      DriveItemActions.performFileAction(
+                                        context,
+                                        ref,
+                                        current,
+                                        'share',
+                                      ),
+                                  onDelete: () =>
+                                      DriveItemActions.performFileAction(
+                                        context,
+                                        ref,
+                                        current,
+                                        'delete',
+                                      ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-        onDetailsChanged: () {
-          if (mounted) setState(() => _chromeVisible = true);
-        },
+          onDetailsChanged: () {
+            if (mounted) {
+              _setChromeVisible(true);
+              setState(() {});
+            }
+          },
+        ),
       ),
     );
   }
