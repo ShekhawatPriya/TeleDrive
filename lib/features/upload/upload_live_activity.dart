@@ -3,8 +3,12 @@ import '../../core/utils/file_type_detector.dart';
 import '../../models/drive_models.dart';
 import 'upload_models.dart';
 
+// Previews are made after the original lands, so those phases are uploading
+// (100% of the original's bytes), not preparing.
 const _transferring = {
   UploadStatus.uploadingOriginalToTelegram,
+  UploadStatus.creatingThumbnail,
+  UploadStatus.creatingPreview,
   UploadStatus.uploadingThumbnailToTelegram,
   UploadStatus.uploadingPreviewToTelegram,
   UploadStatus.committingMetadata,
@@ -12,8 +16,6 @@ const _transferring = {
 
 const _working = {
   UploadStatus.preparingMetadata,
-  UploadStatus.creatingThumbnail,
-  UploadStatus.creatingPreview,
   ..._transferring,
   UploadStatus.cancelling,
 };
@@ -46,7 +48,7 @@ TransferActivitySnapshot? uploadActivitySnapshot(List<UploadItem> items) {
     if (_working.contains(status)) working++;
     if (_transferring.contains(status)) transferring++;
     totalBytes += item.size;
-    completedBytes += (item.progress * item.size).round();
+    completedBytes += item.transferredBytes;
   }
   final total = items.length;
   final unsuccessful = failed + cancelled;

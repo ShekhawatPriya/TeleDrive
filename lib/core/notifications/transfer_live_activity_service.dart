@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../utils/file_type_detector.dart';
+
 final transferLiveActivityServiceProvider =
     Provider<TransferLiveActivityService>(
       (ref) => TransferLiveActivityService.instance,
@@ -61,7 +63,7 @@ class TransferActivitySnapshot {
   final TransferActivityFileKind currentKind;
 
   bool get isTerminal => phase.isTerminal;
-  int get percent => (progress.clamp(0.0, 1.0) * 100).floor();
+  int get percent => uploadPercent(progress);
 
   Map<String, Object?> toMap() => {
     'phase': phase.name,

@@ -28,7 +28,6 @@ extension UploadSummaryPresentation on UploadSummary {
     if (complete) return '${formatFileSize(totalBytes)} saved to your drive';
     if (waitingForWifi) return 'Uploads resume when Wi-Fi is available.';
     if (needsAttention) return 'Review the remaining files below.';
-    // completedBytes includes phase estimates, so it is not a byte counter.
-    return '${formatFileSize(totalBytes)} total';
+    return '${formatFileSize(completedBytes)} of ${formatFileSize(totalBytes)}';
   }
 }

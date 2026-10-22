@@ -49,10 +49,7 @@ class _UploadCardState extends ConsumerState<UploadCard> {
     final uploaded = item.status == UploadStatus.uploaded;
     final failed = item.status == UploadStatus.failed;
     final cancelled = item.status == UploadStatus.cancelled;
-    final preparing =
-        item.status == UploadStatus.preparingMetadata ||
-        item.status == UploadStatus.creatingThumbnail ||
-        item.status == UploadStatus.creatingPreview;
+    final preparing = item.status == UploadStatus.preparingMetadata;
     final status =
         uploaded &&
             !item.thumbnailReady &&
@@ -61,7 +58,7 @@ class _UploadCardState extends ConsumerState<UploadCard> {
               FileKind.video,
             }.contains(detectFileKind(item.name, item.mimeType))
         ? 'Uploaded · Finishing preview'
-        : uploadStatusLabel(item.status);
+        : uploadStatusLabel(item.status, item.progress);
     if (ios) {
       return _IosUploadRow(
         item: item,
@@ -298,13 +295,7 @@ class _IosUploadRow extends StatelessWidget {
       CupertinoColors.systemGreen,
       context,
     );
-    final uploading = active && !preparing;
-    final line = item.status == UploadStatus.uploadingOriginalToTelegram
-        ? uploadRowDetail(item, status)
-        : uploading
-        ? '${formatFileSize(item.size)} · '
-              '${(item.progress.clamp(0, 1) * 100).floor()}%'
-        : '${formatFileSize(item.size)} · $status';
+    final line = uploadRowDetail(item, status);
 
     Widget circleButton(String label, VoidCallback? onPressed) => Semantics(
       label: '$label ${item.name}',

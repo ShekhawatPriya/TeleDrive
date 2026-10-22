@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/utils/file_type_detector.dart';
+
 import '../../../../core/theme/app_theme.dart';
 import '../../upload_models.dart';
 import '../upload_summary_presentation.dart';
@@ -137,7 +139,7 @@ class UploadTintBar extends StatelessWidget {
     final reduced = MediaQuery.disableAnimationsOf(context);
     return Semantics(
       label: 'Upload progress',
-      value: '${(value.clamp(0, 1) * 100).floor()}%',
+      value: '${uploadPercent(value)}%',
       child: Container(
         height: height,
         decoration: ShapeDecoration(

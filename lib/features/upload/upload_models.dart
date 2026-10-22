@@ -51,7 +51,7 @@ class UploadItem {
     this.posterPath,
     DateTime? addedAt,
   }) : addedAt = addedAt ?? DateTime.now(),
-       progress = _computeProgress(status, httpProgress, serverProgress);
+       progress = _computeProgress(status, serverProgress);
 
   final String localId;
   final String uploadClientId;
@@ -92,40 +92,37 @@ class UploadItem {
   /// Smoothed upload speed of the original while it is transferring.
   final double? bytesPerSecond;
 
-  /// Bytes of the original Telegram has accepted so far.
+  /// Bytes of the original Telegram has accepted so far. Every surface (rows,
+  /// rings, the sheet, the Live Activity) derives its numbers from this.
   int get transferredBytes =>
-      (serverProgress.clamp(0.0, 1.0) * size).round().clamp(0, size);
+      (progress.clamp(0.0, 1.0) * size).round().clamp(0, size);
 
-  static double _computeProgress(
-    UploadStatus status,
-    double http,
-    double server,
-  ) {
+  /// Whole percent of the original that has landed, floored so no surface
+  /// claims 100% before the last byte.
+  int get percent => uploadPercent(progress);
+
+  /// Fraction of the original's bytes Telegram has accepted. Previews and the
+  /// metadata commit happen after the original lands, so those phases are
+  /// complete in bytes and are labelled "Finishing" rather than estimated.
+  static double _computeProgress(UploadStatus status, double server) {
     switch (status) {
-      case UploadStatus.uploaded:
-        return 1.0;
       case UploadStatus.selected:
       case UploadStatus.queued:
       case UploadStatus.waitingForWifi:
-        return 0.0;
-      // The original's bytes dominate; derivatives are made after it lands,
-      // so their phases sit above it and the bar never moves backwards.
       case UploadStatus.preparingMetadata:
-        return 0.02;
+        return 0.0;
       case UploadStatus.uploadingOriginalToTelegram:
-        return (0.03 + server * 0.89).clamp(0.03, 0.92);
-      case UploadStatus.creatingThumbnail:
-      case UploadStatus.creatingPreview:
-        return 0.92;
-      case UploadStatus.uploadingThumbnailToTelegram:
-      case UploadStatus.uploadingPreviewToTelegram:
-        return (0.92 + server * 0.05).clamp(0.92, 0.97);
-      case UploadStatus.committingMetadata:
-        return 0.98;
       case UploadStatus.cancelling:
       case UploadStatus.cancelled:
       case UploadStatus.failed:
-        return ((http * 0.4) + (server * 0.6)).clamp(0.0, 1.0);
+        return server.clamp(0.0, 1.0);
+      case UploadStatus.creatingThumbnail:
+      case UploadStatus.creatingPreview:
+      case UploadStatus.uploadingThumbnailToTelegram:
+      case UploadStatus.uploadingPreviewToTelegram:
+      case UploadStatus.committingMetadata:
+      case UploadStatus.uploaded:
+        return 1.0;
     }
   }
 
@@ -266,9 +263,7 @@ extension UploadItemMapping on UploadItem {
       previewUrl: localImage,
       isOptimistic: true,
       localId: localId,
-      uploadProgress: status == UploadStatus.uploaded
-          ? null
-          : (progress * 100).round() / 100,
+      uploadProgress: status == UploadStatus.uploaded ? null : percent / 100,
     );
   }
 }

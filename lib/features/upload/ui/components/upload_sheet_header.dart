@@ -307,7 +307,7 @@ class _IosUploadSummary extends StatelessWidget {
       return (value: '${summary.failedCount}', unit: 'failed');
     }
     if (summary.waitingForWifi) return (value: '', unit: '');
-    final percent = (summary.overallProgress.clamp(0, 1) * 100).floor();
+    final percent = uploadPercent(summary.overallProgress);
     return (value: '$percent%', unit: '');
   }
 

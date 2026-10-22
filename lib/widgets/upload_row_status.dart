@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../core/theme/app_theme.dart';
 import '../features/upload/ui/components/upload_status_ring.dart';
+import '../core/utils/file_type_detector.dart';
 import '../models/drive_models.dart';
 
 /// Whether [file] is an upload still in flight (not finished, failed or
@@ -51,7 +52,7 @@ class UploadRowStatus extends StatelessWidget {
         ? 'Waiting for Wi-Fi'
         : waiting
         ? 'Waiting to upload'
-        : 'Uploading, ${((progress ?? 0) * 100).floor()} percent';
+        : 'Uploading, ${uploadPercent(progress)} percent';
     Widget ring = UploadStatusRing(
       tint: tint,
       icon: wifi

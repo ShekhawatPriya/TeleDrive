@@ -55,7 +55,7 @@ void main() {
 
     test('reports preparing before any bytes reach Telegram', () {
       final snapshot = uploadActivitySnapshot([
-        _item('a', UploadStatus.creatingThumbnail),
+        _item('a', UploadStatus.preparingMetadata),
         _item('b', UploadStatus.queued),
       ])!;
       expect(snapshot.phase, TransferActivityPhase.preparing);
@@ -80,9 +80,17 @@ void main() {
       expect(snapshot.currentName, 'Report.pdf');
       expect(snapshot.currentKind, TransferActivityFileKind.document);
       expect(snapshot.totalBytes, 3000);
-      // (1.0 + 0.475 + 0) / 3, matching the in-app panel's progress model.
-      expect(snapshot.progress, closeTo(0.4917, 0.001));
-      expect(snapshot.percent, 49);
+      // (1000 + 500 + 0) / 3000 bytes, the same count as the in-app panel.
+      expect(snapshot.progress, closeTo(0.5, 0.001));
+      expect(snapshot.percent, 50);
+    });
+
+    test('preview generation after the original landed is uploading', () {
+      final snapshot = uploadActivitySnapshot([
+        _item('a', UploadStatus.creatingThumbnail),
+      ])!;
+      expect(snapshot.phase, TransferActivityPhase.uploading);
+      expect(snapshot.completedBytes, snapshot.totalBytes);
     });
 
     test('waits for Wi-Fi only when nothing else can move', () {

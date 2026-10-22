@@ -133,22 +133,40 @@ String formatLabel(DriveFile file) {
   return file.mimeType?.split('/').last.toUpperCase() ?? 'FILE';
 }
 
-/// Status text for an optimistic upload row. While bytes move it carries the
-/// same percentage as the row's ring ("Uploading 42%").
-String formatUploadStatus(DriveFile file) {
-  final progress = file.uploadProgress;
-  return switch (file.uploadStatus) {
-    'queued' || 'selected' => 'Queued',
+/// Whole percent of an upload, floored so nothing claims 100% before the
+/// last byte. The epsilon keeps 0.29 from flooring to 28.
+int uploadPercent(double? progress) =>
+    ((progress ?? 0).clamp(0.0, 1.0) * 100 + 1e-6).floor();
+
+/// The one phase label every upload surface shows: list rows, rings, the
+/// upload sheet and the viewer. [progress] is the fraction of the original's
+/// bytes Telegram has accepted, so "Uploading 42%" matches "67 MB of 160 MB".
+String uploadPhaseText(String? status, double? progress) {
+  final percent = uploadPercent(progress);
+  return switch (status) {
+    'queued' || 'selected' => 'Waiting',
     'waitingForWifi' => 'Waiting for Wi-Fi',
+    'preparingMetadata' => 'Preparing',
+    'creatingThumbnail' ||
+    'creatingPreview' ||
+    'uploadingThumbnailToTelegram' ||
+    'uploadingPreviewToTelegram' ||
+    'committingMetadata' => 'Finishing',
+    'uploaded' => 'Uploaded',
+    'cancelling' => 'Stopping…',
+    'cancelled' => 'Cancelled',
+    'failed' => 'Failed',
+    // Backend-managed upload states.
     'stagingToBackend' => 'Sending to server',
     'waitingForServer' => 'Waiting for server',
     'uploadingToTelegram' => 'Uploading to Telegram',
     'processing' => 'Processing',
-    'uploaded' => 'Uploaded',
-    'failed' => 'Upload failed',
-    'cancelled' => 'Cancelled',
-    _ when progress != null && progress > 0 =>
-      'Uploading ${(progress.clamp(0, 1) * 100).floor()}%',
+    _ when percent > 0 => 'Uploading $percent%',
     _ => 'Uploading',
   };
 }
+
+/// Status text for an optimistic upload row ("Uploading 42%").
+String formatUploadStatus(DriveFile file) => file.uploadStatus == 'failed'
+    ? 'Upload failed'
+    : uploadPhaseText(file.uploadStatus, file.uploadProgress);

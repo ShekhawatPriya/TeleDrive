@@ -328,7 +328,17 @@ row. A "N FILES" section label precedes an inset files card.
 
 Each row has a 40-point thumbnail, a 16-point name, and a status line (real
 bytes and smoothed speed while the original transfers, "45 MB of 160 MB ·
-2.1 MB/s"; size and percentage or phase otherwise). Below that sits a 3-point tinted bar, or a two-line
+2.1 MB/s"; size and phase otherwise).
+
+All upload numbers come from one source: the bytes of the original that
+Telegram has accepted (`UploadItem.progress`, `transferredBytes`). The list
+row ("Uploading 28%"), its ring, the panel row and bar, the summary
+percentage and the Live Activity therefore always agree, and percentages are
+floored (`uploadPercent`) so nothing reads 100% before the last byte. Before
+the first byte lands a row says "Uploading" with no percentage. Previews and
+the metadata commit run after the original lands, so those phases show a full
+bar labelled "Finishing" rather than an estimate. `uploadPhaseText` is the one
+label table for every surface. Below that sits a 3-point tinted bar, or a two-line
 red error for failures. The row ends in one trailing mark: a green check
 circle, or a circular cancel or dismiss control (48-point target). Dividers
 align with the filename and run to the card's edge. At accessibility sizes

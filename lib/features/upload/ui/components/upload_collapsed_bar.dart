@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/utils/file_type_detector.dart';
+
 import '../../upload_models.dart';
 import '../upload_summary_presentation.dart';
 import 'status_capsule.dart';
@@ -19,7 +21,7 @@ class UploadCollapsedBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ios = Theme.of(context).platform == TargetPlatform.iOS;
-    final percent = '${(summary.overallProgress.clamp(0, 1) * 100).floor()}%';
+    final percent = '${uploadPercent(summary.overallProgress)}%';
     return StatusCapsule(
       title: ios ? summary.capsuleTitle : summary.statusTitle,
       detail: summary.stillGeneratingThumbs

@@ -824,8 +824,8 @@ void main() {
           expect(find.byIcon(Icons.cloud_off_outlined), findsNothing);
           expect(find.byType(CircularProgressIndicator), findsNothing);
           expect(find.byType(UploadRowStatus), findsNWidgets(4));
-          expect(find.text('Uploading 40% · 160 MB'), findsOneWidget);
-          expect(find.text('Queued · 160 MB'), findsOneWidget);
+          expect(find.text('Uploading 42% · 160 MB'), findsOneWidget);
+          expect(find.text('Waiting · 160 MB'), findsOneWidget);
           await _preview(
             tester,
             'drive-upload-rows-${platform.name}-${brightness.name}',
@@ -840,7 +840,7 @@ void main() {
           ];
           await tester.pump();
           expect(shown.value.first.toDriveFile(null).modifiedAt, firstKey);
-          expect(find.text('Uploading 56% · 160 MB'), findsOneWidget);
+          expect(find.text('Uploading 60% · 160 MB'), findsOneWidget);
           expect(find.byType(CircularProgressIndicator), findsNothing);
           expect(find.byIcon(Icons.cloud_off_outlined), findsNothing);
           expect(tester.state(find.byType(MediaThumb).first), same(before));

@@ -181,7 +181,7 @@ class UploadController extends ChangeNotifier {
     var allUploaded = count > 0;
     for (final item in items) {
       totalBytes += item.size;
-      completedBytes += (item.progress * item.size).round();
+      completedBytes += item.transferredBytes;
       if (item.status != UploadStatus.uploaded) allUploaded = false;
       if (item.status == UploadStatus.uploaded && !item.thumbnailReady) {
         final kind = detectFileKind(item.name, item.mimeType);
@@ -190,8 +190,8 @@ class UploadController extends ChangeNotifier {
         }
       }
     }
-    final progressPermille = (uploadOverallProgress(items) * 1000)
-        .round()
+    final progressPermille = (uploadOverallProgress(items) * 1000 + 1e-6)
+        .floor()
         .clamp(0, 1000);
     return UploadSummary(
       sheetVisible: sheetVisible,

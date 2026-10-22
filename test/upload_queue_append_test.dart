@@ -324,13 +324,14 @@ void main() {
       reason: 'progress must be observed before the native send starts',
     );
     final total = uploads.items.single.size;
-    expect(uploads.items.single.progress, closeTo(.03, .001));
+    expect(uploads.items.single.progress, 0);
 
     telegram.emit(transferId, total ~/ 2, total);
     await _flush();
     final half = uploads.items.single;
     expect(half.serverProgress, closeTo(.5, .001));
-    expect(half.progress, closeTo(.03 + .5 * .89, .001));
+    // Every surface reads the same real byte count.
+    expect(half.progress, closeTo(.5, .001));
     expect(half.transferredBytes, total ~/ 2);
 
     // A part restarted after a reconnect never moves the bar backwards.
